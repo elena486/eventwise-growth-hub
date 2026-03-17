@@ -1,7 +1,7 @@
 import React, { useState, useCallback } from 'react';
 import Sidebar from '@/components/proposal/Sidebar';
 import ProposalDocument from '@/components/proposal/ProposalDocument';
-import { PLANS, PLAN_FEATURES, DEFAULT_ACCOUNTING_SERVICES, ONBOARDING_PACKAGES } from '@/lib/proposalData';
+import { PLANS, PLAN_FEATURES, DEFAULT_ACCOUNTING_SERVICES, ONBOARDING_PACKAGES, ONBOARDING_FEATURES } from '@/lib/proposalData';
 import { format } from 'date-fns';
 
 const getInitialForm = () => ({
@@ -305,7 +305,7 @@ export default function ProposalGenerator() {
       onboardingKey: form.onboarding,
       onboardingName: onboardingPkg.name,
       onboardingPrice: onboardingPkg.priceLabel,
-      onboardingFeatures: require('@/lib/proposalData').ONBOARDING_FEATURES[form.onboarding],
+      onboardingFeatures: ONBOARDING_FEATURES[form.onboarding],
     };
 
     setProposalData(data);
