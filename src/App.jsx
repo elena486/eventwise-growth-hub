@@ -5,6 +5,8 @@ import { BrowserRouter as Router, Route, Routes } from 'react-router-dom';
 import PageNotFound from './lib/PageNotFound';
 import { AuthProvider, useAuth } from '@/lib/AuthContext';
 import UserNotRegisteredError from '@/components/UserNotRegisteredError';
+import { Navigate } from 'react-router-dom';
+import ProposalGenerator from './pages/ProposalGenerator';
 // Add page imports here
 
 const AuthenticatedApp = () => {
@@ -33,7 +35,8 @@ const AuthenticatedApp = () => {
   // Render the main app
   return (
     <Routes>
-      {/* Add your page Route elements here */}
+      <Route path="/" element={<Navigate to="/ProposalGenerator" replace />} />
+      <Route path="/ProposalGenerator" element={<ProposalGenerator />} />
       <Route path="*" element={<PageNotFound />} />
     </Routes>
   );
