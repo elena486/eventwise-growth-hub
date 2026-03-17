@@ -4,6 +4,9 @@ module.exports = {
     content: ["./index.html", "./src/**/*.{ts,tsx,js,jsx}"],
   theme: {
   	extend: {
+  		fontFamily: {
+  			dm: ['var(--font-dm)']
+  		},
   		borderRadius: {
   			lg: 'var(--radius)',
   			md: 'calc(var(--radius) - 2px)',
@@ -59,7 +62,21 @@ module.exports = {
   				'accent-foreground': 'hsl(var(--sidebar-accent-foreground))',
   				border: 'hsl(var(--sidebar-border))',
   				ring: 'hsl(var(--sidebar-ring))'
-  			}
+  			},
+  			navy: '#1B2A52',
+  			'navy-tint': '#EEF0FA',
+  			green: '#1D9E75',
+  			'green-dark': '#0F6E56',
+  			'green-light': '#E8F8F2',
+  			'green-lighter': '#F0FAF6',
+  			'ew-border': '#E2E5F0',
+  			'ew-border-light': '#E8EAF4',
+  			'ew-muted': '#8B92A9',
+  			'ew-muted-light': '#B0B7CC',
+  			'ew-body': '#3D4563',
+  			'ew-body-light': '#5A6180',
+  			'ew-bg': '#ECEEF5',
+  			'ew-footer': '#F7F8FC',
   		},
   		keyframes: {
   			'accordion-down': {
