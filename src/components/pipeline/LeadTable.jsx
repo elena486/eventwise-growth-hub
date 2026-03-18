@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { formatDistanceToNow, format } from 'date-fns';
-import StageBadge from './Stagebadge.jsx';
+import StageBadge from './Stagebadge';
 import PlanBadge from './PlanBadge';
 import { ChevronUp, ChevronDown, ChevronsUpDown, FileText, Pencil, Trash2 } from 'lucide-react';
 
