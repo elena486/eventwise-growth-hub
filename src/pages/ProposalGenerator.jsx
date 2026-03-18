@@ -285,7 +285,9 @@ export default function ProposalGenerator() {
       displayPrice,
       standardPrice: plan.price,
       discountPercent,
-      planFeatures: PLAN_FEATURES[form.plan],
+      planFeatures: PLAN_FEATURES[form.plan].map(f =>
+      f.includes('scenario') || f.includes('Scenario') ? null : f
+    ).filter(Boolean),
       includeAccounting: form.includeAccounting,
       accountingPrice: accountingPriceRaw,
       accountingPriceFormatted: accountingPriceRaw.toLocaleString(),
