@@ -97,43 +97,7 @@ function buildProposalHTML(proposalData) {
     </div>
   `).join('');
 
-  const onboardingFeatures = pd.onboardingFeatures.map(f => `
-    <div style="display:flex;align-items:flex-start;gap:10px;padding:6px 0;">
-      <span style="color:#1D9E75;font-weight:700;font-size:14px;flex-shrink:0;">✓</span>
-      <span style="color:#3D4563;font-size:14px;line-height:1.4;">${f}</span>
-    </div>
-  `).join('');
 
-  const midpoint = Math.ceil(pd.onboardingFeatures.length / 2);
-  const col1 = pd.onboardingFeatures.slice(0, midpoint);
-  const col2 = pd.onboardingFeatures.slice(midpoint);
-
-  const onboardingCol1 = col1.map(f => `
-    <div style="display:flex;align-items:flex-start;gap:10px;padding:6px 0;">
-      <span style="color:#1D9E75;font-weight:700;font-size:14px;flex-shrink:0;">✓</span>
-      <span style="color:#3D4563;font-size:14px;line-height:1.4;">${f}</span>
-    </div>
-  `).join('');
-
-  const onboardingCol2 = col2.map(f => `
-    <div style="display:flex;align-items:flex-start;gap:10px;padding:6px 0;">
-      <span style="color:#1D9E75;font-weight:700;font-size:14px;flex-shrink:0;">✓</span>
-      <span style="color:#3D4563;font-size:14px;line-height:1.4;">${f}</span>
-    </div>
-  `).join('');
-
-  const terms = [
-    { title: 'Cancellation', text: "Cancel anytime with 30 days notice. You'll receive a full data export and prorated refund for any unused annual period." },
-    { title: 'Your data', text: 'All financial data remains yours. Exported on request and securely deleted within 90 days of termination.' },
-    { title: 'Confidentiality', text: 'Strict confidentiality of all financial data and business information, surviving termination indefinitely.' },
-  ];
-
-  const termsHTML = terms.map(t => `
-    <div style="border:1px solid #E2E5F0;border-radius:8px;padding:20px;flex:1;">
-      <h4 style="font-weight:600;color:#1B2A52;font-size:14px;margin-bottom:8px;">${t.title}</h4>
-      <p style="color:#8B92A9;font-size:12px;line-height:1.5;">${t.text}</p>
-    </div>
-  `).join('');
 
   const steps = ['Consultation call', 'Customise to your workflows', '2-week implementation', 'Go-live with full support'];
   const stepsHTML = steps.map((s, i) => `
