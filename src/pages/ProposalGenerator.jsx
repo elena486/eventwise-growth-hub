@@ -202,9 +202,6 @@ function buildProposalHTML(proposalData) {
     <p style="font-size:11px;font-weight:600;color:#1D9E75;text-transform:uppercase;letter-spacing:0.2em;margin-bottom:8px;">Your investment</p>
     <h2 style="font-size:24px;font-weight:700;color:#1B2A52;margin-bottom:32px;">Simple, transparent pricing</h2>
     ${pricingCards}
-    <div style="margin-top:24px;background:#F0FAF6;border:1px solid rgba(29,158,117,0.1);border-radius:8px;padding:16px 24px;text-align:center;">
-      <p style="color:#0F6E56;font-size:14px;font-weight:500;">30-day free trial included. Full platform access with expert onboarding. No credit card required.</p>
-    </div>
   </div>
 
   <!-- Platform features -->
