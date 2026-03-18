@@ -1,5 +1,13 @@
 import React from 'react';
-import { PLATFORM_FEATURES } from '@/lib/proposalData';
+
+const FEATURES = [
+  { emoji: '📊', title: 'Live budget control', desc: 'Budgets update in real-time as sales come in and expenses are logged.' },
+  { emoji: '✅', title: 'Smart approvals', desc: 'Set rules for purchases and changes. Track who approved what and when.' },
+  { emoji: '🧾', title: 'Purchase orders', desc: 'Raise, approve and track POs directly in Eventwise. Full audit trail on every spend.' },
+  { emoji: '🎟', title: 'Ticket tracking', desc: 'Live ticket sales from every platform in one dashboard.' },
+  { emoji: '💸', title: 'Sales invoicing', desc: 'All revenue streams — tickets, sponsorship, traders — in one place.' },
+  { emoji: '🔗', title: 'Xero integration', desc: 'Accounting data syncs in real-time. No manual reconciliation.' },
+];
 
 export default function PlatformFeatures() {
   return (
@@ -11,7 +19,7 @@ export default function PlatformFeatures() {
       </p>
 
       <div className="grid grid-cols-3 gap-4 mb-8">
-        {PLATFORM_FEATURES.map((f, i) => (
+        {FEATURES.map((f, i) => (
           <div key={i} className="border border-ew-border rounded-lg p-5">
             <span className="text-2xl mb-3 block">{f.emoji}</span>
             <h4 className="font-semibold text-navy text-sm mb-1">{f.title}</h4>
