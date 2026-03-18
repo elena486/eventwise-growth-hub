@@ -219,29 +219,14 @@ function buildProposalHTML(proposalData) {
   <!-- Onboarding -->
   <div style="padding:40px;border-top:1px solid #E2E5F0;">
     <p style="font-size:11px;font-weight:600;color:#1D9E75;text-transform:uppercase;letter-spacing:0.2em;margin-bottom:8px;">Getting started</p>
-    <h2 style="font-size:24px;font-weight:700;color:#1B2A52;margin-bottom:16px;">We don't disappear after launch</h2>
-    <div style="display:flex;gap:12px;margin-bottom:32px;">
-      <span style="background:#EEF0FA;color:#1B2A52;font-size:12px;font-weight:600;border-radius:9999px;padding:6px 16px;">${pd.onboardingName}</span>
-      <span style="background:#E8F8F2;color:#0F6E56;font-size:12px;font-weight:600;border-radius:9999px;padding:6px 16px;">${pd.onboardingPrice}</span>
-    </div>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:0 32px;margin-bottom:40px;">
-      <div>${onboardingCol1}</div>
-      <div>${onboardingCol2}</div>
-    </div>
-    <div style="position:relative;margin-bottom:8px;">
-      <div style="display:flex;justify-content:space-between;align-items:flex-start;position:relative;">
-        <div style="position:absolute;top:16px;left:64px;right:64px;height:2px;background:#E2E5F0;"></div>
-        ${timelineHTML}
-      </div>
-    </div>
-    <p style="text-align:center;color:#8B92A9;font-size:12px;">Most clients are live and confident within 2–3 weeks</p>
-  </div>
+    <h2 style="font-size:24px;font-weight:700;color:#1B2A52;margin-bottom:8px;">We don't disappear after launch</h2>
+    <p style="color:#5A6180;font-size:14px;margin-bottom:32px;max-width:520px;">Every client gets a dedicated account manager and a structured onboarding programme to make sure your team is set up for success from day one.</p>
 
-  <!-- Key terms -->
-  <div style="padding:40px;border-top:1px solid #E2E5F0;">
-    <p style="font-size:11px;font-weight:600;color:#1D9E75;text-transform:uppercase;letter-spacing:0.2em;margin-bottom:8px;">Agreement</p>
-    <h2 style="font-size:24px;font-weight:700;color:#1B2A52;margin-bottom:24px;">Key terms</h2>
-    <div style="display:flex;gap:16px;">${termsHTML}</div>
+    <p style="font-size:12px;font-weight:600;color:#1B2A52;text-transform:uppercase;letter-spacing:0.1em;margin-bottom:20px;">Implementation timeline</p>
+    ${timelineHTML}
+
+    <p style="font-size:12px;font-weight:600;color:#1B2A52;text-transform:uppercase;letter-spacing:0.1em;margin-bottom:20px;margin-top:40px;">${pd.showAllOnboarding ? 'Onboarding packages' : 'Your onboarding package'}</p>
+    ${onboardingPackagesHTML}
   </div>
 
   <!-- CTA -->
