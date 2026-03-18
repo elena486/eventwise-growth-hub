@@ -51,11 +51,7 @@ export default function PricingSection({ data }) {
         )}
       </div>
 
-      <div className="mt-6 bg-green-lighter border border-green/10 rounded-lg px-6 py-4 text-center">
-        <p className="text-green-dark text-sm font-medium">
-          30-day free trial included. Full platform access with expert onboarding. No credit card required.
-        </p>
-      </div>
+
     </div>
   );
 }
