@@ -143,19 +143,60 @@ function buildProposalHTML(proposalData) {
     </div>
   `).join('');
 
-  const timelineSteps = [
-    { step: 1, label: 'Foundation', time: 'Day 1–2' },
-    { step: 2, label: 'Configuration', time: 'Day 2–3' },
-    { step: 3, label: 'Enablement', time: 'Week 1–2' },
-    { step: 4, label: 'Launch', time: 'Week 2–3' },
+  const timelineStepsData = [
+    { step: 1, label: 'Kick-off', time: 'Day 1', desc: 'Meet your dedicated account manager. Agree goals, platform structure and go-live timeline. Your account is set up and configured.' },
+    { step: 2, label: 'Configuration', time: 'Days 2–5', desc: 'Chart of accounts, cost/revenue departments, approval workflows and budget templates built to match your events.' },
+    { step: 3, label: 'Training', time: 'Week 2', desc: 'Live training session for your whole team — budgeting, purchase orders, approvals, invoicing and reporting all covered.' },
+    { step: 4, label: 'Go-live', time: 'Week 3', desc: 'Your first live event budget running in Eventwise. Team drop-in session to answer questions and build confidence.' },
+    { step: 5, label: 'Ongoing', time: 'Month 1+', desc: "Regular check-ins, monthly reviews and dedicated support throughout your subscription. We're with you for the long term." },
   ];
-  const timelineHTML = timelineSteps.map(s => `
-    <div style="flex:1;display:flex;flex-direction:column;align-items:center;position:relative;z-index:1;">
-      <div style="width:32px;height:32px;border-radius:50%;background:#1B2A52;color:white;font-size:12px;font-weight:700;display:flex;align-items:center;justify-content:center;margin-bottom:8px;print-color-adjust:exact;-webkit-print-color-adjust:exact;">${s.step}</div>
-      <p style="font-weight:600;color:#1B2A52;font-size:12px;">${s.label}</p>
-      <p style="color:#8B92A9;font-size:11px;">${s.time}</p>
+  const timelineHTML = timelineStepsData.map((s, i) => `
+    <div style="display:flex;gap:20px;${i < timelineStepsData.length - 1 ? 'margin-bottom:0;' : ''}">
+      <div style="display:flex;flex-direction:column;align-items:center;">
+        <div style="width:36px;height:36px;border-radius:50%;background:#1B2A52;color:white;font-size:12px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;print-color-adjust:exact;-webkit-print-color-adjust:exact;">${s.step}</div>
+        ${i < timelineStepsData.length - 1 ? '<div style="width:2px;background:#E2E5F0;flex:1;margin:4px 0;min-height:28px;"></div>' : ''}
+      </div>
+      <div style="padding-bottom:24px;padding-top:6px;flex:1;">
+        <div style="display:flex;align-items:center;gap:12px;margin-bottom:4px;">
+          <p style="font-weight:600;color:#1B2A52;font-size:14px;">${s.label}</p>
+          <span style="background:#E8F8F2;color:#0F6E56;font-size:10px;font-weight:600;border-radius:9999px;padding:2px 10px;">${s.time}</span>
+        </div>
+        <p style="color:#5A6180;font-size:13px;line-height:1.5;">${s.desc}</p>
+      </div>
     </div>
   `).join('');
+
+  const allPkgs = {
+    essential: { name: 'Success Essential', price: 'Free', features: ['Dedicated account manager from day one','Full kick-off call and account setup','Four weekly check-in meetings','One past budget uploaded for you','Custom Eventwise training session','Team drop-in session post-training','Monthly check-ins after going live','Ongoing help and support'] },
+    plus: { name: 'Success Plus', price: '£1,500', highlighted: true, features: ['Everything in Essential','Free budget consultation and restructure','Extra budget upload of your choice','One on-site training day (4 hours)','4 additional drop-in sessions for your team','Monthly check-ins after going live','Priority support response','Ongoing help and support'] },
+    premium: { name: 'Success Premium', price: '£5,000', features: ['Everything in Plus','Upload of 50 past event budgets','Two on-site training days (4 hours each)','12 additional weekly meetings post go-live','Dedicated senior account manager','Bespoke reporting templates','Quarterly strategic review sessions','Ongoing help and support'] },
+  };
+
+  const onboardingPackagesHTML = pd.showAllOnboarding
+    ? `<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;">
+        ${Object.entries(allPkgs).map(([k, pkg]) => `
+          <div style="border:2px solid ${pkg.highlighted ? '#1B2A52' : '#E2E5F0'};border-radius:12px;overflow:hidden;">
+            <div style="background:${pkg.highlighted ? '#1B2A52' : '#F7F8FC'};padding:20px;print-color-adjust:exact;-webkit-print-color-adjust:exact;">
+              ${pkg.highlighted ? '<span style="background:#1D9E75;color:white;font-size:10px;font-weight:600;border-radius:9999px;padding:2px 10px;display:inline-block;margin-bottom:8px;print-color-adjust:exact;-webkit-print-color-adjust:exact;">Most popular</span>' : ''}
+              <p style="font-size:10px;font-weight:600;color:${pkg.highlighted ? 'rgba(255,255,255,0.5)' : '#8B92A9'};text-transform:uppercase;letter-spacing:0.15em;margin-bottom:8px;">${pkg.name}</p>
+              <p style="font-size:22px;font-weight:700;color:${pkg.highlighted ? 'white' : '#1B2A52'};">${pkg.price}</p>
+            </div>
+            <div style="padding:20px;">
+              ${pkg.features.map(f => `<div style="display:flex;align-items:flex-start;gap:8px;padding:5px 0;"><span style="color:#1D9E75;font-weight:700;font-size:13px;flex-shrink:0;">✓</span><span style="color:#3D4563;font-size:13px;line-height:1.4;">${f}</span></div>`).join('')}
+            </div>
+          </div>
+        `).join('')}
+      </div>`
+    : `<div style="border:2px solid #1B2A52;border-radius:12px;overflow:hidden;max-width:320px;">
+        <div style="background:#1B2A52;padding:24px;print-color-adjust:exact;-webkit-print-color-adjust:exact;">
+          <p style="font-size:10px;font-weight:600;color:rgba(255,255,255,0.5);text-transform:uppercase;letter-spacing:0.15em;margin-bottom:8px;">Your package</p>
+          <p style="font-size:18px;font-weight:700;color:white;">${pd.onboardingName}</p>
+          <p style="color:rgba(255,255,255,0.5);font-size:14px;margin-top:4px;">${pd.onboardingPrice}</p>
+        </div>
+        <div style="padding:24px;">
+          ${(allPkgs[pd.onboardingKey]?.features || []).map(f => `<div style="display:flex;align-items:flex-start;gap:8px;padding:5px 0;"><span style="color:#1D9E75;font-weight:700;font-size:13px;flex-shrink:0;">✓</span><span style="color:#3D4563;font-size:13px;line-height:1.4;">${f}</span></div>`).join('')}
+        </div>
+      </div>`;
 
   return `<!DOCTYPE html>
 <html>
