@@ -6,7 +6,7 @@ import PageNotFound from './lib/PageNotFound';
 import { AuthProvider, useAuth } from '@/lib/AuthContext';
 import UserNotRegisteredError from '@/components/UserNotRegisteredError';
 import { Navigate } from 'react-router-dom';
-import ProposalGenerator from './pages/ProposalGenerator';
+import AppShell from './pages/AppShell';
 // Add page imports here
 
 const AuthenticatedApp = () => {
