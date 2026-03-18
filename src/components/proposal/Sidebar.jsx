@@ -154,18 +154,37 @@ export default function Sidebar({ form, setForm, onGenerate, onDownload, hasProp
         {/* Onboarding section */}
         <div>
           <h3 className="text-[11px] font-semibold text-ew-muted uppercase tracking-[0.15em] mb-4">Onboarding</h3>
-          <div>
-            <Label className="text-xs font-medium text-ew-body mb-1.5 block">Package</Label>
-            <Select value={form.onboarding} onValueChange={v => updateField('onboarding', v)}>
-              <SelectTrigger className="h-9 text-sm">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="essential">Success Essential — Free</SelectItem>
-                <SelectItem value="plus">Success Plus — £1,500</SelectItem>
-                <SelectItem value="premium">Success Premium — £5,000</SelectItem>
-              </SelectContent>
-            </Select>
+          <div className="space-y-3">
+            <div className="flex items-center gap-2.5">
+              <Switch
+                checked={form.showAllOnboarding}
+                onCheckedChange={v => updateField('showAllOnboarding', v)}
+                id="onboarding-all-toggle"
+              />
+              <Label htmlFor="onboarding-all-toggle" className="text-sm font-medium text-ew-body cursor-pointer">
+                Show all 3 packages
+              </Label>
+            </div>
+            {form.showAllOnboarding ? (
+              <p className="text-[11px] text-ew-muted leading-snug">
+                All three packages will be shown side by side so the client can compare and choose.
+              </p>
+            ) : (
+              <div>
+                <Label className="text-xs font-medium text-ew-body mb-1.5 block">Selected package</Label>
+                <Select value={form.onboarding} onValueChange={v => updateField('onboarding', v)}>
+                  <SelectTrigger className="h-9 text-sm">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="essential">Success Essential — Free</SelectItem>
+                    <SelectItem value="plus">Success Plus — £1,500</SelectItem>
+                    <SelectItem value="premium">Success Premium — £5,000</SelectItem>
+                  </SelectContent>
+                </Select>
+                <p className="text-[11px] text-ew-muted mt-1.5">Use this when the client has already agreed to a specific package.</p>
+              </div>
+            )}
           </div>
         </div>
       </div>
