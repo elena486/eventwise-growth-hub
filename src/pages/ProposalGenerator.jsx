@@ -1,7 +1,43 @@
 import React, { useState, useCallback } from 'react';
 import Sidebar from '@/components/proposal/Sidebar';
 import ProposalDocument from '@/components/proposal/ProposalDocument';
-import { PLANS, PLAN_FEATURES, DEFAULT_ACCOUNTING_SERVICES, ONBOARDING_PACKAGES, ONBOARDING_FEATURES } from '@/lib/proposalData';
+import { PLANS, DEFAULT_ACCOUNTING_SERVICES, ONBOARDING_PACKAGES, ONBOARDING_FEATURES } from '@/lib/proposalData';
+
+// Updated plan features — scenario planning replaced with purchase orders
+const UPDATED_PLAN_FEATURES = {
+  starter: [
+    'Budget creation and real-time tracking',
+    'Budget vs actuals across all departments',
+    'Up to 10 cost/revenue departments',
+    '5 user seats included',
+    'Basic approval workflows',
+    'Purchase order management',
+    'Revenue and supplier invoice templates',
+    'Xero integration',
+    'Ticket seller integrations (Eventbrite, Skiddle, Ticketmaster)',
+  ],
+  professional: [
+    'Purchase orders and automated workflows',
+    'Advanced purchase approval rules',
+    'Up to 15 departments · 10 user seats',
+    'Multi-currency support',
+    'Custom permissions',
+    'Priority support from account manager',
+    'Revenue and supplier invoice templates',
+    'Xero + ticket seller integrations',
+  ],
+  business: [
+    'Unlimited departments · 20 user seats',
+    'Multi-event portfolio dashboard',
+    'Advanced purchase order management',
+    'Advanced reporting and analytics',
+    'API access for integrations',
+    'Dedicated account manager',
+    'Half-day team training session',
+    'All Professional features included',
+    'Xero + ticket seller integrations',
+  ],
+};
 import { format } from 'date-fns';
 
 const getInitialForm = () => ({
@@ -285,9 +321,7 @@ export default function ProposalGenerator() {
       displayPrice,
       standardPrice: plan.price,
       discountPercent,
-      planFeatures: PLAN_FEATURES[form.plan].map(f =>
-      f.includes('scenario') || f.includes('Scenario') ? null : f
-    ).filter(Boolean),
+      planFeatures: UPDATED_PLAN_FEATURES[form.plan],
       includeAccounting: form.includeAccounting,
       accountingPrice: accountingPriceRaw,
       accountingPriceFormatted: accountingPriceRaw.toLocaleString(),
