@@ -82,8 +82,8 @@ function buildProposalHTML(proposalData) {
 
   const platformFeatures = [
     { emoji: '📊', title: 'Live budget control', desc: 'Budgets update in real-time as sales come in and expenses are logged.' },
-    { emoji: '✅', title: 'Smart approvals', desc: 'Set rules for purchases and changes. Track who approved what.' },
-    { emoji: '🔮', title: 'Scenario planning', desc: 'Model best, expected and worst case side-by-side before committing.' },
+    { emoji: '✅', title: 'Smart approvals', desc: 'Set rules for purchases and changes. Track who approved what and when.' },
+    { emoji: '🧾', title: 'Purchase orders', desc: 'Raise, approve and track POs directly in Eventwise. Full audit trail on every spend.' },
     { emoji: '🎟', title: 'Ticket tracking', desc: 'Live ticket sales from every platform in one dashboard.' },
     { emoji: '💸', title: 'Sales invoicing', desc: 'All revenue streams — tickets, sponsorship, traders — in one place.' },
     { emoji: '🔗', title: 'Xero integration', desc: 'Accounting data syncs in real-time. No manual reconciliation.' },
