@@ -47,8 +47,14 @@
  *
  * The mainPage value must match a key in the PAGES object exactly.
  */
+import ProposalGenerator from './pages/ProposalGenerator';
 
-export const pagesConfig = {
-	Pages: {}
+
+export const PAGES = {
+    "ProposalGenerator": ProposalGenerator,
 }
 
+export const pagesConfig = {
+    mainPage: "ProposalGenerator",
+    Pages: PAGES,
+};

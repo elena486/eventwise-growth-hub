@@ -14,6 +14,7 @@ const getInitialForm = () => ({
   accountingPrice: '7100',
   accountingServices: DEFAULT_ACCOUNTING_SERVICES.map(() => true),
   onboarding: 'plus',
+  showAllOnboarding: false,
 });
 
 function buildProposalHTML(proposalData) {
@@ -306,6 +307,7 @@ export default function ProposalGenerator() {
       onboardingName: onboardingPkg.name,
       onboardingPrice: onboardingPkg.priceLabel,
       onboardingFeatures: ONBOARDING_FEATURES[form.onboarding],
+      showAllOnboarding: form.showAllOnboarding,
     };
 
     setProposalData(data);
