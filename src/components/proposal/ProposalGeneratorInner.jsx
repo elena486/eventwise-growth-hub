@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useEffect } from 'react';
+import React, { useState, useCallback, useEffect, useRef } from 'react';
 import Sidebar from './Sidebar';
 import ProposalDocument from './ProposalDocument';
 import { PLANS, DEFAULT_ACCOUNTING_SERVICES, ONBOARDING_PACKAGES, ONBOARDING_FEATURES } from '@/lib/proposalData';
@@ -277,7 +277,7 @@ const getInitialForm = () => ({
 export default function ProposalGeneratorInner({ handoff, onHandoffConsumed }) {
   const [form, setForm] = useState(getInitialForm);
   const [proposalData, setProposalData] = useState(null);
-  const containerRef = React.useRef(null);
+  const containerRef = useRef(null);
 
   // Apply handoff when it arrives
   useEffect(() => {

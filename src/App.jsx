@@ -35,8 +35,8 @@ const AuthenticatedApp = () => {
   // Render the main app
   return (
     <Routes>
-      <Route path="/" element={<Navigate to="/ProposalGenerator" replace />} />
-      <Route path="/ProposalGenerator" element={<ProposalGenerator />} />
+      <Route path="/" element={<Navigate to="/AppShell" replace />} />
+      <Route path="/AppShell" element={<AppShell />} />
       <Route path="*" element={<PageNotFound />} />
     </Routes>
   );
