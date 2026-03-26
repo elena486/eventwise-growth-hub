@@ -224,7 +224,7 @@ export default function LeadTable({ leads, onDelete, onProposal, onUpdateField, 
 
               {/* Last activity */}
               <td className="px-4 py-3 min-w-[120px]">
-                <EditableDate lead={lead} field="lastActivity" />
+                <p className="text-sm text-ew-body">{relativeDate(lead.lastActivity)}</p>
               </td>
 
               {/* Notes */}

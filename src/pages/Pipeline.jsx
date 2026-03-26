@@ -41,7 +41,7 @@ export default function Pipeline({ onProposalHandoff }) {
   };
 
   const handleUpdateField = async (id, field, value) => {
-    await base44.entities.Lead.update(id, { [field]: value });
+    await base44.entities.Lead.update(id, { [field]: value, lastActivity: format(new Date(), 'yyyy-MM-dd') });
     refresh();
   };
 
