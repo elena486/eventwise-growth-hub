@@ -26,10 +26,11 @@ export default function Pipeline({ onProposalHandoff }) {
   };
 
   const handleSave = async (formData) => {
+    const today = format(new Date(), 'yyyy-MM-dd');
     if (modal.type === 'edit') {
-      await base44.entities.Lead.update(modal.lead.id, formData);
+      await base44.entities.Lead.update(modal.lead.id, { ...formData, lastActivity: today });
     } else {
-      await base44.entities.Lead.create(formData);
+      await base44.entities.Lead.create({ ...formData, lastActivity: today });
     }
     setModal(null);
     refresh();
@@ -46,7 +47,7 @@ export default function Pipeline({ onProposalHandoff }) {
   };
 
   const handleSaveNotes = async (notes) => {
-    await base44.entities.Lead.update(modal.lead.id, { notes });
+    await base44.entities.Lead.update(modal.lead.id, { notes, lastActivity: format(new Date(), 'yyyy-MM-dd') });
     setModal(null);
     refresh();
   };
