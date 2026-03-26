@@ -12,6 +12,7 @@ export default function Pipeline({ onProposalHandoff }) {
   const [leads, setLeads] = useState([]);
   const [loading, setLoading] = useState(true);
   const [modal, setModal] = useState(null);
+  const [stageFilter, setStageFilter] = useState(null);
 
   useEffect(() => {
     base44.entities.Lead.list('-created_date').then(data => {
@@ -81,7 +82,7 @@ export default function Pipeline({ onProposalHandoff }) {
       </div>
 
       {/* Stats */}
-      <StatsRow leads={leads} />
+      <StatsRow leads={leads} stageFilter={stageFilter} onStageFilter={setStageFilter} />
 
       {/* Table or empty state */}
       {loading ? (
@@ -104,14 +105,22 @@ export default function Pipeline({ onProposalHandoff }) {
           </Button>
         </div>
       ) : (
-        <LeadTable
-          leads={leads}
-          onEdit={lead => setModal({ type: 'edit', lead })}
-          onDelete={handleDelete}
-          onProposal={handleProposal}
-          onUpdateField={handleUpdateField}
-          onOpenNotes={lead => setModal({ type: 'notes', lead })}
-        />
+        <>
+          {stageFilter && (
+            <div className="mb-3 flex items-center gap-2">
+              <span className="text-sm text-ew-body">Filtered by: <strong>{stageFilter}</strong></span>
+              <button onClick={() => setStageFilter(null)} className="text-xs text-ew-muted hover:text-navy underline transition-colors">Clear filter</button>
+            </div>
+          )}
+          <LeadTable
+            leads={stageFilter ? leads.filter(l => l.stage === stageFilter) : leads}
+            onEdit={lead => setModal({ type: 'edit', lead })}
+            onDelete={handleDelete}
+            onProposal={handleProposal}
+            onUpdateField={handleUpdateField}
+            onOpenNotes={lead => setModal({ type: 'notes', lead })}
+          />
+        </>
       )}
 
       {/* Modals */}
