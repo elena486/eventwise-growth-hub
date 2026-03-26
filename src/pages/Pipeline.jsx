@@ -13,6 +13,7 @@ export default function Pipeline({ onProposalHandoff }) {
   const [loading, setLoading] = useState(true);
   const [modal, setModal] = useState(null);
   const [stageFilter, setStageFilter] = useState(null);
+  const [closedWonLead, setClosedWonLead] = useState(null);
 
   useEffect(() => {
     base44.entities.Lead.list('-created_date').then(data => {
@@ -46,6 +47,10 @@ export default function Pipeline({ onProposalHandoff }) {
     const now = new Date().toISOString();
     setLeads(prev => prev.map(l => l.id === id ? { ...l, [field]: value, lastActivity: now } : l));
     await base44.entities.Lead.update(id, { [field]: value, lastActivity: now });
+    if (field === 'stage' && value === 'Closed Won') {
+      const lead = leads.find(l => l.id === id);
+      if (lead) setClosedWonLead({ ...lead, stage: 'Closed Won' });
+    }
     refresh();
   };
 
@@ -121,6 +126,37 @@ export default function Pipeline({ onProposalHandoff }) {
             onOpenNotes={lead => setModal({ type: 'notes', lead })}
           />
         </>
+      )}
+
+      {/* Closed Won → Create Client prompt */}
+      {closedWonLead && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl shadow-2xl w-full max-w-sm p-6">
+            <h2 className="text-base font-bold text-navy mb-2">🎉 Closed Won!</h2>
+            <p className="text-sm text-ew-body mb-4">Would you like to create a client record for <strong>{closedWonLead.companyName}</strong>?</p>
+            <div className="flex gap-2 justify-end">
+              <button onClick={() => setClosedWonLead(null)} className="px-4 py-2 text-sm font-medium text-ew-body hover:bg-ew-bg rounded-lg transition-colors">Not now</button>
+              <button
+                onClick={async () => {
+                  await base44.entities.Client.create({
+                    name: closedWonLead.companyName,
+                    contactName: closedWonLead.contactName || '',
+                    contactEmail: '',
+                    owner: 'Martinique Keeler',
+                    secondaryOwner: 'None',
+                    status: 'Onboarding',
+                    plan: closedWonLead.plan || '',
+                    notes: '',
+                  });
+                  setClosedWonLead(null);
+                }}
+                className="px-4 py-2 text-sm font-semibold bg-navy text-white rounded-lg hover:bg-navy/90 transition-colors"
+              >
+                Create client record
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
       {/* Modals */}

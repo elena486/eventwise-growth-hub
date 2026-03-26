@@ -1,16 +1,33 @@
 import React, { useState } from 'react';
 import Pipeline from './Pipeline';
 import ProposalGeneratorInner from '@/components/proposal/ProposalGeneratorInner';
+import Clients from './Clients';
+import Onboarding from './Onboarding';
+import HealthRenewals from './HealthRenewals';
 import { LOGO_BLACK } from '@/lib/proposalData';
 
 const TABS = [
   { id: 'pipeline', label: 'Pipeline' },
   { id: 'proposal', label: 'Proposal' },
+  { id: 'clients', label: 'Clients' },
+  { id: 'onboarding', label: 'Onboarding' },
+  { id: 'health', label: 'Health & Renewals' },
 ];
 
 export default function AppShell() {
   const [tab, setTab] = useState('pipeline');
   const [proposalHandoff, setProposalHandoff] = useState(null);
+  const [focusClientId, setFocusClientId] = useState(null);
+
+  const handleViewHealth = (client) => {
+    setFocusClientId(client.id);
+    setTab('health');
+  };
+
+  const handleViewOnboarding = (client) => {
+    setFocusClientId(client.id);
+    setTab('onboarding');
+  };
 
   const handleProposalHandoff = (data) => {
     setProposalHandoff(data);
@@ -43,11 +60,11 @@ export default function AppShell() {
 
       {/* Content */}
       <div className="flex-1 overflow-hidden flex">
-        {tab === 'pipeline' ? (
-          <Pipeline onProposalHandoff={handleProposalHandoff} />
-        ) : (
-          <ProposalGeneratorInner handoff={proposalHandoff} onHandoffConsumed={() => setProposalHandoff(null)} />
-        )}
+        {tab === 'pipeline' && <Pipeline onProposalHandoff={handleProposalHandoff} />}
+        {tab === 'proposal' && <ProposalGeneratorInner handoff={proposalHandoff} onHandoffConsumed={() => setProposalHandoff(null)} />}
+        {tab === 'clients' && <Clients onViewHealth={handleViewHealth} onViewOnboarding={handleViewOnboarding} />}
+        {tab === 'onboarding' && <Onboarding focusClientId={focusClientId} />}
+        {tab === 'health' && <HealthRenewals focusClientId={focusClientId} />}
       </div>
     </div>
   );
