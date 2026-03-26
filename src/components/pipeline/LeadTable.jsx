@@ -14,7 +14,26 @@ function fmt(n) {
 function relativeDate(dateStr) {
   if (!dateStr) return '—';
   try {
-    return formatDistanceToNow(new Date(dateStr + 'T00:00:00'), { addSuffix: true });
+    const date = new Date(dateStr);
+    const now = new Date();
+    const diffMs = now - date;
+    const diffMins = diffMs / 60000;
+    const diffHours = diffMs / 3600000;
+    const diffDays = diffMs / 86400000;
+
+    if (diffMins < 60) return 'Just now';
+    if (diffHours < 24 && date.toDateString() === now.toDateString()) {
+      const h = Math.floor(diffHours);
+      return `${h} hour${h !== 1 ? 's' : ''} ago`;
+    }
+    const yesterday = new Date(now);
+    yesterday.setDate(yesterday.getDate() - 1);
+    if (date.toDateString() === yesterday.toDateString()) return 'Yesterday';
+    if (diffDays < 7) {
+      const d = Math.floor(diffDays);
+      return `${d} day${d !== 1 ? 's' : ''} ago`;
+    }
+    return format(date, 'd MMM yyyy');
   } catch { return dateStr; }
 }
 

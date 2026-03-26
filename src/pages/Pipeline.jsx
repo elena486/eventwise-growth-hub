@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
 import { Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { format } from 'date-fns';
+
 import StatsRow from '@/components/pipeline/StatsRow';
 import LeadTable from '@/components/pipeline/LeadTable';
 import LeadModal from '@/components/pipeline/LeadModal';
@@ -26,11 +26,11 @@ export default function Pipeline({ onProposalHandoff }) {
   };
 
   const handleSave = async (formData) => {
-    const today = format(new Date(), 'yyyy-MM-dd');
+    const now = new Date().toISOString();
     if (modal.type === 'edit') {
-      await base44.entities.Lead.update(modal.lead.id, { ...formData, lastActivity: today });
+      await base44.entities.Lead.update(modal.lead.id, { ...formData, lastActivity: now });
     } else {
-      await base44.entities.Lead.create({ ...formData, lastActivity: today });
+      await base44.entities.Lead.create({ ...formData, lastActivity: now });
     }
     setModal(null);
     refresh();
@@ -42,12 +42,14 @@ export default function Pipeline({ onProposalHandoff }) {
   };
 
   const handleUpdateField = async (id, field, value) => {
-    await base44.entities.Lead.update(id, { [field]: value, lastActivity: format(new Date(), 'yyyy-MM-dd') });
+    const now = new Date().toISOString();
+    setLeads(prev => prev.map(l => l.id === id ? { ...l, [field]: value, lastActivity: now } : l));
+    await base44.entities.Lead.update(id, { [field]: value, lastActivity: now });
     refresh();
   };
 
   const handleSaveNotes = async (notes) => {
-    await base44.entities.Lead.update(modal.lead.id, { notes, lastActivity: format(new Date(), 'yyyy-MM-dd') });
+    await base44.entities.Lead.update(modal.lead.id, { notes, lastActivity: new Date().toISOString() });
     setModal(null);
     refresh();
   };
