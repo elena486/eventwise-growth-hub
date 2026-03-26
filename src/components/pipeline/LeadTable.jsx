@@ -13,7 +13,8 @@ function fmt(n) {
 function relativeDate(dateStr) {
   if (!dateStr) return '—';
   try {
-    return formatDistanceToNow(new Date(dateStr), { addSuffix: true });
+    // Parse as local time to avoid UTC midnight offset issues
+    return formatDistanceToNow(new Date(dateStr + 'T00:00:00'), { addSuffix: true });
   } catch { return dateStr; }
 }
 
@@ -85,10 +86,11 @@ export default function LeadTable({ leads, onEdit, onDelete, onProposal, onUpdat
           {sorted.map((lead, i) => (
             <tr
               key={lead.id}
-              className={`border-b border-ew-border last:border-0 hover:bg-navy/[0.02] transition-colors ${i % 2 === 1 ? 'bg-[#FAFBFE]' : 'bg-white'}`}
+              className={`border-b border-ew-border last:border-0 hover:bg-navy/[0.02] transition-colors cursor-pointer ${i % 2 === 1 ? 'bg-[#FAFBFE]' : 'bg-white'}`}
+              onClick={() => onEdit(lead)}
             >
               {/* Company */}
-              <td className="px-4 py-3">
+              <td className="px-4 py-3" onClick={e => e.stopPropagation()}>
                 <p className="font-semibold text-navy text-sm">{lead.companyName}</p>
                 {lead.contactName && <p className="text-xs text-ew-muted mt-0.5">{lead.contactName}</p>}
               </td>
@@ -110,7 +112,7 @@ export default function LeadTable({ leads, onEdit, onDelete, onProposal, onUpdat
               </td>
 
               {/* Next action — inline edit */}
-              <td className="px-4 py-3 max-w-[160px]">
+              <td className="px-4 py-3 max-w-[160px]" onClick={e => e.stopPropagation()}>
                 {editingAction === lead.id ? (
                   <input
                     className="w-full text-sm border border-ew-border rounded px-2 py-1 focus:outline-none focus:ring-1 focus:ring-navy"
@@ -132,7 +134,7 @@ export default function LeadTable({ leads, onEdit, onDelete, onProposal, onUpdat
               </td>
 
               {/* Last activity */}
-              <td className="px-4 py-3">
+              <td className="px-4 py-3" onClick={e => e.stopPropagation()}>
                 <p
                   className="text-sm text-ew-body cursor-pointer hover:text-navy transition-colors"
                   title="Click to set today"
@@ -143,7 +145,7 @@ export default function LeadTable({ leads, onEdit, onDelete, onProposal, onUpdat
               </td>
 
               {/* Notes */}
-              <td className="px-4 py-3 max-w-[160px]">
+              <td className="px-4 py-3 max-w-[160px]" onClick={e => e.stopPropagation()}>
                 <p
                   className="text-sm text-ew-body truncate cursor-pointer hover:text-navy transition-colors"
                   title={lead.notes || 'Click to add notes'}
@@ -154,7 +156,7 @@ export default function LeadTable({ leads, onEdit, onDelete, onProposal, onUpdat
               </td>
 
               {/* Actions */}
-              <td className="px-4 py-3">
+              <td className="px-4 py-3" onClick={e => e.stopPropagation()}>
                 <div className="flex items-center gap-1.5 justify-end">
                   <button
                     onClick={() => onProposal(lead)}
