@@ -5,6 +5,7 @@ import PricingSection from './PricingSection';
 import PlatformFeatures from './PlatformFeatures';
 import OnboardingSection from './OnboardingSection';
 import KeyTerms from './KeyTerms';
+import NotesSection from './NotesSection';
 import CTABlock from './CTABlock';
 import ProposalFooter from './ProposalFooter';
 
@@ -21,9 +22,10 @@ export default function ProposalDocument({ proposalData }) {
       <PricingSection data={proposalData} />
       <PlatformFeatures />
       <OnboardingSection data={proposalData} />
+      <NotesSection notes={proposalData.notes} />
       <KeyTerms />
       <CTABlock />
-      <ProposalFooter />
+      <ProposalFooter contactName={proposalData.contactName} contactEmail={proposalData.contactEmail} />
     </div>
   );
 }
