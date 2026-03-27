@@ -163,6 +163,11 @@ export default function Clients({ onViewHealth, onViewOnboarding }) {
                   <td className="px-4 py-3 min-w-[160px]">
                     <p className="font-semibold text-navy text-sm">{c.name}</p>
                     <p className="text-xs text-ew-muted mt-0.5">{c.contactName}</p>
+                    {c.handoffIncomplete && (
+                      <span className="inline-flex items-center gap-1 mt-1 text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-amber-50 text-amber-700 border border-amber-200">
+                        ⚠ Handoff incomplete
+                      </span>
+                    )}
                   </td>
                   <td className="px-4 py-3">
                     <span className={`text-[11px] font-semibold px-2.5 py-1 rounded-full ${STATUS_STYLES[c.status] || 'bg-gray-100 text-gray-600'}`}>{c.status}</span>

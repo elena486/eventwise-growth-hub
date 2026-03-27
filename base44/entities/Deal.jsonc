@@ -1,0 +1,71 @@
+{
+  "name": "Deal",
+  "type": "object",
+  "properties": {
+    "clientId": {
+      "type": "string"
+    },
+    "clientName": {
+      "type": "string"
+    },
+    "leadId": {
+      "type": "string"
+    },
+    "plan": {
+      "type": "string",
+      "enum": [
+        "Starter",
+        "Professional",
+        "Business"
+      ]
+    },
+    "subscriptionStartDate": {
+      "type": "string",
+      "format": "date"
+    },
+    "subscriptionEndDate": {
+      "type": "string",
+      "format": "date"
+    },
+    "monthlyValue": {
+      "type": "number"
+    },
+    "annualValue": {
+      "type": "number"
+    },
+    "accountingServiceIncluded": {
+      "type": "boolean"
+    },
+    "accountingServiceValue": {
+      "type": "number"
+    },
+    "onboardingPackage": {
+      "type": "string",
+      "enum": [
+        "Success Essential",
+        "Success Plus",
+        "Success Premium"
+      ]
+    },
+    "onboardingFee": {
+      "type": "number"
+    },
+    "totalFirstYearValue": {
+      "type": "number"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "Active",
+        "Up for Renewal",
+        "Churned"
+      ]
+    },
+    "notes": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "clientName"
+  ]
+}

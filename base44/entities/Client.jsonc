@@ -1,0 +1,70 @@
+{
+  "name": "Client",
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string",
+      "description": "Company name"
+    },
+    "contactName": {
+      "type": "string"
+    },
+    "contactEmail": {
+      "type": "string"
+    },
+    "owner": {
+      "type": "string",
+      "enum": [
+        "Chris Carter",
+        "Martinique Keeler"
+      ]
+    },
+    "secondaryOwner": {
+      "type": "string",
+      "enum": [
+        "Chris Carter",
+        "Martinique Keeler",
+        "None"
+      ]
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "Trial",
+        "Onboarding",
+        "Live",
+        "Churn"
+      ]
+    },
+    "trialStartDate": {
+      "type": "string",
+      "format": "date"
+    },
+    "renewalDate": {
+      "type": "string",
+      "format": "date"
+    },
+    "notes": {
+      "type": "string"
+    },
+    "healthScore": {
+      "type": "number"
+    },
+    "healthRating": {
+      "type": "string"
+    },
+    "healthQuadrant": {
+      "type": "string"
+    },
+    "plan": {
+      "type": "string"
+    },
+    "handoffIncomplete": {
+      "type": "boolean",
+      "description": "True if post-conversion handoff checklist is not complete"
+    }
+  },
+  "required": [
+    "name"
+  ]
+}

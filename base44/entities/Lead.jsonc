@@ -1,0 +1,62 @@
+{
+  "name": "Lead",
+  "type": "object",
+  "properties": {
+    "companyName": {
+      "type": "string",
+      "description": "Company name"
+    },
+    "contactName": {
+      "type": "string",
+      "description": "Contact name"
+    },
+    "plan": {
+      "type": "string",
+      "enum": [
+        "Starter",
+        "Professional",
+        "Business"
+      ],
+      "description": "Eventwise plan"
+    },
+    "dealValueMonthly": {
+      "type": "number",
+      "description": "Monthly deal value in GBP"
+    },
+    "stage": {
+      "type": "string",
+      "enum": [
+        "Contacted",
+        "Discovery Call",
+        "Proposal Sent",
+        "In Negotiation",
+        "Closed Won",
+        "Closed Lost"
+      ],
+      "description": "Pipeline stage"
+    },
+    "nextAction": {
+      "type": "string",
+      "description": "Next action to take"
+    },
+    "lastActivity": {
+      "type": "string",
+      "description": "ISO timestamp of last activity"
+    },
+    "notes": {
+      "type": "string",
+      "description": "Notes about the lead"
+    },
+    "converted": {
+      "type": "boolean",
+      "description": "True if lead has been converted to a client"
+    },
+    "dealId": {
+      "type": "string",
+      "description": "Linked deal record ID after conversion"
+    }
+  },
+  "required": [
+    "companyName"
+  ]
+}

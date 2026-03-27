@@ -1,14 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
-import { Plus } from 'lucide-react';
+import { Plus, ArrowRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 import StatsRow from '@/components/pipeline/StatsRow';
 import LeadTable from '@/components/pipeline/LeadTable';
 import LeadModal from '@/components/pipeline/LeadModal';
 import NotesModal from '@/components/pipeline/NotesModal';
+import ClosedWonModal from '@/components/pipeline/ClosedWonModal';
 
-export default function Pipeline({ onProposalHandoff }) {
+export default function Pipeline({ onProposalHandoff, onViewDeals }) {
   const [leads, setLeads] = useState([]);
   const [loading, setLoading] = useState(true);
   const [modal, setModal] = useState(null);
@@ -49,7 +50,7 @@ export default function Pipeline({ onProposalHandoff }) {
     await base44.entities.Lead.update(id, { [field]: value, lastActivity: now });
     if (field === 'stage' && value === 'Closed Won') {
       const lead = leads.find(l => l.id === id);
-      if (lead) setClosedWonLead({ ...lead, stage: 'Closed Won' });
+      if (lead && !lead.converted) setClosedWonLead({ ...lead, stage: 'Closed Won' });
     }
     refresh();
   };
@@ -91,10 +92,6 @@ export default function Pipeline({ onProposalHandoff }) {
 
       {/* Table or empty state */}
       {loading ? (
-        <div className="flex items-center justify-center h-48">
-          <div className="w-6 h-6 border-2 border-navy/20 border-t-navy rounded-full animate-spin" />
-        </div>
-      ) : leads.length === 0 ? (
         <div className="bg-white border border-ew-border rounded-xl flex flex-col items-center justify-center py-20">
           <div className="w-14 h-14 rounded-2xl bg-ew-bg flex items-center justify-center mb-4">
             <span className="text-3xl">🎯</span>
@@ -118,45 +115,53 @@ export default function Pipeline({ onProposalHandoff }) {
             </div>
           )}
           <LeadTable
-            leads={stageFilter ? leads.filter(l => l.stage === stageFilter) : leads}
+            leads={(stageFilter ? leads.filter(l => l.stage === stageFilter) : leads).filter(l => !l.converted)}
             onEdit={lead => setModal({ type: 'edit', lead })}
             onDelete={handleDelete}
             onProposal={handleProposal}
             onUpdateField={handleUpdateField}
             onOpenNotes={lead => setModal({ type: 'notes', lead })}
           />
+          {/* Converted leads section */}
+          {leads.filter(l => l.converted).length > 0 && (
+            <div className="mt-8">
+              <h3 className="text-xs font-semibold text-ew-muted uppercase tracking-[0.15em] mb-3">Converted</h3>
+              <div className="bg-white border border-ew-border rounded-xl overflow-hidden opacity-60">
+                <table className="w-full text-sm">
+                  <tbody>
+                    {leads.filter(l => l.converted).map(lead => (
+                      <tr key={lead.id} className="border-b border-ew-border last:border-0">
+                        <td className="px-4 py-3">
+                          <p className="font-semibold text-ew-body">{lead.companyName}</p>
+                          <p className="text-xs text-ew-muted">{lead.contactName}</p>
+                        </td>
+                        <td className="px-4 py-3 text-ew-muted text-xs">Closed Won — converted to client</td>
+                        <td className="px-4 py-3 text-right">
+                          {lead.dealId && onViewDeals && (
+                            <button
+                              onClick={onViewDeals}
+                              className="flex items-center gap-1 text-xs font-medium text-navy hover:underline ml-auto"
+                            >
+                              View deal <ArrowRight className="w-3 h-3" />
+                            </button>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
         </>
       )}
 
-      {/* Closed Won → Create Client prompt */}
       {closedWonLead && (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-xl shadow-2xl w-full max-w-sm p-6">
-            <h2 className="text-base font-bold text-navy mb-2">🎉 Closed Won!</h2>
-            <p className="text-sm text-ew-body mb-4">Would you like to create a client record for <strong>{closedWonLead.companyName}</strong>?</p>
-            <div className="flex gap-2 justify-end">
-              <button onClick={() => setClosedWonLead(null)} className="px-4 py-2 text-sm font-medium text-ew-body hover:bg-ew-bg rounded-lg transition-colors">Not now</button>
-              <button
-                onClick={async () => {
-                  await base44.entities.Client.create({
-                    name: closedWonLead.companyName,
-                    contactName: closedWonLead.contactName || '',
-                    contactEmail: '',
-                    owner: 'Martinique Keeler',
-                    secondaryOwner: 'None',
-                    status: 'Onboarding',
-                    plan: closedWonLead.plan || '',
-                    notes: '',
-                  });
-                  setClosedWonLead(null);
-                }}
-                className="px-4 py-2 text-sm font-semibold bg-navy text-white rounded-lg hover:bg-navy/90 transition-colors"
-              >
-                Create client record
-              </button>
-            </div>
-          </div>
-        </div>
+        <ClosedWonModal
+          lead={closedWonLead}
+          onClose={() => setClosedWonLead(null)}
+          onConverted={() => { setClosedWonLead(null); refresh(); }}
+        />
       )}
 
       {/* Modals */}

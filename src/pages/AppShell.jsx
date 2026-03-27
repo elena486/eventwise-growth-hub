@@ -4,6 +4,7 @@ import ProposalGeneratorInner from '@/components/proposal/ProposalGeneratorInner
 import Clients from './Clients';
 import Onboarding from './Onboarding';
 import HealthRenewals from './HealthRenewals';
+import Deals from './Deals';
 import { LOGO_BLACK } from '@/lib/proposalData';
 
 const TABS = [
@@ -12,6 +13,7 @@ const TABS = [
   { id: 'clients', label: 'Clients' },
   { id: 'onboarding', label: 'Onboarding' },
   { id: 'health', label: 'Health & Renewals' },
+  { id: 'deals', label: 'Deals' },
 ];
 
 export default function AppShell() {
@@ -60,11 +62,12 @@ export default function AppShell() {
 
       {/* Content */}
       <div className="flex-1 overflow-hidden flex">
-        {tab === 'pipeline' && <Pipeline onProposalHandoff={handleProposalHandoff} />}
+        {tab === 'pipeline' && <Pipeline onProposalHandoff={handleProposalHandoff} onViewDeals={() => setTab('deals')} />}
         {tab === 'proposal' && <ProposalGeneratorInner handoff={proposalHandoff} onHandoffConsumed={() => setProposalHandoff(null)} />}
         {tab === 'clients' && <Clients onViewHealth={handleViewHealth} onViewOnboarding={handleViewOnboarding} />}
         {tab === 'onboarding' && <Onboarding focusClientId={focusClientId} />}
         {tab === 'health' && <HealthRenewals focusClientId={focusClientId} />}
+        {tab === 'deals' && <Deals onRenewalProposal={(data) => { handleProposalHandoff(data); }} />}
       </div>
     </div>
   );
