@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
-import { format, differenceInDays, isPast } from 'date-fns';
-import UpdateScoresModal from '@/components/health/UpdateScoresModal';
+import { format, differenceInDays } from 'date-fns';
 import { calcHealth, HEALTH_DOT } from '@/lib/csData';
 import { AlertTriangle, TrendingUp, TrendingDown, Minus } from 'lucide-react';
 
@@ -43,7 +42,8 @@ export default function HealthRenewals({ focusClientId }) {
   const [clients, setClients] = useState([]);
   const [healthScores, setHealthScores] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [updateModal, setUpdateModal] = useState(null);
+  const [editingScore, setEditingScore] = useState(null); // { clientId, field }
+  const [flashedScore, setFlashedScore] = useState(null); // { clientId, field }
 
   const load = async () => {
     const [cls, hs] = await Promise.all([
@@ -53,14 +53,6 @@ export default function HealthRenewals({ focusClientId }) {
     setClients(cls.filter(c => c.status === 'Live' || c.status === 'Onboarding'));
     setHealthScores(hs);
     setLoading(false);
-
-    if (focusClientId) {
-      const c = cls.find(cl => cl.id === focusClientId);
-      if (c) {
-        const latest = hs.find(h => h.clientId === focusClientId);
-        setUpdateModal({ client: c, latestScore: latest || null });
-      }
-    }
   };
 
   useEffect(() => { load(); }, [focusClientId]);
@@ -71,20 +63,35 @@ export default function HealthRenewals({ focusClientId }) {
     return all.length >= 2 ? all[1] : null;
   };
 
-  const handleSaveScores = async ({ emails, meetings, goals, adoption, knowledge, cx, issues, total, rating, quadrant }) => {
-    const c = updateModal.client;
-    await Promise.all([
-      base44.entities.HealthScore.create({
-        clientId: c.id, clientName: c.name,
-        emails, meetings, goals, adoption, knowledge, cx, issues,
-        totalScore: total, rating, quadrant,
-      }),
-      base44.entities.Client.update(c.id, {
-        healthScore: total, healthRating: rating, healthQuadrant: quadrant,
-      }),
-    ]);
-    setUpdateModal(null);
-    load();
+  const handleUpdateSubScore = async (clientId, scoreKey, rawVal) => {
+    const intVal = Math.min(5, Math.max(1, parseInt(rawVal) || 1));
+    const latest = getLatestScore(clientId);
+    const client = clients.find(c => c.id === clientId);
+
+    const baseScores = { emails: 0, meetings: 0, goals: 0, adoption: 0, knowledge: 0, cx: 0, issues: 0 };
+    const existing = latest ? { emails: latest.emails || 0, meetings: latest.meetings || 0, goals: latest.goals || 0, adoption: latest.adoption || 0, knowledge: latest.knowledge || 0, cx: latest.cx || 0, issues: latest.issues || 0 } : baseScores;
+    const updatedScores = { ...existing, [scoreKey]: intVal };
+    const { total, rating, quadrant } = calcHealth(updatedScores);
+
+    if (latest) {
+      await Promise.all([
+        base44.entities.HealthScore.update(latest.id, { ...updatedScores, totalScore: total, rating, quadrant }),
+        base44.entities.Client.update(clientId, { healthScore: total, healthRating: rating, healthQuadrant: quadrant }),
+      ]);
+      setHealthScores(prev => prev.map(h => h.id === latest.id ? { ...h, ...updatedScores, totalScore: total, rating, quadrant } : h));
+    } else {
+      const newScore = await base44.entities.HealthScore.create({
+        clientId, clientName: client?.name || '',
+        ...updatedScores, totalScore: total, rating, quadrant,
+      });
+      await base44.entities.Client.update(clientId, { healthScore: total, healthRating: rating, healthQuadrant: quadrant });
+      setHealthScores(prev => [newScore, ...prev]);
+    }
+
+    setClients(prev => prev.map(c => c.id === clientId ? { ...c, healthScore: total, healthRating: rating, healthQuadrant: quadrant } : c));
+    setEditingScore(null);
+    setFlashedScore({ clientId, field: scoreKey });
+    setTimeout(() => setFlashedScore(null), 500);
   };
 
   const liveClients = clients.filter(c => c.status === 'Live');
@@ -108,7 +115,7 @@ export default function HealthRenewals({ focusClientId }) {
     <div className="flex-1 bg-ew-bg overflow-y-auto p-8 font-dm">
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-navy">Health & Renewals</h1>
-        <p className="text-ew-muted text-sm mt-0.5">Live client health scores and upcoming renewals</p>
+        <p className="text-ew-muted text-sm mt-0.5">Live client health scores — click any score chip to edit inline</p>
       </div>
 
       {/* Stats */}
@@ -134,7 +141,6 @@ export default function HealthRenewals({ focusClientId }) {
         <div className="flex items-center justify-center h-48"><div className="w-6 h-6 border-2 border-navy/20 border-t-navy rounded-full animate-spin" /></div>
       ) : (
         <>
-          {/* Health table */}
           <div className="bg-white border border-ew-border rounded-xl overflow-x-auto mb-6">
             <table className="w-full text-sm">
               <thead className="bg-ew-footer border-b border-ew-border">
@@ -142,10 +148,9 @@ export default function HealthRenewals({ focusClientId }) {
                   <th className="px-4 py-3 text-left text-[11px] font-semibold text-ew-muted uppercase tracking-[0.12em]">Client</th>
                   <th className="px-4 py-3 text-left text-[11px] font-semibold text-ew-muted uppercase tracking-[0.12em]">Score</th>
                   <th className="px-4 py-3 text-left text-[11px] font-semibold text-ew-muted uppercase tracking-[0.12em]">Quadrant</th>
-                  <th className="px-4 py-3 text-left text-[11px] font-semibold text-ew-muted uppercase tracking-[0.12em] min-w-[340px]">Sub-scores</th>
+                  <th className="px-4 py-3 text-left text-[11px] font-semibold text-ew-muted uppercase tracking-[0.12em] min-w-[360px]">Sub-scores (click to edit)</th>
                   <th className="px-4 py-3 text-left text-[11px] font-semibold text-ew-muted uppercase tracking-[0.12em]">Trend</th>
                   <th className="px-4 py-3 text-left text-[11px] font-semibold text-ew-muted uppercase tracking-[0.12em]">Renewal</th>
-                  <th className="px-4 py-3 text-left text-[11px] font-semibold text-ew-muted uppercase tracking-[0.12em]">Actions</th>
                 </tr>
               </thead>
               <tbody>
@@ -171,42 +176,59 @@ export default function HealthRenewals({ focusClientId }) {
                         )}
                       </td>
                       <td className="px-4 py-3">
-                        {c.healthQuadrant ? (
-                          <span className="text-[11px] font-medium px-2 py-1 bg-ew-bg text-ew-body rounded-lg whitespace-nowrap">{c.healthQuadrant}</span>
-                        ) : <span className="text-ew-muted text-sm">—</span>}
+                        {c.healthQuadrant
+                          ? <span className="text-[11px] font-medium px-2 py-1 bg-ew-bg text-ew-body rounded-lg whitespace-nowrap">{c.healthQuadrant}</span>
+                          : <span className="text-ew-muted text-sm">—</span>}
                       </td>
+
+                      {/* Sub-score chips — inline editable */}
                       <td className="px-4 py-3">
-                        <div className="flex items-center gap-1">
+                        <div className="flex items-center gap-1.5">
                           {SUB_FIELDS.map(({ key, label }) => {
                             const v = latest?.[key];
+                            const isEditingThis = editingScore?.clientId === c.id && editingScore?.field === key;
+                            const isFlashed = flashedScore?.clientId === c.id && flashedScore?.field === key;
                             return (
                               <div key={key} className="flex flex-col items-center gap-0.5">
-                                <span className={`text-xs font-bold w-7 h-7 flex items-center justify-center rounded-lg ${SCORE_CHIP(v)}`}>{v || '—'}</span>
+                                {isEditingThis ? (
+                                  <input
+                                    type="number" min="1" max="5"
+                                    defaultValue={v || ''}
+                                    autoFocus
+                                    className="w-8 h-7 text-center text-xs font-bold border-2 border-navy rounded-lg focus:outline-none bg-white"
+                                    onBlur={(e) => { const val = parseInt(e.target.value); if (val >= 1 && val <= 5) handleUpdateSubScore(c.id, key, val); else setEditingScore(null); }}
+                                    onKeyDown={(e) => {
+                                      if (e.key === 'Enter') { const val = parseInt(e.target.value); if (val >= 1 && val <= 5) handleUpdateSubScore(c.id, key, val); else setEditingScore(null); }
+                                      if (e.key === 'Escape') setEditingScore(null);
+                                    }}
+                                  />
+                                ) : (
+                                  <span
+                                    title={`Click to edit ${label}`}
+                                    className={`text-xs font-bold w-7 h-7 flex items-center justify-center rounded-lg cursor-pointer hover:ring-2 hover:ring-navy/40 transition-all ${SCORE_CHIP(v)} ${isFlashed ? 'bg-[#E1F5EE] ring-2 ring-emerald-300' : ''}`}
+                                    onClick={() => setEditingScore({ clientId: c.id, field: key })}
+                                  >
+                                    {v || '—'}
+                                  </span>
+                                )}
                                 <span className="text-[9px] text-ew-muted leading-none">{label}</span>
                               </div>
                             );
                           })}
                         </div>
                       </td>
+
                       <td className="px-4 py-3">
                         {trend === 'up' && <TrendingUp className="w-4 h-4 text-emerald-500" />}
                         {trend === 'down' && <TrendingDown className="w-4 h-4 text-red-500" />}
                         {trend === 'flat' && <Minus className="w-4 h-4 text-ew-muted" />}
                       </td>
                       <td className="px-4 py-3"><RenewalCell date={c.renewalDate} /></td>
-                      <td className="px-4 py-3">
-                        <button
-                          onClick={() => setUpdateModal({ client: c, latestScore: latest })}
-                          className="text-xs px-2.5 py-1.5 font-medium text-ew-body border border-ew-border rounded-lg hover:bg-ew-bg transition-colors whitespace-nowrap"
-                        >
-                          Update scores
-                        </button>
-                      </td>
                     </tr>
                   );
                 })}
                 {allCls.length === 0 && (
-                  <tr><td colSpan={7} className="px-4 py-12 text-center text-ew-muted text-sm">No live or onboarding clients</td></tr>
+                  <tr><td colSpan={6} className="px-4 py-12 text-center text-ew-muted text-sm">No live or onboarding clients</td></tr>
                 )}
               </tbody>
             </table>
@@ -222,7 +244,7 @@ export default function HealthRenewals({ focusClientId }) {
                   const hasData = latest && latest.totalScore > 0;
                   const renewDiff = c.renewalDate ? differenceInDays(new Date(c.renewalDate), new Date()) : null;
                   let action = '';
-                  if (!hasData) action = 'Complete first health review';
+                  if (!hasData) action = 'Complete first health review — click score chips in table above';
                   else if (c.healthRating === 'Red') action = 'Schedule urgent review call';
                   else if (renewDiff !== null && renewDiff <= 30) action = 'Send renewal proposal';
                   return (
@@ -231,12 +253,9 @@ export default function HealthRenewals({ focusClientId }) {
                         <p className="text-sm font-semibold text-navy">{c.name}</p>
                         <p className="text-xs text-ew-muted mt-0.5">{action}</p>
                       </div>
-                      <button
-                        onClick={() => setUpdateModal({ client: c, latestScore: latest })}
-                        className="text-xs px-3 py-1.5 font-medium bg-navy text-white rounded-lg hover:bg-navy/90 transition-colors"
-                      >
-                        Update
-                      </button>
+                      {hasData && c.healthRating && (
+                        <span className={`text-[11px] font-semibold px-2.5 py-1 rounded-full ${RATING_BADGE[c.healthRating] || ''}`}>{c.healthRating}</span>
+                      )}
                     </div>
                   );
                 })}
@@ -244,15 +263,6 @@ export default function HealthRenewals({ focusClientId }) {
             </div>
           )}
         </>
-      )}
-
-      {updateModal && (
-        <UpdateScoresModal
-          client={updateModal.client}
-          latestScore={updateModal.latestScore}
-          onSave={handleSaveScores}
-          onClose={() => setUpdateModal(null)}
-        />
       )}
     </div>
   );

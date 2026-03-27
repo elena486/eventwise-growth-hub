@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
-import { formatDistanceToNow, format } from 'date-fns';
+import { format } from 'date-fns';
 import StageBadge from './Stagebadge';
 import PlanBadge from './PlanBadge';
+import InlineCell from '@/components/shared/InlineCell';
 import { ChevronUp, ChevronDown, ChevronsUpDown, FileText, Trash2, Check, X } from 'lucide-react';
 
 const STAGE_ORDER = ['Contacted', 'Discovery Call', 'Proposal Sent', 'In Negotiation', 'Closed Won', 'Closed Lost'];
@@ -20,7 +21,6 @@ function relativeDate(dateStr) {
     const diffMins = diffMs / 60000;
     const diffHours = diffMs / 3600000;
     const diffDays = diffMs / 86400000;
-
     if (diffMins < 60) return 'Just now';
     if (diffHours < 24 && date.toDateString() === now.toDateString()) {
       const h = Math.floor(diffHours);
@@ -29,10 +29,7 @@ function relativeDate(dateStr) {
     const yesterday = new Date(now);
     yesterday.setDate(yesterday.getDate() - 1);
     if (date.toDateString() === yesterday.toDateString()) return 'Yesterday';
-    if (diffDays < 7) {
-      const d = Math.floor(diffDays);
-      return `${d} day${d !== 1 ? 's' : ''} ago`;
-    }
+    if (diffDays < 7) { const d = Math.floor(diffDays); return `${d} day${d !== 1 ? 's' : ''} ago`; }
     return format(date, 'd MMM yyyy');
   } catch { return dateStr; }
 }
@@ -44,14 +41,9 @@ function SortIcon({ col, sortCol, sortDir }) {
     : <ChevronDown className="w-3 h-3 ml-1 text-navy inline" />;
 }
 
-const inputCls = "w-full text-sm border border-navy/30 rounded px-2 py-1 focus:outline-none focus:ring-1 focus:ring-navy bg-white";
-const selectCls = "w-full text-sm border border-navy/30 rounded px-2 py-1 focus:outline-none focus:ring-1 focus:ring-navy bg-white";
-
-export default function LeadTable({ leads, onDelete, onProposal, onUpdateField, onOpenNotes }) {
+export default function LeadTable({ leads, onDelete, onProposal, onUpdateField, newLeadId }) {
   const [sortCol, setSortCol] = useState('stage');
   const [sortDir, setSortDir] = useState('asc');
-  const [editing, setEditing] = useState(null); // { id, field }
-  const [draft, setDraft] = useState('');
   const [deletingId, setDeletingId] = useState(null);
 
   const handleSort = (col) => {
@@ -59,21 +51,14 @@ export default function LeadTable({ leads, onDelete, onProposal, onUpdateField, 
     else { setSortCol(col); setSortDir('asc'); }
   };
 
-  const startEdit = (lead, field) => {
-    setEditing({ id: lead.id, field });
-    setDraft(lead[field] ?? '');
+  const save = (id, field) => async (value) => {
+    await onUpdateField(id, field, value);
   };
-
-  const commitEdit = (id, field) => {
-    onUpdateField(id, field, draft);
-    setEditing(null);
-  };
-
-  const cancelEdit = () => setEditing(null);
-
-  const isEditing = (id, field) => editing?.id === id && editing?.field === field;
 
   const sorted = [...leads].sort((a, b) => {
+    // new leads always float to top
+    if (a.id === newLeadId) return -1;
+    if (b.id === newLeadId) return 1;
     let av, bv;
     if (sortCol === 'stage') { av = STAGE_ORDER.indexOf(a.stage); bv = STAGE_ORDER.indexOf(b.stage); }
     else if (sortCol === 'company') { av = a.companyName?.toLowerCase() || ''; bv = b.companyName?.toLowerCase() || ''; }
@@ -85,114 +70,14 @@ export default function LeadTable({ leads, onDelete, onProposal, onUpdateField, 
     return 0;
   });
 
-  const Th = ({ label, col, className = '' }) => (
+  const Th = ({ label, col }) => (
     <th
-      className={`px-4 py-3 text-left text-[11px] font-semibold text-ew-muted uppercase tracking-[0.12em] cursor-pointer select-none hover:text-navy transition-colors ${className}`}
+      className="px-4 py-3 text-left text-[11px] font-semibold text-ew-muted uppercase tracking-[0.12em] cursor-pointer select-none hover:text-navy transition-colors"
       onClick={() => col && handleSort(col)}
     >
       {label}{col && <SortIcon col={col} sortCol={sortCol} sortDir={sortDir} />}
     </th>
   );
-
-  const EditableText = ({ lead, field, placeholder = 'Click to edit', className = '' }) => {
-    if (isEditing(lead.id, field)) {
-      return (
-        <input
-          className={inputCls}
-          value={draft}
-          autoFocus
-          onChange={e => setDraft(e.target.value)}
-          onBlur={() => commitEdit(lead.id, field)}
-          onKeyDown={e => {
-            if (e.key === 'Enter') commitEdit(lead.id, field);
-            if (e.key === 'Escape') cancelEdit();
-          }}
-        />
-      );
-    }
-    return (
-      <p
-        className={`cursor-pointer hover:text-navy transition-colors truncate ${className}`}
-        onClick={() => startEdit(lead, field)}
-      >
-        {lead[field] || <span className="text-ew-muted-light italic">{placeholder}</span>}
-      </p>
-    );
-  };
-
-  const EditableNumber = ({ lead, field }) => {
-    if (isEditing(lead.id, field)) {
-      return (
-        <input
-          className={inputCls}
-          type="number"
-          value={draft}
-          autoFocus
-          onChange={e => setDraft(e.target.value)}
-          onBlur={() => { onUpdateField(lead.id, field, parseFloat(draft) || 0); setEditing(null); }}
-          onKeyDown={e => {
-            if (e.key === 'Enter') { onUpdateField(lead.id, field, parseFloat(draft) || 0); setEditing(null); }
-            if (e.key === 'Escape') cancelEdit();
-          }}
-        />
-      );
-    }
-    return (
-      <div className="cursor-pointer" onClick={() => startEdit(lead, field)}>
-        <p className="font-semibold text-navy hover:text-navy/70 transition-colors">{fmt(lead[field])}/mo</p>
-        <p className="text-xs text-ew-muted mt-0.5">{fmt((lead[field] || 0) * 12)}/yr</p>
-      </div>
-    );
-  };
-
-  const EditableSelect = ({ lead, field, options }) => {
-    if (isEditing(lead.id, field)) {
-      return (
-        <select
-          className={selectCls}
-          value={draft}
-          autoFocus
-          onChange={e => { onUpdateField(lead.id, field, e.target.value); setEditing(null); }}
-          onBlur={() => setEditing(null)}
-          onKeyDown={e => { if (e.key === 'Escape') cancelEdit(); }}
-        >
-          {options.map(o => <option key={o} value={o}>{o}</option>)}
-        </select>
-      );
-    }
-    return (
-      <div className="cursor-pointer" onClick={() => startEdit(lead, field)}>
-        {field === 'stage' ? <StageBadge stage={lead[field]} /> : <PlanBadge plan={lead[field]} />}
-      </div>
-    );
-  };
-
-  const EditableDate = ({ lead, field }) => {
-    if (isEditing(lead.id, field)) {
-      return (
-        <input
-          className={inputCls}
-          type="date"
-          value={draft}
-          autoFocus
-          onChange={e => setDraft(e.target.value)}
-          onBlur={() => commitEdit(lead.id, field)}
-          onKeyDown={e => {
-            if (e.key === 'Enter') commitEdit(lead.id, field);
-            if (e.key === 'Escape') cancelEdit();
-          }}
-        />
-      );
-    }
-    return (
-      <p
-        className="text-sm text-ew-body cursor-pointer hover:text-navy transition-colors"
-        onClick={() => startEdit(lead, field)}
-      >
-        {relativeDate(lead[field])}
-      </p>
-    );
-  };
 
   return (
     <div className="bg-white border border-ew-border rounded-xl overflow-hidden">
@@ -210,93 +95,129 @@ export default function LeadTable({ leads, onDelete, onProposal, onUpdateField, 
           </tr>
         </thead>
         <tbody>
-          {sorted.map((lead, i) => (
-            <tr
-              key={lead.id}
-              className={`border-b border-ew-border last:border-0 hover:bg-navy/[0.02] transition-colors ${i % 2 === 1 ? 'bg-[#FAFBFE]' : 'bg-white'}`}
-            >
-              {/* Company */}
-              <td className="px-4 py-3 min-w-[140px]">
-                <EditableText lead={lead} field="companyName" placeholder="Company name" className="font-semibold text-navy text-sm" />
-                <EditableText lead={lead} field="contactName" placeholder="Contact name" className="text-xs text-ew-muted mt-0.5" />
-              </td>
+          {sorted.map((lead, i) => {
+            const isNew = lead.id === newLeadId;
+            return (
+              <tr
+                key={lead.id}
+                className={`border-b border-ew-border last:border-0 hover:bg-navy/[0.02] transition-colors ${isNew ? 'bg-blue-50/40' : i % 2 === 1 ? 'bg-[#FAFBFE]' : 'bg-white'}`}
+              >
+                {/* Company + Contact */}
+                <td className="px-4 py-3 min-w-[160px]">
+                  <InlineCell
+                    value={lead.companyName}
+                    onSave={save(lead.id, 'companyName')}
+                    placeholder="Company name"
+                    autoEdit={isNew}
+                    className="font-semibold text-navy text-sm"
+                  />
+                  <InlineCell
+                    value={lead.contactName}
+                    onSave={save(lead.id, 'contactName')}
+                    placeholder="Contact name"
+                    className="text-xs text-ew-muted mt-0.5"
+                  />
+                </td>
 
-              {/* Plan */}
-              <td className="px-4 py-3 min-w-[110px]">
-                <EditableSelect lead={lead} field="plan" options={PLANS} />
-              </td>
+                {/* Plan */}
+                <td className="px-4 py-3 min-w-[110px]">
+                  <InlineCell
+                    value={lead.plan}
+                    onSave={save(lead.id, 'plan')}
+                    type="select"
+                    options={PLANS}
+                    displayEl={lead.plan ? <PlanBadge plan={lead.plan} /> : null}
+                    placeholder="Set plan"
+                  />
+                </td>
 
-              {/* Deal value */}
-              <td className="px-4 py-3 min-w-[110px]">
-                <EditableNumber lead={lead} field="dealValueMonthly" />
-              </td>
+                {/* Deal value */}
+                <td className="px-4 py-3 min-w-[110px]">
+                  <InlineCell
+                    value={lead.dealValueMonthly}
+                    onSave={save(lead.id, 'dealValueMonthly')}
+                    type="number"
+                    displayEl={
+                      <div>
+                        <p className="font-semibold text-navy">{fmt(lead.dealValueMonthly)}/mo</p>
+                        <p className="text-xs text-ew-muted">{fmt((lead.dealValueMonthly || 0) * 12)}/yr</p>
+                      </div>
+                    }
+                    placeholder="Set value"
+                  />
+                </td>
 
-              {/* Stage */}
-              <td className="px-4 py-3 min-w-[130px]">
-                <EditableSelect lead={lead} field="stage" options={STAGE_ORDER} />
-              </td>
+                {/* Stage */}
+                <td className="px-4 py-3 min-w-[140px]">
+                  <InlineCell
+                    value={lead.stage}
+                    onSave={save(lead.id, 'stage')}
+                    type="select"
+                    options={STAGE_ORDER}
+                    displayEl={lead.stage ? <StageBadge stage={lead.stage} /> : null}
+                    placeholder="Set stage"
+                  />
+                </td>
 
-              {/* Next action */}
-              <td className="px-4 py-3 max-w-[160px]">
-                <EditableText lead={lead} field="nextAction" placeholder="Add action…" className="text-ew-body text-sm" />
-              </td>
+                {/* Next action */}
+                <td className="px-4 py-3 max-w-[180px]">
+                  <InlineCell
+                    value={lead.nextAction}
+                    onSave={save(lead.id, 'nextAction')}
+                    placeholder="Add action…"
+                    className="text-ew-body text-sm"
+                  />
+                </td>
 
-              {/* Last activity */}
-              <td className="px-4 py-3 min-w-[120px]">
-                <p className="text-sm text-ew-body">{relativeDate(lead.lastActivity)}</p>
-              </td>
+                {/* Last activity — read-only display */}
+                <td className="px-4 py-3 min-w-[120px]">
+                  <span className="text-sm text-ew-muted">{relativeDate(lead.lastActivity)}</span>
+                </td>
 
-              {/* Notes */}
-              <td className="px-4 py-3 max-w-[160px]">
-                <p
-                  className="text-sm text-ew-body truncate cursor-pointer hover:text-navy transition-colors"
-                  title={lead.notes || 'Click to add notes'}
-                  onClick={() => onOpenNotes(lead)}
-                >
-                  {lead.notes || <span className="text-ew-muted-light italic">Add notes…</span>}
-                </p>
-              </td>
+                {/* Notes — inline textarea */}
+                <td className="px-4 py-3 max-w-[180px]">
+                  <InlineCell
+                    value={lead.notes}
+                    onSave={save(lead.id, 'notes')}
+                    type="textarea"
+                    placeholder="Add notes…"
+                    displayEl={
+                      lead.notes
+                        ? <p className="text-sm text-ew-body truncate max-w-[160px]" title={lead.notes}>{lead.notes}</p>
+                        : null
+                    }
+                  />
+                </td>
 
-              {/* Actions */}
-              <td className="px-4 py-3">
-                <div className="flex items-center gap-1.5 justify-end">
-                  <button
-                    onClick={() => onProposal(lead)}
-                    className="flex items-center gap-1 px-2.5 py-1.5 text-xs font-semibold text-navy bg-navy-tint hover:bg-navy hover:text-white rounded-lg transition-colors whitespace-nowrap"
-                  >
-                    <FileText className="w-3 h-3" />
-                    Proposal
-                  </button>
-                  {deletingId === lead.id ? (
-                    <div className="flex items-center gap-1">
-                      <button
-                        onClick={() => { onDelete(lead.id); setDeletingId(null); }}
-                        className="p-1.5 text-white bg-red-500 hover:bg-red-600 rounded-lg transition-colors"
-                        title="Confirm delete"
-                      >
-                        <Check className="w-3.5 h-3.5" />
-                      </button>
-                      <button
-                        onClick={() => setDeletingId(null)}
-                        className="p-1.5 text-ew-muted hover:text-navy hover:bg-ew-bg rounded-lg transition-colors"
-                        title="Cancel"
-                      >
-                        <X className="w-3.5 h-3.5" />
-                      </button>
-                    </div>
-                  ) : (
+                {/* Actions */}
+                <td className="px-4 py-3">
+                  <div className="flex items-center gap-1.5 justify-end">
                     <button
-                      onClick={() => setDeletingId(lead.id)}
-                      className="p-1.5 text-ew-muted hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
-                      title="Delete"
+                      onClick={() => onProposal(lead)}
+                      className="flex items-center gap-1 px-2.5 py-1.5 text-xs font-semibold text-navy bg-navy-tint hover:bg-navy hover:text-white rounded-lg transition-colors whitespace-nowrap"
                     >
-                      <Trash2 className="w-3.5 h-3.5" />
+                      <FileText className="w-3 h-3" />
+                      Proposal
                     </button>
-                  )}
-                </div>
-              </td>
-            </tr>
-          ))}
+                    {deletingId === lead.id ? (
+                      <div className="flex items-center gap-1">
+                        <button onClick={() => { onDelete(lead.id); setDeletingId(null); }} className="p-1.5 text-white bg-red-500 hover:bg-red-600 rounded-lg transition-colors" title="Confirm delete">
+                          <Check className="w-3.5 h-3.5" />
+                        </button>
+                        <button onClick={() => setDeletingId(null)} className="p-1.5 text-ew-muted hover:text-navy hover:bg-ew-bg rounded-lg transition-colors" title="Cancel">
+                          <X className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    ) : (
+                      <button onClick={() => setDeletingId(lead.id)} className="p-1.5 text-ew-muted hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors" title="Delete">
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    )}
+                  </div>
+                </td>
+              </tr>
+            );
+          })}
         </tbody>
       </table>
     </div>

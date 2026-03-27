@@ -5,16 +5,14 @@ import { Button } from '@/components/ui/button';
 
 import StatsRow from '@/components/pipeline/StatsRow';
 import LeadTable from '@/components/pipeline/LeadTable';
-import LeadModal from '@/components/pipeline/LeadModal';
-import NotesModal from '@/components/pipeline/NotesModal';
 import ClosedWonModal from '@/components/pipeline/ClosedWonModal';
 
 export default function Pipeline({ onProposalHandoff, onViewDeals }) {
   const [leads, setLeads] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [modal, setModal] = useState(null);
   const [stageFilter, setStageFilter] = useState(null);
   const [closedWonLead, setClosedWonLead] = useState(null);
+  const [newLeadId, setNewLeadId] = useState(null);
 
   useEffect(() => {
     base44.entities.Lead.list('-created_date').then(data => {
@@ -28,15 +26,11 @@ export default function Pipeline({ onProposalHandoff, onViewDeals }) {
     setLeads(data);
   };
 
-  const handleSave = async (formData) => {
+  const handleAddLead = async () => {
     const now = new Date().toISOString();
-    if (modal.type === 'edit') {
-      await base44.entities.Lead.update(modal.lead.id, { ...formData, lastActivity: now });
-    } else {
-      await base44.entities.Lead.create({ ...formData, lastActivity: now });
-    }
-    setModal(null);
-    refresh();
+    const newLead = await base44.entities.Lead.create({ companyName: '', stage: 'Contacted', lastActivity: now });
+    setLeads(prev => [newLead, ...prev]);
+    setNewLeadId(newLead.id);
   };
 
   const handleDelete = async (id) => {
@@ -52,12 +46,6 @@ export default function Pipeline({ onProposalHandoff, onViewDeals }) {
       const lead = leads.find(l => l.id === id);
       if (lead && !lead.converted) setClosedWonLead({ ...lead, stage: 'Closed Won' });
     }
-    refresh();
-  };
-
-  const handleSaveNotes = async (notes) => {
-    await base44.entities.Lead.update(modal.lead.id, { notes, lastActivity: new Date().toISOString() });
-    setModal(null);
     refresh();
   };
 
@@ -79,7 +67,7 @@ export default function Pipeline({ onProposalHandoff, onViewDeals }) {
           <p className="text-ew-muted text-sm mt-0.5">Your active pipeline — updated as you go</p>
         </div>
         <Button
-          onClick={() => setModal({ type: 'add' })}
+          onClick={handleAddLead}
           className="h-9 bg-navy hover:bg-navy/90 text-white font-semibold text-sm"
         >
           <Plus className="w-4 h-4 mr-1.5" />
@@ -116,11 +104,10 @@ export default function Pipeline({ onProposalHandoff, onViewDeals }) {
           )}
           <LeadTable
             leads={(stageFilter ? leads.filter(l => l.stage === stageFilter) : leads).filter(l => !l.converted)}
-            onEdit={lead => setModal({ type: 'edit', lead })}
             onDelete={handleDelete}
             onProposal={handleProposal}
             onUpdateField={handleUpdateField}
-            onOpenNotes={lead => setModal({ type: 'notes', lead })}
+            newLeadId={newLeadId}
           />
           {/* Converted leads section */}
           {leads.filter(l => l.converted).length > 0 && (
@@ -164,21 +151,7 @@ export default function Pipeline({ onProposalHandoff, onViewDeals }) {
         />
       )}
 
-      {/* Modals */}
-      {(modal?.type === 'add' || modal?.type === 'edit') && (
-        <LeadModal
-          lead={modal.type === 'edit' ? modal.lead : null}
-          onSave={handleSave}
-          onClose={() => setModal(null)}
-        />
-      )}
-      {modal?.type === 'notes' && (
-        <NotesModal
-          lead={modal.lead}
-          onSave={handleSaveNotes}
-          onClose={() => setModal(null)}
-        />
-      )}
+
     </div>
   );
 }

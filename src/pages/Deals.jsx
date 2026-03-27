@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
 import { format, differenceInDays } from 'date-fns';
-import { ChevronDown, ChevronRight, ExternalLink } from 'lucide-react';
+import { ChevronDown, ChevronRight } from 'lucide-react';
+import InlineCell from '@/components/shared/InlineCell';
 
 function fmt(n) {
   if (!n && n !== 0) return '—';
@@ -33,29 +34,13 @@ function ValueBreakdown({ deal }) {
   const fee = deal.onboardingFee || 0;
   const total = deal.totalFirstYearValue || (annual + acctg + fee);
   const year2 = annual + acctg;
-
   return (
     <div className="mt-2 ml-2 p-3 bg-ew-bg rounded-lg border border-ew-border text-xs space-y-1.5">
-      <div className="flex justify-between">
-        <span className="text-ew-muted">Software</span>
-        <span className="font-medium text-navy">{fmt(deal.monthlyValue)}/mo · {fmt(annual)}/yr</span>
-      </div>
-      <div className="flex justify-between">
-        <span className="text-ew-muted">Accounting service</span>
-        <span className="font-medium text-navy">{deal.accountingServiceIncluded ? `${fmt(acctg)}/yr` : 'Not included'}</span>
-      </div>
-      <div className="flex justify-between">
-        <span className="text-ew-muted">Onboarding fee</span>
-        <span className="font-medium text-navy">{fee > 0 ? `${fmt(fee)} (one-off)` : '£0 (included)'}</span>
-      </div>
-      <div className="flex justify-between border-t border-ew-border pt-1.5 mt-1.5">
-        <span className="font-semibold text-navy">Total year one</span>
-        <span className="font-bold text-navy">{fmt(total)}</span>
-      </div>
-      <div className="flex justify-between text-ew-muted">
-        <span>Ongoing from year two</span>
-        <span className="font-medium">{fmt(year2)}/yr</span>
-      </div>
+      <div className="flex justify-between"><span className="text-ew-muted">Software</span><span className="font-medium text-navy">{fmt(deal.monthlyValue)}/mo · {fmt(annual)}/yr</span></div>
+      <div className="flex justify-between"><span className="text-ew-muted">Accounting service</span><span className="font-medium text-navy">{deal.accountingServiceIncluded ? `${fmt(acctg)}/yr` : 'Not included'}</span></div>
+      <div className="flex justify-between"><span className="text-ew-muted">Onboarding fee</span><span className="font-medium text-navy">{fee > 0 ? `${fmt(fee)} (one-off)` : '£0 (included)'}</span></div>
+      <div className="flex justify-between border-t border-ew-border pt-1.5 mt-1.5"><span className="font-semibold text-navy">Total year one</span><span className="font-bold text-navy">{fmt(total)}</span></div>
+      <div className="flex justify-between text-ew-muted"><span>Ongoing from year two</span><span className="font-medium">{fmt(year2)}/yr</span></div>
     </div>
   );
 }
@@ -66,11 +51,29 @@ export default function Deals({ onRenewalProposal }) {
   const [expanded, setExpanded] = useState(null);
 
   useEffect(() => {
-    base44.entities.Deal.list('-created_date').then(data => {
-      setDeals(data);
-      setLoading(false);
-    });
+    base44.entities.Deal.list('-created_date').then(data => { setDeals(data); setLoading(false); });
   }, []);
+
+  const handleUpdateField = async (id, field, value) => {
+    const deal = deals.find(d => d.id === id);
+    const updates = { [field]: value };
+
+    // Recalculate derived fields
+    const monthly = field === 'monthlyValue' ? (parseFloat(value) || 0) : (deal.monthlyValue || 0);
+    const acctgVal = field === 'accountingServiceValue' ? (parseFloat(value) || 0) : (deal.accountingServiceValue || 0);
+    const fee = field === 'onboardingFee' ? (parseFloat(value) || 0) : (deal.onboardingFee || 0);
+    const included = field === 'accountingServiceIncluded' ? value : deal.accountingServiceIncluded;
+
+    if (['monthlyValue', 'accountingServiceValue', 'onboardingFee', 'accountingServiceIncluded'].includes(field)) {
+      updates.annualValue = monthly * 12;
+      updates.totalFirstYearValue = (monthly * 12) + (included ? acctgVal : 0) + fee;
+    }
+
+    setDeals(prev => prev.map(d => d.id === id ? { ...d, ...updates } : d));
+    await base44.entities.Deal.update(id, updates);
+  };
+
+  const save = (id, field) => (value) => handleUpdateField(id, field, value);
 
   const active = deals.filter(d => d.status === 'Active' || d.status === 'Up for Renewal');
   const mrr = active.reduce((s, d) => s + (d.monthlyValue || 0), 0);
@@ -80,8 +83,6 @@ export default function Deals({ onRenewalProposal }) {
     const diff = differenceInDays(new Date(d.subscriptionEndDate), new Date());
     return diff >= 0 && diff <= 60;
   }).length;
-
-  const toggleExpand = (id) => setExpanded(prev => prev === id ? null : id);
 
   return (
     <div className="flex-1 bg-ew-bg overflow-y-auto p-8 font-dm">
@@ -108,11 +109,11 @@ export default function Deals({ onRenewalProposal }) {
       {loading ? (
         <div className="flex items-center justify-center h-48"><div className="w-6 h-6 border-2 border-navy/20 border-t-navy rounded-full animate-spin" /></div>
       ) : (
-        <div className="bg-white border border-ew-border rounded-xl overflow-hidden">
+        <div className="bg-white border border-ew-border rounded-xl overflow-x-auto">
           <table className="w-full text-sm">
             <thead className="bg-ew-footer border-b border-ew-border">
               <tr>
-                {['Client', 'Plan', 'Monthly', 'Annual', 'Year 1 total', 'Start date', 'End date', 'Status', 'Actions'].map(h => (
+                {['Client', 'Plan', 'Monthly', 'Annual ▾', 'Year 1 total', 'Acctg?', 'Start date', 'End date', 'Status', 'Actions'].map(h => (
                   <th key={h} className="px-4 py-3 text-left text-[11px] font-semibold text-ew-muted uppercase tracking-[0.12em]">{h}</th>
                 ))}
               </tr>
@@ -121,39 +122,116 @@ export default function Deals({ onRenewalProposal }) {
               {deals.map((deal, i) => (
                 <React.Fragment key={deal.id}>
                   <tr className={`border-b border-ew-border hover:bg-navy/[0.02] transition-colors ${expanded === deal.id ? 'bg-navy/[0.02]' : i % 2 === 1 ? 'bg-[#FAFBFE]' : 'bg-white'}`}>
-                    <td className="px-4 py-3 font-semibold text-navy">{deal.clientName}</td>
-                    <td className="px-4 py-3 text-ew-body">{deal.plan || '—'}</td>
-                    <td className="px-4 py-3 font-semibold text-navy">{fmt(deal.monthlyValue)}</td>
-                    {/* Annual — expandable */}
+                    {/* Client name */}
+                    <td className="px-4 py-3 min-w-[140px]">
+                      <InlineCell value={deal.clientName} onSave={save(deal.id, 'clientName')} className="font-semibold text-navy" />
+                    </td>
+
+                    {/* Plan */}
                     <td className="px-4 py-3">
+                      <InlineCell
+                        value={deal.plan}
+                        onSave={save(deal.id, 'plan')}
+                        type="select"
+                        options={['Starter', 'Professional', 'Business']}
+                        className="text-ew-body"
+                      />
+                    </td>
+
+                    {/* Monthly — editable */}
+                    <td className="px-4 py-3 min-w-[100px]">
+                      <InlineCell
+                        value={deal.monthlyValue}
+                        onSave={save(deal.id, 'monthlyValue')}
+                        type="number"
+                        displayEl={<span className="font-semibold text-navy">{fmt(deal.monthlyValue)}</span>}
+                        placeholder="Set value"
+                      />
+                    </td>
+
+                    {/* Annual — read-only, expandable */}
+                    <td className="px-4 py-3 min-w-[110px]">
                       <button
-                        onClick={() => toggleExpand(deal.id)}
+                        onClick={() => setExpanded(prev => prev === deal.id ? null : deal.id)}
                         className="flex items-center gap-1 font-semibold text-navy hover:text-navy/70 transition-colors"
                       >
                         {fmt(deal.annualValue || (deal.monthlyValue || 0) * 12)}
-                        {expanded === deal.id
-                          ? <ChevronDown className="w-3.5 h-3.5" />
-                          : <ChevronRight className="w-3.5 h-3.5" />}
+                        {expanded === deal.id ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5" />}
                       </button>
                     </td>
-                    <td className="px-4 py-3 font-semibold text-navy">{fmt(deal.totalFirstYearValue)}</td>
-                    <td className="px-4 py-3 text-ew-body">{fmtDate(deal.subscriptionStartDate)}</td>
+
+                    {/* Year 1 total — read-only */}
                     <td className="px-4 py-3">
-                      <span className="text-ew-body">{fmtDate(deal.subscriptionEndDate)}</span>
-                      <RenewalBadge date={deal.subscriptionEndDate} />
+                      <InlineCell
+                        value={deal.totalFirstYearValue}
+                        readOnly
+                        displayEl={<span className="font-semibold text-navy">{fmt(deal.totalFirstYearValue)}</span>}
+                      />
                     </td>
+
+                    {/* Accounting service toggle */}
                     <td className="px-4 py-3">
-                      <span className={`text-[11px] font-semibold px-2.5 py-1 rounded-full ${STATUS_STYLES[deal.status] || 'bg-gray-100 text-gray-600'}`}>
-                        {deal.status}
-                      </span>
+                      <div className="flex flex-col gap-1">
+                        <InlineCell
+                          value={deal.accountingServiceIncluded}
+                          onSave={save(deal.id, 'accountingServiceIncluded')}
+                          type="boolean"
+                        />
+                        {deal.accountingServiceIncluded && (
+                          <InlineCell
+                            value={deal.accountingServiceValue}
+                            onSave={save(deal.id, 'accountingServiceValue')}
+                            type="number"
+                            displayEl={<span className="text-xs text-ew-body">{fmt(deal.accountingServiceValue)}/yr</span>}
+                            placeholder="Set value"
+                          />
+                        )}
+                      </div>
                     </td>
+
+                    {/* Start date */}
+                    <td className="px-4 py-3 min-w-[110px]">
+                      <InlineCell
+                        value={deal.subscriptionStartDate || ''}
+                        onSave={save(deal.id, 'subscriptionStartDate')}
+                        type="date"
+                        displayEl={<span className="text-ew-body">{fmtDate(deal.subscriptionStartDate)}</span>}
+                        placeholder="Set date"
+                      />
+                    </td>
+
+                    {/* End date */}
+                    <td className="px-4 py-3 min-w-[130px]">
+                      <InlineCell
+                        value={deal.subscriptionEndDate || ''}
+                        onSave={save(deal.id, 'subscriptionEndDate')}
+                        type="date"
+                        displayEl={
+                          <span>
+                            <span className="text-ew-body">{fmtDate(deal.subscriptionEndDate)}</span>
+                            <RenewalBadge date={deal.subscriptionEndDate} />
+                          </span>
+                        }
+                        placeholder="Set date"
+                      />
+                    </td>
+
+                    {/* Status */}
+                    <td className="px-4 py-3">
+                      <InlineCell
+                        value={deal.status}
+                        onSave={save(deal.id, 'status')}
+                        type="select"
+                        options={['Active', 'Up for Renewal', 'Churned']}
+                        displayEl={<span className={`text-[11px] font-semibold px-2.5 py-1 rounded-full ${STATUS_STYLES[deal.status] || 'bg-gray-100 text-gray-600'}`}>{deal.status}</span>}
+                      />
+                    </td>
+
+                    {/* Actions */}
                     <td className="px-4 py-3">
                       {onRenewalProposal && (deal.status === 'Up for Renewal' || differenceInDays(new Date(deal.subscriptionEndDate || '9999-01-01'), new Date()) <= 60) && (
                         <button
-                          onClick={() => onRenewalProposal({
-                            companyName: deal.clientName,
-                            plan: (deal.plan || 'starter').toLowerCase(),
-                          })}
+                          onClick={() => onRenewalProposal({ companyName: deal.clientName, plan: (deal.plan || 'starter').toLowerCase() })}
                           className="text-xs px-2.5 py-1.5 font-medium text-navy border border-navy/20 bg-navy-tint rounded-lg hover:bg-navy hover:text-white transition-colors whitespace-nowrap"
                         >
                           Send renewal proposal
@@ -163,15 +241,13 @@ export default function Deals({ onRenewalProposal }) {
                   </tr>
                   {expanded === deal.id && (
                     <tr className="border-b border-ew-border bg-navy/[0.01]">
-                      <td colSpan={9} className="px-4 pb-3">
-                        <ValueBreakdown deal={deal} />
-                      </td>
+                      <td colSpan={10} className="px-4 pb-3"><ValueBreakdown deal={deal} /></td>
                     </tr>
                   )}
                 </React.Fragment>
               ))}
               {deals.length === 0 && (
-                <tr><td colSpan={9} className="px-4 py-12 text-center text-ew-muted text-sm">No deals yet. Convert a pipeline lead to create your first deal.</td></tr>
+                <tr><td colSpan={10} className="px-4 py-12 text-center text-ew-muted text-sm">No deals yet. Convert a pipeline lead to create your first deal.</td></tr>
               )}
             </tbody>
           </table>

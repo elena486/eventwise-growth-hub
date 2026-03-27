@@ -3,9 +3,13 @@ import { base44 } from '@/api/base44Client';
 import { format, isPast, differenceInDays } from 'date-fns';
 import { Plus, AlertTriangle } from 'lucide-react';
 import ClientModal from '@/components/clients/ClientModal';
+import InlineCell from '@/components/shared/InlineCell';
 import { STATUS_STYLES, HEALTH_DOT, OWNER_INITIALS, OWNER_COLORS, initTasks } from '@/lib/csData';
 
 const STATUS_ORDER = ['Live', 'Onboarding', 'Trial', 'Churn'];
+const STATUSES = ['Trial', 'Onboarding', 'Live', 'Churn'];
+const OWNERS = ['Chris Carter', 'Martinique Keeler'];
+const SECONDARY_OWNERS = ['Chris Carter', 'Martinique Keeler', 'None'];
 
 function fmtDate(d) {
   if (!d) return '—';
@@ -13,7 +17,7 @@ function fmtDate(d) {
 }
 
 function RenewalCell({ date }) {
-  if (!date) return <span className="text-ew-muted">—</span>;
+  if (!date) return <span className="text-ew-muted text-sm">—</span>;
   const d = new Date(date);
   const diff = differenceInDays(d, new Date());
   if (isPast(d) && diff < 0) return <span className="text-red-500 font-semibold text-xs">⚠ Overdue</span>;
@@ -45,8 +49,7 @@ export default function Clients({ onViewHealth, onViewOnboarding }) {
   const [clients, setClients] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState('All');
-  const [modal, setModal] = useState(null);
-  const [expandedNotes, setExpandedNotes] = useState(null);
+  const [showAddModal, setShowAddModal] = useState(false);
 
   const load = async () => {
     const data = await base44.entities.Client.list('-created_date');
@@ -56,6 +59,38 @@ export default function Clients({ onViewHealth, onViewOnboarding }) {
 
   useEffect(() => { load(); }, []);
 
+  const handleUpdateField = async (id, field, value) => {
+    setClients(prev => prev.map(c => c.id === id ? { ...c, [field]: value } : c));
+    await base44.entities.Client.update(id, { [field]: value });
+    // If moved to Onboarding, create checklist if not exists
+    if (field === 'status' && value === 'Onboarding') {
+      const existing = await base44.entities.OnboardingRecord.filter({ clientId: id });
+      if (existing.length === 0) {
+        const client = clients.find(c => c.id === id);
+        await base44.entities.OnboardingRecord.create({
+          clientId: id,
+          clientName: client?.name || '',
+          tasks: JSON.stringify(initTasks()),
+          lastUpdated: new Date().toISOString(),
+        });
+      }
+    }
+  };
+
+  const handleAddClient = async (form) => {
+    const newClient = await base44.entities.Client.create(form);
+    if (form.status === 'Onboarding') {
+      await base44.entities.OnboardingRecord.create({
+        clientId: newClient.id,
+        clientName: form.name,
+        tasks: JSON.stringify(initTasks()),
+        lastUpdated: new Date().toISOString(),
+      });
+    }
+    setShowAddModal(false);
+    load();
+  };
+
   const sorted = [...clients]
     .sort((a, b) => {
       const si = STATUS_ORDER.indexOf(a.status) - STATUS_ORDER.indexOf(b.status);
@@ -64,36 +99,6 @@ export default function Clients({ onViewHealth, onViewOnboarding }) {
     })
     .filter(c => filter === 'All' || c.status === filter);
 
-  const handleSave = async (form) => {
-    if (modal.type === 'edit') {
-      await base44.entities.Client.update(modal.client.id, form);
-      // If moved to Onboarding, ensure onboarding record exists
-      if (form.status === 'Onboarding') {
-        const existing = await base44.entities.OnboardingRecord.filter({ clientId: modal.client.id });
-        if (existing.length === 0) {
-          await base44.entities.OnboardingRecord.create({
-            clientId: modal.client.id,
-            clientName: form.name,
-            tasks: JSON.stringify(initTasks()),
-            lastUpdated: new Date().toISOString(),
-          });
-        }
-      }
-    } else {
-      const newClient = await base44.entities.Client.create(form);
-      if (form.status === 'Onboarding') {
-        await base44.entities.OnboardingRecord.create({
-          clientId: newClient.id,
-          clientName: form.name,
-          tasks: JSON.stringify(initTasks()),
-          lastUpdated: new Date().toISOString(),
-        });
-      }
-    }
-    setModal(null);
-    load();
-  };
-
   const stats = {
     total: clients.length,
     live: clients.filter(c => c.status === 'Live').length,
@@ -101,7 +106,7 @@ export default function Clients({ onViewHealth, onViewOnboarding }) {
     trial: clients.filter(c => c.status === 'Trial').length,
   };
 
-  const FILTER_TABS = ['All', 'Live', 'Onboarding', 'Trial', 'Churn'];
+  const save = (id, field) => (value) => handleUpdateField(id, field, value);
 
   return (
     <div className="flex-1 bg-ew-bg overflow-y-auto p-8 font-dm">
@@ -111,7 +116,7 @@ export default function Clients({ onViewHealth, onViewOnboarding }) {
           <h1 className="text-2xl font-bold text-navy">Clients</h1>
           <p className="text-ew-muted text-sm mt-0.5">All Eventwise customer accounts</p>
         </div>
-        <button onClick={() => setModal({ type: 'add' })} className="flex items-center gap-1.5 h-9 px-4 text-sm font-semibold bg-navy text-white rounded-lg hover:bg-navy/90 transition-colors">
+        <button onClick={() => setShowAddModal(true)} className="flex items-center gap-1.5 h-9 px-4 text-sm font-semibold bg-navy text-white rounded-lg hover:bg-navy/90 transition-colors">
           <Plus className="w-4 h-4" /> Add Client
         </button>
       </div>
@@ -133,12 +138,9 @@ export default function Clients({ onViewHealth, onViewOnboarding }) {
 
       {/* Filters */}
       <div className="flex items-center gap-1.5 mb-5">
-        {FILTER_TABS.map(f => (
-          <button
-            key={f}
-            onClick={() => setFilter(f)}
-            className={`px-3.5 py-1.5 text-sm font-medium rounded-lg transition-colors ${filter === f ? 'bg-navy text-white' : 'bg-white border border-ew-border text-ew-body hover:bg-ew-bg'}`}
-          >
+        {['All', 'Live', 'Onboarding', 'Trial', 'Churn'].map(f => (
+          <button key={f} onClick={() => setFilter(f)}
+            className={`px-3.5 py-1.5 text-sm font-medium rounded-lg transition-colors ${filter === f ? 'bg-navy text-white' : 'bg-white border border-ew-border text-ew-body hover:bg-ew-bg'}`}>
             {f}
           </button>
         ))}
@@ -152,7 +154,7 @@ export default function Clients({ onViewHealth, onViewOnboarding }) {
           <table className="w-full text-sm">
             <thead className="bg-ew-footer border-b border-ew-border">
               <tr>
-                {['Client', 'Status', 'Owner', 'Health', 'Renewal', 'Notes', 'Actions'].map(h => (
+                {['Client', 'Status', 'Plan', 'Owner', 'Health', 'Renewal', 'Notes', 'Actions'].map(h => (
                   <th key={h} className="px-4 py-3 text-left text-[11px] font-semibold text-ew-muted uppercase tracking-[0.12em]">{h}</th>
                 ))}
               </tr>
@@ -160,40 +162,82 @@ export default function Clients({ onViewHealth, onViewOnboarding }) {
             <tbody>
               {sorted.map((c, i) => (
                 <tr key={c.id} className={`border-b border-ew-border last:border-0 hover:bg-navy/[0.02] transition-colors ${i % 2 === 1 ? 'bg-[#FAFBFE]' : 'bg-white'}`}>
-                  <td className="px-4 py-3 min-w-[160px]">
-                    <p className="font-semibold text-navy text-sm">{c.name}</p>
-                    <p className="text-xs text-ew-muted mt-0.5">{c.contactName}</p>
+                  {/* Client name / contact */}
+                  <td className="px-4 py-3 min-w-[180px]">
+                    <InlineCell value={c.name} onSave={save(c.id, 'name')} placeholder="Company name" className="font-semibold text-navy text-sm" />
+                    <InlineCell value={c.contactName} onSave={save(c.id, 'contactName')} placeholder="Contact name" className="text-xs text-ew-muted mt-0.5" />
+                    <InlineCell value={c.contactEmail} onSave={save(c.id, 'contactEmail')} placeholder="Email" className="text-xs text-ew-muted mt-0.5" />
                     {c.handoffIncomplete && (
                       <span className="inline-flex items-center gap-1 mt-1 text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-amber-50 text-amber-700 border border-amber-200">
                         ⚠ Handoff incomplete
                       </span>
                     )}
                   </td>
+
+                  {/* Status */}
                   <td className="px-4 py-3">
-                    <span className={`text-[11px] font-semibold px-2.5 py-1 rounded-full ${STATUS_STYLES[c.status] || 'bg-gray-100 text-gray-600'}`}>{c.status}</span>
+                    <InlineCell
+                      value={c.status}
+                      onSave={save(c.id, 'status')}
+                      type="select"
+                      options={STATUSES}
+                      displayEl={<span className={`text-[11px] font-semibold px-2.5 py-1 rounded-full ${STATUS_STYLES[c.status] || 'bg-gray-100 text-gray-600'}`}>{c.status}</span>}
+                    />
                   </td>
+
+                  {/* Plan */}
                   <td className="px-4 py-3">
-                    <OwnerAvatar owner={c.owner} />
+                    <InlineCell
+                      value={c.plan}
+                      onSave={save(c.id, 'plan')}
+                      type="select"
+                      options={['', 'Starter', 'Professional', 'Business']}
+                      placeholder="Set plan"
+                      className="text-sm text-ew-body"
+                    />
                   </td>
+
+                  {/* Owner */}
+                  <td className="px-4 py-3">
+                    <InlineCell
+                      value={c.owner}
+                      onSave={save(c.id, 'owner')}
+                      type="select"
+                      options={OWNERS}
+                      displayEl={<OwnerAvatar owner={c.owner} />}
+                    />
+                  </td>
+
+                  {/* Health — read-only display */}
                   <td className="px-4 py-3 min-w-[100px]">
                     <HealthCell client={c} />
                   </td>
-                  <td className="px-4 py-3 min-w-[120px]">
-                    <RenewalCell date={c.renewalDate} />
+
+                  {/* Renewal date */}
+                  <td className="px-4 py-3 min-w-[130px]">
+                    <InlineCell
+                      value={c.renewalDate || ''}
+                      onSave={save(c.id, 'renewalDate')}
+                      type="date"
+                      displayEl={<RenewalCell date={c.renewalDate} />}
+                      placeholder="Set date"
+                    />
                   </td>
+
+                  {/* Notes */}
                   <td className="px-4 py-3 max-w-[180px]">
-                    {c.notes ? (
-                      <p
-                        className={`text-sm text-ew-body cursor-pointer hover:text-navy transition-colors ${expandedNotes === c.id ? '' : 'truncate'}`}
-                        onClick={() => setExpandedNotes(expandedNotes === c.id ? null : c.id)}
-                      >
-                        {c.notes}
-                      </p>
-                    ) : <span className="text-ew-muted-light text-sm italic">—</span>}
+                    <InlineCell
+                      value={c.notes}
+                      onSave={save(c.id, 'notes')}
+                      type="textarea"
+                      placeholder="Add notes…"
+                      displayEl={c.notes ? <p className="text-sm text-ew-body truncate max-w-[160px]" title={c.notes}>{c.notes}</p> : null}
+                    />
                   </td>
+
+                  {/* Actions */}
                   <td className="px-4 py-3">
-                    <div className="flex items-center gap-1">
-                      <button onClick={() => setModal({ type: 'edit', client: c })} className="text-xs px-2.5 py-1.5 font-medium text-ew-body border border-ew-border rounded-lg hover:bg-ew-bg transition-colors">Edit</button>
+                    <div className="flex items-center gap-1 flex-wrap">
                       {(c.status === 'Live' || c.status === 'Onboarding') && (
                         <button onClick={() => onViewHealth(c)} className="text-xs px-2.5 py-1.5 font-medium text-ew-body border border-ew-border rounded-lg hover:bg-ew-bg transition-colors">Health</button>
                       )}
@@ -205,19 +249,15 @@ export default function Clients({ onViewHealth, onViewOnboarding }) {
                 </tr>
               ))}
               {sorted.length === 0 && (
-                <tr><td colSpan={7} className="px-4 py-12 text-center text-ew-muted text-sm">No clients found</td></tr>
+                <tr><td colSpan={8} className="px-4 py-12 text-center text-ew-muted text-sm">No clients found</td></tr>
               )}
             </tbody>
           </table>
         </div>
       )}
 
-      {modal && (
-        <ClientModal
-          client={modal.type === 'edit' ? modal.client : null}
-          onSave={handleSave}
-          onClose={() => setModal(null)}
-        />
+      {showAddModal && (
+        <ClientModal client={null} onSave={handleAddClient} onClose={() => setShowAddModal(false)} />
       )}
     </div>
   );
