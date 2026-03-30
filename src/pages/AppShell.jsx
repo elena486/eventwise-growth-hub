@@ -22,9 +22,10 @@ export default function AppShell() {
   const [searchParams, setSearchParams] = useSearchParams();
   const tab = searchParams.get('tab') || 'pipeline';
   const { user } = useAuth();
-  const setTab = (t) => setSearchParams({ tab: t });
   const [proposalHandoff, setProposalHandoff] = useState(null);
   const [focusClientId, setFocusClientId] = useState(null);
+
+  const setTab = (t) => setSearchParams({ tab: t });
 
   const handleViewHealth = (client) => {
     setFocusClientId(client.id);
@@ -34,6 +35,11 @@ export default function AppShell() {
   const handleViewOnboarding = (client) => {
     setFocusClientId(client.id);
     setTab('onboarding');
+  };
+
+  const handleProposalHandoff = (data) => {
+    setProposalHandoff(data);
+    setTab('proposal');
   };
 
   useEffect(() => {
@@ -51,11 +57,6 @@ export default function AppShell() {
     return () => window.removeEventListener('keydown', handler);
   }, []);
 
-  const handleProposalHandoff = (data) => {
-    setProposalHandoff(data);
-    setTab('proposal');
-  };
-
   return (
     <div className="flex flex-col h-screen font-dm overflow-hidden">
       {/* Top nav */}
@@ -64,15 +65,14 @@ export default function AppShell() {
           {/* Logo + App name */}
           <div className="flex items-center gap-2.5 shrink-0">
             <img src={LOGO_BLACK} alt="Eventwise" className="h-4" />
-            <span className="w-px h-4 bg-ew-border" />
+            <span className="w-px h-4 bg-ew-border inline-block" />
             <span className="text-[11px] text-ew-muted font-medium tracking-wide">Client Hub</span>
           </div>
-          {/* Tabs — scrollable */}
+          {/* Tabs — scrollable, no scrollbar */}
           <div
             className="flex items-center gap-1 overflow-x-auto"
-            style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+            style={{ scrollbarWidth: 'none', msOverflowStyle: 'none', WebkitOverflowScrolling: 'touch' }}
           >
-            <style>{`.tab-scroll::-webkit-scrollbar { display: none; }`}</style>
             {TABS.map((t, i) => (
               <div key={t.id} className="relative group shrink-0">
                 <button
@@ -89,18 +89,19 @@ export default function AppShell() {
                   <span className="absolute bottom-0 left-1/2 -translate-x-1/2 w-4/5 h-0.5 bg-navy rounded-full" />
                 )}
                 {/* Tooltip */}
-                <div className="pointer-events-none absolute top-full left-1/2 -translate-x-1/2 mt-1.5 px-2 py-1 bg-gray-800 text-white text-[11px] rounded whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity delay-300 z-50">
+                <div className="pointer-events-none absolute top-full left-1/2 -translate-x-1/2 mt-2 px-2 py-1 bg-gray-800 text-white text-[11px] rounded whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity duration-150 delay-300 z-50">
                   {t.label} ({i + 1})
                 </div>
               </div>
             ))}
           </div>
         </div>
-        {/* Right: user + settings */}
+
+        {/* Right: user indicator + settings */}
         <div className="flex items-center gap-2.5 shrink-0 ml-4">
           {user && (
             <>
-              <div className="w-7 h-7 rounded-full bg-navy text-white text-[11px] font-semibold flex items-center justify-center">
+              <div className="w-7 h-7 rounded-full bg-navy text-white text-[11px] font-semibold flex items-center justify-center shrink-0">
                 {(user.full_name || user.email || '?').split(' ').map(w => w[0]).slice(0, 2).join('').toUpperCase()}
               </div>
               <span className="text-[13px] text-ew-muted font-medium hidden sm:block">{user.full_name || user.email}</span>
