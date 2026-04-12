@@ -4,13 +4,11 @@ export const MEMBERS = [
     name: 'Chris Carter',
     role: 'CEO + Customer Success',
     questions: [
-      // CEO section
       { id: 'q1', label: 'Revenue-generating actions completed this week', type: 'number', section: 'CEO' },
       { id: 'q2', label: 'Sales conversations had this week', type: 'number', section: 'CEO' },
       { id: 'q3', label: '£ value of pipeline moved forward this week', type: 'number', prefix: '£', section: 'CEO' },
       { id: 'q4', label: 'Key decision or bottleneck resolved this week', type: 'text', section: 'CEO' },
       { id: 'q5', label: '#1 priority for next week', type: 'text', section: 'CEO' },
-      // CS section
       { id: 'q6', label: 'Active client touchpoints completed this week', type: 'number', section: 'Customer Success' },
       { id: 'q7', label: 'Accounts at risk (churn/low engagement)', type: 'number', section: 'Customer Success' },
       { id: 'q8', label: 'Issues or requests resolved this week', type: 'number', section: 'Customer Success' },
@@ -41,14 +39,16 @@ export const MEMBERS = [
     name: 'Elena Brouckaert',
     role: 'Marketing',
     questions: [
-      { id: 'q1', label: 'New inbound leads generated', type: 'number' },
-      { id: 'q2', label: 'Leads qualified / sales-ready', type: 'number' },
-      { id: 'q3', label: 'Total traffic or key channel growth %', type: 'number', suffix: '%' },
-      { id: 'q4', label: 'Campaigns or assets launched', type: 'number' },
+      { id: 'q1', label: 'New MQLs', type: 'number', targetLabel: '3 target' },
+      { id: 'q2', label: 'Leads qualified / sales-ready (SQLs)', type: 'number' },
+      { id: 'q3', label: 'Total traffic or key channel growth', type: 'number', suffix: '%' },
+      { id: 'q4', label: 'Content or campaigns published', type: 'number', targetLabel: '4 target' },
+      { id: 'q5', label: 'Confidence (1–5)', type: 'confidence' },
+      { id: 'q6', label: 'Blocker (optional)', type: 'text', placeholder: 'Describe any blockers...' },
     ],
-    kpi1: { questionId: 'q1', label: 'Inbound leads', target: 5, unit: '' },
-    kpi2: { questionId: 'q4', label: 'Campaigns launched', target: 2, unit: '' },
-    qualitativeIds: [],
+    kpi1: { questionId: 'q1', label: 'New MQLs', target: 5, unit: '' },
+    kpi2: { questionId: 'q4', label: 'Campaigns published', target: 4, unit: '' },
+    qualitativeIds: ['q6'],
     duplicateLastMonth: true,
   },
   {
@@ -59,7 +59,7 @@ export const MEMBERS = [
       { id: 'q1', label: 'New leads added this week', type: 'number' },
       { id: 'q2', label: 'Responses received', type: 'number' },
       { id: 'q3', label: 'Meetings booked', type: 'number' },
-      { id: 'q4', label: 'What worked best this week', type: 'text' },
+      { id: 'q4', label: 'What worked best this week', type: 'text', placeholder: 'One sentence...' },
     ],
     kpi1: { questionId: 'q1', label: 'New leads', target: 50, unit: '' },
     kpi2: { questionId: 'q3', label: 'Meetings booked', target: 5, unit: '' },
@@ -102,31 +102,29 @@ export function getMemberById(id) {
   return MEMBERS.find(m => m.id === id);
 }
 
-export function getMemberByName(name) {
-  return MEMBERS.find(m => m.name === name);
-}
-
-/** ISO date string for Monday of the current week */
 export function currentWeekStart() {
   const now = new Date();
-  const day = now.getDay(); // 0=Sun
+  const day = now.getDay();
   const diff = day === 0 ? -6 : 1 - day;
   const mon = new Date(now);
   mon.setDate(now.getDate() + diff);
   return mon.toISOString().split('T')[0];
 }
 
-/** Week number within a 4-week monthly cycle (1–4) */
-export function weekOfMonth(weekStartStr) {
-  const d = new Date(weekStartStr);
-  const dom = d.getDate();
-  return Math.min(Math.ceil(dom / 7), 4);
+export function getWeekNumber(dateStr) {
+  const d = new Date(dateStr);
+  const start = new Date(d.getFullYear(), 0, 1);
+  const diff = d - start + (start.getTimezoneOffset() - d.getTimezoneOffset()) * 60000;
+  return Math.ceil((diff / 86400000 + start.getDay() + 1) / 7);
 }
 
-/** RAG colour for a KPI value vs target */
+export function weekOfMonth(weekStartStr) {
+  const d = new Date(weekStartStr);
+  return Math.min(Math.ceil(d.getDate() / 7), 4);
+}
+
 export function ragColor(value, target) {
   if (target === 0) {
-    // Lower is better (e.g. at-risk accounts, bugs)
     if (value === 0) return 'green';
     if (value <= 2) return 'amber';
     return 'red';
@@ -138,17 +136,25 @@ export function ragColor(value, target) {
 }
 
 export const RAG_STYLES = {
-  green: { dot: 'bg-green-500', text: 'text-green-700', bg: 'bg-green-50', label: 'On track' },
-  amber: { dot: 'bg-amber-400', text: 'text-amber-700', bg: 'bg-amber-50', label: 'Near target' },
-  red: { dot: 'bg-red-500', text: 'text-red-700', bg: 'bg-red-50', label: 'Below target' },
+  green: { dot: 'bg-green-500', text: 'text-green-700', bg: 'bg-green-50', border: 'border-green-200', label: 'On track' },
+  amber: { dot: 'bg-amber-400', text: 'text-amber-700', bg: 'bg-amber-50', border: 'border-amber-200', label: 'At risk' },
+  red: { dot: 'bg-red-500', text: 'text-red-600', bg: 'bg-red-50', border: 'border-red-200', label: 'Off track' },
 };
 
 export function formatKpiValue(value, kpi) {
   if (value == null || value === '') return '—';
   const n = Number(value);
   if (isNaN(n)) return '—';
-  const formatted = kpi.prefix === '£'
-    ? '£' + n.toLocaleString('en-GB')
-    : n.toLocaleString('en-GB') + (kpi.suffix || '');
-  return formatted;
+  if (kpi.prefix === '£') return '£' + n.toLocaleString('en-GB');
+  return n.toLocaleString('en-GB') + (kpi.suffix || '');
+}
+
+export function addWeeks(dateStr, weeks) {
+  const d = new Date(dateStr);
+  d.setDate(d.getDate() + weeks * 7);
+  return d.toISOString().split('T')[0];
+}
+
+export function subWeeks(dateStr, weeks) {
+  return addWeeks(dateStr, -weeks);
 }

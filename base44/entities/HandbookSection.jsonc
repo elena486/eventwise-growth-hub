@@ -1,0 +1,16 @@
+{
+  "name": "HandbookSection",
+  "type": "object",
+  "properties": {
+    "sectionKey": {
+      "type": "string"
+    },
+    "data": {
+      "type": "string",
+      "description": "JSON stringified section data"
+    }
+  },
+  "required": [
+    "sectionKey"
+  ]
+}

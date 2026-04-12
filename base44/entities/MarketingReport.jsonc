@@ -1,0 +1,43 @@
+{
+  "name": "MarketingReport",
+  "type": "object",
+  "properties": {
+    "month": {
+      "type": "string"
+    },
+    "year": {
+      "type": "number"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "Draft",
+        "Ready",
+        "Sent"
+      ]
+    },
+    "sentAt": {
+      "type": "string"
+    },
+    "websiteData": {
+      "type": "string",
+      "description": "JSON stringified website metrics"
+    },
+    "chrisLinkedInData": {
+      "type": "string",
+      "description": "JSON stringified Chris LinkedIn metrics"
+    },
+    "companyPageData": {
+      "type": "string",
+      "description": "JSON stringified company page metrics"
+    },
+    "newsletterData": {
+      "type": "string",
+      "description": "JSON stringified newsletter metrics"
+    }
+  },
+  "required": [
+    "month",
+    "year"
+  ]
+}

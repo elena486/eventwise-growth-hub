@@ -72,7 +72,7 @@ export default function AppShell() {
           <div className="flex items-center gap-2.5 shrink-0">
             <img src={LOGO_BLACK} alt="Eventwise" className="h-4" />
             <span className="w-px h-4 bg-ew-border inline-block" />
-            <span className="text-[11px] text-ew-muted font-medium tracking-wide">Client Hub</span>
+            <span className="text-[11px] text-ew-muted font-medium tracking-wide">HQ</span>
           </div>
           {/* Tabs — scrollable, no scrollbar */}
           <div

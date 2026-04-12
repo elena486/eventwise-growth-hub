@@ -87,7 +87,7 @@ export default function Pipeline({ onProposalHandoff, onViewDeals }) {
           <h3 className="text-base font-semibold text-navy mb-1">No warm leads yet</h3>
           <p className="text-ew-muted text-sm mb-5">Add your first lead to start tracking your pipeline.</p>
           <Button
-            onClick={() => setModal({ type: 'add' })}
+            onClick={handleAddLead}
             className="h-9 bg-navy hover:bg-navy/90 text-white font-semibold text-sm"
           >
             <Plus className="w-4 h-4 mr-1.5" />
