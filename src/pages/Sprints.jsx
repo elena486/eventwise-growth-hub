@@ -34,7 +34,7 @@ export default function Sprints() {
   const [customTo, setCustomTo] = useState('');
 
   const load = useCallback(() => {
-    base44.entities.SprintSubmission.list('-weekStart', 500).then(setSubmissions);
+    base44.entities.SprintSubmission.list('-created_date', 500).then(setSubmissions);
   }, []);
 
   useEffect(() => { load(); }, [load]);
