@@ -1,152 +1,166 @@
 import React, { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
-import { MEMBERS, getMonday } from '@/lib/sprintConfig';
+import { MEMBERS, currentWeekStart } from '@/lib/sprintConfig';
+import { Check, Copy } from 'lucide-react';
 
-export default function SprintForm({ user }) {
-  const [selectedMember, setSelectedMember] = useState('');
+export default function SprintForm({ currentUser }) {
+  const [selectedMemberId, setSelectedMemberId] = useState('');
   const [answers, setAnswers] = useState({});
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [existingId, setExistingId] = useState(null);
+  const [lastSubmission, setLastSubmission] = useState(null);
 
-  const member = MEMBERS.find(m => m.name === selectedMember);
-  const weekStart = getMonday();
+  const weekStart = currentWeekStart();
+  const member = MEMBERS.find(m => m.id === selectedMemberId);
 
-  // Auto-select member based on logged-in user
+  // Auto-select based on current user name
   useEffect(() => {
-    if (!user) return;
-    const match = MEMBERS.find(m =>
-      m.name.toLowerCase().includes((user.full_name || '').toLowerCase().split(' ')[0].toLowerCase()) ||
-      (user.full_name || '').toLowerCase().includes(m.name.toLowerCase().split(' ')[0].toLowerCase())
-    );
-    if (match) setSelectedMember(match.name);
-  }, [user]);
+    if (currentUser?.full_name) {
+      const match = MEMBERS.find(m =>
+        m.name.toLowerCase().includes(currentUser.full_name.split(' ')[0].toLowerCase())
+      );
+      if (match) setSelectedMemberId(match.id);
+    }
+  }, [currentUser]);
 
   // Load existing submission for this week
   useEffect(() => {
-    if (!selectedMember) return;
-    base44.entities.SprintSubmission.filter({ memberName: selectedMember, weekStart })
-      .then(data => {
-        if (data.length > 0) {
-          setExistingId(data[0].id);
-          try { setAnswers(JSON.parse(data[0].answers || '{}')); } catch { setAnswers({}); }
-        } else {
-          setExistingId(null);
-          setAnswers({});
-        }
-      });
-  }, [selectedMember]);
+    if (!member) return;
+    setAnswers({});
+    setExistingId(null);
+    base44.entities.SprintSubmission.filter({ memberName: member.name, weekStart }).then(results => {
+      if (results.length > 0) {
+        const sub = results[0];
+        setExistingId(sub.id);
+        try { setAnswers(JSON.parse(sub.answers || '{}')); } catch { setAnswers({}); }
+      }
+    });
+    // Load last submission for duplicate feature
+    base44.entities.SprintSubmission.filter({ memberName: member.name }).then(all => {
+      const sorted = all.filter(s => s.weekStart < weekStart).sort((a, b) => b.weekStart.localeCompare(a.weekStart));
+      setLastSubmission(sorted[0] || null);
+    });
+  }, [selectedMemberId, weekStart]);
 
-  const handleDuplicateLast = async () => {
-    const all = await base44.entities.SprintSubmission.filter({ memberName: selectedMember });
-    const sorted = all.sort((a, b) => b.weekStart.localeCompare(a.weekStart));
-    const last = sorted.find(s => s.weekStart !== weekStart);
-    if (last) {
-      try { setAnswers(JSON.parse(last.answers || '{}')); } catch {}
-    }
+  const handleChange = (qid, value) => setAnswers(prev => ({ ...prev, [qid]: value }));
+
+  const getKpiValues = () => {
+    if (!member) return {};
+    const kpi1 = answers[member.kpi1.questionId];
+    const kpi2 = answers[member.kpi2.questionId];
+    return { kpi1Value: kpi1 != null ? Number(kpi1) : undefined, kpi2Value: kpi2 != null ? Number(kpi2) : undefined };
   };
 
-  const handleSave = async () => {
+  const handleSubmit = async () => {
     if (!member) return;
     setSaving(true);
-    const numericAnswers = {};
-    member.questions.forEach(q => {
-      numericAnswers[q.id] = q.type === 'number' ? (parseFloat(answers[q.id]) || 0) : (answers[q.id] || '');
-    });
-    const kpi1Val = parseFloat(numericAnswers[member.kpi1.id]) || 0;
-    const kpi2Val = parseFloat(numericAnswers[member.kpi2.id]) || 0;
-    const payload = {
-      memberName: selectedMember,
-      weekStart,
-      answers: JSON.stringify(numericAnswers),
-      kpi1Value: kpi1Val,
-      kpi2Value: kpi2Val,
-    };
-    if (existingId) {
-      await base44.entities.SprintSubmission.update(existingId, payload);
-    } else {
-      await base44.entities.SprintSubmission.create(payload);
-    }
+    const { kpi1Value, kpi2Value } = getKpiValues();
+    const payload = { memberName: member.name, weekStart, answers: JSON.stringify(answers), kpi1Value, kpi2Value };
+    if (existingId) await base44.entities.SprintSubmission.update(existingId, payload);
+    else await base44.entities.SprintSubmission.create(payload);
     setSaving(false);
     setSaved(true);
     setTimeout(() => setSaved(false), 2500);
   };
 
+  const handleDuplicate = () => {
+    if (!lastSubmission) return;
+    try { setAnswers(JSON.parse(lastSubmission.answers || '{}')); } catch {}
+  };
+
+  const renderSection = (sectionLabel, questions) => (
+    <div key={sectionLabel} className="mb-6">
+      {sectionLabel && (
+        <p className="text-xs font-bold text-navy uppercase tracking-wide mb-3 border-b border-ew-border pb-1">{sectionLabel}</p>
+      )}
+      <div className="space-y-4">
+        {questions.map((q, i) => (
+          <div key={q.id}>
+            <label className="block text-sm font-medium text-ew-body mb-1">
+              {i + 1}. {q.label}
+              {q.prefix && <span className="ml-1 text-ew-muted text-xs">({q.prefix})</span>}
+              {q.suffix && <span className="ml-1 text-ew-muted text-xs">({q.suffix})</span>}
+            </label>
+            {q.type === 'text' ? (
+              <textarea
+                className="w-full border border-ew-border rounded-lg px-3 py-2 text-sm text-navy focus:outline-none focus:border-navy resize-none"
+                rows={2}
+                value={answers[q.id] || ''}
+                onChange={e => handleChange(q.id, e.target.value)}
+                placeholder="Your answer…"
+              />
+            ) : (
+              <input
+                type="number"
+                className="w-full border border-ew-border rounded-lg px-3 py-2 text-sm text-navy focus:outline-none focus:border-navy"
+                value={answers[q.id] ?? ''}
+                onChange={e => handleChange(q.id, e.target.value)}
+                placeholder="0"
+              />
+            )}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+
+  // Group Chris's questions by section
+  const renderQuestions = () => {
+    if (!member) return null;
+    const sections = [...new Set(member.questions.map(q => q.section).filter(Boolean))];
+    if (sections.length > 1) {
+      return sections.map(sec => renderSection(sec, member.questions.filter(q => q.section === sec)));
+    }
+    return renderSection(null, member.questions);
+  };
+
   return (
-    <div className="max-w-2xl mx-auto">
+    <div className="bg-white border border-ew-border rounded-xl p-6 max-w-xl">
+      <div className="flex items-center justify-between mb-5">
+        <div>
+          <h2 className="font-bold text-navy text-base">Weekly Update</h2>
+          <p className="text-xs text-ew-muted mt-0.5">Week of {weekStart}</p>
+        </div>
+        {member?.duplicateLastMonth && lastSubmission && (
+          <button
+            onClick={handleDuplicate}
+            className="flex items-center gap-1.5 px-3 py-1.5 border border-ew-border rounded-lg text-xs text-ew-body hover:bg-ew-bg transition-colors"
+          >
+            <Copy className="w-3 h-3" /> Duplicate last entry
+          </button>
+        )}
+      </div>
+
       {/* Member selector */}
-      <div className="bg-white border border-ew-border rounded-xl p-6 mb-6">
-        <label className="block text-xs font-semibold text-ew-muted uppercase tracking-wide mb-2">Who are you?</label>
+      <div className="mb-5">
+        <label className="text-xs font-semibold text-ew-muted uppercase tracking-wide block mb-1">You are</label>
         <select
-          className="w-full border border-ew-border rounded-lg px-3 py-2 text-sm text-navy focus:outline-none focus:border-navy"
-          value={selectedMember}
-          onChange={e => setSelectedMember(e.target.value)}
+          className="w-full border border-ew-border rounded-lg px-3 py-2 text-sm text-navy focus:outline-none"
+          value={selectedMemberId}
+          onChange={e => setSelectedMemberId(e.target.value)}
         >
           <option value="">Select your name…</option>
-          {MEMBERS.map(m => <option key={m.name} value={m.name}>{m.name} — {m.role}</option>)}
+          {MEMBERS.map(m => <option key={m.id} value={m.id}>{m.name} — {m.role}</option>)}
         </select>
       </div>
 
-      {member && (
-        <div className="bg-white border border-ew-border rounded-xl p-6">
-          <div className="flex items-center justify-between mb-5">
-            <div>
-              <h2 className="text-base font-bold text-navy">{member.name}</h2>
-              <p className="text-xs text-ew-muted">{member.role} · Week of {weekStart}</p>
-            </div>
-            <div className="flex gap-2 items-center">
-              {member.allowDuplicateLast && (
-                <button
-                  onClick={handleDuplicateLast}
-                  className="text-xs px-3 py-1.5 border border-ew-border rounded-lg text-ew-body hover:bg-ew-bg transition-colors"
-                >
-                  Duplicate last month
-                </button>
-              )}
-              {existingId && <span className="text-xs text-green-600 font-medium bg-green-50 px-2.5 py-1 rounded-full">Already submitted this week</span>}
-            </div>
-          </div>
-
-          <div className="space-y-5">
-            {member.questions.map((q, i) => (
-              <div key={q.id}>
-                <label className="block text-sm font-medium text-navy mb-1.5">
-                  {i + 1}. {q.label}
-                  {q.prefix && <span className="ml-1 text-xs text-ew-muted">({q.prefix})</span>}
-                  {q.suffix && <span className="ml-1 text-xs text-ew-muted">({q.suffix})</span>}
-                </label>
-                {q.type === 'text' ? (
-                  <textarea
-                    className="w-full border border-ew-border rounded-lg px-3 py-2 text-sm text-navy focus:outline-none focus:border-navy resize-none"
-                    rows={2}
-                    value={answers[q.id] || ''}
-                    onChange={e => setAnswers(prev => ({ ...prev, [q.id]: e.target.value }))}
-                    placeholder="Type here…"
-                  />
-                ) : (
-                  <input
-                    type="number"
-                    className="w-48 border border-ew-border rounded-lg px-3 py-2 text-sm text-navy focus:outline-none focus:border-navy"
-                    value={answers[q.id] ?? ''}
-                    onChange={e => setAnswers(prev => ({ ...prev, [q.id]: e.target.value }))}
-                    placeholder="0"
-                  />
-                )}
-              </div>
-            ))}
-          </div>
-
-          <div className="mt-6 flex items-center gap-3">
-            <button
-              onClick={handleSave}
-              disabled={saving}
-              className="px-6 py-2 bg-navy text-white rounded-lg text-sm font-semibold hover:bg-navy/90 transition-colors disabled:opacity-50"
-            >
-              {saving ? 'Saving…' : existingId ? 'Update submission' : 'Submit update'}
-            </button>
-            {saved && <span className="text-sm text-green-600 font-medium">✓ Saved</span>}
-          </div>
+      {existingId && (
+        <div className="mb-4 px-3 py-2 bg-amber-50 border border-amber-200 rounded-lg text-xs text-amber-700">
+          You've already submitted this week — saving will overwrite your previous entry.
         </div>
+      )}
+
+      {member && renderQuestions()}
+
+      {member && (
+        <button
+          onClick={handleSubmit}
+          disabled={saving}
+          className="w-full mt-2 bg-navy text-white rounded-lg py-2.5 text-sm font-semibold hover:bg-navy/90 transition-colors disabled:opacity-60 flex items-center justify-center gap-2"
+        >
+          {saved ? <><Check className="w-4 h-4" /> Saved!</> : saving ? 'Saving…' : 'Submit weekly update'}
+        </button>
       )}
     </div>
   );
