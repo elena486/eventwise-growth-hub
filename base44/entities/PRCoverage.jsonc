@@ -1,0 +1,22 @@
+{
+  "name": "PRCoverage",
+  "type": "object",
+  "properties": {
+    "publication": {
+      "type": "string"
+    },
+    "date": {
+      "type": "string",
+      "format": "date"
+    },
+    "headline": {
+      "type": "string"
+    },
+    "link": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "publication"
+  ]
+}

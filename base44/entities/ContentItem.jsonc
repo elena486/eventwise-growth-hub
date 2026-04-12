@@ -1,0 +1,53 @@
+{
+  "name": "ContentItem",
+  "type": "object",
+  "properties": {
+    "title": {
+      "type": "string"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "Ideas",
+        "In Progress",
+        "Ready to Publish",
+        "Scheduled",
+        "Published",
+        "Cancelled"
+      ]
+    },
+    "format": {
+      "type": "string",
+      "enum": [
+        "Written",
+        "Video",
+        "Carousel",
+        "Poll"
+      ]
+    },
+    "platform": {
+      "type": "string",
+      "default": "LinkedIn"
+    },
+    "pagePostedOn": {
+      "type": "string",
+      "description": "Comma-separated: Eventwise Page, Personal Chris"
+    },
+    "publishDate": {
+      "type": "string",
+      "format": "date"
+    },
+    "publishedUrl": {
+      "type": "string"
+    },
+    "performance": {
+      "type": "string"
+    },
+    "notes": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "title"
+  ]
+}

@@ -1,0 +1,27 @@
+{
+  "name": "SprintSubmission",
+  "type": "object",
+  "properties": {
+    "memberName": {
+      "type": "string"
+    },
+    "weekStart": {
+      "type": "string",
+      "description": "ISO date of Monday of that week (YYYY-MM-DD)"
+    },
+    "answers": {
+      "type": "string",
+      "description": "JSON stringified answers object"
+    },
+    "kpi1Value": {
+      "type": "number"
+    },
+    "kpi2Value": {
+      "type": "number"
+    }
+  },
+  "required": [
+    "memberName",
+    "weekStart"
+  ]
+}

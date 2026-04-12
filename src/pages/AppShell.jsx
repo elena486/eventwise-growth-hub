@@ -7,6 +7,9 @@ import Clients from './Clients';
 import Onboarding from './Onboarding';
 import HealthRenewals from './HealthRenewals';
 import Deals from './Deals';
+import Sprints from './Sprints';
+import Marketing from './Marketing';
+import Handbook from './Handbook';
 import { LOGO_BLACK } from '@/lib/proposalData';
 
 const TABS = [
@@ -16,6 +19,9 @@ const TABS = [
   { id: 'onboarding', label: 'Onboarding' },
   { id: 'health', label: 'Health & Renewals' },
   { id: 'deals', label: 'Deals' },
+  { id: 'sprints', label: 'Sprints' },
+  { id: 'marketing', label: 'Marketing' },
+  { id: 'handbook', label: 'Handbook' },
 ];
 
 export default function AppShell() {
@@ -124,6 +130,9 @@ export default function AppShell() {
         {tab === 'onboarding' && <Onboarding focusClientId={focusClientId} />}
         {tab === 'health' && <HealthRenewals focusClientId={focusClientId} />}
         {tab === 'deals' && <Deals onRenewalProposal={(data) => { handleProposalHandoff(data); }} />}
+        {tab === 'sprints' && <Sprints />}
+        {tab === 'marketing' && <Marketing />}
+        {tab === 'handbook' && <Handbook />}
       </div>
     </div>
   );
