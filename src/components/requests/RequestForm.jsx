@@ -37,16 +37,28 @@ export default function RequestForm({ onSubmitted }) {
     // Get count for request number
     const existing = await base44.entities.Request.list('-requestNumber', 1);
     const nextNum = existing.length > 0 ? (existing[0].requestNumber || 0) + 1 : 1;
+    const submittedAt = new Date().toISOString();
 
     await base44.entities.Request.create({
       ...form,
       requestNumber: nextNum,
       status: 'New',
-      submittedAt: new Date().toISOString(),
+      submittedAt,
       attachmentUrl,
       attachmentName,
       archived: false,
     });
+
+    base44.functions.invoke('notifyNewRequest', {
+      requestedBy: form.requestedBy,
+      title: form.title,
+      category: form.category,
+      priority: form.priority,
+      deadline: form.deadline,
+      description: form.description,
+      extraNotes: form.extraNotes,
+      submittedAt,
+    }).catch(() => {});
 
     setSubmitting(false);
     setDone(true);
