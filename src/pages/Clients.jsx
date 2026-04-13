@@ -1,15 +1,17 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { base44 } from '@/api/base44Client';
 import { format, isPast, differenceInDays } from 'date-fns';
-import { Plus, AlertTriangle } from 'lucide-react';
+import { Plus, AlertTriangle, Sparkles } from 'lucide-react';
 import ClientModal from '@/components/clients/ClientModal';
 import InlineCell from '@/components/shared/InlineCell';
+import SmartAlertsPanel from '@/components/cs/SmartAlertsPanel';
+import AINextActionPanel from '@/components/cs/AINextActionPanel';
+import AIEmailDraftModal from '@/components/cs/AIEmailDraftModal';
 import { STATUS_STYLES, HEALTH_DOT, OWNER_INITIALS, OWNER_COLORS, initTasks } from '@/lib/csData';
 
 const STATUS_ORDER = ['Live', 'Onboarding', 'Trial', 'Churn'];
 const STATUSES = ['Trial', 'Onboarding', 'Live', 'Churn'];
 const OWNERS = ['Chris Carter', 'Martinique Keeler'];
-const SECONDARY_OWNERS = ['Chris Carter', 'Martinique Keeler', 'None'];
 
 function fmtDate(d) {
   if (!d) return '—';
@@ -50,6 +52,10 @@ export default function Clients({ onViewHealth, onViewOnboarding }) {
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState('All');
   const [showAddModal, setShowAddModal] = useState(false);
+  const [aiPanelClient, setAiPanelClient] = useState(null);
+  const [aiPanelAlert, setAiPanelAlert] = useState(null);
+  const [emailModal, setEmailModal] = useState(null);
+  const aiPanelRef = useRef(null);
 
   const load = async () => {
     const data = await base44.entities.Client.list('-created_date');
@@ -62,7 +68,6 @@ export default function Clients({ onViewHealth, onViewOnboarding }) {
   const handleUpdateField = async (id, field, value) => {
     setClients(prev => prev.map(c => c.id === id ? { ...c, [field]: value } : c));
     await base44.entities.Client.update(id, { [field]: value });
-    // If moved to Onboarding, create checklist if not exists
     if (field === 'status' && value === 'Onboarding') {
       const existing = await base44.entities.OnboardingRecord.filter({ clientId: id });
       if (existing.length === 0) {
@@ -108,8 +113,21 @@ export default function Clients({ onViewHealth, onViewOnboarding }) {
 
   const save = (id, field) => (value) => handleUpdateField(id, field, value);
 
+  const handleSuggestAction = (client, alert) => {
+    setAiPanelClient(client);
+    setAiPanelAlert(alert || null);
+  };
+
+  const handleDraftEmail = (client, suggestion, emailType) => {
+    setAiPanelClient(null);
+    setEmailModal({ client, aiSuggestion: suggestion, emailType });
+  };
+
   return (
     <div className="flex-1 bg-ew-bg overflow-y-auto p-8 font-dm">
+      {/* Smart Alerts */}
+      {!loading && <SmartAlertsPanel clients={clients} onSuggestAction={handleSuggestAction} />}
+
       {/* Header */}
       <div className="flex items-start justify-between mb-6">
         <div>
@@ -208,7 +226,7 @@ export default function Clients({ onViewHealth, onViewOnboarding }) {
                     />
                   </td>
 
-                  {/* Health — read-only display */}
+                  {/* Health */}
                   <td className="px-4 py-3 min-w-[100px]">
                     <HealthCell client={c} />
                   </td>
@@ -244,6 +262,28 @@ export default function Clients({ onViewHealth, onViewOnboarding }) {
                       {c.status === 'Onboarding' && (
                         <button onClick={() => onViewOnboarding(c)} className="text-xs px-2.5 py-1.5 font-medium text-ew-body border border-ew-border rounded-lg hover:bg-ew-bg transition-colors">Onboarding</button>
                       )}
+                      <div className="relative" ref={aiPanelClient?.id === c.id ? aiPanelRef : null}>
+                        <button
+                          onClick={() => aiPanelClient?.id === c.id ? setAiPanelClient(null) : handleSuggestAction(c, null)}
+                          className="text-xs px-2.5 py-1.5 font-medium text-[#8403C5] border border-[#8403C5]/30 rounded-lg hover:bg-[#8403C5]/5 transition-colors flex items-center gap-1"
+                        >
+                          <Sparkles className="w-3 h-3" /> AI
+                        </button>
+                        {aiPanelClient?.id === c.id && (
+                          <AINextActionPanel
+                            client={c}
+                            alert={aiPanelAlert}
+                            onClose={() => setAiPanelClient(null)}
+                            onDraftEmail={(client, suggestion) => handleDraftEmail(client, suggestion, null)}
+                          />
+                        )}
+                      </div>
+                      <button
+                        onClick={() => handleDraftEmail(c, null, null)}
+                        className="text-xs px-2.5 py-1.5 font-medium text-ew-muted border border-ew-border rounded-lg hover:bg-ew-bg transition-colors"
+                      >
+                        Draft email
+                      </button>
                     </div>
                   </td>
                 </tr>
@@ -258,6 +298,16 @@ export default function Clients({ onViewHealth, onViewOnboarding }) {
 
       {showAddModal && (
         <ClientModal client={null} onSave={handleAddClient} onClose={() => setShowAddModal(false)} />
+      )}
+
+      {emailModal && (
+        <AIEmailDraftModal
+          client={emailModal.client}
+          initialEmailType={emailModal.emailType}
+          aiSuggestion={emailModal.aiSuggestion}
+          onClose={() => setEmailModal(null)}
+          onTouchpointLogged={() => { setEmailModal(null); load(); }}
+        />
       )}
     </div>
   );
