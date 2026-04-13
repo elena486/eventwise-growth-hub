@@ -28,7 +28,7 @@ export default function Requests() {
       </div>
 
       {/* Content */}
-      <div className="flex-1 overflow-hidden flex">
+      <div className="flex-1 overflow-y-auto">
         {tab === 'form' && <RequestForm onSubmitted={handleSubmitted} />}
         {tab === 'board' && <RequestBoard refresh={boardRefresh} />}
       </div>
