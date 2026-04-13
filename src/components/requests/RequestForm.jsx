@@ -80,7 +80,7 @@ export default function RequestForm({ onSubmitted }) {
   }
 
   return (
-    <form onSubmit={handleSubmit} className="max-w-xl mx-auto py-10 px-4 flex flex-col gap-6">
+    <form onSubmit={handleSubmit} className="max-w-xl mx-auto py-10 px-4 pb-16 flex flex-col gap-6">
       <div>
         <h2 className="text-xl font-bold text-navy mb-1">Submit a Request</h2>
         <p className="text-sm text-ew-muted">Fill in the details below and Elena will action it.</p>
