@@ -1,0 +1,154 @@
+import React, { useState } from 'react';
+import { base44 } from '@/api/base44Client';
+import { CheckCircle2 } from 'lucide-react';
+
+const REQUESTERS = ['Chris', 'Martinique', 'George', 'Ramesh', 'Sreeja', 'David'];
+const CATEGORIES = ['Marketing', 'Design', 'Content', 'Ops', 'Tech', 'Other'];
+const PRIORITIES = [
+  { label: 'Low', cls: 'bg-gray-100 text-gray-600 border-gray-300' },
+  { label: 'Medium', cls: 'bg-blue-100 text-blue-700 border-blue-300' },
+  { label: 'High', cls: 'bg-amber-100 text-amber-700 border-amber-300' },
+  { label: 'Urgent', cls: 'bg-red-100 text-red-700 border-red-300' },
+];
+
+const DEFAULT = { requestedBy: '', title: '', category: '', priority: 'Medium', description: '', deadline: '', extraNotes: '' };
+
+export default function RequestForm({ onSubmitted }) {
+  const [form, setForm] = useState(DEFAULT);
+  const [file, setFile] = useState(null);
+  const [submitting, setSubmitting] = useState(false);
+  const [done, setDone] = useState(false);
+
+  const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (!form.title || !form.requestedBy) return;
+    setSubmitting(true);
+
+    let attachmentUrl = '';
+    let attachmentName = '';
+    if (file) {
+      const { file_url } = await base44.integrations.Core.UploadFile({ file });
+      attachmentUrl = file_url;
+      attachmentName = file.name;
+    }
+
+    // Get count for request number
+    const existing = await base44.entities.Request.list('-requestNumber', 1);
+    const nextNum = existing.length > 0 ? (existing[0].requestNumber || 0) + 1 : 1;
+
+    await base44.entities.Request.create({
+      ...form,
+      requestNumber: nextNum,
+      status: 'New',
+      submittedAt: new Date().toISOString(),
+      attachmentUrl,
+      attachmentName,
+      archived: false,
+    });
+
+    setSubmitting(false);
+    setDone(true);
+    setTimeout(() => {
+      setDone(false);
+      setForm(DEFAULT);
+      setFile(null);
+      if (onSubmitted) onSubmitted();
+    }, 2500);
+  };
+
+  if (done) {
+    return (
+      <div className="flex flex-col items-center justify-center py-24 gap-4">
+        <CheckCircle2 className="w-12 h-12 text-green-500" />
+        <p className="text-lg font-bold text-navy">Thanks — Elena will pick this up soon.</p>
+      </div>
+    );
+  }
+
+  return (
+    <form onSubmit={handleSubmit} className="max-w-xl mx-auto py-10 px-4 flex flex-col gap-6">
+      <div>
+        <h2 className="text-xl font-bold text-navy mb-1">Submit a Request</h2>
+        <p className="text-sm text-ew-muted">Fill in the details below and Elena will action it.</p>
+      </div>
+
+      {/* Your name */}
+      <Field label="Your name" required>
+        <select value={form.requestedBy} onChange={e => set('requestedBy', e.target.value)} required className={selectCls}>
+          <option value="">Select your name…</option>
+          {REQUESTERS.map(r => <option key={r}>{r}</option>)}
+        </select>
+      </Field>
+
+      {/* Title */}
+      <Field label="Request title" required>
+        <input value={form.title} onChange={e => set('title', e.target.value)} required placeholder="e.g. Update sales deck" className={inputCls} />
+      </Field>
+
+      {/* Category */}
+      <Field label="Category" required>
+        <select value={form.category} onChange={e => set('category', e.target.value)} required className={selectCls}>
+          <option value="">Select a category…</option>
+          {CATEGORIES.map(c => <option key={c}>{c}</option>)}
+        </select>
+      </Field>
+
+      {/* Description */}
+      <Field label="Description" required>
+        <textarea value={form.description} onChange={e => set('description', e.target.value)} required placeholder="Describe what you need and any relevant context..." rows={4} className={inputCls + ' resize-none'} />
+      </Field>
+
+      {/* Priority */}
+      <Field label="Priority">
+        <div className="flex gap-2 flex-wrap">
+          {PRIORITIES.map(p => (
+            <button type="button" key={p.label} onClick={() => set('priority', p.label)}
+              className={`px-4 py-1.5 rounded-full text-sm font-semibold border transition-all ${p.cls} ${form.priority === p.label ? 'ring-2 ring-offset-1 ring-[#8403C5]/40 scale-105' : 'opacity-60 hover:opacity-100'}`}>
+              {p.label}
+            </button>
+          ))}
+        </div>
+      </Field>
+
+      {/* Deadline */}
+      <Field label="Do you need this by a specific date?" hint="Optional">
+        <input type="date" value={form.deadline} onChange={e => set('deadline', e.target.value)} className={inputCls} />
+      </Field>
+
+      {/* Attachment */}
+      <Field label="Attachments" hint="Optional — images, PDFs, docs">
+        <input type="file" accept="image/*,.pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx"
+          onChange={e => setFile(e.target.files[0] || null)}
+          className="text-sm text-ew-body file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-navy/10 file:text-navy hover:file:bg-navy/20 cursor-pointer" />
+        {file && <p className="text-xs text-ew-muted mt-1">Selected: {file.name}</p>}
+      </Field>
+
+      {/* Extra notes */}
+      <Field label="Anything else Elena should know?" hint="Optional">
+        <textarea value={form.extraNotes} onChange={e => set('extraNotes', e.target.value)} placeholder="Any extra context, links, references…" rows={3} className={inputCls + ' resize-none'} />
+      </Field>
+
+      <button type="submit" disabled={submitting}
+        className="self-start px-6 py-2.5 bg-[#8403C5] hover:bg-[#6d02a3] text-white text-sm font-bold rounded-lg transition-colors disabled:opacity-60">
+        {submitting ? 'Submitting…' : 'Submit Request'}
+      </button>
+    </form>
+  );
+}
+
+function Field({ label, required, hint, children }) {
+  return (
+    <div className="flex flex-col gap-1.5">
+      <label className="text-sm font-semibold text-navy">
+        {label}{required && <span className="text-red-400 ml-0.5">*</span>}
+        {hint && <span className="text-ew-muted font-normal ml-1.5">({hint})</span>}
+      </label>
+      {children}
+    </div>
+  );
+}
+
+const inputCls = 'w-full px-3 py-2 border border-ew-border rounded-lg text-sm text-ew-body bg-white focus:outline-none focus:ring-2 focus:ring-[#8403C5]/20 focus:border-[#8403C5]/50';
+const selectCls = inputCls;

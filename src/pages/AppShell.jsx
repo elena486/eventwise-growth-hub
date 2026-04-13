@@ -10,6 +10,7 @@ import Deals from './Deals';
 import Sprints from './Sprints';
 import Marketing from './Marketing';
 import Handbook from './Handbook';
+import Requests from './Requests';
 import { LOGO_BLACK } from '@/lib/proposalData';
 
 const TABS = [
@@ -22,6 +23,7 @@ const TABS = [
   { id: 'sprints', label: 'Sprints' },
   { id: 'marketing', label: 'Marketing' },
   { id: 'handbook', label: 'Handbook' },
+  { id: 'requests', label: 'Requests' },
 ];
 
 export default function AppShell() {
@@ -133,6 +135,7 @@ export default function AppShell() {
         {tab === 'sprints' && <Sprints />}
         {tab === 'marketing' && <Marketing />}
         {tab === 'handbook' && <Handbook />}
+        {tab === 'requests' && <Requests />}
       </div>
     </div>
   );

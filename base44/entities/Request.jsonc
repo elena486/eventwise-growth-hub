@@ -1,0 +1,74 @@
+{
+  "name": "Request",
+  "type": "object",
+  "properties": {
+    "requestNumber": {
+      "type": "number"
+    },
+    "title": {
+      "type": "string"
+    },
+    "requestedBy": {
+      "type": "string"
+    },
+    "category": {
+      "type": "string",
+      "enum": [
+        "Marketing",
+        "Design",
+        "Content",
+        "Ops",
+        "Tech",
+        "Other",
+        "Self"
+      ]
+    },
+    "priority": {
+      "type": "string",
+      "enum": [
+        "Low",
+        "Medium",
+        "High",
+        "Urgent"
+      ]
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "New",
+        "In Progress",
+        "Waiting",
+        "Done",
+        "Cancelled"
+      ]
+    },
+    "description": {
+      "type": "string"
+    },
+    "deadline": {
+      "type": "string",
+      "format": "date"
+    },
+    "extraNotes": {
+      "type": "string"
+    },
+    "notes": {
+      "type": "string"
+    },
+    "attachmentUrl": {
+      "type": "string"
+    },
+    "attachmentName": {
+      "type": "string"
+    },
+    "archived": {
+      "type": "boolean"
+    },
+    "submittedAt": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "title"
+  ]
+}
