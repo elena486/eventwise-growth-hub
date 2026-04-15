@@ -89,7 +89,7 @@ export default function ContentKanban() {
       item={selected === 'new' ? null : selected}
       onSave={handleSave}
       onBack={() => setSelected(null)}
-      onDelete={(id) => setConfirmId(id)}
+      onDelete={handleDelete}
     />
   );
 
