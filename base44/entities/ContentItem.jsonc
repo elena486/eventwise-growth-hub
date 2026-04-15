@@ -45,6 +45,14 @@
     },
     "notes": {
       "type": "string"
+    },
+    "fileUrl": {
+      "type": "string",
+      "description": "Uploaded file URL"
+    },
+    "fileName": {
+      "type": "string",
+      "description": "Original file name"
     }
   },
   "required": [

@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { X } from 'lucide-react';
+import { X, Upload, FileText, Download } from 'lucide-react';
+import { base44 } from '@/api/base44Client';
 
 const STATUSES = ['Ideas', 'In Progress', 'Ready to Publish', 'Scheduled', 'Published', 'Cancelled'];
 const FORMATS = ['Written', 'Video', 'Carousel', 'Poll'];
@@ -16,7 +17,10 @@ export default function ContentItemModal({ item, onSave, onClose }) {
     publishedUrl: item?.publishedUrl || '',
     performance: item?.performance || '',
     notes: item?.notes || '',
+    fileUrl: item?.fileUrl || '',
+    fileName: item?.fileName || '',
   });
+  const [uploadingFile, setUploadingFile] = useState(false);
 
   const set = (k, v) => setForm(prev => ({ ...prev, [k]: v }));
 
@@ -29,6 +33,16 @@ export default function ContentItemModal({ item, onSave, onClose }) {
   };
 
   const selectedPages = form.pagePostedOn ? form.pagePostedOn.split(', ').filter(Boolean) : [];
+
+  const handleFileChange = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    setUploadingFile(true);
+    const { file_url } = await base44.integrations.Core.UploadFile({ file });
+    set('fileUrl', file_url);
+    set('fileName', file.name);
+    setUploadingFile(false);
+  };
 
   const handleSave = () => {
     if (!form.title.trim()) return;
@@ -91,6 +105,27 @@ export default function ContentItemModal({ item, onSave, onClose }) {
           <div>
             <label className="text-xs font-semibold text-ew-muted uppercase tracking-wide block mb-1">Notes / Draft</label>
             <textarea className="w-full border border-ew-border rounded-lg px-3 py-2 text-sm text-navy focus:outline-none resize-none" rows={3} value={form.notes} onChange={e => set('notes', e.target.value)} placeholder="Copy drafts, ideas, briefing notes…" />
+          </div>
+          <div>
+            <label className="text-xs font-semibold text-ew-muted uppercase tracking-wide block mb-1">File Attachment</label>
+            {form.fileUrl ? (
+              <div className="flex items-center gap-3 p-3 border border-ew-border rounded-lg bg-ew-bg">
+                <FileText className="w-5 h-5 text-navy shrink-0" />
+                <span className="text-sm text-ew-body flex-1 truncate">{form.fileName || 'Uploaded file'}</span>
+                <a href={form.fileUrl} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 text-xs font-semibold text-navy hover:underline shrink-0">
+                  <Download className="w-3.5 h-3.5" /> Download
+                </a>
+                <button type="button" onClick={() => { set('fileUrl', ''); set('fileName', ''); }} className="text-ew-muted hover:text-red-500 transition-colors">
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+            ) : (
+              <label className={`flex items-center gap-2 border border-dashed border-ew-border rounded-lg px-4 py-3 cursor-pointer hover:bg-ew-bg transition-colors ${uploadingFile ? 'opacity-60 pointer-events-none' : ''}`}>
+                <Upload className="w-4 h-4 text-ew-muted" />
+                <span className="text-sm text-ew-muted">{uploadingFile ? 'Uploading…' : 'Click to upload a file (jpg, png, pdf, mp4, etc.)'}</span>
+                <input type="file" className="hidden" onChange={handleFileChange} accept="image/*,video/*,.pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx" />
+              </label>
+            )}
           </div>
         </div>
         <div className="flex gap-3 p-5 border-t border-ew-border">
