@@ -141,6 +141,14 @@ export default function ContentKanban() {
                             <div ref={prov.innerRef} {...prov.draggableProps} {...prov.dragHandleProps}
                               onClick={() => setSelected(item)}
                               className={`bg-white rounded-xl p-3 mb-2 border cursor-pointer shadow-sm hover:shadow-md transition-shadow ${snap.isDragging ? 'shadow-lg border-[#8403C5]/30' : 'border-gray-200'}`}>
+                              {item.assetUrl && (
+                                <div className="mb-2 -mx-1">
+                                  {item.assetUrl.match(/\.(mp4|mov)/i)
+                                    ? <video src={item.assetUrl} className="w-full rounded-lg max-h-24 object-cover" muted />
+                                    : <img src={item.assetUrl} alt="" className="w-full rounded-lg max-h-24 object-cover" />
+                                  }
+                                </div>
+                              )}
                               <p className="text-xs font-semibold text-gray-900 mb-2 line-clamp-2">{item.title}</p>
                               {item.pagePostedOn && (
                                 <div className="flex flex-wrap gap-1 mb-2">

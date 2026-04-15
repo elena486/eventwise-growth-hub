@@ -53,6 +53,14 @@
     "fileName": {
       "type": "string",
       "description": "Original file name"
+    },
+    "assetUrl": {
+      "type": "string",
+      "description": "Uploaded asset URL (image or video)"
+    },
+    "assetName": {
+      "type": "string",
+      "description": "Original asset file name"
     }
   },
   "required": [

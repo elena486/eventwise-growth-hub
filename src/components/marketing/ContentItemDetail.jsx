@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { ArrowLeft, Trash2 } from 'lucide-react';
+import { ArrowLeft, Trash2, Upload, X } from 'lucide-react';
+import { base44 } from '@/api/base44Client';
 
 const STATUSES = ['Ideas', 'In Progress', 'Ready to Publish', 'Scheduled', 'Published', 'Cancelled'];
 const FORMATS = ['Written', 'Video', 'Carousel', 'Poll'];
@@ -7,12 +8,31 @@ const PAGES = ['Eventwise Page', 'Personal Chris'];
 
 const inputCls = "w-full border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-[#8403C5]";
 
+const isVideo = (url) => url && (url.includes('.mp4') || url.includes('.mov') || url.match(/video/i));
+
+function AssetPreview({ url, onRemove }) {
+  if (!url) return null;
+  return (
+    <div className="relative mt-2 inline-block">
+      {isVideo(url)
+        ? <video src={url} controls className="max-h-48 rounded-lg border border-gray-200" />
+        : <img src={url} alt="Asset" className="max-h-48 rounded-lg border border-gray-200 object-contain" />
+      }
+      <button onClick={onRemove} className="absolute -top-2 -right-2 bg-white border border-gray-200 rounded-full p-0.5 shadow hover:bg-red-50 hover:border-red-300 transition-colors">
+        <X className="w-3.5 h-3.5 text-gray-500 hover:text-red-500" />
+      </button>
+    </div>
+  );
+}
+
 export default function ContentItemDetail({ item, onSave, onBack, onDelete }) {
   const [form, setForm] = useState(item ? { ...item } : {
     title: '', status: 'Ideas', format: 'Written', platform: 'LinkedIn',
     pagePostedOn: '', publishDate: '', timePublished: '', publishedUrl: '',
-    performance: '', notes: '',
+    performance: '', notes: '', assetUrl: '', assetName: '',
   });
+  const [uploading, setUploading] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
 
   const f = (k, v) => setForm(p => ({ ...p, [k]: v }));
 
@@ -26,6 +46,16 @@ export default function ContentItemDetail({ item, onSave, onBack, onDelete }) {
 
   const selectedPages = (form.pagePostedOn || '').split(',').map(s => s.trim()).filter(Boolean);
 
+  const handleAssetUpload = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    setUploading(true);
+    const { file_url } = await base44.integrations.Core.UploadFile({ file });
+    f('assetUrl', file_url);
+    f('assetName', file.name);
+    setUploading(false);
+  };
+
   return (
     <div className="flex-1 overflow-y-auto bg-[#f5f6fa] p-6">
       <div className="flex items-center justify-between mb-5">
@@ -33,7 +63,11 @@ export default function ContentItemDetail({ item, onSave, onBack, onDelete }) {
           <ArrowLeft className="w-4 h-4" /> Back
         </button>
         <div className="flex gap-2">
-          {item && <button onClick={() => onDelete(item.id)} className="flex items-center gap-1.5 px-3 py-2 text-red-400 hover:text-red-600 border border-gray-200 rounded-lg text-sm bg-white"><Trash2 className="w-4 h-4" /> Delete</button>}
+          {item && (
+            <button onClick={() => setConfirmDelete(true)} className="flex items-center gap-1.5 px-3 py-2 text-red-400 hover:text-red-600 border border-gray-200 rounded-lg text-sm bg-white">
+              <Trash2 className="w-4 h-4" /> Delete
+            </button>
+          )}
           <button onClick={() => onSave(form)} className="px-4 py-2 bg-[#8403C5] text-white rounded-lg text-sm font-semibold hover:bg-[#6d02a3]">Save</button>
         </div>
       </div>
@@ -94,7 +128,32 @@ export default function ContentItemDetail({ item, onSave, onBack, onDelete }) {
           <label className="block text-xs text-gray-500 mb-1">Notes</label>
           <textarea rows={4} className={inputCls} value={form.notes || ''} onChange={e => f('notes', e.target.value)} placeholder="Copy drafts, ideas, briefing notes..." />
         </div>
+        <div>
+          <label className="block text-xs text-gray-500 mb-1">Asset</label>
+          {form.assetUrl ? (
+            <AssetPreview url={form.assetUrl} onRemove={() => { f('assetUrl', ''); f('assetName', ''); }} />
+          ) : (
+            <label className={`flex items-center gap-2 border border-dashed border-gray-300 rounded-lg px-4 py-3 cursor-pointer hover:bg-gray-50 transition-colors ${uploading ? 'opacity-60 pointer-events-none' : ''}`}>
+              <Upload className="w-4 h-4 text-gray-400" />
+              <span className="text-sm text-gray-400">{uploading ? 'Uploading…' : 'Upload image or video (jpg, png, gif, webp, mp4, mov)'}</span>
+              <input type="file" className="hidden" accept="image/jpeg,image/png,image/gif,image/webp,video/mp4,video/quicktime" onChange={handleAssetUpload} />
+            </label>
+          )}
+        </div>
       </div>
+
+      {/* Confirm Delete Modal */}
+      {confirmDelete && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[100] p-4">
+          <div className="bg-white rounded-2xl p-6 max-w-sm w-full shadow-2xl">
+            <p className="text-sm text-gray-800 mb-5">Are you sure you want to delete this post? This cannot be undone.</p>
+            <div className="flex gap-3 justify-end">
+              <button onClick={() => setConfirmDelete(false)} className="px-4 py-2 text-sm text-gray-600 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors">Cancel</button>
+              <button onClick={() => { setConfirmDelete(false); onDelete(item.id); }} className="px-4 py-2 text-sm text-white bg-red-500 rounded-lg hover:bg-red-600 transition-colors">Confirm Delete</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
