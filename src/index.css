@@ -303,6 +303,45 @@
   /* --- Nav rings --- */
   .dark .ring-navy { --tw-ring-color: #8403C5 !important; }
 
+  /* ============================================================
+     DARK MODE — FORCED TEXT COLOUR OVERRIDES
+     ============================================================ */
+
+  /* Headings */
+  .dark h1,
+  .dark h2,
+  .dark h3,
+  .dark h4,
+  .dark h5,
+  .dark h6 { color: #FFFFFF !important; }
+
+  /* Body / paragraph / list text */
+  .dark p { color: #E8E8F0 !important; }
+  .dark li { color: #E8E8F0 !important; }
+
+  /* Table cells */
+  .dark td { color: #E8E8F0 !important; }
+  .dark th { color: #FFFFFF !important; }
+
+  /* Labels */
+  .dark label { color: #C0C0E0 !important; }
+
+  /* Placeholder text (already set above, reinforced) */
+  .dark input::placeholder,
+  .dark textarea::placeholder { color: #6060A0 !important; opacity: 1 !important; }
+
+  /* Muted / secondary text */
+  .dark .text-muted-foreground { color: #9090B0 !important; }
+
+  /* Stat numbers on dashboard cards */
+  .dark .text-3xl,
+  .dark .text-4xl,
+  .dark .text-5xl { color: #FFFFFF !important; }
+
+  /* Empty state messages */
+  .dark .text-center p,
+  .dark .text-center span { color: #7070A0 !important; }
+
   /* --- Scrollbar --- */
   .dark ::-webkit-scrollbar { width: 6px; height: 6px; }
   .dark ::-webkit-scrollbar-track { background: #1E1E2E; }
