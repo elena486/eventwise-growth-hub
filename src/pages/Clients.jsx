@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { base44 } from '@/api/base44Client';
 import { format, isPast, differenceInDays, isToday } from 'date-fns';
-import { Plus, AlertTriangle, Sparkles } from 'lucide-react';
+import { Plus, AlertTriangle, Sparkles, ExternalLink } from 'lucide-react';
 import ClientModal from '@/components/clients/ClientModal';
 import ClientDetailPanel from '@/components/clients/ClientDetailPanel';
 import InlineCell from '@/components/shared/InlineCell';
@@ -237,7 +237,7 @@ export default function Clients({ onViewHealth, onViewOnboarding }) {
             </thead>
             <tbody>
               {sorted.map((c, i) => (
-                <tr key={c.id} className="border-b border-[#F2F2F4] last:border-0 hover:bg-[#F9FAFB] transition-colors cursor-pointer" onClick={() => setDetailClient(c)}>
+                <tr key={c.id} className="border-b border-[#F2F2F4] last:border-0 hover:bg-[#F9FAFB] transition-colors">
                   {/* Client name / contact */}
                   <td className="px-4 py-3 min-w-[180px]" onClick={e => e.stopPropagation()}>
                     <InlineCell value={c.name} onSave={save(c.id, 'name')} placeholder="Company name" className="font-semibold text-navy text-sm" />
@@ -298,7 +298,7 @@ export default function Clients({ onViewHealth, onViewOnboarding }) {
                   </td>
 
                   {/* Health */}
-                  <td className="px-4 py-3 min-w-[100px]">
+                  <td className="px-4 py-3 min-w-[100px] cursor-pointer" onClick={() => setDetailClient(c)}>
                     <HealthCell client={c} />
                   </td>
 
@@ -366,6 +366,14 @@ export default function Clients({ onViewHealth, onViewOnboarding }) {
                         className="text-xs px-2.5 py-1.5 font-medium text-[#6B7280] hover:text-[#111827] rounded-lg transition-colors"
                       >
                         Draft email
+                      </button>
+                      <button
+                        onClick={() => setDetailClient(c)}
+                        className="text-xs px-2.5 py-1.5 font-medium text-[#6B7280] hover:text-[#374151] bg-white hover:bg-[#F9FAFB] rounded-lg transition-colors flex items-center gap-1"
+                        style={{ border: '1.5px solid #E5E7EB' }}
+                        title="View details"
+                      >
+                        <ExternalLink className="w-3 h-3" /> View
                       </button>
                     </div>
                   </td>
