@@ -19,10 +19,10 @@ export default function Requests() {
   return (
     <div className="flex flex-col flex-1 overflow-hidden font-dm">
       {/* Sub-tab header */}
-      <div className="bg-white border-b border-[#EBEBEB] shrink-0 px-8 flex items-center gap-1 h-11">
+      <div className="bg-white border-b border-[#EBEBEB] shrink-0 px-8 flex items-center gap-1 h-10">
         {TABS.map(t => (
           <button key={t.id} onClick={() => setTab(t.id)}
-            className={`px-4 py-2 text-[13px] font-medium transition-all duration-150 relative ${tab === t.id ? 'text-[#111827]' : 'text-[#6B7280] hover:text-[#111827]'}`}>
+            className={`px-4 py-1.5 text-[13px] font-medium transition-all duration-150 relative ${tab === t.id ? 'text-[#111827]' : 'text-[#6B7280] hover:text-[#111827]'}`}>
             {t.label}
             {tab === t.id && <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-[#8403C5] rounded-t-full" />}
           </button>

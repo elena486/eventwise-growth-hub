@@ -5,13 +5,13 @@ import { calcHealth, HEALTH_DOT } from '@/lib/csData';
 import { AlertTriangle, TrendingUp, TrendingDown, Minus } from 'lucide-react';
 
 const SCORE_CHIP = (v) => {
-  if (!v) return 'bg-gray-100 text-gray-400';
-  if (v <= 2) return 'bg-red-100 text-red-600';
-  if (v === 3) return 'bg-amber-100 text-amber-700';
-  return 'bg-emerald-100 text-emerald-700';
+  if (!v) return 'bg-[#F3F4F6] text-[#9CA3AF]';
+  if (v <= 2) return 'bg-[#FEE2E2] text-[#B91C1C]';
+  if (v === 3) return 'bg-[#FEF9C3] text-[#A16207]';
+  return 'bg-[#DCFCE7] text-[#15803D]';
 };
 
-const RATING_BADGE = { Green: 'bg-emerald-50 text-emerald-700', Yellow: 'bg-amber-50 text-amber-700', Red: 'bg-red-50 text-red-600' };
+const RATING_BADGE = { Green: 'bg-[#DCFCE7] text-[#15803D]', Yellow: 'bg-[#FEF9C3] text-[#A16207]', Red: 'bg-[#FEE2E2] text-[#B91C1C]' };
 
 function fmtDate(d) {
   if (!d) return '—';
@@ -112,91 +112,87 @@ export default function HealthRenewals({ focusClientId }) {
   });
 
   return (
-    <div className="flex-1 bg-ew-bg overflow-y-auto p-8 font-dm">
+    <div className="flex-1 bg-[#F7F7F8] overflow-y-auto p-8 font-dm">
       <div className="mb-6">
-        <h1 className="text-2xl font-bold text-navy">Health & Renewals</h1>
-        <p className="text-ew-muted text-sm mt-0.5">Live client health scores — click any score chip to edit inline</p>
+        <h1 className="text-2xl font-semibold text-[#111827]">Health & Renewals</h1>
+        <p className="text-[#9CA3AF] text-sm mt-0.5">Live client health scores — click any score chip to edit inline</p>
       </div>
 
       {/* Stats */}
       <div className="grid grid-cols-5 gap-4 mb-6">
         {[
-          { label: 'Avg health score', value: `${avgScore}/35` },
-          { label: 'Green', value: greenCount, dot: 'bg-emerald-500' },
-          { label: 'Yellow', value: yellowCount, dot: 'bg-amber-400' },
-          { label: 'Red', value: redCount, dot: 'bg-red-500' },
-          { label: 'Renewals in 60 days', value: renewalSoon },
+          { label: 'Avg health score', value: `${avgScore}/35`, color: '#8403C5' },
+          { label: 'Green', value: greenCount, color: '#15803D' },
+          { label: 'Yellow', value: yellowCount, color: '#A16207' },
+          { label: 'Red', value: redCount, color: '#B91C1C' },
+          { label: 'Renewals in 60 days', value: renewalSoon, color: '#1D4ED8' },
         ].map(c => (
-          <div key={c.label} className="bg-white border border-ew-border rounded-xl p-5">
-            <div className="flex items-center gap-1.5 mb-1">
-              {c.dot && <span className={`w-2 h-2 rounded-full ${c.dot}`} />}
-              <p className="text-xs font-medium text-ew-muted uppercase tracking-[0.12em]">{c.label}</p>
-            </div>
-            <p className="text-2xl font-bold text-navy">{c.value}</p>
+          <div key={c.label} className="bg-white rounded-xl p-5" style={{ boxShadow: '0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04)', borderLeft: `4px solid ${c.color}` }}>
+            <p className="text-[11px] font-bold text-[#9CA3AF] uppercase tracking-[0.08em] mb-1">{c.label}</p>
+            <p className="text-3xl font-bold text-[#111827]">{c.value}</p>
           </div>
         ))}
       </div>
 
       {loading ? (
-        <div className="flex items-center justify-center h-48"><div className="w-6 h-6 border-2 border-navy/20 border-t-navy rounded-full animate-spin" /></div>
+        <div className="flex items-center justify-center h-48"><div className="w-6 h-6 border-2 border-[#8403C5]/20 border-t-[#8403C5] rounded-full animate-spin" /></div>
       ) : (
         <>
-          <div className="bg-white border border-ew-border rounded-xl overflow-x-auto mb-6">
+          <div className="bg-white rounded-xl overflow-x-auto mb-6" style={{ boxShadow: '0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04)' }}>
             <table className="w-full text-sm">
-              <thead className="bg-ew-footer border-b border-ew-border">
-                <tr>
-                  <th className="px-4 py-3 text-left text-[11px] font-semibold text-ew-muted uppercase tracking-[0.12em]">Client</th>
-                  <th className="px-4 py-3 text-left text-[11px] font-semibold text-ew-muted uppercase tracking-[0.12em]">Tier</th>
-                  <th className="px-4 py-3 text-left text-[11px] font-semibold text-ew-muted uppercase tracking-[0.12em]">Score</th>
-                  <th className="px-4 py-3 text-left text-[11px] font-semibold text-ew-muted uppercase tracking-[0.12em]">Quadrant</th>
-                  <th className="px-4 py-3 text-left text-[11px] font-semibold text-ew-muted uppercase tracking-[0.12em] min-w-[360px]">Sub-scores (click to edit)</th>
-                  <th className="px-4 py-3 text-left text-[11px] font-semibold text-ew-muted uppercase tracking-[0.12em]">Trend</th>
-                  <th className="px-4 py-3 text-left text-[11px] font-semibold text-ew-muted uppercase tracking-[0.12em]">Renewal</th>
+              <thead>
+                <tr className="border-b border-[#EBEBEB]">
+                  <th className="px-4 py-3.5 text-left text-[11px] font-bold text-[#9CA3AF] uppercase tracking-[0.08em]">Client</th>
+                  <th className="px-4 py-3.5 text-left text-[11px] font-bold text-[#9CA3AF] uppercase tracking-[0.08em]">Tier</th>
+                  <th className="px-4 py-3.5 text-left text-[11px] font-bold text-[#9CA3AF] uppercase tracking-[0.08em]">Score</th>
+                  <th className="px-4 py-3.5 text-left text-[11px] font-bold text-[#9CA3AF] uppercase tracking-[0.08em]">Quadrant</th>
+                  <th className="px-4 py-3.5 text-left text-[11px] font-bold text-[#9CA3AF] uppercase tracking-[0.08em] min-w-[360px]">Sub-scores (click to edit)</th>
+                  <th className="px-4 py-3.5 text-left text-[11px] font-bold text-[#9CA3AF] uppercase tracking-[0.08em]">Trend</th>
+                  <th className="px-4 py-3.5 text-left text-[11px] font-bold text-[#9CA3AF] uppercase tracking-[0.08em]">Renewal</th>
                 </tr>
               </thead>
               <tbody>
-                {allCls.map((c, i) => {
+                {allCls.map((c) => {
                   const latest = getLatestScore(c.id);
                   const prev = getPrevScore(c.id);
                   const trend = prev && latest ? (latest.totalScore > prev.totalScore ? 'up' : latest.totalScore < prev.totalScore ? 'down' : 'flat') : 'flat';
                   const hasData = latest && latest.totalScore > 0;
                   return (
-                    <tr key={c.id} className={`border-b border-ew-border last:border-0 hover:bg-navy/[0.02] transition-colors ${i % 2 === 1 ? 'bg-[#FAFBFE]' : 'bg-white'}`}>
+                    <tr key={c.id} className="border-b border-[#F2F2F4] last:border-0 hover:bg-[#F9FAFB] transition-colors">
                       <td className="px-4 py-3">
-                        <p className="font-semibold text-navy text-sm">{c.name}</p>
-                        <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded-full ${c.status === 'Live' ? 'bg-emerald-50 text-emerald-700' : 'bg-blue-50 text-blue-700'}`}>{c.status}</span>
+                        <p className="font-medium text-[#111827] text-sm">{c.name}</p>
+                        <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded-md ${c.status === 'Live' ? 'bg-[#DCFCE7] text-[#15803D]' : 'bg-[#DBEAFE] text-[#1D4ED8]'}`}>{c.status}</span>
                       </td>
                       <td className="px-4 py-3">
                         {c.priorityTier ? (
-                          <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded-full whitespace-nowrap ${
-                            c.priorityTier === 'Tier 1 — Strategic' ? 'bg-yellow-50 text-yellow-700' :
-                            c.priorityTier === 'Tier 2 — Core' ? 'bg-blue-50 text-blue-700' :
-                            c.priorityTier === 'At Risk' ? 'bg-red-50 text-red-700' :
-                            'bg-gray-100 text-gray-600'
+                          <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded-md whitespace-nowrap ${
+                            c.priorityTier === 'Tier 1 — Strategic' ? 'bg-[#FEF9C3] text-[#A16207]' :
+                            c.priorityTier === 'Tier 2 — Core' ? 'bg-[#DBEAFE] text-[#1D4ED8]' :
+                            c.priorityTier === 'At Risk' ? 'bg-[#FEE2E2] text-[#B91C1C]' :
+                            'bg-[#F3F4F6] text-[#6B7280]'
                           }`}>{
                             c.priorityTier === 'Tier 1 — Strategic' ? 'T1' :
                             c.priorityTier === 'Tier 2 — Core' ? 'T2' :
                             c.priorityTier === 'Tier 3 — Standard' ? 'T3' : 'At Risk'
                           }</span>
-                        ) : <span className="text-ew-muted text-xs">—</span>}
+                        ) : <span className="text-[#9CA3AF] text-xs">—</span>}
                       </td>
                       <td className="px-4 py-3">
                         {hasData ? (
-                          <div className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg ${RATING_BADGE[c.healthRating] || 'bg-gray-100 text-gray-600'}`}>
+                          <div className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-lg ${RATING_BADGE[c.healthRating] || 'bg-[#F3F4F6] text-[#6B7280]'}`}>
                             <span className="font-bold text-sm">{c.healthScore}</span>
-                            <span className="text-xs opacity-60">/35</span>
+                            <span className="text-xs opacity-70">/35</span>
                           </div>
                         ) : (
-                          <span className="text-red-500 text-xs flex items-center gap-1"><AlertTriangle className="w-3 h-3" />No data</span>
+                          <span className="text-[#B91C1C] text-xs flex items-center gap-1"><AlertTriangle className="w-3 h-3" />No data</span>
                         )}
                       </td>
                       <td className="px-4 py-3">
                         {c.healthQuadrant
-                          ? <span className="text-[11px] font-medium px-2 py-1 bg-ew-bg text-ew-body rounded-lg whitespace-nowrap">{c.healthQuadrant}</span>
-                          : <span className="text-ew-muted text-sm">—</span>}
+                          ? <span className="text-[11px] font-medium px-2 py-1 bg-[#F7F7F8] text-[#374151] rounded-lg whitespace-nowrap">{c.healthQuadrant}</span>
+                          : <span className="text-[#9CA3AF] text-sm">—</span>}
                       </td>
 
-                      {/* Sub-score chips — inline editable */}
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-1.5">
                           {SUB_FIELDS.map(({ key, label }) => {
@@ -210,7 +206,7 @@ export default function HealthRenewals({ focusClientId }) {
                                     type="number" min="1" max="5"
                                     defaultValue={v || ''}
                                     autoFocus
-                                    className="w-8 h-7 text-center text-xs font-bold border-2 border-navy rounded-lg focus:outline-none bg-white"
+                                    className="w-8 h-7 text-center text-xs font-bold border-2 border-[#8403C5] rounded-lg focus:outline-none bg-white"
                                     onBlur={(e) => { const val = parseInt(e.target.value); if (val >= 1 && val <= 5) handleUpdateSubScore(c.id, key, val); else setEditingScore(null); }}
                                     onKeyDown={(e) => {
                                       if (e.key === 'Enter') { const val = parseInt(e.target.value); if (val >= 1 && val <= 5) handleUpdateSubScore(c.id, key, val); else setEditingScore(null); }
@@ -220,13 +216,13 @@ export default function HealthRenewals({ focusClientId }) {
                                 ) : (
                                   <span
                                     title={`Click to edit ${label}`}
-                                    className={`text-xs font-bold w-7 h-7 flex items-center justify-center rounded-lg cursor-pointer hover:ring-2 hover:ring-navy/40 transition-all ${SCORE_CHIP(v)} ${isFlashed ? 'bg-[#E1F5EE] ring-2 ring-emerald-300' : ''}`}
+                                    className={`text-xs font-bold w-7 h-7 flex items-center justify-center rounded-lg cursor-pointer hover:ring-2 hover:ring-[#8403C5]/30 transition-all ${SCORE_CHIP(v)} ${isFlashed ? 'ring-2 ring-[#15803D]/40' : ''}`}
                                     onClick={() => setEditingScore({ clientId: c.id, field: key })}
                                   >
                                     {v || '—'}
                                   </span>
                                 )}
-                                <span className="text-[9px] text-ew-muted leading-none">{label}</span>
+                                <span className="text-[9px] text-[#9CA3AF] leading-none">{label}</span>
                               </div>
                             );
                           })}
@@ -234,25 +230,24 @@ export default function HealthRenewals({ focusClientId }) {
                       </td>
 
                       <td className="px-4 py-3">
-                        {trend === 'up' && <TrendingUp className="w-4 h-4 text-emerald-500" />}
-                        {trend === 'down' && <TrendingDown className="w-4 h-4 text-red-500" />}
-                        {trend === 'flat' && <Minus className="w-4 h-4 text-ew-muted" />}
+                        {trend === 'up' && <TrendingUp className="w-4 h-4 text-[#15803D]" />}
+                        {trend === 'down' && <TrendingDown className="w-4 h-4 text-[#B91C1C]" />}
+                        {trend === 'flat' && <Minus className="w-4 h-4 text-[#9CA3AF]" />}
                       </td>
                       <td className="px-4 py-3"><RenewalCell date={c.renewalDate} /></td>
                     </tr>
                   );
                 })}
                 {allCls.length === 0 && (
-                  <tr><td colSpan={7} className="px-4 py-12 text-center text-ew-muted text-sm">No live or onboarding clients</td></tr>
+                  <tr><td colSpan={7} className="px-4 py-16 text-center text-[#6B7280] text-sm">No live or onboarding clients</td></tr>
                 )}
               </tbody>
             </table>
           </div>
 
-          {/* At-risk panel */}
           {atRisk.length > 0 && (
-            <div className="bg-white border border-ew-border rounded-xl p-5">
-              <h3 className="text-sm font-bold text-navy mb-4 flex items-center gap-2"><AlertTriangle className="w-4 h-4 text-amber-500" />Needs attention</h3>
+            <div className="bg-white rounded-xl p-6" style={{ boxShadow: '0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04)' }}>
+              <h3 className="text-base font-semibold text-[#111827] mb-4 flex items-center gap-2"><AlertTriangle className="w-4 h-4 text-[#A16207]" />Needs attention</h3>
               <div className="space-y-2">
                 {atRisk.map(c => {
                   const latest = getLatestScore(c.id);
@@ -263,13 +258,13 @@ export default function HealthRenewals({ focusClientId }) {
                   else if (c.healthRating === 'Red') action = 'Schedule urgent review call';
                   else if (renewDiff !== null && renewDiff <= 30) action = 'Send renewal proposal';
                   return (
-                    <div key={c.id} className="flex items-center justify-between p-3 bg-ew-bg rounded-lg">
+                    <div key={c.id} className="flex items-center justify-between p-3.5 bg-[#F7F7F8] rounded-xl">
                       <div>
-                        <p className="text-sm font-semibold text-navy">{c.name}</p>
-                        <p className="text-xs text-ew-muted mt-0.5">{action}</p>
+                        <p className="text-sm font-medium text-[#111827]">{c.name}</p>
+                        <p className="text-xs text-[#9CA3AF] mt-0.5">{action}</p>
                       </div>
                       {hasData && c.healthRating && (
-                        <span className={`text-[11px] font-semibold px-2.5 py-1 rounded-full ${RATING_BADGE[c.healthRating] || ''}`}>{c.healthRating}</span>
+                        <span className={`text-[11px] font-semibold px-2.5 py-1 rounded-lg ${RATING_BADGE[c.healthRating] || ''}`}>{c.healthRating}</span>
                       )}
                     </div>
                   );

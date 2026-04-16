@@ -244,7 +244,7 @@ export default function Clients({ onViewHealth, onViewOnboarding }) {
                     <InlineCell value={c.contactName} onSave={save(c.id, 'contactName')} placeholder="Contact name" className="text-xs text-ew-muted mt-0.5" />
                     <InlineCell value={c.contactEmail} onSave={save(c.id, 'contactEmail')} placeholder="Email" className="text-xs text-ew-muted mt-0.5" />
                     {c.handoffIncomplete && (
-                      <span className="inline-flex items-center gap-1 mt-1 text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-[#FEF9C3] text-[#A16207]">
+                      <span className="inline-flex items-center gap-1 mt-1 text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-amber-50 text-amber-700 border border-amber-200">
                         ⚠ Handoff incomplete
                       </span>
                     )}
@@ -340,15 +340,15 @@ export default function Clients({ onViewHealth, onViewOnboarding }) {
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-1 flex-wrap">
                       {(c.status === 'Live' || c.status === 'Onboarding') && (
-                        <button onClick={() => onViewHealth(c)} className="text-xs px-2.5 py-1.5 font-medium text-[#374151] bg-white border border-[#E5E7EB] rounded-lg hover:bg-[#F9FAFB] transition-colors" style={{ borderWidth: '1.5px' }}>Health</button>
+                        <button onClick={() => onViewHealth(c)} className="text-xs px-2.5 py-1.5 font-medium text-[#374151] bg-white hover:bg-[#F9FAFB] rounded-lg transition-colors" style={{ border: '1.5px solid #E5E7EB' }}>Health</button>
                       )}
                       {c.status === 'Onboarding' && (
-                        <button onClick={() => onViewOnboarding(c)} className="text-xs px-2.5 py-1.5 font-medium text-[#374151] bg-white border border-[#E5E7EB] rounded-lg hover:bg-[#F9FAFB] transition-colors" style={{ borderWidth: '1.5px' }}>Onboarding</button>
+                        <button onClick={() => onViewOnboarding(c)} className="text-xs px-2.5 py-1.5 font-medium text-[#374151] bg-white hover:bg-[#F9FAFB] rounded-lg transition-colors" style={{ border: '1.5px solid #E5E7EB' }}>Onboarding</button>
                       )}
                       <div className="relative" ref={aiPanelClient?.id === c.id ? aiPanelRef : null}>
                         <button
                           onClick={() => aiPanelClient?.id === c.id ? setAiPanelClient(null) : handleSuggestAction(c, null)}
-                          className="text-xs px-2.5 py-1.5 font-medium text-[#7E22CE] bg-[#F3E8FF] border border-transparent rounded-lg hover:bg-[#EDE9FE] transition-colors flex items-center gap-1"
+                          className="text-xs px-2.5 py-1.5 font-medium text-[#7E22CE] bg-[#F3E8FF] hover:bg-[#EDE9FE] rounded-lg transition-colors flex items-center gap-1"
                         >
                           <Sparkles className="w-3 h-3" /> AI
                         </button>
@@ -363,7 +363,7 @@ export default function Clients({ onViewHealth, onViewOnboarding }) {
                       </div>
                       <button
                         onClick={() => handleDraftEmail(c, null, null)}
-                        className="text-xs px-2.5 py-1.5 font-medium text-[#6B7280] bg-white border border-[#E5E7EB] rounded-lg hover:bg-[#F9FAFB] transition-colors" style={{ borderWidth: '1.5px' }}
+                        className="text-xs px-2.5 py-1.5 font-medium text-[#6B7280] hover:text-[#111827] rounded-lg transition-colors"
                       >
                         Draft email
                       </button>
