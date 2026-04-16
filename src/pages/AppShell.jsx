@@ -12,6 +12,8 @@ import Marketing from './Marketing';
 import Handbook from './Handbook';
 import Requests from './Requests';
 import { LOGO_BLACK } from '@/lib/proposalData';
+import { useDarkMode } from '@/hooks/useDarkMode';
+import { Moon, Sun } from 'lucide-react';
 
 const GROUPS = [
   { id: 'sales', label: 'Sales', tabs: [
@@ -46,6 +48,7 @@ export default function AppShell() {
   const { user } = useAuth();
   const [proposalHandoff, setProposalHandoff] = useState(null);
   const [focusClientId, setFocusClientId] = useState(null);
+  const [dark, setDark] = useDarkMode();
 
   const setTab = (t) => setSearchParams({ tab: t });
   const activeGroup = getGroupForTab(tab) || GROUPS[0];
@@ -138,6 +141,9 @@ export default function AppShell() {
               <span className="text-[13px] text-ew-muted font-medium hidden sm:block">{user.full_name || user.email}</span>
             </>
           )}
+          <button onClick={() => setDark(d => !d)} className="p-1 text-ew-muted hover:text-navy dark:hover:text-white rounded-md hover:bg-ew-bg dark:hover:bg-white/10 transition-colors" title="Toggle dark mode">
+            {dark ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
+          </button>
           <button className="p-1 text-ew-muted hover:text-navy rounded-md hover:bg-ew-bg transition-colors" title="Settings">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <circle cx="12" cy="12" r="3"/>
