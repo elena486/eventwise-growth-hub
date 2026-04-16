@@ -175,7 +175,7 @@ export default function RequestBoard({ refresh }) {
               </tr>
             </thead>
             <tbody>
-              {filtered.map((req) => (
+              {filtered.map((req, i) => (
                 <tr key={req.id} className="border-b border-[#F2F2F4] last:border-0 hover:bg-[#F9FAFB] transition-colors cursor-pointer bg-white"
                   onClick={() => setSelectedReq(req)}>
                   <td className="px-3 py-3 text-ew-muted text-xs font-medium w-8">{req.requestNumber || i + 1}</td>
