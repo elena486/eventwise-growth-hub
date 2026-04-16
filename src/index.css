@@ -342,6 +342,60 @@
   .dark .text-center p,
   .dark .text-center span { color: #7070A0 !important; }
 
+  /* ============================================================
+     DARK MODE — HARDCODED HEX TEXT COLOUR OVERRIDES
+     These cover all the explicit text-[#hex] classes used across components
+     ============================================================ */
+
+  /* Dark body / heading text → light */
+  .dark .text-\[\#111827\] { color: #FFFFFF !important; }
+  .dark .text-\[\#1F2937\] { color: #F0F0F8 !important; }
+  .dark .text-\[\#374151\] { color: #E8E8F0 !important; }
+  .dark .text-\[\#4B5563\] { color: #D0D0E8 !important; }
+  .dark .text-\[\#6B7280\] { color: #9090B0 !important; }
+  .dark .text-\[\#9CA3AF\] { color: #7070A0 !important; }
+  .dark .text-\[\#D1D5DB\] { color: #5050A0 !important; }
+
+  /* Navy / brand text */
+  .dark .text-\[\#242450\] { color: #C0C0E0 !important; }
+  .dark .text-\[\#1B2A52\] { color: #C0C0E0 !important; }
+  .dark .text-\[\#3D4563\] { color: #C0C0E0 !important; }
+  .dark .text-\[\#5A6180\] { color: #9090B0 !important; }
+
+  /* Stat numbers in cards — ensure white */
+  .dark .text-\[\#111827\].text-3xl,
+  .dark .text-3xl { color: #FFFFFF !important; }
+
+  /* Hardcoded green text */
+  .dark .text-\[\#15803D\] { color: #86EFAC !important; }
+  .dark .text-\[\#166534\] { color: #86EFAC !important; }
+
+  /* Hardcoded red text */
+  .dark .text-\[\#B91C1C\] { color: #FCA5A5 !important; }
+  .dark .text-\[\#DC2626\] { color: #FCA5A5 !important; }
+  .dark .text-\[\#EF4444\] { color: #FCA5A5 !important; }
+
+  /* Hardcoded amber/yellow text */
+  .dark .text-\[\#A16207\] { color: #FDE68A !important; }
+  .dark .text-\[\#92400E\] { color: #FDE68A !important; }
+
+  /* Hardcoded blue text */
+  .dark .text-\[\#1D4ED8\] { color: #93C5FD !important; }
+  .dark .text-\[\#2563EB\] { color: #93C5FD !important; }
+  .dark .text-\[\#1E40AF\] { color: #93C5FD !important; }
+
+  /* Hardcoded purple text */
+  .dark .text-\[\#7E22CE\] { color: #D8B4FE !important; }
+  .dark .text-\[\#6D28D9\] { color: #D8B4FE !important; }
+
+  /* Inline hardcoded text colours used in table rows / chips */
+  .dark .text-\[\#0F172A\] { color: #E8E8F0 !important; }
+  .dark .text-\[\#1E293B\] { color: #E8E8F0 !important; }
+  .dark .text-\[\#334155\] { color: #C0C0E0 !important; }
+  .dark .text-\[\#475569\] { color: #B0B0D0 !important; }
+  .dark .text-\[\#64748B\] { color: #9090B0 !important; }
+  .dark .text-\[\#94A3B8\] { color: #7070A0 !important; }
+
   /* --- Scrollbar --- */
   .dark ::-webkit-scrollbar { width: 6px; height: 6px; }
   .dark ::-webkit-scrollbar-track { background: #1E1E2E; }
