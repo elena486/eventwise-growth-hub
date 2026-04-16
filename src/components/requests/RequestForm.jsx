@@ -83,10 +83,10 @@ export default function RequestForm({ onSubmitted }) {
   }
 
   return (
-    <form onSubmit={handleSubmit} className="max-w-xl mx-auto py-10 px-4 pb-16 flex flex-col gap-6">
+    <form onSubmit={handleSubmit} className="max-w-xl mx-auto py-10 px-4 pb-16 flex flex-col gap-5">
       <div>
-        <h2 className="text-xl font-bold text-navy mb-1">Submit a Request</h2>
-        <p className="text-sm text-ew-muted">Fill in the details below and the right person will action it.</p>
+        <h2 className="text-2xl font-semibold text-[#111827] mb-1">Submit a Request</h2>
+        <p className="text-sm text-[#9CA3AF]">Fill in the details below and the right person will action it.</p>
       </div>
 
       {/* Who is this for */}
@@ -154,7 +154,7 @@ export default function RequestForm({ onSubmitted }) {
       </Field>
 
       <button type="submit" disabled={submitting}
-        className="self-start px-6 py-2.5 bg-[#8403C5] hover:bg-[#6d02a3] text-white text-sm font-bold rounded-lg transition-colors disabled:opacity-60">
+        className="self-start px-6 py-2.5 bg-[#8403C5] hover:bg-[#6e02a3] text-white text-sm font-semibold rounded-lg transition-colors disabled:opacity-60">
         {submitting ? 'Submitting…' : 'Submit Request'}
       </button>
     </form>
@@ -164,14 +164,14 @@ export default function RequestForm({ onSubmitted }) {
 function Field({ label, required, hint, children }) {
   return (
     <div className="flex flex-col gap-1.5">
-      <label className="text-sm font-semibold text-navy">
-        {label}{required && <span className="text-red-400 ml-0.5">*</span>}
-        {hint && <span className="text-ew-muted font-normal ml-1.5">({hint})</span>}
+      <label className="text-[13px] font-medium text-[#374151]">
+        {label}{required && <span className="text-[#EF4444] ml-0.5">*</span>}
+        {hint && <span className="text-[#9CA3AF] font-normal ml-1.5">({hint})</span>}
       </label>
       {children}
     </div>
   );
 }
 
-const inputCls = 'w-full px-3 py-2 border border-ew-border rounded-lg text-sm text-ew-body bg-white focus:outline-none focus:ring-2 focus:ring-[#8403C5]/20 focus:border-[#8403C5]/50';
+const inputCls = 'w-full px-3 py-2.5 bg-white text-[#111827] text-sm rounded-md border placeholder-[#9CA3AF] focus:outline-none focus:ring-[3px] focus:ring-[#8403C5]/10 transition-all';
 const selectCls = inputCls;

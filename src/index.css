@@ -7,25 +7,25 @@
 @layer base {
   :root {
     --font-dm: 'DM Sans', sans-serif;
-    --background: 228 25% 93%;
-    --foreground: 225 25% 20%;
+    --background: 240 5% 97%;
+    --foreground: 220 13% 7%;
     --card: 0 0% 100%;
-    --card-foreground: 225 25% 20%;
+    --card-foreground: 220 13% 7%;
     --popover: 0 0% 100%;
-    --popover-foreground: 225 25% 20%;
-    --primary: 222 50% 21%;
+    --popover-foreground: 220 13% 7%;
+    --primary: 276 97% 39%;
     --primary-foreground: 0 0% 100%;
-    --secondary: 231 40% 95%;
-    --secondary-foreground: 225 25% 20%;
-    --muted: 228 25% 93%;
-    --muted-foreground: 228 15% 60%;
-    --accent: 157 70% 37%;
+    --secondary: 220 9% 96%;
+    --secondary-foreground: 220 9% 22%;
+    --muted: 220 9% 96%;
+    --muted-foreground: 220 9% 43%;
+    --accent: 276 97% 39%;
     --accent-foreground: 0 0% 100%;
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 0 0% 98%;
-    --border: 228 30% 90%;
-    --input: 228 30% 90%;
-    --ring: 222 50% 21%;
+    --border: 220 13% 91%;
+    --input: 220 13% 91%;
+    --ring: 276 97% 39%;
     --chart-1: 222 50% 21%;
     --chart-2: 157 70% 37%;
     --chart-3: 197 37% 24%;
@@ -110,6 +110,9 @@
   .dark .bg-\[\#F5F6FA\] { background-color: #0F0F1A !important; }
   .dark .bg-\[\#F7F8FC\] { background-color: #1E1E2E !important; }
   .dark .bg-\[\#f7f8fc\] { background-color: #1E1E2E !important; }
+  .dark .bg-\[\#F7F7F8\] { background-color: #111118 !important; }
+  .dark .bg-\[\#FAFAFA\] { background-color: #1a1a2a !important; }
+  .dark .bg-\[\#F9FAFB\] { background-color: #1E1E2E !important; }
   .dark .bg-\[\#FAFBFE\] { background-color: #1a1a2a !important; }
   .dark .bg-\[\#fafbfe\] { background-color: #1a1a2a !important; }
   .dark .bg-\[\#ECEEF5\] { background-color: #1a1a2a !important; }
@@ -118,6 +121,20 @@
   .dark .bg-\[\#1a1f3c\] { background-color: #12122a !important; }
   .dark .bg-\[\#2d3560\] { background-color: #1E1E3A !important; }
   .dark .bg-\[#E1F5EE\] { background-color: #0f2a1a !important; }
+  /* New standardised chip dark overrides */
+  .dark .bg-\[\#DCFCE7\] { background-color: #14532D !important; }
+  .dark .bg-\[\#FEF9C3\] { background-color: #713F12 !important; }
+  .dark .bg-\[\#FEE2E2\] { background-color: #7F1D1D !important; }
+  .dark .bg-\[\#DBEAFE\] { background-color: #1E3A5F !important; }
+  .dark .bg-\[\#F3F4F6\] { background-color: #1F2937 !important; }
+  .dark .bg-\[\#F3E8FF\] { background-color: #3B0764 !important; }
+  /* New chip text dark overrides */
+  .dark .text-\[\#15803D\] { color: #86EFAC !important; }
+  .dark .text-\[\#A16207\] { color: #FDE68A !important; }
+  .dark .text-\[\#B91C1C\] { color: #FCA5A5 !important; }
+  .dark .text-\[\#1D4ED8\] { color: #93C5FD !important; }
+  .dark .text-\[\#6B7280\] { color: #9CA3AF !important; }
+  .dark .text-\[\#7E22CE\] { color: #D8B4FE !important; }
 
   /* --- EW design token backgrounds --- */
   .dark .bg-ew-bg { background-color: #12121E !important; }
@@ -134,17 +151,17 @@
   .dark .bg-\[\#242450\] { background-color: #1A1A2E !important; }
 
   /* --- Status chip backgrounds --- */
-  .dark .bg-blue-50 { background-color: #1a2040 !important; }
-  .dark .bg-blue-100 { background-color: #1a2040 !important; }
-  .dark .bg-purple-50 { background-color: #25173a !important; }
-  .dark .bg-purple-100 { background-color: #25173a !important; }
-  .dark .bg-amber-50 { background-color: #2a1f10 !important; }
-  .dark .bg-amber-100 { background-color: #2a1f10 !important; }
-  .dark .bg-green-50 { background-color: #0f2a1a !important; }
-  .dark .bg-green-100 { background-color: #0f2a1a !important; }
-  .dark .bg-red-50 { background-color: #2a1010 !important; }
-  .dark .bg-red-100 { background-color: #2a1010 !important; }
-  .dark .bg-orange-50 { background-color: #2a1a0a !important; }
+  .dark .bg-blue-50 { background-color: #1E3A5F !important; }
+  .dark .bg-blue-100 { background-color: #1E3A5F !important; }
+  .dark .bg-purple-50 { background-color: #3B0764 !important; }
+  .dark .bg-purple-100 { background-color: #3B0764 !important; }
+  .dark .bg-amber-50 { background-color: #713F12 !important; }
+  .dark .bg-amber-100 { background-color: #713F12 !important; }
+  .dark .bg-green-50 { background-color: #14532D !important; }
+  .dark .bg-green-100 { background-color: #14532D !important; }
+  .dark .bg-red-50 { background-color: #7F1D1D !important; }
+  .dark .bg-red-100 { background-color: #7F1D1D !important; }
+  .dark .bg-orange-50 { background-color: #713F12 !important; }
 
   /* --- Text: greys --- */
   .dark .text-gray-900 { color: #E8E8F0 !important; }
@@ -167,17 +184,17 @@
   .dark .text-ew-muted-light { color: #6060a0 !important; }
 
   /* --- Status chip text --- */
-  .dark .text-blue-600 { color: #6090e8 !important; }
-  .dark .text-blue-700 { color: #7090e8 !important; }
-  .dark .text-purple-600 { color: #c070e8 !important; }
-  .dark .text-amber-600 { color: #F5A623 !important; }
-  .dark .text-amber-700 { color: #F5A623 !important; }
-  .dark .text-green-600 { color: #1DB954 !important; }
-  .dark .text-green-700 { color: #1DB954 !important; }
-  .dark .text-green-500 { color: #1DB954 !important; }
-  .dark .text-red-500 { color: #E5534B !important; }
-  .dark .text-red-400 { color: #E5534B !important; }
-  .dark .text-orange-400 { color: #F5A623 !important; }
+  .dark .text-blue-600 { color: #93C5FD !important; }
+  .dark .text-blue-700 { color: #93C5FD !important; }
+  .dark .text-purple-600 { color: #D8B4FE !important; }
+  .dark .text-amber-600 { color: #FDE68A !important; }
+  .dark .text-amber-700 { color: #FDE68A !important; }
+  .dark .text-green-600 { color: #86EFAC !important; }
+  .dark .text-green-700 { color: #86EFAC !important; }
+  .dark .text-green-500 { color: #86EFAC !important; }
+  .dark .text-red-500 { color: #FCA5A5 !important; }
+  .dark .text-red-400 { color: #FCA5A5 !important; }
+  .dark .text-orange-400 { color: #FDE68A !important; }
 
   /* Purple brand colour text */
   .dark .text-\[\#8403C5\] { color: #c060e8 !important; }

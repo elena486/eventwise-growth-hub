@@ -1,26 +1,26 @@
 export const PRIORITY_STYLES = {
-  Low: 'bg-gray-100 text-gray-600',
-  Medium: 'bg-blue-100 text-blue-700',
-  High: 'bg-amber-100 text-amber-700',
-  Urgent: 'bg-red-100 text-red-700',
+  Low: 'bg-[#F3F4F6] text-[#6B7280]',
+  Medium: 'bg-[#DBEAFE] text-[#1D4ED8]',
+  High: 'bg-[#FEF9C3] text-[#A16207]',
+  Urgent: 'bg-[#FEE2E2] text-[#B91C1C]',
 };
 
 export const STATUS_STYLES = {
-  New: 'bg-navy/10 text-navy',
-  'In Progress': 'bg-[#8403C5]/10 text-[#8403C5]',
-  Waiting: 'bg-amber-100 text-amber-700',
-  Done: 'bg-green-100 text-green-700',
-  Cancelled: 'bg-gray-100 text-gray-500',
+  New: 'bg-[#F3E8FF] text-[#7E22CE]',
+  'In Progress': 'bg-[#DBEAFE] text-[#1D4ED8]',
+  Waiting: 'bg-[#FEF9C3] text-[#A16207]',
+  Done: 'bg-[#DCFCE7] text-[#15803D]',
+  Cancelled: 'bg-[#F3F4F6] text-[#6B7280]',
 };
 
 export const CATEGORY_STYLES = {
-  Marketing: 'bg-pink-100 text-pink-700',
-  Design: 'bg-purple-100 text-purple-700',
-  Content: 'bg-blue-100 text-blue-700',
-  Ops: 'bg-teal-100 text-teal-700',
-  Tech: 'bg-indigo-100 text-indigo-700',
-  Other: 'bg-gray-100 text-gray-600',
-  Self: 'bg-navy/10 text-navy',
+  Marketing: 'bg-[#FEF9C3] text-[#A16207]',
+  Design: 'bg-[#F3E8FF] text-[#7E22CE]',
+  Content: 'bg-[#DBEAFE] text-[#1D4ED8]',
+  Ops: 'bg-[#DCFCE7] text-[#15803D]',
+  Tech: 'bg-[#F3F4F6] text-[#374151]',
+  Other: 'bg-[#F3F4F6] text-[#6B7280]',
+  Self: 'bg-[#F3E8FF] text-[#7E22CE]',
 };
 
 export const PRIORITY_ORDER = { Urgent: 0, High: 1, Medium: 2, Low: 3 };

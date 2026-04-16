@@ -16,10 +16,10 @@ const OWNERS = ['Chris Carter', 'Martinique Keeler'];
 const TIER_OPTIONS = ['Tier 1 — Strategic', 'Tier 2 — Core', 'Tier 3 — Standard', 'At Risk'];
 const TIER_ORDER = { 'Tier 1 — Strategic': 0, 'Tier 2 — Core': 1, 'Tier 3 — Standard': 2, 'At Risk': 3 };
 const TIER_STYLES = {
-  'Tier 1 — Strategic': 'bg-yellow-50 text-yellow-700 border border-yellow-200',
-  'Tier 2 — Core': 'bg-blue-50 text-blue-700 border border-blue-200',
-  'Tier 3 — Standard': 'bg-gray-100 text-gray-600 border border-gray-200',
-  'At Risk': 'bg-red-50 text-red-700 border border-red-200',
+  'Tier 1 — Strategic': 'bg-[#FEF9C3] text-[#A16207]',
+  'Tier 2 — Core': 'bg-[#DBEAFE] text-[#1D4ED8]',
+  'Tier 3 — Standard': 'bg-[#F3F4F6] text-[#6B7280]',
+  'At Risk': 'bg-[#FEE2E2] text-[#B91C1C]',
 };
 const TIER_SHORT = {
   'Tier 1 — Strategic': 'T1 Strategic',
@@ -173,17 +173,17 @@ export default function Clients({ onViewHealth, onViewOnboarding }) {
   };
 
   return (
-    <div className="flex-1 bg-ew-bg overflow-y-auto p-8 font-dm">
+    <div className="flex-1 bg-[#F7F7F8] overflow-y-auto p-8 font-dm">
       {/* Smart Alerts */}
       {!loading && <SmartAlertsPanel clients={clients} onSuggestAction={handleSuggestAction} />}
 
       {/* Header */}
       <div className="flex items-start justify-between mb-6">
         <div>
-          <h1 className="text-2xl font-bold text-navy">Clients</h1>
-          <p className="text-ew-muted text-sm mt-0.5">All Eventwise customer accounts</p>
+          <h1 className="text-2xl font-semibold text-[#111827]">Clients</h1>
+          <p className="text-[#9CA3AF] text-sm mt-0.5">All Eventwise customer accounts</p>
         </div>
-        <button onClick={() => setShowAddModal(true)} className="flex items-center gap-1.5 h-9 px-4 text-sm font-semibold bg-navy text-white rounded-lg hover:bg-navy/90 transition-colors">
+        <button onClick={() => setShowAddModal(true)} className="flex items-center gap-1.5 h-10 px-5 text-sm font-semibold bg-[#8403C5] text-white rounded-lg hover:bg-[#6e02a3] transition-colors">
           <Plus className="w-4 h-4" /> Add Client
         </button>
       </div>
@@ -191,30 +191,32 @@ export default function Clients({ onViewHealth, onViewOnboarding }) {
       {/* Stats */}
       <div className="grid grid-cols-4 gap-4 mb-6">
         {[
-          { label: 'Total clients', value: stats.total },
-          { label: 'Live', value: stats.live },
-          { label: 'In onboarding', value: stats.onboarding },
-          { label: 'In trial', value: stats.trial },
+          { label: 'Total clients', value: stats.total, color: '#8403C5' },
+          { label: 'Live', value: stats.live, color: '#15803D' },
+          { label: 'In onboarding', value: stats.onboarding, color: '#1D4ED8' },
+          { label: 'In trial', value: stats.trial, color: '#A16207' },
         ].map(c => (
-          <div key={c.label} className="bg-white border border-ew-border rounded-xl p-5">
-            <p className="text-xs font-medium text-ew-muted uppercase tracking-[0.12em] mb-1">{c.label}</p>
-            <p className="text-2xl font-bold text-navy">{c.value}</p>
+          <div key={c.label} className="bg-white rounded-xl p-6 flex items-start gap-4" style={{ boxShadow: '0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04)', borderLeft: `4px solid ${c.color}` }}>
+            <div>
+              <p className="text-[11px] font-semibold text-[#9CA3AF] uppercase tracking-[0.08em] mb-1">{c.label}</p>
+              <p className="text-3xl font-bold text-[#111827]">{c.value}</p>
+            </div>
           </div>
         ))}
       </div>
 
       {/* Filters */}
-      <div className="flex items-center gap-1.5 mb-3 flex-wrap">
+      <div className="flex items-center gap-1.5 mb-4 flex-wrap">
         {['All', 'Live', 'Onboarding', 'Trial', 'Churn'].map(f => (
           <button key={f} onClick={() => setFilter(f)}
-            className={`px-3.5 py-1.5 text-sm font-medium rounded-lg transition-colors ${filter === f ? 'bg-navy text-white' : 'bg-white border border-ew-border text-ew-body hover:bg-ew-bg'}`}>
+            className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors ${filter === f ? 'bg-[#242450] text-white' : 'bg-white border border-[#E5E7EB] text-[#374151] hover:bg-[#F9FAFB]'}`} style={{ borderWidth: filter === f ? undefined : '1.5px' }}>
             {f}
           </button>
         ))}
-        <span className="w-px h-5 bg-ew-border mx-1" />
+        <span className="w-px h-5 bg-[#EBEBEB] mx-1" />
         {['All', ...TIER_OPTIONS].map(f => (
           <button key={f} onClick={() => setTierFilter(f)}
-            className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors ${tierFilter === f ? 'bg-navy text-white' : 'bg-white border border-ew-border text-ew-body hover:bg-ew-bg'}`}>
+            className={`px-3.5 py-2 text-xs font-medium rounded-lg transition-colors ${tierFilter === f ? 'bg-[#242450] text-white' : 'bg-white border border-[#E5E7EB] text-[#374151] hover:bg-[#F9FAFB]'}`} style={{ borderWidth: tierFilter === f ? undefined : '1.5px' }}>
             {f === 'All' ? 'All Tiers' : TIER_SHORT[f]}
           </button>
         ))}
@@ -222,27 +224,27 @@ export default function Clients({ onViewHealth, onViewOnboarding }) {
 
       {/* Table */}
       {loading ? (
-        <div className="flex items-center justify-center h-48"><div className="w-6 h-6 border-2 border-navy/20 border-t-navy rounded-full animate-spin" /></div>
+        <div className="flex items-center justify-center h-48"><div className="w-6 h-6 border-2 border-[#8403C5]/20 border-t-[#8403C5] rounded-full animate-spin" /></div>
       ) : (
-        <div className="bg-white border border-ew-border rounded-xl overflow-hidden">
+        <div className="bg-white rounded-xl overflow-hidden" style={{ boxShadow: '0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04)' }}>
           <table className="w-full text-sm">
-            <thead className="bg-ew-footer border-b border-ew-border">
+            <thead className="border-b border-[#EBEBEB]">
               <tr>
                 {['Client', 'Tier', 'Status', 'Plan', 'Owner', 'Health', 'Last Contacted', 'Renewal', 'Notes', 'Actions'].map(h => (
-                  <th key={h} className="px-4 py-3 text-left text-[11px] font-semibold text-ew-muted uppercase tracking-[0.12em]">{h}</th>
+                  <th key={h} className="px-4 py-3.5 text-left text-[11px] font-bold text-[#9CA3AF] uppercase tracking-[0.08em]">{h}</th>
                 ))}
               </tr>
             </thead>
             <tbody>
               {sorted.map((c, i) => (
-                <tr key={c.id} className={`border-b border-ew-border last:border-0 hover:bg-navy/[0.02] transition-colors ${i % 2 === 1 ? 'bg-[#FAFBFE]' : 'bg-white'}`}>
+                <tr key={c.id} className="border-b border-[#F2F2F4] last:border-0 hover:bg-[#F9FAFB] transition-colors">
                   {/* Client name / contact */}
                   <td className="px-4 py-3 min-w-[180px]">
                     <InlineCell value={c.name} onSave={save(c.id, 'name')} placeholder="Company name" className="font-semibold text-navy text-sm" />
                     <InlineCell value={c.contactName} onSave={save(c.id, 'contactName')} placeholder="Contact name" className="text-xs text-ew-muted mt-0.5" />
                     <InlineCell value={c.contactEmail} onSave={save(c.id, 'contactEmail')} placeholder="Email" className="text-xs text-ew-muted mt-0.5" />
                     {c.handoffIncomplete && (
-                      <span className="inline-flex items-center gap-1 mt-1 text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-amber-50 text-amber-700 border border-amber-200">
+                      <span className="inline-flex items-center gap-1 mt-1 text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-[#FEF9C3] text-[#A16207]">
                         ⚠ Handoff incomplete
                       </span>
                     )}
@@ -338,15 +340,15 @@ export default function Clients({ onViewHealth, onViewOnboarding }) {
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-1 flex-wrap">
                       {(c.status === 'Live' || c.status === 'Onboarding') && (
-                        <button onClick={() => onViewHealth(c)} className="text-xs px-2.5 py-1.5 font-medium text-ew-body border border-ew-border rounded-lg hover:bg-ew-bg transition-colors">Health</button>
+                        <button onClick={() => onViewHealth(c)} className="text-xs px-2.5 py-1.5 font-medium text-[#374151] bg-white border border-[#E5E7EB] rounded-lg hover:bg-[#F9FAFB] transition-colors" style={{ borderWidth: '1.5px' }}>Health</button>
                       )}
                       {c.status === 'Onboarding' && (
-                        <button onClick={() => onViewOnboarding(c)} className="text-xs px-2.5 py-1.5 font-medium text-ew-body border border-ew-border rounded-lg hover:bg-ew-bg transition-colors">Onboarding</button>
+                        <button onClick={() => onViewOnboarding(c)} className="text-xs px-2.5 py-1.5 font-medium text-[#374151] bg-white border border-[#E5E7EB] rounded-lg hover:bg-[#F9FAFB] transition-colors" style={{ borderWidth: '1.5px' }}>Onboarding</button>
                       )}
                       <div className="relative" ref={aiPanelClient?.id === c.id ? aiPanelRef : null}>
                         <button
                           onClick={() => aiPanelClient?.id === c.id ? setAiPanelClient(null) : handleSuggestAction(c, null)}
-                          className="text-xs px-2.5 py-1.5 font-medium text-[#8403C5] border border-[#8403C5]/30 rounded-lg hover:bg-[#8403C5]/5 transition-colors flex items-center gap-1"
+                          className="text-xs px-2.5 py-1.5 font-medium text-[#7E22CE] bg-[#F3E8FF] border border-transparent rounded-lg hover:bg-[#EDE9FE] transition-colors flex items-center gap-1"
                         >
                           <Sparkles className="w-3 h-3" /> AI
                         </button>
@@ -361,7 +363,7 @@ export default function Clients({ onViewHealth, onViewOnboarding }) {
                       </div>
                       <button
                         onClick={() => handleDraftEmail(c, null, null)}
-                        className="text-xs px-2.5 py-1.5 font-medium text-ew-muted border border-ew-border rounded-lg hover:bg-ew-bg transition-colors"
+                        className="text-xs px-2.5 py-1.5 font-medium text-[#6B7280] bg-white border border-[#E5E7EB] rounded-lg hover:bg-[#F9FAFB] transition-colors" style={{ borderWidth: '1.5px' }}
                       >
                         Draft email
                       </button>
@@ -370,7 +372,7 @@ export default function Clients({ onViewHealth, onViewOnboarding }) {
                 </tr>
               ))}
               {sorted.length === 0 && (
-                <tr><td colSpan={10} className="px-4 py-12 text-center text-ew-muted text-sm">No clients found</td></tr>
+                <tr><td colSpan={10} className="px-4 py-16 text-center text-[#9CA3AF] text-sm">No clients found</td></tr>
               )}
             </tbody>
           </table>

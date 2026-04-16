@@ -89,71 +89,66 @@ export default function AppShell() {
   return (
     <div className="flex flex-col h-screen font-dm overflow-hidden">
       {/* Top nav */}
-      <nav className="bg-white dark:bg-[#1A1A2E] border-b border-ew-border dark:border-[#2E2E4E] shrink-0 px-6 flex items-center justify-between h-14">
-        <div className="flex items-center gap-4 min-w-0">
+      <nav className="bg-[#242450] shrink-0 px-6 flex items-center justify-between h-14">
+        <div className="flex items-center gap-6 min-w-0">
           {/* Logo */}
           <div className="flex items-center gap-2.5 shrink-0">
-            <img src={dark ? LOGO_WHITE : LOGO_BLACK} alt="Eventwise" className="h-4" />
-            <span className="w-px h-4 bg-ew-border inline-block" />
-            <span className="text-[11px] text-ew-muted font-medium tracking-wide">HQ</span>
+            <img src={LOGO_WHITE} alt="Eventwise" className="h-4" />
+            <span className="w-px h-4 bg-white/20 inline-block" />
+            <span className="text-[11px] text-white/50 font-medium tracking-widest uppercase">HQ</span>
           </div>
 
           {/* Group tabs */}
-          <div className="flex flex-col gap-0.5">
-            <div className="flex items-center gap-1 overflow-x-auto" style={{ scrollbarWidth: 'none' }}>
-              {GROUPS.map(g => (
-                <button
-                  key={g.id}
-                  onClick={() => setTab(g.tabs[0].id)}
-                  className={`px-4 py-1 rounded-lg text-sm font-semibold transition-colors shrink-0 ${
-                    activeGroup.id === g.id ? 'bg-navy text-white' : 'text-ew-body hover:bg-ew-bg hover:text-navy'
-                  }`}
-                >
-                  {g.label}
-                </button>
-              ))}
-            </div>
-
-            {/* Sub-tabs */}
-            {activeGroup.tabs.length > 1 && (
-              <div className="flex items-center gap-0.5 overflow-x-auto" style={{ scrollbarWidth: 'none' }}>
-                {activeGroup.tabs.map(t => (
-                  <button
-                    key={t.id}
-                    onClick={() => setTab(t.id)}
-                    className={`px-3 py-0.5 rounded-md text-xs font-medium transition-colors shrink-0 ${
-                      tab === t.id ? 'text-navy bg-navy/10' : 'text-ew-muted hover:text-navy hover:bg-ew-bg'
-                    }`}
-                  >
-                    {t.label}
-                  </button>
-                ))}
-              </div>
-            )}
+          <div className="flex items-center gap-1 overflow-x-auto" style={{ scrollbarWidth: 'none' }}>
+            {GROUPS.map(g => (
+              <button
+                key={g.id}
+                onClick={() => setTab(g.tabs[0].id)}
+                className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-150 shrink-0 ${
+                  activeGroup.id === g.id
+                    ? 'text-white bg-white/15'
+                    : 'text-white/60 hover:text-white hover:bg-white/10'
+                }`}
+              >
+                {g.label}
+              </button>
+            ))}
           </div>
         </div>
 
-        {/* Right: user + settings */}
-        <div className="flex items-center gap-2.5 shrink-0 ml-4">
+        {/* Right: user + utilities */}
+        <div className="flex items-center gap-2 shrink-0 ml-4">
           {user && (
             <>
-              <div className="w-7 h-7 rounded-full bg-navy text-white text-[11px] font-semibold flex items-center justify-center shrink-0">
+              <div className="w-7 h-7 rounded-full bg-white/20 text-white text-[11px] font-semibold flex items-center justify-center shrink-0">
                 {(user.full_name || user.email || '?').split(' ').map(w => w[0]).slice(0, 2).join('').toUpperCase()}
               </div>
-              <span className="text-[13px] text-ew-muted font-medium hidden sm:block">{user.full_name || user.email}</span>
+              <span className="text-[13px] text-white/60 font-medium hidden sm:block">{user.full_name || user.email}</span>
             </>
           )}
-          <button onClick={() => setDark(d => !d)} className="p-1 text-ew-muted hover:text-navy dark:hover:text-white rounded-md hover:bg-ew-bg dark:hover:bg-white/10 transition-colors" title="Toggle dark mode">
+          <button onClick={() => setDark(d => !d)} className="p-2 text-white/50 hover:text-white rounded-lg hover:bg-white/10 transition-colors" title="Toggle dark mode">
             {dark ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
-          </button>
-          <button className="p-1 text-ew-muted hover:text-navy rounded-md hover:bg-ew-bg transition-colors" title="Settings">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <circle cx="12" cy="12" r="3"/>
-              <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
-            </svg>
           </button>
         </div>
       </nav>
+
+      {/* Sub-nav */}
+      {activeGroup.tabs.length > 1 && (
+        <div className="bg-white border-b border-[#EBEBEB] shrink-0 px-6 flex items-center gap-1 h-10">
+          {activeGroup.tabs.map(t => (
+            <button
+              key={t.id}
+              onClick={() => setTab(t.id)}
+              className={`px-4 py-1.5 text-[13px] font-medium transition-all duration-150 shrink-0 relative ${
+                tab === t.id ? 'text-[#111827]' : 'text-[#6B7280] hover:text-[#111827]'
+              }`}
+            >
+              {t.label}
+              {tab === t.id && <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-[#8403C5] rounded-t-full" />}
+            </button>
+          ))}
+        </div>
+      )}
 
       {/* Content */}
       <div className="flex-1 overflow-hidden flex dark:bg-[#0F0F1A]">

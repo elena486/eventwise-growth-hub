@@ -72,10 +72,10 @@ export function initTasks(preloadPhase = 0, preloadTasks = {}) {
 }
 
 export const STATUS_STYLES = {
-  Trial: 'bg-gray-100 text-gray-600',
-  Onboarding: 'bg-blue-50 text-blue-700',
-  Live: 'bg-emerald-50 text-emerald-700',
-  Churn: 'bg-red-50 text-red-600',
+  Trial: 'bg-[#F3F4F6] text-[#6B7280]',
+  Onboarding: 'bg-[#DBEAFE] text-[#1D4ED8]',
+  Live: 'bg-[#DCFCE7] text-[#15803D]',
+  Churn: 'bg-[#FEE2E2] text-[#B91C1C]',
 };
 
 export const HEALTH_DOT = {
@@ -90,6 +90,6 @@ export const OWNER_INITIALS = {
 };
 
 export const OWNER_COLORS = {
-  'Chris Carter': 'bg-blue-100 text-blue-700',
-  'Martinique Keeler': 'bg-purple-100 text-purple-700',
+  'Chris Carter': 'bg-[#DBEAFE] text-[#1D4ED8]',
+  'Martinique Keeler': 'bg-[#F3E8FF] text-[#7E22CE]',
 };

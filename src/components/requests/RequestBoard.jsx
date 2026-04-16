@@ -106,18 +106,18 @@ export default function RequestBoard({ refresh }) {
   }
 
   return (
-    <div className="flex-1 bg-ew-bg overflow-y-auto p-8 font-dm">
+    <div className="flex-1 bg-[#F7F7F8] overflow-y-auto p-8 font-dm">
       {/* Stats bar */}
       <div className="grid grid-cols-4 gap-4 mb-6">
         {[
-          { label: 'Open requests', value: open.length },
-          { label: 'Urgent', value: urgent.length },
-          { label: 'Due this week', value: dueThisWeek.length },
-          { label: 'Completed this month', value: completedThisMonth.length },
+          { label: 'Open requests', value: open.length, color: '#8403C5' },
+          { label: 'Urgent', value: urgent.length, color: '#B91C1C' },
+          { label: 'Due this week', value: dueThisWeek.length, color: '#A16207' },
+          { label: 'Completed this month', value: completedThisMonth.length, color: '#15803D' },
         ].map(s => (
-          <div key={s.label} className="bg-white border border-ew-border rounded-xl p-4">
-            <p className="text-xs text-ew-muted uppercase tracking-[0.12em] font-medium mb-1">{s.label}</p>
-            <p className="text-2xl font-bold text-navy">{s.value}</p>
+          <div key={s.label} className="bg-white rounded-xl p-6" style={{ boxShadow: '0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04)', borderLeft: `4px solid ${s.color}` }}>
+            <p className="text-[11px] font-bold text-[#9CA3AF] uppercase tracking-[0.08em] mb-1">{s.label}</p>
+            <p className="text-3xl font-bold text-[#111827]">{s.value}</p>
           </div>
         ))}
       </div>
@@ -127,33 +127,33 @@ export default function RequestBoard({ refresh }) {
         <div className="flex items-center gap-1.5 flex-wrap">
           {['All', 'New', 'In Progress', 'Urgent', 'My tasks'].map(f => (
             <button key={f} onClick={() => setStatusFilter(f)}
-              className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors ${statusFilter === f ? 'bg-navy text-white' : 'bg-white border border-ew-border text-ew-body hover:bg-ew-bg'}`}>
+              className={`px-3.5 py-2 text-xs font-medium rounded-lg transition-colors ${statusFilter === f ? 'bg-[#242450] text-white' : 'bg-white border border-[#E5E7EB] text-[#374151] hover:bg-[#F9FAFB]'}`} style={{ borderWidth: statusFilter === f ? undefined : '1.5px' }}>
               {f}
             </button>
           ))}
-          <span className="w-px h-5 bg-ew-border mx-1" />
+          <span className="w-px h-5 bg-[#EBEBEB] mx-1" />
           {PERSON_FILTERS.map(p => (
             <button key={p} onClick={() => setPersonFilter(p)}
-              className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors ${personFilter === p ? 'bg-[#8403C5] text-white' : 'bg-white border border-ew-border text-ew-body hover:bg-ew-bg'}`}>
+              className={`px-3.5 py-2 text-xs font-medium rounded-lg transition-colors ${personFilter === p ? 'bg-[#8403C5] text-white' : 'bg-white border border-[#E5E7EB] text-[#374151] hover:bg-[#F9FAFB]'}`} style={{ borderWidth: personFilter === p ? undefined : '1.5px' }}>
               {p}
             </button>
           ))}
         </div>
         <div className="flex items-center gap-2">
           <button onClick={() => setShowArchived(v => !v)}
-            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold border border-ew-border rounded-lg bg-white text-ew-body hover:bg-ew-bg transition-colors">
+            className="flex items-center gap-1.5 px-3.5 py-2 text-xs font-medium border border-[#E5E7EB] rounded-lg bg-white text-[#374151] hover:bg-[#F9FAFB] transition-colors" style={{ borderWidth: '1.5px' }}>
             {showArchived ? <><Eye className="w-3.5 h-3.5" /> Hide archived</> : <><Archive className="w-3.5 h-3.5" /> Show archived</>}
           </button>
           <button onClick={handleArchiveDone}
-            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold border border-ew-border rounded-lg bg-white text-ew-body hover:bg-ew-bg transition-colors">
+            className="flex items-center gap-1.5 px-3.5 py-2 text-xs font-medium border border-[#E5E7EB] rounded-lg bg-white text-[#374151] hover:bg-[#F9FAFB] transition-colors" style={{ borderWidth: '1.5px' }}>
             <Archive className="w-3.5 h-3.5" /> Archive done
           </button>
           <button onClick={() => setView(v => v === 'table' ? 'kanban' : 'table')}
-            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold border border-ew-border rounded-lg bg-white text-ew-body hover:bg-ew-bg transition-colors">
+            className="flex items-center gap-1.5 px-3.5 py-2 text-xs font-medium border border-[#E5E7EB] rounded-lg bg-white text-[#374151] hover:bg-[#F9FAFB] transition-colors" style={{ borderWidth: '1.5px' }}>
             {view === 'table' ? <><Columns className="w-3.5 h-3.5" /> Kanban</> : <><LayoutList className="w-3.5 h-3.5" /> Table</>}
           </button>
           <button onClick={handleAddTask}
-            className="flex items-center gap-1.5 px-4 py-1.5 text-xs font-bold bg-navy text-white rounded-lg hover:bg-navy/90 transition-colors">
+            className="flex items-center gap-1.5 px-5 py-2 text-xs font-semibold bg-[#8403C5] text-white rounded-lg hover:bg-[#6e02a3] transition-colors">
             <Plus className="w-3.5 h-3.5" /> Add Task
           </button>
         </div>
@@ -161,22 +161,22 @@ export default function RequestBoard({ refresh }) {
 
       {/* View */}
       {loading ? (
-        <div className="flex items-center justify-center h-48"><div className="w-6 h-6 border-2 border-navy/20 border-t-navy rounded-full animate-spin" /></div>
+        <div className="flex items-center justify-center h-48"><div className="w-6 h-6 border-2 border-[#8403C5]/20 border-t-[#8403C5] rounded-full animate-spin" /></div>
       ) : view === 'kanban' ? (
         <RequestKanban requests={filtered} onStatusChange={handleKanbanStatusChange} onSelect={setSelectedReq} />
       ) : (
-        <div className="bg-white border border-ew-border rounded-xl overflow-x-auto">
+        <div className="bg-white rounded-xl overflow-x-auto" style={{ boxShadow: '0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04)' }}>
           <table className="w-full text-sm min-w-[900px]">
-            <thead className="bg-ew-footer border-b border-ew-border">
+            <thead className="border-b border-[#EBEBEB]">
               <tr>
                 {['#', 'Title', 'By', 'Assigned to', 'Category', 'Priority', 'Status', 'Deadline', 'Submitted', 'Notes', ''].map(h => (
-                  <th key={h} className="px-3 py-3 text-left text-[11px] font-semibold text-ew-muted uppercase tracking-[0.12em]">{h}</th>
+                  <th key={h} className="px-3 py-3.5 text-left text-[11px] font-bold text-[#9CA3AF] uppercase tracking-[0.08em]">{h}</th>
                 ))}
               </tr>
             </thead>
             <tbody>
-              {filtered.map((req, i) => (
-                <tr key={req.id} className={`border-b border-ew-border last:border-0 hover:bg-navy/[0.02] transition-colors cursor-pointer ${i % 2 === 1 ? 'bg-[#FAFBFE]' : 'bg-white'}`}
+              {filtered.map((req) => (
+                <tr key={req.id} className="border-b border-[#F2F2F4] last:border-0 hover:bg-[#F9FAFB] transition-colors cursor-pointer bg-white"
                   onClick={() => setSelectedReq(req)}>
                   <td className="px-3 py-3 text-ew-muted text-xs font-medium w-8">{req.requestNumber || i + 1}</td>
                   <td className="px-3 py-3 min-w-[160px] max-w-[220px]" onClick={e => e.stopPropagation()}>
@@ -228,7 +228,7 @@ export default function RequestBoard({ refresh }) {
                 </tr>
               ))}
               {filtered.length === 0 && (
-                <tr><td colSpan={11} className="px-4 py-12 text-center text-ew-muted text-sm">No requests found</td></tr>
+                <tr><td colSpan={11} className="px-4 py-16 text-center text-[#9CA3AF] text-sm">No open requests. Enjoy it while it lasts.</td></tr>
               )}
             </tbody>
           </table>
