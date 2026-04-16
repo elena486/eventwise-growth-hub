@@ -87,7 +87,7 @@ export default function AppShell() {
   return (
     <div className="flex flex-col h-screen font-dm overflow-hidden">
       {/* Top nav */}
-      <nav className="bg-white border-b border-ew-border shrink-0 px-6 flex items-center justify-between h-14">
+      <nav className="bg-white dark:bg-[#1A1A2E] border-b border-ew-border dark:border-[#2E2E4E] shrink-0 px-6 flex items-center justify-between h-14">
         <div className="flex items-center gap-4 min-w-0">
           {/* Logo */}
           <div className="flex items-center gap-2.5 shrink-0">
@@ -154,7 +154,7 @@ export default function AppShell() {
       </nav>
 
       {/* Content */}
-      <div className="flex-1 overflow-hidden flex">
+      <div className="flex-1 overflow-hidden flex dark:bg-[#0F0F1A]">
         {tab === 'pipeline' && <Pipeline onProposalHandoff={handleProposalHandoff} onViewDeals={() => setTab('deals')} />}
         {tab === 'proposal' && <ProposalGeneratorInner handoff={proposalHandoff} onHandoffConsumed={() => setProposalHandoff(null)} />}
         {tab === 'clients' && <Clients onViewHealth={handleViewHealth} onViewOnboarding={handleViewOnboarding} />}
