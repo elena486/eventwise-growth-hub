@@ -1,45 +1,38 @@
 {
-  "name": "Request",
+  "name": "Bug",
   "type": "object",
   "properties": {
-    "requestNumber": {
+    "bugNumber": {
       "type": "number"
     },
     "title": {
       "type": "string"
     },
-    "requestedBy": {
+    "clientId": {
       "type": "string"
     },
-    "recipient": {
-      "type": "string",
-      "enum": [
-        "Elena",
-        "George"
-      ],
-      "description": "Who the request is assigned/sent to"
+    "clientName": {
+      "type": "string"
     },
-    "assignedTo": {
+    "reportedBy": {
       "type": "string",
       "enum": [
-        "Elena",
-        "George",
         "Chris",
         "Martinique",
+        "George",
         "Sreeja",
-        "Ramesh"
+        "Elena"
       ]
     },
     "category": {
       "type": "string",
       "enum": [
-        "Marketing",
-        "Design",
-        "Content",
-        "Ops",
-        "Tech",
-        "Other",
-        "Self"
+        "Platform Bug",
+        "Integration Issue",
+        "Onboarding Issue",
+        "Data Issue",
+        "UI Issue",
+        "Other"
       ]
     },
     "priority": {
@@ -48,30 +41,20 @@
         "Low",
         "Medium",
         "High",
-        "Urgent"
+        "Critical"
       ]
     },
     "status": {
       "type": "string",
       "enum": [
-        "New",
+        "Open",
         "In Progress",
-        "Waiting",
-        "Done",
-        "Cancelled"
+        "Waiting on Client",
+        "Resolved",
+        "Closed"
       ]
     },
     "description": {
-      "type": "string"
-    },
-    "deadline": {
-      "type": "string",
-      "format": "date"
-    },
-    "extraNotes": {
-      "type": "string"
-    },
-    "notes": {
       "type": "string"
     },
     "attachmentUrl": {
@@ -80,11 +63,25 @@
     "attachmentName": {
       "type": "string"
     },
-    "archived": {
-      "type": "boolean"
+    "dateLogged": {
+      "type": "string",
+      "format": "date"
     },
-    "submittedAt": {
+    "dateResolved": {
+      "type": "string",
+      "format": "date"
+    },
+    "resolutionNotes": {
       "type": "string"
+    },
+    "assignedTo": {
+      "type": "string",
+      "enum": [
+        "Chris",
+        "Martinique",
+        "Sreeja",
+        "Elena"
+      ]
     }
   },
   "required": [

@@ -146,6 +146,7 @@ export default function HealthRenewals({ focusClientId }) {
               <thead className="bg-ew-footer border-b border-ew-border">
                 <tr>
                   <th className="px-4 py-3 text-left text-[11px] font-semibold text-ew-muted uppercase tracking-[0.12em]">Client</th>
+                  <th className="px-4 py-3 text-left text-[11px] font-semibold text-ew-muted uppercase tracking-[0.12em]">Tier</th>
                   <th className="px-4 py-3 text-left text-[11px] font-semibold text-ew-muted uppercase tracking-[0.12em]">Score</th>
                   <th className="px-4 py-3 text-left text-[11px] font-semibold text-ew-muted uppercase tracking-[0.12em]">Quadrant</th>
                   <th className="px-4 py-3 text-left text-[11px] font-semibold text-ew-muted uppercase tracking-[0.12em] min-w-[360px]">Sub-scores (click to edit)</th>
@@ -164,6 +165,20 @@ export default function HealthRenewals({ focusClientId }) {
                       <td className="px-4 py-3">
                         <p className="font-semibold text-navy text-sm">{c.name}</p>
                         <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded-full ${c.status === 'Live' ? 'bg-emerald-50 text-emerald-700' : 'bg-blue-50 text-blue-700'}`}>{c.status}</span>
+                      </td>
+                      <td className="px-4 py-3">
+                        {c.priorityTier ? (
+                          <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded-full whitespace-nowrap ${
+                            c.priorityTier === 'Tier 1 — Strategic' ? 'bg-yellow-50 text-yellow-700' :
+                            c.priorityTier === 'Tier 2 — Core' ? 'bg-blue-50 text-blue-700' :
+                            c.priorityTier === 'At Risk' ? 'bg-red-50 text-red-700' :
+                            'bg-gray-100 text-gray-600'
+                          }`}>{
+                            c.priorityTier === 'Tier 1 — Strategic' ? 'T1' :
+                            c.priorityTier === 'Tier 2 — Core' ? 'T2' :
+                            c.priorityTier === 'Tier 3 — Standard' ? 'T3' : 'At Risk'
+                          }</span>
+                        ) : <span className="text-ew-muted text-xs">—</span>}
                       </td>
                       <td className="px-4 py-3">
                         {hasData ? (
@@ -228,7 +243,7 @@ export default function HealthRenewals({ focusClientId }) {
                   );
                 })}
                 {allCls.length === 0 && (
-                  <tr><td colSpan={6} className="px-4 py-12 text-center text-ew-muted text-sm">No live or onboarding clients</td></tr>
+                  <tr><td colSpan={7} className="px-4 py-12 text-center text-ew-muted text-sm">No live or onboarding clients</td></tr>
                 )}
               </tbody>
             </table>

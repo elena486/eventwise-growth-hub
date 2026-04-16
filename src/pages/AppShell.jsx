@@ -6,6 +6,7 @@ import ProposalGeneratorInner from '@/components/proposal/ProposalGeneratorInner
 import Clients from './Clients';
 import Onboarding from './Onboarding';
 import HealthRenewals from './HealthRenewals';
+import BugTracker from '@/components/bugs/BugTracker';
 import Deals from './Deals';
 import Sprints from './Sprints';
 import Marketing from './Marketing';
@@ -25,6 +26,7 @@ const GROUPS = [
     { id: 'clients', label: 'Clients' },
     { id: 'onboarding', label: 'Onboarding' },
     { id: 'health', label: 'Health & Renewals' },
+    { id: 'bugs', label: 'Bug Tracker' },
   ]},
   { id: 'ops', label: 'Operations', tabs: [
     { id: 'sprints', label: 'Sprints' },
@@ -165,6 +167,7 @@ export default function AppShell() {
         {tab === 'marketing' && <Marketing />}
         {tab === 'handbook' && <Handbook />}
         {tab === 'requests' && <Requests />}
+        {tab === 'bugs' && <BugTracker />}
       </div>
     </div>
   );

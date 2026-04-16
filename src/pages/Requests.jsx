@@ -4,7 +4,8 @@ import RequestBoard from '@/components/requests/RequestBoard';
 
 const TABS = [
   { id: 'form', label: 'Submit a Request' },
-  { id: 'board', label: "Elena's To-Do Board" },
+  { id: 'board', label: 'Company To-Do Board' },
+  { id: 'george', label: "George's To-Do" },
 ];
 
 export default function Requests() {
@@ -31,6 +32,7 @@ export default function Requests() {
       <div className="flex-1 overflow-y-auto">
         {tab === 'form' && <RequestForm onSubmitted={handleSubmitted} />}
         {tab === 'board' && <RequestBoard refresh={boardRefresh} />}
+        {tab === 'george' && <RequestBoard refresh={boardRefresh} assigneeFilter="George" />}
       </div>
     </div>
   );

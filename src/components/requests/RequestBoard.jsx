@@ -10,7 +10,9 @@ import { PRIORITY_STYLES, STATUS_STYLES, CATEGORY_STYLES, PRIORITY_ORDER, STATUS
 
 const PERSON_FILTERS = ['All', 'Chris', 'Martinique', 'George', 'Ramesh', 'Sreeja', 'David'];
 
-export default function RequestBoard({ refresh }) {
+const ASSIGNEES = ['Elena', 'George', 'Chris', 'Martinique', 'Sreeja', 'Ramesh'];
+
+export default function RequestBoard({ refresh, assigneeFilter }) {
   const [requests, setRequests] = useState([]);
   const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState('All');
@@ -79,6 +81,7 @@ export default function RequestBoard({ refresh }) {
 
   // Filtered list
   let filtered = requests.filter(r => showArchived ? r.archived : !r.archived);
+  if (assigneeFilter) filtered = filtered.filter(r => r.assignedTo === assigneeFilter);
   if (statusFilter === 'Urgent') filtered = filtered.filter(r => r.priority === 'Urgent');
   else if (statusFilter === 'My tasks') filtered = filtered.filter(r => r.requestedBy === 'Elena' || r.category === 'Self');
   else if (statusFilter !== 'All') filtered = filtered.filter(r => r.status === statusFilter);
@@ -167,7 +170,7 @@ export default function RequestBoard({ refresh }) {
           <table className="w-full text-sm min-w-[900px]">
             <thead className="bg-ew-footer border-b border-ew-border">
               <tr>
-                {['#', 'Title', 'By', 'Category', 'Priority', 'Status', 'Deadline', 'Submitted', 'Notes', ''].map(h => (
+                {['#', 'Title', 'By', 'Assigned to', 'Category', 'Priority', 'Status', 'Deadline', 'Submitted', 'Notes', ''].map(h => (
                   <th key={h} className="px-3 py-3 text-left text-[11px] font-semibold text-ew-muted uppercase tracking-[0.12em]">{h}</th>
                 ))}
               </tr>
@@ -183,6 +186,10 @@ export default function RequestBoard({ refresh }) {
                   <td className="px-3 py-3 min-w-[90px]" onClick={e => e.stopPropagation()}>
                     <InlineCell value={req.requestedBy} onSave={save(req.id, 'requestedBy')} type="select" options={REQUESTERS}
                       displayEl={req.requestedBy ? <span className="text-xs font-medium bg-navy/10 text-navy px-2 py-0.5 rounded-full">{req.requestedBy}</span> : null} />
+                  </td>
+                  <td className="px-3 py-3 min-w-[90px]" onClick={e => e.stopPropagation()}>
+                    <InlineCell value={req.assignedTo} onSave={save(req.id, 'assignedTo')} type="select" options={ASSIGNEES}
+                      displayEl={req.assignedTo ? <span className="text-xs font-medium bg-[#8403C5]/10 text-[#8403C5] px-2 py-0.5 rounded-full">{req.assignedTo}</span> : <span className="text-xs text-ew-muted">—</span>} />
                   </td>
                   <td className="px-3 py-3" onClick={e => e.stopPropagation()}>
                     <InlineCell value={req.category} onSave={save(req.id, 'category')} type="select" options={CATEGORIES}
@@ -222,7 +229,7 @@ export default function RequestBoard({ refresh }) {
                 </tr>
               ))}
               {filtered.length === 0 && (
-                <tr><td colSpan={10} className="px-4 py-12 text-center text-ew-muted text-sm">No requests found</td></tr>
+                <tr><td colSpan={11} className="px-4 py-12 text-center text-ew-muted text-sm">No requests found</td></tr>
               )}
             </tbody>
           </table>

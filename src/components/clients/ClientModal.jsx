@@ -2,10 +2,12 @@ import React, { useState, useEffect } from 'react';
 import { OWNERS, SECONDARY_OWNERS, STATUSES, STATUS_STYLES } from '@/lib/csData';
 import { X } from 'lucide-react';
 
+const TIER_OPTIONS = ['', 'Tier 1 — Strategic', 'Tier 2 — Core', 'Tier 3 — Standard', 'At Risk'];
+
 const EMPTY = {
   name: '', contactName: '', contactEmail: '', owner: 'Martinique Keeler',
   secondaryOwner: 'None', status: 'Trial', trialStartDate: '', renewalDate: '',
-  notes: '', plan: '',
+  lastContacted: '', priorityTier: '', notes: '', plan: '',
 };
 
 export default function ClientModal({ client, onSave, onClose }) {
@@ -76,6 +78,16 @@ export default function ClientModal({ client, onSave, onClose }) {
             <div>
               <label className={labelCls}>Renewal date</label>
               <input type="date" className={inputCls} value={form.renewalDate || ''} onChange={e => up('renewalDate', e.target.value)} />
+            </div>
+            <div>
+              <label className={labelCls}>Priority tier</label>
+              <select className={inputCls} value={form.priorityTier || ''} onChange={e => up('priorityTier', e.target.value)}>
+                {TIER_OPTIONS.map(o => <option key={o} value={o}>{o || '— Not set —'}</option>)}
+              </select>
+            </div>
+            <div>
+              <label className={labelCls}>Last contacted</label>
+              <input type="date" className={inputCls} value={form.lastContacted || ''} onChange={e => up('lastContacted', e.target.value)} />
             </div>
             <div className="col-span-2">
               <label className={labelCls}>Notes / Next action</label>

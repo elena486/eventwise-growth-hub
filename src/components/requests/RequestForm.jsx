@@ -11,7 +11,12 @@ const PRIORITIES = [
   { label: 'Urgent', cls: 'bg-red-100 text-red-700 border-red-300' },
 ];
 
-const DEFAULT = { requestedBy: '', title: '', category: '', priority: 'Medium', description: '', deadline: '', extraNotes: '' };
+const RECIPIENTS = [
+  { value: 'Elena', label: 'Elena — General tasks & ops' },
+  { value: 'George', label: 'George — Technical & platform' },
+];
+
+const DEFAULT = { requestedBy: '', recipient: 'Elena', title: '', category: '', priority: 'Medium', description: '', deadline: '', extraNotes: '' };
 
 export default function RequestForm({ onSubmitted }) {
   const [form, setForm] = useState(DEFAULT);
@@ -43,6 +48,7 @@ export default function RequestForm({ onSubmitted }) {
       ...form,
       requestNumber: nextNum,
       status: 'New',
+      assignedTo: form.recipient,
       submittedAt,
       attachmentUrl,
       attachmentName,
@@ -51,6 +57,7 @@ export default function RequestForm({ onSubmitted }) {
 
     base44.functions.invoke('notifyNewRequest', {
       requestedBy: form.requestedBy,
+      recipient: form.recipient,
       title: form.title,
       category: form.category,
       priority: form.priority,
@@ -71,10 +78,11 @@ export default function RequestForm({ onSubmitted }) {
   };
 
   if (done) {
+    const name = form.recipient === 'George' ? 'George' : 'Elena';
     return (
       <div className="flex flex-col items-center justify-center py-24 gap-4">
         <CheckCircle2 className="w-12 h-12 text-green-500" />
-        <p className="text-lg font-bold text-navy">Thanks — Elena will pick this up soon.</p>
+        <p className="text-lg font-bold text-navy">Thanks — {name} will pick this up soon.</p>
       </div>
     );
   }
@@ -83,8 +91,21 @@ export default function RequestForm({ onSubmitted }) {
     <form onSubmit={handleSubmit} className="max-w-xl mx-auto py-10 px-4 pb-16 flex flex-col gap-6">
       <div>
         <h2 className="text-xl font-bold text-navy mb-1">Submit a Request</h2>
-        <p className="text-sm text-ew-muted">Fill in the details below and Elena will action it.</p>
+        <p className="text-sm text-ew-muted">Fill in the details below and the right person will action it.</p>
       </div>
+
+      {/* Who is this for */}
+      <Field label="Who is this request for?" required>
+        <div className="flex gap-3">
+          {RECIPIENTS.map(r => (
+            <button type="button" key={r.value} onClick={() => set('recipient', r.value)}
+              className={`flex-1 px-4 py-2.5 rounded-lg border text-sm font-semibold text-left transition-all ${form.recipient === r.value ? 'border-navy bg-navy/5 text-navy ring-2 ring-navy/20' : 'border-ew-border text-ew-body hover:bg-ew-bg'}`}>
+              <span className="block font-bold">{r.value}</span>
+              <span className="block text-xs font-normal text-ew-muted mt-0.5">{r.label.split('— ')[1]}</span>
+            </button>
+          ))}
+        </div>
+      </Field>
 
       {/* Your name */}
       <Field label="Your name" required>
@@ -138,7 +159,7 @@ export default function RequestForm({ onSubmitted }) {
       </Field>
 
       {/* Extra notes */}
-      <Field label="Anything else Elena should know?" hint="Optional">
+      <Field label="Anything else they should know?" hint="Optional">
         <textarea value={form.extraNotes} onChange={e => set('extraNotes', e.target.value)} placeholder="Any extra context, links, references…" rows={3} className={inputCls + ' resize-none'} />
       </Field>
 

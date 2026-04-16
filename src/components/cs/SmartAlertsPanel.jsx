@@ -10,14 +10,14 @@ function getAlerts(clients, onboardingRecords) {
   clients.forEach(client => {
     if (client.status === 'Churn') return;
 
-    // Last touchpoint — use updated_date as proxy
-    const lastTouched = client.updated_date ? new Date(client.updated_date) : null;
-    const daysSince = lastTouched ? differenceInDays(now, lastTouched) : null;
+    // Last contacted — use lastContacted field, fall back to updated_date
+    const lastTouchedDate = client.lastContacted || null;
+    const daysSince = lastTouchedDate ? differenceInDays(now, new Date(lastTouchedDate)) : null;
 
-    if (daysSince !== null && daysSince >= 60) {
-      alerts.push({ client, type: 'overdue', severity: 'red', message: 'Overdue for check-in', detail: `${daysSince} days since last update` });
-    } else if (daysSince !== null && daysSince >= 30) {
-      alerts.push({ client, type: 'no-contact', severity: 'amber', message: 'No recent contact', detail: `${daysSince} days since last update` });
+    if (daysSince === null || daysSince >= 60) {
+      alerts.push({ client, type: 'overdue', severity: 'red', message: 'Overdue for check-in', detail: daysSince !== null ? `${daysSince} days since last contact` : 'Never contacted' });
+    } else if (daysSince >= 30) {
+      alerts.push({ client, type: 'no-contact', severity: 'amber', message: 'No recent contact', detail: `${daysSince} days since last contact` });
     }
 
     // Renewal alerts

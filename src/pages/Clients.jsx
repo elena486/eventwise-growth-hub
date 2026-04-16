@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { base44 } from '@/api/base44Client';
-import { format, isPast, differenceInDays } from 'date-fns';
+import { format, isPast, differenceInDays, isToday } from 'date-fns';
 import { Plus, AlertTriangle, Sparkles } from 'lucide-react';
 import ClientModal from '@/components/clients/ClientModal';
 import InlineCell from '@/components/shared/InlineCell';
@@ -12,6 +12,46 @@ import { STATUS_STYLES, HEALTH_DOT, OWNER_INITIALS, OWNER_COLORS, initTasks } fr
 const STATUS_ORDER = ['Live', 'Onboarding', 'Trial', 'Churn'];
 const STATUSES = ['Trial', 'Onboarding', 'Live', 'Churn'];
 const OWNERS = ['Chris Carter', 'Martinique Keeler'];
+
+const TIER_OPTIONS = ['Tier 1 — Strategic', 'Tier 2 — Core', 'Tier 3 — Standard', 'At Risk'];
+const TIER_ORDER = { 'Tier 1 — Strategic': 0, 'Tier 2 — Core': 1, 'Tier 3 — Standard': 2, 'At Risk': 3 };
+const TIER_STYLES = {
+  'Tier 1 — Strategic': 'bg-yellow-50 text-yellow-700 border border-yellow-200',
+  'Tier 2 — Core': 'bg-blue-50 text-blue-700 border border-blue-200',
+  'Tier 3 — Standard': 'bg-gray-100 text-gray-600 border border-gray-200',
+  'At Risk': 'bg-red-50 text-red-700 border border-red-200',
+};
+const TIER_SHORT = {
+  'Tier 1 — Strategic': 'T1 Strategic',
+  'Tier 2 — Core': 'T2 Core',
+  'Tier 3 — Standard': 'T3 Standard',
+  'At Risk': 'At Risk',
+};
+
+function LastContactedCell({ date, onLogToday }) {
+  if (!date) {
+    return (
+      <div className="flex items-center gap-1.5">
+        <span className="text-xs text-ew-muted italic">Not yet contacted</span>
+        <button onClick={e => { e.stopPropagation(); onLogToday(); }}
+          className="text-[10px] px-1.5 py-0.5 rounded bg-navy/10 text-navy font-semibold hover:bg-navy/20 transition-colors whitespace-nowrap">Today</button>
+      </div>
+    );
+  }
+  const days = differenceInDays(new Date(), new Date(date));
+  let cls = 'text-ew-body';
+  if (days >= 60) cls = 'text-red-500 font-semibold';
+  else if (days >= 30) cls = 'text-amber-600 font-semibold';
+  const ago = days === 0 ? 'today' : `${days}d ago`;
+  return (
+    <div className="flex items-center gap-1.5 flex-wrap">
+      <span className={`text-xs ${cls}`}>{format(new Date(date), 'd MMM yyyy')}</span>
+      <span className="text-[10px] text-ew-muted">({ago})</span>
+      <button onClick={e => { e.stopPropagation(); onLogToday(); }}
+        className="text-[10px] px-1.5 py-0.5 rounded bg-navy/10 text-navy font-semibold hover:bg-navy/20 transition-colors whitespace-nowrap">Today</button>
+    </div>
+  );
+}
 
 function fmtDate(d) {
   if (!d) return '—';
@@ -51,6 +91,7 @@ export default function Clients({ onViewHealth, onViewOnboarding }) {
   const [clients, setClients] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState('All');
+  const [tierFilter, setTierFilter] = useState('All');
   const [showAddModal, setShowAddModal] = useState(false);
   const [aiPanelClient, setAiPanelClient] = useState(null);
   const [aiPanelAlert, setAiPanelAlert] = useState(null);
@@ -98,17 +139,25 @@ export default function Clients({ onViewHealth, onViewOnboarding }) {
 
   const sorted = [...clients]
     .sort((a, b) => {
+      const ti = (TIER_ORDER[a.priorityTier] ?? 99) - (TIER_ORDER[b.priorityTier] ?? 99);
+      if (ti !== 0) return ti;
       const si = STATUS_ORDER.indexOf(a.status) - STATUS_ORDER.indexOf(b.status);
       if (si !== 0) return si;
       return (a.healthScore || 0) - (b.healthScore || 0);
     })
-    .filter(c => filter === 'All' || c.status === filter);
+    .filter(c => filter === 'All' || c.status === filter)
+    .filter(c => tierFilter === 'All' || c.priorityTier === tierFilter);
 
   const stats = {
     total: clients.length,
     live: clients.filter(c => c.status === 'Live').length,
     onboarding: clients.filter(c => c.status === 'Onboarding').length,
     trial: clients.filter(c => c.status === 'Trial').length,
+  };
+
+  const handleLogContactToday = async (id) => {
+    const today = format(new Date(), 'yyyy-MM-dd');
+    handleUpdateField(id, 'lastContacted', today);
   };
 
   const save = (id, field) => (value) => handleUpdateField(id, field, value);
@@ -155,11 +204,18 @@ export default function Clients({ onViewHealth, onViewOnboarding }) {
       </div>
 
       {/* Filters */}
-      <div className="flex items-center gap-1.5 mb-5">
+      <div className="flex items-center gap-1.5 mb-3 flex-wrap">
         {['All', 'Live', 'Onboarding', 'Trial', 'Churn'].map(f => (
           <button key={f} onClick={() => setFilter(f)}
             className={`px-3.5 py-1.5 text-sm font-medium rounded-lg transition-colors ${filter === f ? 'bg-navy text-white' : 'bg-white border border-ew-border text-ew-body hover:bg-ew-bg'}`}>
             {f}
+          </button>
+        ))}
+        <span className="w-px h-5 bg-ew-border mx-1" />
+        {['All', ...TIER_OPTIONS].map(f => (
+          <button key={f} onClick={() => setTierFilter(f)}
+            className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors ${tierFilter === f ? 'bg-navy text-white' : 'bg-white border border-ew-border text-ew-body hover:bg-ew-bg'}`}>
+            {f === 'All' ? 'All Tiers' : TIER_SHORT[f]}
           </button>
         ))}
       </div>
@@ -172,7 +228,7 @@ export default function Clients({ onViewHealth, onViewOnboarding }) {
           <table className="w-full text-sm">
             <thead className="bg-ew-footer border-b border-ew-border">
               <tr>
-                {['Client', 'Status', 'Plan', 'Owner', 'Health', 'Renewal', 'Notes', 'Actions'].map(h => (
+                {['Client', 'Tier', 'Status', 'Plan', 'Owner', 'Health', 'Last Contacted', 'Renewal', 'Notes', 'Actions'].map(h => (
                   <th key={h} className="px-4 py-3 text-left text-[11px] font-semibold text-ew-muted uppercase tracking-[0.12em]">{h}</th>
                 ))}
               </tr>
@@ -190,6 +246,19 @@ export default function Clients({ onViewHealth, onViewOnboarding }) {
                         ⚠ Handoff incomplete
                       </span>
                     )}
+                  </td>
+
+                  {/* Priority Tier */}
+                  <td className="px-4 py-3 min-w-[110px]">
+                    <InlineCell
+                      value={c.priorityTier}
+                      onSave={save(c.id, 'priorityTier')}
+                      type="select"
+                      options={['', ...TIER_OPTIONS]}
+                      displayEl={c.priorityTier
+                        ? <span className={`text-[11px] font-semibold px-2 py-0.5 rounded-full whitespace-nowrap ${TIER_STYLES[c.priorityTier]}`}>{TIER_SHORT[c.priorityTier]}</span>
+                        : <span className="text-xs text-ew-muted">—</span>}
+                    />
                   </td>
 
                   {/* Status */}
@@ -229,6 +298,18 @@ export default function Clients({ onViewHealth, onViewOnboarding }) {
                   {/* Health */}
                   <td className="px-4 py-3 min-w-[100px]">
                     <HealthCell client={c} />
+                  </td>
+
+                  {/* Last Contacted */}
+                  <td className="px-4 py-3 min-w-[180px]">
+                    <div className="flex flex-col gap-0.5">
+                      <InlineCell
+                        value={c.lastContacted || ''}
+                        onSave={save(c.id, 'lastContacted')}
+                        type="date"
+                        displayEl={<LastContactedCell date={c.lastContacted} onLogToday={() => handleLogContactToday(c.id)} />}
+                      />
+                    </div>
                   </td>
 
                   {/* Renewal date */}
@@ -289,7 +370,7 @@ export default function Clients({ onViewHealth, onViewOnboarding }) {
                 </tr>
               ))}
               {sorted.length === 0 && (
-                <tr><td colSpan={8} className="px-4 py-12 text-center text-ew-muted text-sm">No clients found</td></tr>
+                <tr><td colSpan={10} className="px-4 py-12 text-center text-ew-muted text-sm">No clients found</td></tr>
               )}
             </tbody>
           </table>

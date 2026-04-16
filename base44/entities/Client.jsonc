@@ -44,6 +44,19 @@
       "type": "string",
       "format": "date"
     },
+    "lastContacted": {
+      "type": "string",
+      "format": "date"
+    },
+    "priorityTier": {
+      "type": "string",
+      "enum": [
+        "Tier 1 \u2014 Strategic",
+        "Tier 2 \u2014 Core",
+        "Tier 3 \u2014 Standard",
+        "At Risk"
+      ]
+    },
     "notes": {
       "type": "string"
     },
