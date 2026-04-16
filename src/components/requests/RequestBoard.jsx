@@ -8,11 +8,11 @@ import RequestDetail from './RequestDetail';
 import RequestKanban from './RequestKanban';
 import { PRIORITY_STYLES, STATUS_STYLES, CATEGORY_STYLES, PRIORITY_ORDER, STATUSES, CATEGORIES, PRIORITIES, REQUESTERS } from './requestStyles';
 
-const PERSON_FILTERS = ['All', 'Chris', 'Martinique', 'George', 'Ramesh', 'Sreeja', 'David'];
+const PERSON_FILTERS = ['All', 'Elena', 'George', 'Chris', 'Martinique', 'Sreeja', 'Ramesh', 'David'];
 
 const ASSIGNEES = ['Elena', 'George', 'Chris', 'Martinique', 'Sreeja', 'Ramesh'];
 
-export default function RequestBoard({ refresh, assigneeFilter }) {
+export default function RequestBoard({ refresh }) {
   const [requests, setRequests] = useState([]);
   const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState('All');
@@ -81,11 +81,10 @@ export default function RequestBoard({ refresh, assigneeFilter }) {
 
   // Filtered list
   let filtered = requests.filter(r => showArchived ? r.archived : !r.archived);
-  if (assigneeFilter) filtered = filtered.filter(r => r.assignedTo === assigneeFilter);
   if (statusFilter === 'Urgent') filtered = filtered.filter(r => r.priority === 'Urgent');
   else if (statusFilter === 'My tasks') filtered = filtered.filter(r => r.requestedBy === 'Elena' || r.category === 'Self');
   else if (statusFilter !== 'All') filtered = filtered.filter(r => r.status === statusFilter);
-  if (personFilter !== 'All') filtered = filtered.filter(r => r.requestedBy === personFilter);
+  if (personFilter !== 'All') filtered = filtered.filter(r => r.assignedTo === personFilter);
 
   // Sort: priority then date
   filtered = [...filtered].sort((a, b) => {

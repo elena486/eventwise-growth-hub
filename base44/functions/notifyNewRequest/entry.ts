@@ -9,9 +9,9 @@ Deno.serve(async (req) => {
   const submittedStr = submittedAt ? new Date(submittedAt).toLocaleString('en-GB', { dateStyle: 'long', timeStyle: 'short' }) : new Date().toLocaleString('en-GB', { dateStyle: 'long', timeStyle: 'short' });
   const appUrl = 'https://app.base44.com/apps/AppShell?tab=requests';
 
-  const isGeorge = recipient === 'George';
-  const toEmail = isGeorge ? 'george@eventwise.com' : 'elena@eventwise.com';
-  const recipientName = isGeorge ? 'George' : 'Elena';
+  const EMAIL_MAP = { 'George': 'george@eventwise.com' };
+  const toEmail = EMAIL_MAP[recipient] || 'elena@eventwise.com';
+  const recipientName = recipient || 'Elena';
 
   const body = `A new request has been submitted for ${recipientName}.
 

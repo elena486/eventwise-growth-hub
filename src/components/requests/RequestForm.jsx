@@ -2,18 +2,14 @@ import React, { useState } from 'react';
 import { base44 } from '@/api/base44Client';
 import { CheckCircle2 } from 'lucide-react';
 
-const REQUESTERS = ['Chris', 'Martinique', 'George', 'Ramesh', 'Sreeja', 'David'];
+const REQUESTERS = ['Chris', 'Martinique', 'George', 'Ramesh', 'Sreeja', 'David', 'Elena'];
+const RECIPIENTS = ['Elena', 'George', 'Chris', 'Martinique', 'Sreeja', 'Ramesh', 'David'];
 const CATEGORIES = ['Marketing', 'Design', 'Content', 'Ops', 'Tech', 'Other'];
 const PRIORITIES = [
   { label: 'Low', cls: 'bg-gray-100 text-gray-600 border-gray-300' },
   { label: 'Medium', cls: 'bg-blue-100 text-blue-700 border-blue-300' },
   { label: 'High', cls: 'bg-amber-100 text-amber-700 border-amber-300' },
   { label: 'Urgent', cls: 'bg-red-100 text-red-700 border-red-300' },
-];
-
-const RECIPIENTS = [
-  { value: 'Elena', label: 'Elena — General tasks & ops' },
-  { value: 'George', label: 'George — Technical & platform' },
 ];
 
 const DEFAULT = { requestedBy: '', recipient: 'Elena', title: '', category: '', priority: 'Medium', description: '', deadline: '', extraNotes: '' };
@@ -78,11 +74,10 @@ export default function RequestForm({ onSubmitted }) {
   };
 
   if (done) {
-    const name = form.recipient === 'George' ? 'George' : 'Elena';
     return (
       <div className="flex flex-col items-center justify-center py-24 gap-4">
         <CheckCircle2 className="w-12 h-12 text-green-500" />
-        <p className="text-lg font-bold text-navy">Thanks — {name} will pick this up soon.</p>
+        <p className="text-lg font-bold text-navy">Thanks — {form.recipient} will pick this up soon.</p>
       </div>
     );
   }
@@ -96,15 +91,10 @@ export default function RequestForm({ onSubmitted }) {
 
       {/* Who is this for */}
       <Field label="Who is this request for?" required>
-        <div className="flex gap-3">
-          {RECIPIENTS.map(r => (
-            <button type="button" key={r.value} onClick={() => set('recipient', r.value)}
-              className={`flex-1 px-4 py-2.5 rounded-lg border text-sm font-semibold text-left transition-all ${form.recipient === r.value ? 'border-navy bg-navy/5 text-navy ring-2 ring-navy/20' : 'border-ew-border text-ew-body hover:bg-ew-bg'}`}>
-              <span className="block font-bold">{r.value}</span>
-              <span className="block text-xs font-normal text-ew-muted mt-0.5">{r.label.split('— ')[1]}</span>
-            </button>
-          ))}
-        </div>
+        <select value={form.recipient} onChange={e => set('recipient', e.target.value)} required className={selectCls}>
+          <option value="">Select a person…</option>
+          {RECIPIENTS.map(r => <option key={r} value={r}>{r}</option>)}
+        </select>
       </Field>
 
       {/* Your name */}
