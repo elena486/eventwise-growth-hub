@@ -52,9 +52,14 @@ export default function AIEmailDraftModal({ client, initialEmailType, aiSuggesti
     setLoading(true);
     setError(false);
     setDraft('');
-    const result = await base44.integrations.Core.InvokeLLM({ prompt: buildEmailPrompt(client, type, aiSuggestion) });
-    setDraft(result);
-    setLoading(false);
+    try {
+      const result = await base44.integrations.Core.InvokeLLM({ prompt: buildEmailPrompt(client, type, aiSuggestion) });
+      setDraft(result);
+    } catch {
+      setError(true);
+    } finally {
+      setLoading(false);
+    }
   };
 
   useEffect(() => { generate(emailType); }, []);

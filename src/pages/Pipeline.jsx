@@ -80,6 +80,10 @@ export default function Pipeline({ onProposalHandoff, onViewDeals }) {
 
       {/* Table or empty state */}
       {loading ? (
+        <div className="flex items-center justify-center h-48">
+          <div className="w-6 h-6 border-2 border-navy/20 border-t-navy rounded-full animate-spin" />
+        </div>
+      ) : leads.length === 0 ? (
         <div className="bg-white border border-ew-border rounded-xl flex flex-col items-center justify-center py-20">
           <div className="w-14 h-14 rounded-2xl bg-ew-bg flex items-center justify-center mb-4">
             <span className="text-3xl">🎯</span>
