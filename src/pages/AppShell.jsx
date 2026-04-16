@@ -11,7 +11,7 @@ import Sprints from './Sprints';
 import Marketing from './Marketing';
 import Handbook from './Handbook';
 import Requests from './Requests';
-import { LOGO_BLACK } from '@/lib/proposalData';
+import { LOGO_BLACK, LOGO_WHITE } from '@/lib/proposalData';
 import { useDarkMode } from '@/hooks/useDarkMode';
 import { Moon, Sun } from 'lucide-react';
 
@@ -91,7 +91,7 @@ export default function AppShell() {
         <div className="flex items-center gap-4 min-w-0">
           {/* Logo */}
           <div className="flex items-center gap-2.5 shrink-0">
-            <img src={LOGO_BLACK} alt="Eventwise" className="h-4" />
+            <img src={dark ? LOGO_WHITE : LOGO_BLACK} alt="Eventwise" className="h-4" />
             <span className="w-px h-4 bg-ew-border inline-block" />
             <span className="text-[11px] text-ew-muted font-medium tracking-wide">HQ</span>
           </div>
