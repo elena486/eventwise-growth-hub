@@ -225,7 +225,7 @@ export default function Clients({ onViewHealth, onViewOnboarding, onViewDetail }
       {loading ? (
         <div className="flex items-center justify-center h-48"><div className="w-6 h-6 border-2 border-[#8403C5]/20 border-t-[#8403C5] rounded-full animate-spin" /></div>
       ) : (
-        <div className="bg-white rounded-xl overflow-hidden" style={{ boxShadow: '0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04)' }}>
+        <div className="bg-white rounded-xl overflow-x-auto" style={{ boxShadow: '0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04)' }}>
           <table className="w-full text-sm">
             <thead className="border-b border-[#EBEBEB]">
               <tr>
