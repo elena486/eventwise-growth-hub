@@ -13,6 +13,7 @@ import Marketing from './Marketing';
 import Handbook from './Handbook';
 import Requests from './Requests';
 import { LOGO_BLACK, LOGO_WHITE } from '@/lib/proposalData';
+import ClientDetailPanel from '@/components/clients/ClientDetailPanel';
 import { useDarkMode } from '@/hooks/useDarkMode';
 import { Moon, Sun } from 'lucide-react';
 
@@ -50,6 +51,7 @@ export default function AppShell() {
   const { user } = useAuth();
   const [proposalHandoff, setProposalHandoff] = useState(null);
   const [focusClientId, setFocusClientId] = useState(null);
+  const [detailClient, setDetailClient] = useState(null);
   const [dark, setDark] = useDarkMode();
 
   const setTab = (t) => setSearchParams({ tab: t });
@@ -154,7 +156,7 @@ export default function AppShell() {
       <div className="flex-1 overflow-hidden flex dark:bg-[#0F0F1A]">
         {tab === 'pipeline' && <Pipeline onProposalHandoff={handleProposalHandoff} onViewDeals={() => setTab('deals')} />}
         {tab === 'proposal' && <ProposalGeneratorInner handoff={proposalHandoff} onHandoffConsumed={() => setProposalHandoff(null)} />}
-        {tab === 'clients' && <Clients onViewHealth={handleViewHealth} onViewOnboarding={handleViewOnboarding} />}
+        {tab === 'clients' && <Clients onViewHealth={handleViewHealth} onViewOnboarding={handleViewOnboarding} onViewDetail={setDetailClient} />}
         {tab === 'onboarding' && <Onboarding focusClientId={focusClientId} />}
         {tab === 'health' && <HealthRenewals focusClientId={focusClientId} />}
         {tab === 'deals' && <Deals onRenewalProposal={(data) => { handleProposalHandoff(data); }} />}
@@ -164,6 +166,13 @@ export default function AppShell() {
         {tab === 'requests' && <Requests />}
         {tab === 'bugs' && <BugTracker />}
       </div>
+      {detailClient && (
+        <ClientDetailPanel
+          client={detailClient}
+          onClose={() => setDetailClient(null)}
+          onUpdated={(updated) => setDetailClient(updated)}
+        />
+      )}
     </div>
   );
 }

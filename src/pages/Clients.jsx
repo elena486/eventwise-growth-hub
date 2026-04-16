@@ -86,13 +86,12 @@ function HealthCell({ client }) {
   );
 }
 
-export default function Clients({ onViewHealth, onViewOnboarding }) {
+export default function Clients({ onViewHealth, onViewOnboarding, onViewDetail }) {
   const [clients, setClients] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState('All');
   const [tierFilter, setTierFilter] = useState('All');
   const [showAddModal, setShowAddModal] = useState(false);
-  const [detailClient, setDetailClient] = useState(null);
   const [aiPanelClient, setAiPanelClient] = useState(null);
   const [aiPanelAlert, setAiPanelAlert] = useState(null);
   const [emailModal, setEmailModal] = useState(null);
@@ -298,7 +297,7 @@ export default function Clients({ onViewHealth, onViewOnboarding }) {
                   </td>
 
                   {/* Health */}
-                  <td className="px-4 py-3 min-w-[100px] cursor-pointer" onClick={() => setDetailClient(c)}>
+                  <td className="px-4 py-3 min-w-[100px] cursor-pointer" onClick={() => onViewDetail && onViewDetail(c)}>
                     <HealthCell client={c} />
                   </td>
 
@@ -368,7 +367,7 @@ export default function Clients({ onViewHealth, onViewOnboarding }) {
                         Draft email
                       </button>
                       <button
-                        onClick={() => setDetailClient(c)}
+                        onClick={() => onViewDetail && onViewDetail(c)}
                         className="text-xs px-2.5 py-1.5 font-medium text-[#6B7280] hover:text-[#374151] bg-white hover:bg-[#F9FAFB] rounded-lg transition-colors flex items-center gap-1"
                         style={{ border: '1.5px solid #E5E7EB' }}
                         title="View details"
@@ -389,17 +388,6 @@ export default function Clients({ onViewHealth, onViewOnboarding }) {
 
       {showAddModal && (
         <ClientModal client={null} onSave={handleAddClient} onClose={() => setShowAddModal(false)} />
-      )}
-
-      {detailClient && (
-        <ClientDetailPanel
-          client={detailClient}
-          onClose={() => setDetailClient(null)}
-          onUpdated={(updated) => {
-            setClients(prev => prev.map(c => c.id === updated.id ? updated : c));
-            setDetailClient(updated);
-          }}
-        />
       )}
 
       {emailModal && (
