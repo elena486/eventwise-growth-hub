@@ -3,6 +3,7 @@ import { base44 } from '@/api/base44Client';
 import { format, isPast, differenceInDays, isToday } from 'date-fns';
 import { Plus, AlertTriangle, Sparkles } from 'lucide-react';
 import ClientModal from '@/components/clients/ClientModal';
+import ClientDetailPanel from '@/components/clients/ClientDetailPanel';
 import InlineCell from '@/components/shared/InlineCell';
 import SmartAlertsPanel from '@/components/cs/SmartAlertsPanel';
 import AINextActionPanel from '@/components/cs/AINextActionPanel';
@@ -13,19 +14,17 @@ const STATUS_ORDER = ['Live', 'Onboarding', 'Trial', 'Churn'];
 const STATUSES = ['Trial', 'Onboarding', 'Live', 'Churn'];
 const OWNERS = ['Chris Carter', 'Martinique Keeler'];
 
-const TIER_OPTIONS = ['Tier 1 — Strategic', 'Tier 2 — Core', 'Tier 3 — Standard', 'At Risk'];
-const TIER_ORDER = { 'Tier 1 — Strategic': 0, 'Tier 2 — Core': 1, 'Tier 3 — Standard': 2, 'At Risk': 3 };
+const TIER_OPTIONS = ['High', 'Medium', 'Low'];
+const TIER_ORDER = { 'High': 0, 'Medium': 1, 'Low': 2 };
 const TIER_STYLES = {
-  'Tier 1 — Strategic': 'bg-[#FEF9C3] text-[#A16207]',
-  'Tier 2 — Core': 'bg-[#DBEAFE] text-[#1D4ED8]',
-  'Tier 3 — Standard': 'bg-[#F3F4F6] text-[#6B7280]',
-  'At Risk': 'bg-[#FEE2E2] text-[#B91C1C]',
+  'High': 'bg-[#FEF9C3] text-[#A16207]',
+  'Medium': 'bg-[#DBEAFE] text-[#1D4ED8]',
+  'Low': 'bg-[#F3F4F6] text-[#6B7280]',
 };
 const TIER_SHORT = {
-  'Tier 1 — Strategic': 'T1 Strategic',
-  'Tier 2 — Core': 'T2 Core',
-  'Tier 3 — Standard': 'T3 Standard',
-  'At Risk': 'At Risk',
+  'High': 'High',
+  'Medium': 'Medium',
+  'Low': 'Low',
 };
 
 function LastContactedCell({ date, onLogToday }) {
@@ -93,6 +92,7 @@ export default function Clients({ onViewHealth, onViewOnboarding }) {
   const [filter, setFilter] = useState('All');
   const [tierFilter, setTierFilter] = useState('All');
   const [showAddModal, setShowAddModal] = useState(false);
+  const [detailClient, setDetailClient] = useState(null);
   const [aiPanelClient, setAiPanelClient] = useState(null);
   const [aiPanelAlert, setAiPanelAlert] = useState(null);
   const [emailModal, setEmailModal] = useState(null);
@@ -217,7 +217,7 @@ export default function Clients({ onViewHealth, onViewOnboarding }) {
         {['All', ...TIER_OPTIONS].map(f => (
           <button key={f} onClick={() => setTierFilter(f)}
             className={`px-3.5 py-2 text-xs font-medium rounded-lg transition-colors ${tierFilter === f ? 'bg-[#242450] text-white' : 'bg-white border border-[#E5E7EB] text-[#374151] hover:bg-[#F9FAFB]'}`} style={{ borderWidth: tierFilter === f ? undefined : '1.5px' }}>
-            {f === 'All' ? 'All Tiers' : TIER_SHORT[f]}
+            {f === 'All' ? 'All Tiers' : f}
           </button>
         ))}
       </div>
@@ -230,16 +230,16 @@ export default function Clients({ onViewHealth, onViewOnboarding }) {
           <table className="w-full text-sm">
             <thead className="border-b border-[#EBEBEB]">
               <tr>
-                {['Client', 'Tier', 'Status', 'Plan', 'Owner', 'Health', 'Last Contacted', 'Renewal', 'Notes', 'Actions'].map(h => (
+                {['Client', 'Client Tier', 'Status', 'Plan', 'Owner', 'Health', 'Last Contacted', 'Renewal', 'Notes', 'Actions'].map(h => (
                   <th key={h} className="px-4 py-3.5 text-left text-[11px] font-bold text-[#9CA3AF] uppercase tracking-[0.08em]">{h}</th>
                 ))}
               </tr>
             </thead>
             <tbody>
               {sorted.map((c, i) => (
-                <tr key={c.id} className="border-b border-[#F2F2F4] last:border-0 hover:bg-[#F9FAFB] transition-colors">
+                <tr key={c.id} className="border-b border-[#F2F2F4] last:border-0 hover:bg-[#F9FAFB] transition-colors cursor-pointer" onClick={() => setDetailClient(c)}>
                   {/* Client name / contact */}
-                  <td className="px-4 py-3 min-w-[180px]">
+                  <td className="px-4 py-3 min-w-[180px]" onClick={e => e.stopPropagation()}>
                     <InlineCell value={c.name} onSave={save(c.id, 'name')} placeholder="Company name" className="font-semibold text-navy text-sm" />
                     <InlineCell value={c.contactName} onSave={save(c.id, 'contactName')} placeholder="Contact name" className="text-xs text-ew-muted mt-0.5" />
                     <InlineCell value={c.contactEmail} onSave={save(c.id, 'contactEmail')} placeholder="Email" className="text-xs text-ew-muted mt-0.5" />
@@ -250,21 +250,21 @@ export default function Clients({ onViewHealth, onViewOnboarding }) {
                     )}
                   </td>
 
-                  {/* Priority Tier */}
-                  <td className="px-4 py-3 min-w-[110px]">
+                  {/* Client Tier */}
+                  <td className="px-4 py-3 min-w-[110px]" onClick={e => e.stopPropagation()}>
                     <InlineCell
                       value={c.priorityTier}
                       onSave={save(c.id, 'priorityTier')}
                       type="select"
                       options={['', ...TIER_OPTIONS]}
                       displayEl={c.priorityTier
-                        ? <span className={`text-[11px] font-semibold px-2 py-0.5 rounded-full whitespace-nowrap ${TIER_STYLES[c.priorityTier]}`}>{TIER_SHORT[c.priorityTier]}</span>
+                        ? <span className={`text-[11px] font-semibold px-2 py-0.5 rounded-full whitespace-nowrap ${TIER_STYLES[c.priorityTier]}`}>{c.priorityTier}</span>
                         : <span className="text-xs text-ew-muted">—</span>}
                     />
                   </td>
 
                   {/* Status */}
-                  <td className="px-4 py-3">
+                  <td className="px-4 py-3" onClick={e => e.stopPropagation()}>
                     <InlineCell
                       value={c.status}
                       onSave={save(c.id, 'status')}
@@ -275,7 +275,7 @@ export default function Clients({ onViewHealth, onViewOnboarding }) {
                   </td>
 
                   {/* Plan */}
-                  <td className="px-4 py-3">
+                  <td className="px-4 py-3" onClick={e => e.stopPropagation()}>
                     <InlineCell
                       value={c.plan}
                       onSave={save(c.id, 'plan')}
@@ -287,7 +287,7 @@ export default function Clients({ onViewHealth, onViewOnboarding }) {
                   </td>
 
                   {/* Owner */}
-                  <td className="px-4 py-3">
+                  <td className="px-4 py-3" onClick={e => e.stopPropagation()}>
                     <InlineCell
                       value={c.owner}
                       onSave={save(c.id, 'owner')}
@@ -303,7 +303,7 @@ export default function Clients({ onViewHealth, onViewOnboarding }) {
                   </td>
 
                   {/* Last Contacted */}
-                  <td className="px-4 py-3 min-w-[180px]">
+                  <td className="px-4 py-3 min-w-[180px]" onClick={e => e.stopPropagation()}>
                     <div className="flex flex-col gap-0.5">
                       <InlineCell
                         value={c.lastContacted || ''}
@@ -315,7 +315,7 @@ export default function Clients({ onViewHealth, onViewOnboarding }) {
                   </td>
 
                   {/* Renewal date */}
-                  <td className="px-4 py-3 min-w-[130px]">
+                  <td className="px-4 py-3 min-w-[130px]" onClick={e => e.stopPropagation()}>
                     <InlineCell
                       value={c.renewalDate || ''}
                       onSave={save(c.id, 'renewalDate')}
@@ -326,7 +326,7 @@ export default function Clients({ onViewHealth, onViewOnboarding }) {
                   </td>
 
                   {/* Notes */}
-                  <td className="px-4 py-3 max-w-[180px]">
+                  <td className="px-4 py-3 max-w-[180px]" onClick={e => e.stopPropagation()}>
                     <InlineCell
                       value={c.notes}
                       onSave={save(c.id, 'notes')}
@@ -337,7 +337,7 @@ export default function Clients({ onViewHealth, onViewOnboarding }) {
                   </td>
 
                   {/* Actions */}
-                  <td className="px-4 py-3">
+                  <td className="px-4 py-3" onClick={e => e.stopPropagation()}>
                     <div className="flex items-center gap-1 flex-wrap">
                       {(c.status === 'Live' || c.status === 'Onboarding') && (
                         <button onClick={() => onViewHealth(c)} className="text-xs px-2.5 py-1.5 font-medium text-[#374151] bg-white hover:bg-[#F9FAFB] rounded-lg transition-colors" style={{ border: '1.5px solid #E5E7EB' }}>Health</button>
@@ -381,6 +381,17 @@ export default function Clients({ onViewHealth, onViewOnboarding }) {
 
       {showAddModal && (
         <ClientModal client={null} onSave={handleAddClient} onClose={() => setShowAddModal(false)} />
+      )}
+
+      {detailClient && (
+        <ClientDetailPanel
+          client={detailClient}
+          onClose={() => setDetailClient(null)}
+          onUpdated={(updated) => {
+            setClients(prev => prev.map(c => c.id === updated.id ? updated : c));
+            setDetailClient(updated);
+          }}
+        />
       )}
 
       {emailModal && (

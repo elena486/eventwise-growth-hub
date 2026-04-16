@@ -51,11 +51,11 @@
     "priorityTier": {
       "type": "string",
       "enum": [
-        "Tier 1 \u2014 Strategic",
-        "Tier 2 \u2014 Core",
-        "Tier 3 \u2014 Standard",
-        "At Risk"
-      ]
+        "High",
+        "Medium",
+        "Low"
+      ],
+      "description": "How important is this client to the business? Use this to prioritise your time and attention."
     },
     "notes": {
       "type": "string"
@@ -75,6 +75,10 @@
     "handoffIncomplete": {
       "type": "boolean",
       "description": "True if post-conversion handoff checklist is not complete"
+    },
+    "noReplyLog": {
+      "type": "string",
+      "description": "JSON array of no-reply entries [{date, note}]"
     }
   },
   "required": [

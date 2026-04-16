@@ -166,15 +166,10 @@ export default function HealthRenewals({ focusClientId }) {
                       <td className="px-4 py-3">
                         {c.priorityTier ? (
                           <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded-md whitespace-nowrap ${
-                            c.priorityTier === 'Tier 1 — Strategic' ? 'bg-[#FEF9C3] text-[#A16207]' :
-                            c.priorityTier === 'Tier 2 — Core' ? 'bg-[#DBEAFE] text-[#1D4ED8]' :
-                            c.priorityTier === 'At Risk' ? 'bg-[#FEE2E2] text-[#B91C1C]' :
+                            c.priorityTier === 'High' ? 'bg-[#FEF9C3] text-[#A16207]' :
+                            c.priorityTier === 'Medium' ? 'bg-[#DBEAFE] text-[#1D4ED8]' :
                             'bg-[#F3F4F6] text-[#6B7280]'
-                          }`}>{
-                            c.priorityTier === 'Tier 1 — Strategic' ? 'T1' :
-                            c.priorityTier === 'Tier 2 — Core' ? 'T2' :
-                            c.priorityTier === 'Tier 3 — Standard' ? 'T3' : 'At Risk'
-                          }</span>
+                          }`}>{c.priorityTier}</span>
                         ) : <span className="text-[#9CA3AF] text-xs">—</span>}
                       </td>
                       <td className="px-4 py-3">

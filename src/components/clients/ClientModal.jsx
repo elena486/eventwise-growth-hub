@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { OWNERS, SECONDARY_OWNERS, STATUSES, STATUS_STYLES } from '@/lib/csData';
 import { X } from 'lucide-react';
 
-const TIER_OPTIONS = ['', 'Tier 1 — Strategic', 'Tier 2 — Core', 'Tier 3 — Standard', 'At Risk'];
+const TIER_OPTIONS = ['', 'High', 'Medium', 'Low'];
 
 const EMPTY = {
   name: '', contactName: '', contactEmail: '', owner: 'Martinique Keeler',
@@ -80,7 +80,7 @@ export default function ClientModal({ client, onSave, onClose }) {
               <input type="date" className={inputCls} value={form.renewalDate || ''} onChange={e => up('renewalDate', e.target.value)} />
             </div>
             <div>
-              <label className={labelCls}>Priority tier</label>
+              <label className={labelCls} title="How important is this client to the business? Use this to prioritise your time and attention.">Client tier ℹ</label>
               <select className={inputCls} value={form.priorityTier || ''} onChange={e => up('priorityTier', e.target.value)}>
                 {TIER_OPTIONS.map(o => <option key={o} value={o}>{o || '— Not set —'}</option>)}
               </select>
