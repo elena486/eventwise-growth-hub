@@ -21,7 +21,7 @@ export default function RequestBoard({ refresh }) {
   const [deleteId, setDeleteId] = useState(null);
 
   const load = async () => {
-    const data = await base44.entities.Request.list('-submittedAt', 500);
+    const data = await base44.entities.Request.list('-created_date', 500);
     setRequests(data);
     setLoading(false);
   };
