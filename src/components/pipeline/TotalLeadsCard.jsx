@@ -28,7 +28,7 @@ export default function TotalLeadsCard({ leads, stageFilter, onStageFilter }) {
 
   return (
     <div
-      className="bg-white border border-ew-border rounded-xl p-5 cursor-pointer select-none transition-shadow hover:shadow-md h-[120px] overflow-hidden"
+      className="bg-white border border-ew-border rounded-xl p-5 cursor-pointer select-none transition-shadow hover:shadow-md min-h-[120px]"
       onClick={() => setExpanded(v => !v)}
     >
       {/* Header */}

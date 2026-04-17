@@ -159,7 +159,7 @@ export default function AppShell() {
         {tab === 'clients' && <Clients onViewHealth={handleViewHealth} onViewOnboarding={handleViewOnboarding} onViewDetail={setDetailClient} />}
         {tab === 'onboarding' && <Onboarding focusClientId={focusClientId} />}
         {tab === 'health' && <HealthRenewals focusClientId={focusClientId} />}
-        {tab === 'deals' && <Deals onRenewalProposal={(data) => { handleProposalHandoff(data); }} />}
+        {tab === 'deals' && <Deals onRenewalProposal={(data) => { handleProposalHandoff(data); }} onViewClient={(clientId) => { setTab('clients'); }} />}
         {tab === 'sprints' && <Sprints />}
         {tab === 'marketing' && <Marketing />}
         {tab === 'handbook' && <Handbook />}
