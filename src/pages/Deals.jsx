@@ -113,7 +113,18 @@ export default function Deals({ onRenewalProposal }) {
           <table className="w-full text-sm">
             <thead className="bg-ew-footer border-b border-ew-border">
               <tr>
-                {['Client', 'Plan', 'Monthly', 'Annual ▾', 'Year 1 total', 'Accounting?', 'Start date', 'End date', 'Status', 'Actions'].map(h => (
+                {['Client', 'Plan', 'Monthly', 'Annual ▾', 'Year 1 total'].map(h => (
+                  <th key={h} className="px-4 py-3 text-left text-[11px] font-semibold text-ew-muted uppercase tracking-[0.12em]">{h}</th>
+                ))}
+                <th className="px-4 py-3 text-left text-[11px] font-semibold text-ew-muted uppercase tracking-[0.12em]">
+                  <span className="group relative inline-flex items-center gap-1 cursor-help">
+                    Includes Accounting Add-on?
+                    <span className="absolute bottom-full left-0 mb-1.5 w-64 bg-navy text-white text-xs rounded-lg px-3 py-2 shadow-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10 normal-case tracking-normal font-normal whitespace-normal">
+                      Toggle on if this client has purchased the accounting integration as part of their plan.
+                    </span>
+                  </span>
+                </th>
+                {['Start date', 'End date', 'Status', 'Actions'].map(h => (
                   <th key={h} className="px-4 py-3 text-left text-[11px] font-semibold text-ew-muted uppercase tracking-[0.12em]">{h}</th>
                 ))}
               </tr>
