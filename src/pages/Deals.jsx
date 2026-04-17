@@ -113,7 +113,7 @@ export default function Deals({ onRenewalProposal }) {
           <table className="w-full text-sm">
             <thead className="bg-ew-footer border-b border-ew-border">
               <tr>
-                {['Client', 'Plan', 'Monthly', 'Annual ▾', 'Year 1 total', 'Acctg?', 'Start date', 'End date', 'Status', 'Actions'].map(h => (
+                {['Client', 'Plan', 'Monthly', 'Annual ▾', 'Year 1 total', 'Accounting?', 'Start date', 'End date', 'Status', 'Actions'].map(h => (
                   <th key={h} className="px-4 py-3 text-left text-[11px] font-semibold text-ew-muted uppercase tracking-[0.12em]">{h}</th>
                 ))}
               </tr>

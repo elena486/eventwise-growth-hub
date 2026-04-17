@@ -6,25 +6,40 @@ function fmt(n) {
 }
 
 export default function StatsRow({ leads, stageFilter, onStageFilter }) {
-  const pipeline = leads.reduce((s, l) => s + (l.dealValueMonthly || 0), 0);
-  const proposalsSent = leads.filter(l => l.stage === 'Proposal Sent').length;
-  const avg = leads.length > 0 ? pipeline / leads.length : 0;
+  const activeLeads = leads.filter(l => !l.converted);
+  const pipeline = activeLeads.reduce((s, l) => s + (l.dealValueMonthly || 0), 0);
+  const proposalsSent = activeLeads.filter(l => l.stage === 'Proposal Sent').length;
+  const avg = activeLeads.length > 0 ? pipeline / activeLeads.length : 0;
 
-  const statCards = [
-    { label: 'Pipeline value', value: fmt(pipeline) + '/mo' },
-    { label: 'Proposals sent', value: proposalsSent },
-    { label: 'Avg deal value', value: fmt(avg) + '/mo' },
-  ];
+  const cardBase = 'bg-white border border-ew-border rounded-xl p-5 flex flex-col justify-between min-h-[100px]';
 
   return (
-    <div className="grid grid-cols-4 gap-4 mb-6 items-start">
-      <TotalLeadsCard leads={leads} stageFilter={stageFilter} onStageFilter={onStageFilter} />
-      {statCards.map(c => (
-        <div key={c.label} className="bg-white border border-ew-border rounded-xl p-5">
-          <p className="text-xs font-medium text-ew-muted uppercase tracking-[0.12em] mb-1">{c.label}</p>
-          <p className="text-2xl font-bold text-navy">{c.value}</p>
+    <div className="grid grid-cols-4 gap-4 mb-6">
+      <TotalLeadsCard leads={activeLeads} stageFilter={stageFilter} onStageFilter={onStageFilter} />
+
+      {/* Pipeline value */}
+      <div className={cardBase}>
+        <p className="text-xs font-medium text-ew-muted uppercase tracking-[0.12em]">Pipeline value</p>
+        <div>
+          <p className="text-2xl font-bold text-navy">{fmt(pipeline)}<span className="text-sm font-medium text-ew-muted">/mo</span></p>
+          <p className="text-xs text-ew-muted mt-0.5">{fmt(pipeline * 12)}/yr</p>
         </div>
-      ))}
+      </div>
+
+      {/* Proposals sent */}
+      <div className={cardBase}>
+        <p className="text-xs font-medium text-ew-muted uppercase tracking-[0.12em]">Proposals sent</p>
+        <p className="text-2xl font-bold text-navy">{proposalsSent}</p>
+      </div>
+
+      {/* Avg deal value */}
+      <div className={cardBase}>
+        <p className="text-xs font-medium text-ew-muted uppercase tracking-[0.12em]">Avg deal value</p>
+        <div>
+          <p className="text-2xl font-bold text-navy">{fmt(avg)}<span className="text-sm font-medium text-ew-muted">/mo</span></p>
+          <p className="text-xs text-ew-muted mt-0.5">{fmt(avg * 12)}/yr</p>
+        </div>
+      </div>
     </div>
   );
 }

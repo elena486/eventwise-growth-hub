@@ -1,16 +1,25 @@
 import React, { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
-import { Plus, ArrowRight } from 'lucide-react';
+import { Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 import StatsRow from '@/components/pipeline/StatsRow';
 import LeadTable from '@/components/pipeline/LeadTable';
 import ClosedWonModal from '@/components/pipeline/ClosedWonModal';
 
+const OWNER_FILTERS = ['All Leads', "Chris's Leads", "Ramesh's Leads", "Elena's Leads", "George's Leads"];
+const OWNER_MAP = {
+  "Chris's Leads": 'Chris',
+  "Ramesh's Leads": 'Ramesh',
+  "Elena's Leads": 'Elena',
+  "George's Leads": 'George',
+};
+
 export default function Pipeline({ onProposalHandoff, onViewDeals }) {
   const [leads, setLeads] = useState([]);
   const [loading, setLoading] = useState(true);
   const [stageFilter, setStageFilter] = useState(null);
+  const [ownerFilter, setOwnerFilter] = useState('All Leads');
   const [closedWonLead, setClosedWonLead] = useState(null);
   const [newLeadId, setNewLeadId] = useState(null);
 
@@ -58,10 +67,23 @@ export default function Pipeline({ onProposalHandoff, onViewDeals }) {
     });
   };
 
+  // Active (non-converted) leads only
+  const activeLeads = leads.filter(l => !l.converted);
+
+  // Owner-filtered leads (for stats)
+  const ownerFiltered = ownerFilter === 'All Leads'
+    ? activeLeads
+    : activeLeads.filter(l => l.leadOwner === OWNER_MAP[ownerFilter]);
+
+  // Stage-filtered leads (for table display)
+  const displayLeads = stageFilter
+    ? ownerFiltered.filter(l => l.stage === stageFilter)
+    : ownerFiltered;
+
   return (
     <div className="flex-1 bg-ew-bg overflow-y-auto p-8 font-dm">
       {/* Header */}
-      <div className="flex items-start justify-between mb-6">
+      <div className="flex items-start justify-between mb-5">
         <div>
           <h1 className="text-2xl font-bold text-navy">Warm Leads</h1>
           <p className="text-ew-muted text-sm mt-0.5">Your active pipeline — updated as you go</p>
@@ -75,15 +97,40 @@ export default function Pipeline({ onProposalHandoff, onViewDeals }) {
         </Button>
       </div>
 
-      {/* Stats */}
-      <StatsRow leads={leads} stageFilter={stageFilter} onStageFilter={setStageFilter} />
+      {/* Owner filter bar */}
+      <div className="flex items-center gap-1.5 mb-5 flex-wrap">
+        {OWNER_FILTERS.map(f => (
+          <button
+            key={f}
+            onClick={() => { setOwnerFilter(f); setStageFilter(null); }}
+            className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors border ${
+              ownerFilter === f
+                ? 'bg-navy text-white border-navy'
+                : 'bg-white border-ew-border text-ew-body hover:bg-ew-bg'
+            }`}
+          >
+            {f}
+          </button>
+        ))}
+      </div>
+
+      {/* Stats — driven by owner-filtered leads */}
+      <StatsRow leads={ownerFiltered} stageFilter={stageFilter} onStageFilter={setStageFilter} />
+
+      {/* Stage filter indicator */}
+      {stageFilter && (
+        <div className="mb-3 flex items-center gap-2">
+          <span className="text-sm text-ew-body">Filtered by stage: <strong>{stageFilter}</strong></span>
+          <button onClick={() => setStageFilter(null)} className="text-xs text-ew-muted hover:text-navy underline transition-colors">Clear</button>
+        </div>
+      )}
 
       {/* Table or empty state */}
       {loading ? (
         <div className="flex items-center justify-center h-48">
           <div className="w-6 h-6 border-2 border-navy/20 border-t-navy rounded-full animate-spin" />
         </div>
-      ) : leads.length === 0 ? (
+      ) : displayLeads.length === 0 ? (
         <div className="bg-white border border-ew-border rounded-xl flex flex-col items-center justify-center py-20">
           <div className="w-14 h-14 rounded-2xl bg-ew-bg flex items-center justify-center mb-4">
             <span className="text-3xl">🎯</span>
@@ -99,52 +146,14 @@ export default function Pipeline({ onProposalHandoff, onViewDeals }) {
           </Button>
         </div>
       ) : (
-        <>
-          {stageFilter && (
-            <div className="mb-3 flex items-center gap-2">
-              <span className="text-sm text-ew-body">Filtered by: <strong>{stageFilter}</strong></span>
-              <button onClick={() => setStageFilter(null)} className="text-xs text-ew-muted hover:text-navy underline transition-colors">Clear filter</button>
-            </div>
-          )}
-          <LeadTable
-            leads={(stageFilter ? leads.filter(l => l.stage === stageFilter) : leads).filter(l => !l.converted)}
-            onDelete={handleDelete}
-            onProposal={handleProposal}
-            onUpdateField={handleUpdateField}
-            newLeadId={newLeadId}
-          />
-          {/* Converted leads section */}
-          {leads.filter(l => l.converted).length > 0 && (
-            <div className="mt-8">
-              <h3 className="text-xs font-semibold text-ew-muted uppercase tracking-[0.15em] mb-3">Converted</h3>
-              <div className="bg-white border border-ew-border rounded-xl overflow-hidden opacity-60">
-                <table className="w-full text-sm">
-                  <tbody>
-                    {leads.filter(l => l.converted).map(lead => (
-                      <tr key={lead.id} className="border-b border-ew-border last:border-0">
-                        <td className="px-4 py-3">
-                          <p className="font-semibold text-ew-body">{lead.companyName}</p>
-                          <p className="text-xs text-ew-muted">{lead.contactName}</p>
-                        </td>
-                        <td className="px-4 py-3 text-ew-muted text-xs">Closed Won — converted to client</td>
-                        <td className="px-4 py-3 text-right">
-                          {lead.dealId && onViewDeals && (
-                            <button
-                              onClick={onViewDeals}
-                              className="flex items-center gap-1 text-xs font-medium text-navy hover:underline ml-auto"
-                            >
-                              View deal <ArrowRight className="w-3 h-3" />
-                            </button>
-                          )}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          )}
-        </>
+        <LeadTable
+          leads={displayLeads}
+          showOwnerSections={ownerFilter === 'All Leads'}
+          onDelete={handleDelete}
+          onProposal={handleProposal}
+          onUpdateField={handleUpdateField}
+          newLeadId={newLeadId}
+        />
       )}
 
       {closedWonLead && (
@@ -154,8 +163,6 @@ export default function Pipeline({ onProposalHandoff, onViewDeals }) {
           onConverted={() => { setClosedWonLead(null); refresh(); }}
         />
       )}
-
-
     </div>
   );
 }
