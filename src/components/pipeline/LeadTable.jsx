@@ -7,7 +7,7 @@ import { ChevronUp, ChevronDown, ChevronsUpDown, FileText, Trash2, Check, X, Pen
 
 const STAGE_ORDER = ['Contacted', 'Discovery Call', 'Proposal Sent', 'In Negotiation', 'Closed Won', 'Closed Lost'];
 const PLANS = ['Starter', 'Professional', 'Business'];
-const OWNERS = ['Chris', 'Ramesh', 'Elena', 'George'];
+const OWNERS = ['Chris', 'Ramesh', 'George'];
 
 function fmt(n) {
   return '£' + Math.round(n || 0).toLocaleString('en-GB');

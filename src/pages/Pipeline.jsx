@@ -7,11 +7,10 @@ import StatsRow from '@/components/pipeline/StatsRow';
 import LeadTable from '@/components/pipeline/LeadTable';
 import ClosedWonModal from '@/components/pipeline/ClosedWonModal';
 
-const OWNER_FILTERS = ['All Leads', "Chris's Leads", "Ramesh's Leads", "Elena's Leads", "George's Leads"];
+const OWNER_FILTERS = ['All Leads', "Chris's Leads", "Ramesh's Leads", "George's Leads"];
 const OWNER_MAP = {
   "Chris's Leads": 'Chris',
   "Ramesh's Leads": 'Ramesh',
-  "Elena's Leads": 'Elena',
   "George's Leads": 'George',
 };
 

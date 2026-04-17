@@ -11,7 +11,7 @@ export default function StatsRow({ leads, stageFilter, onStageFilter }) {
   const proposalsSent = activeLeads.filter(l => l.stage === 'Proposal Sent').length;
   const avg = activeLeads.length > 0 ? pipeline / activeLeads.length : 0;
 
-  const cardBase = 'bg-white border border-ew-border rounded-xl p-5 flex flex-col justify-between min-h-[100px]';
+  const cardBase = 'bg-white border border-ew-border rounded-xl p-5 flex flex-col justify-between h-[120px]';
 
   return (
     <div className="grid grid-cols-4 gap-4 mb-6">
