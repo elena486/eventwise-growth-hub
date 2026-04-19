@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
-import { Plus, LayoutGrid, List, Search, ExternalLink, FileText, Video, Mic, Wrench, BookOpen, Presentation, File, Trash2, Pencil, AlertTriangle, Download } from 'lucide-react';
+import { Plus, LayoutGrid, List, Search, ExternalLink, FileText, Video, Mic, Wrench, BookOpen, Presentation, File, Trash2, Pencil, AlertTriangle, Download, ChevronDown, ChevronRight } from 'lucide-react';
 import { format } from 'date-fns';
 import AssetModal from '@/components/sales/AssetModal';
 
@@ -106,6 +106,29 @@ function AssetCard({ asset, onEdit, onDelete }) {
           <span className="text-[11px] text-ew-muted ml-auto">{fmtDate(asset.lastUpdated)}</span>
         )}
       </div>
+    </div>
+  );
+}
+
+function TypeSection({ type, items, onEdit, onDelete }) {
+  const [open, setOpen] = useState(true);
+  return (
+    <div className="bg-white border border-ew-border rounded-xl overflow-hidden">
+      <button
+        onClick={() => setOpen(v => !v)}
+        className="w-full flex items-center gap-3 px-5 py-3.5 hover:bg-ew-bg transition-colors"
+      >
+        {open ? <ChevronDown className="w-4 h-4 text-ew-muted shrink-0" /> : <ChevronRight className="w-4 h-4 text-ew-muted shrink-0" />}
+        <TypeTag type={type} />
+        <span className="text-xs text-ew-muted">{items.length} asset{items.length !== 1 ? 's' : ''}</span>
+      </button>
+      {open && (
+        <div className="px-5 pb-5 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 border-t border-ew-border pt-4">
+          {items.map(a => (
+            <AssetCard key={a.id} asset={a} onEdit={onEdit} onDelete={onDelete} />
+          ))}
+        </div>
+      )}
     </div>
   );
 }
@@ -246,19 +269,9 @@ export default function SalesAssets() {
           <p className="text-ew-muted text-sm">Try a different filter or add a new asset.</p>
         </div>
       ) : view === 'grid' ? (
-        <div className="space-y-8">
+        <div className="space-y-3">
           {Object.entries(grouped).map(([type, items]) => (
-            <div key={type}>
-              <div className="flex items-center gap-2 mb-3">
-                <TypeTag type={type} />
-                <span className="text-xs text-ew-muted">{items.length} asset{items.length !== 1 ? 's' : ''}</span>
-              </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-                {items.map(a => (
-                  <AssetCard key={a.id} asset={a} onEdit={openEdit} onDelete={setDeleteConfirm} />
-                ))}
-              </div>
-            </div>
+            <TypeSection key={type} type={type} items={items} onEdit={openEdit} onDelete={setDeleteConfirm} />
           ))}
         </div>
       ) : (
