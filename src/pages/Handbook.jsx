@@ -83,7 +83,6 @@ export default function Handbook({ onNavigate }) {
       ),
     };
     updateHb(newHb);
-    // Navigate to first page of section or first page of first section
     if (remaining.length > 0) {
       setActivePageId(remaining[0].id);
     } else {
@@ -91,6 +90,51 @@ export default function Handbook({ onNavigate }) {
       setActiveSectionId(firstSection.id);
       setActivePageId(firstSection.pages[0]?.id || '');
     }
+  };
+
+  const renamePage = (sectionId, pageId, newTitle) => {
+    updateHb({
+      ...hb,
+      sections: hb.sections.map(s =>
+        s.id === sectionId
+          ? { ...s, pages: s.pages.map(p => p.id === pageId ? { ...p, title: newTitle } : p) }
+          : s
+      ),
+    });
+  };
+
+  const renameSection = (sectionId, newLabel) => {
+    updateHb({
+      ...hb,
+      sections: hb.sections.map(s =>
+        s.id === sectionId ? { ...s, label: newLabel } : s
+      ),
+    });
+  };
+
+  const deleteSection = (sectionId) => {
+    const newSections = hb.sections.filter(s => s.id !== sectionId);
+    const newHb = { ...hb, sections: newSections };
+    updateHb(newHb);
+    if (newSections.length > 0) {
+      setActiveSectionId(newSections[0].id);
+      setActivePageId(newSections[0].pages[0]?.id || '');
+    }
+  };
+
+  const reorderPages = (sectionId, draggedPageId, targetPageId) => {
+    const section = hb.sections.find(s => s.id === sectionId);
+    if (!section) return;
+    const pages = [...section.pages];
+    const fromIdx = pages.findIndex(p => p.id === draggedPageId);
+    const toIdx = pages.findIndex(p => p.id === targetPageId);
+    if (fromIdx === -1 || toIdx === -1) return;
+    const [moved] = pages.splice(fromIdx, 1);
+    pages.splice(toIdx, 0, moved);
+    updateHb({
+      ...hb,
+      sections: hb.sections.map(s => s.id === sectionId ? { ...s, pages } : s),
+    });
   };
 
   const addPage = (sectionId) => {
@@ -138,6 +182,11 @@ export default function Handbook({ onNavigate }) {
         onSelectPage={selectPage}
         onToggleSection={toggleSection}
         onAddPage={addPage}
+        onRenamePage={renamePage}
+        onDeletePage={deletePage}
+        onRenameSection={renameSection}
+        onDeleteSection={deleteSection}
+        onReorderPages={reorderPages}
       />
 
       <div className="flex-1 overflow-hidden flex">

@@ -1,145 +1,139 @@
 import React, { useState } from 'react';
 import { Pencil, Check, X, Trash2 } from 'lucide-react';
 import { format } from 'date-fns';
+import ReactQuill from 'react-quill';
+
+const QUILL_MODULES = {
+  toolbar: [
+    [{ header: [1, 2, 3, false] }],
+    ['bold', 'italic', 'underline'],
+    [{ list: 'ordered' }, { list: 'bullet' }],
+    ['link'],
+    ['clean'],
+  ],
+};
+
+const QUILL_FORMATS = ['header', 'bold', 'italic', 'underline', 'list', 'bullet', 'link'];
 
 export default function HandbookContentPage({ section, page, onUpdate, onDelete }) {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState('');
-  const [editingDesc, setEditingDesc] = useState(false);
-  const [descDraft, setDescDraft] = useState('');
-  const [editingTitle, setEditingTitle] = useState(false);
   const [titleDraft, setTitleDraft] = useState('');
+  const [descDraft, setDescDraft] = useState('');
   const [confirmDelete, setConfirmDelete] = useState(false);
 
-  const startEdit = () => { setDraft(page.content || ''); setEditing(true); };
+  const fmtDate = (d) => { try { return format(new Date(d), 'd MMM yyyy'); } catch { return d; } };
+
+  const startEdit = () => {
+    setDraft(page.richContent || convertToHtml(page.content || ''));
+    setTitleDraft(page.title || '');
+    setDescDraft(page.description || '');
+    setEditing(true);
+  };
+
+  const cancelEdit = () => setEditing(false);
+
   const saveEdit = () => {
-    onUpdate({ ...page, content: draft, updatedAt: new Date().toISOString().slice(0, 10) });
+    onUpdate({
+      ...page,
+      richContent: draft,
+      title: titleDraft,
+      description: descDraft,
+      updatedAt: new Date().toISOString().slice(0, 10),
+    });
     setEditing(false);
   };
 
-  const saveTitle = () => {
-    onUpdate({ ...page, title: titleDraft });
-    setEditingTitle(false);
-  };
-
-  const saveDesc = () => {
-    onUpdate({ ...page, description: descDraft });
-    setEditingDesc(false);
-  };
-
-  const fmtDate = (d) => {
-    try { return format(new Date(d), 'd MMM yyyy'); } catch { return d; }
-  };
+  // Convert old plain-text content to basic HTML for display
+  const displayHtml = page.richContent || convertToHtml(page.content || '');
 
   return (
     <div className="flex-1 overflow-y-auto bg-[#F7F8FC] p-8">
       <div className="max-w-3xl mx-auto">
         {/* Breadcrumb */}
-        <p className="text-xs text-ew-muted mb-4">{section.label.replace(/^[^\w]+/, '').trim()} › {page.title}</p>
+        <p className="text-xs text-ew-muted mb-4">
+          {section.label.replace(/^[^\w]+/, '').trim()} › {editing ? titleDraft : page.title}
+        </p>
 
         {/* Header card */}
         <div className="bg-white rounded-xl border border-ew-border p-6 mb-4">
           <div className="flex items-start justify-between gap-4">
             <div className="flex-1 min-w-0">
-              {/* Title */}
-              {editingTitle ? (
-                <div className="flex items-center gap-2 mb-2">
+              {editing ? (
+                <>
                   <input
                     autoFocus
-                    className="text-xl font-bold text-navy border-b-2 border-[#8403C5] outline-none bg-transparent flex-1"
+                    className="text-xl font-bold text-navy border-b-2 border-[#8403C5] outline-none bg-transparent w-full mb-2"
                     value={titleDraft}
                     onChange={e => setTitleDraft(e.target.value)}
-                    onKeyDown={e => { if (e.key === 'Enter') saveTitle(); if (e.key === 'Escape') setEditingTitle(false); }}
+                    placeholder="Page title…"
                   />
-                  <button onClick={saveTitle} className="text-green-500"><Check className="w-4 h-4" /></button>
-                  <button onClick={() => setEditingTitle(false)} className="text-gray-400"><X className="w-4 h-4" /></button>
-                </div>
-              ) : (
-                <div className="flex items-center gap-2 group mb-2">
-                  <h1 className="text-xl font-bold text-navy">{page.title}</h1>
-                  <button onClick={() => { setTitleDraft(page.title); setEditingTitle(true); }}
-                    className="opacity-0 group-hover:opacity-100 text-ew-muted hover:text-navy transition-opacity">
-                    <Pencil className="w-3.5 h-3.5" />
-                  </button>
-                </div>
-              )}
-
-              {/* Description */}
-              {editingDesc ? (
-                <div className="flex items-center gap-2">
-                  <input autoFocus
-                    className="text-sm text-ew-muted border-b border-ew-border outline-none bg-transparent flex-1"
+                  <input
+                    className="text-sm text-ew-muted border-b border-ew-border outline-none bg-transparent w-full"
                     value={descDraft}
                     onChange={e => setDescDraft(e.target.value)}
-                    onKeyDown={e => { if (e.key === 'Enter') saveDesc(); if (e.key === 'Escape') setEditingDesc(false); }}
+                    placeholder="Add a description…"
                   />
-                  <button onClick={saveDesc} className="text-green-500"><Check className="w-3.5 h-3.5" /></button>
-                  <button onClick={() => setEditingDesc(false)} className="text-gray-400"><X className="w-3.5 h-3.5" /></button>
-                </div>
+                </>
               ) : (
-                <div className="flex items-center gap-2 group">
-                  <p className="text-sm text-ew-muted">{page.description || <span className="italic text-ew-muted/50">Add a description…</span>}</p>
-                  <button onClick={() => { setDescDraft(page.description || ''); setEditingDesc(true); }}
-                    className="opacity-0 group-hover:opacity-100 text-ew-muted hover:text-navy transition-opacity">
-                    <Pencil className="w-3 h-3" />
-                  </button>
-                </div>
+                <>
+                  <h1 className="text-xl font-bold text-navy mb-1">{page.title}</h1>
+                  {page.description && <p className="text-sm text-ew-muted">{page.description}</p>}
+                  {!page.description && <p className="text-sm text-ew-muted/40 italic">No description</p>}
+                </>
               )}
             </div>
 
-            {/* Actions */}
             <div className="flex items-center gap-2 shrink-0">
-              {page.updatedAt && (
+              {page.updatedAt && !editing && (
                 <span className="text-[11px] text-ew-muted hidden sm:block">Updated {fmtDate(page.updatedAt)}</span>
               )}
-              {!editing && (
-                <button onClick={startEdit}
-                  className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-ew-body border border-ew-border rounded-lg hover:bg-ew-bg transition-colors">
-                  <Pencil className="w-3 h-3" /> Edit
-                </button>
+              {editing ? (
+                <>
+                  <button onClick={saveEdit}
+                    className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold bg-[#8403C5] text-white rounded-lg hover:bg-[#7002A8] transition-colors">
+                    <Check className="w-3 h-3" /> Save
+                  </button>
+                  <button onClick={cancelEdit}
+                    className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-ew-body border border-ew-border rounded-lg hover:bg-ew-bg transition-colors">
+                    <X className="w-3 h-3" /> Cancel
+                  </button>
+                </>
+              ) : (
+                <>
+                  <button onClick={startEdit}
+                    className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-ew-body border border-ew-border rounded-lg hover:bg-ew-bg transition-colors">
+                    <Pencil className="w-3 h-3" /> Edit
+                  </button>
+                  <button onClick={() => setConfirmDelete(true)}
+                    className="p-1.5 text-ew-muted hover:text-red-500 rounded-lg hover:bg-red-50 transition-colors">
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </button>
+                </>
               )}
-              <button onClick={() => setConfirmDelete(true)}
-                className="p-1.5 text-ew-muted hover:text-red-500 rounded-lg hover:bg-red-50 transition-colors">
-                <Trash2 className="w-3.5 h-3.5" />
-              </button>
             </div>
           </div>
         </div>
 
         {/* Content area */}
-        <div className="bg-white rounded-xl border border-ew-border p-6">
+        <div className="bg-white rounded-xl border border-ew-border overflow-hidden">
           {editing ? (
-            <div className="space-y-3">
-              <textarea
-                autoFocus
-                className="w-full min-h-[320px] text-sm text-ew-body leading-relaxed border border-ew-border rounded-lg px-4 py-3 outline-none focus:ring-2 focus:ring-[#8403C5]/20 focus:border-[#8403C5] resize-none font-dm"
+            <div className="handbook-quill">
+              <ReactQuill
+                theme="snow"
                 value={draft}
-                onChange={e => setDraft(e.target.value)}
+                onChange={setDraft}
+                modules={QUILL_MODULES}
+                formats={QUILL_FORMATS}
                 placeholder="Write content here…"
+                style={{ minHeight: 320 }}
               />
-              <div className="flex justify-end gap-2">
-                <button onClick={() => setEditing(false)}
-                  className="px-4 py-2 text-sm text-ew-body hover:bg-ew-bg rounded-lg transition-colors">Cancel</button>
-                <button onClick={saveEdit}
-                  className="px-4 py-2 text-sm font-semibold bg-[#8403C5] text-white rounded-lg hover:bg-[#7002A8] transition-colors">Save</button>
-              </div>
             </div>
           ) : (
-            <div className="prose prose-sm max-w-none">
-              {(page.content || '').split('\n').map((line, i) => {
-                if (!line.trim()) return <div key={i} className="h-3" />;
-                return (
-                  <p key={i} className="text-sm text-ew-body leading-relaxed mb-1">
-                    {renderLine(line)}
-                  </p>
-                );
-              })}
-              {!page.content && (
-                <button onClick={startEdit} className="text-sm text-ew-muted italic hover:text-[#8403C5]">
-                  Click "Edit" to add content…
-                </button>
-              )}
-            </div>
+            <div
+              className="p-6 prose prose-sm max-w-none handbook-content"
+              dangerouslySetInnerHTML={{ __html: displayHtml || '<p class="text-ew-muted italic text-sm">No content yet — click Edit to add some.</p>' }}
+            />
           )}
         </div>
       </div>
@@ -160,20 +154,18 @@ export default function HandbookContentPage({ section, page, onUpdate, onDelete 
   );
 }
 
-function renderLine(line) {
-  // Bold **text**
-  const parts = line.split(/(\*\*[^*]+\*\*)/g);
-  return parts.map((part, i) => {
-    if (part.startsWith('**') && part.endsWith('**')) {
-      return <strong key={i}>{part.slice(2, -2)}</strong>;
-    }
-    // Auto-link URLs
-    const urlRegex = /(https?:\/\/[^\s]+)/g;
-    const subParts = part.split(urlRegex);
-    return subParts.map((sub, j) =>
-      sub.match(urlRegex) ? (
-        <a key={j} href={sub} target="_blank" rel="noopener noreferrer" className="text-[#8403C5] hover:underline break-all">{sub}</a>
-      ) : sub
-    );
-  });
+// Convert old plain-text format to basic HTML
+function convertToHtml(text) {
+  if (!text) return '';
+  return text
+    .split('\n')
+    .map(line => {
+      if (!line.trim()) return '';
+      // Bold **text**
+      const bolded = line.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+      // Auto-link
+      const linked = bolded.replace(/(https?:\/\/[^\s<]+)/g, '<a href="$1" target="_blank" rel="noopener noreferrer">$1</a>');
+      return `<p>${linked}</p>`;
+    })
+    .join('');
 }

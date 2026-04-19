@@ -396,6 +396,39 @@
   .dark .text-\[\#64748B\] { color: #9090B0 !important; }
   .dark .text-\[\#94A3B8\] { color: #7070A0 !important; }
 
+  /* ============================================================
+     HANDBOOK QUILL EDITOR DARK OVERRIDES
+     ============================================================ */
+  .dark .handbook-quill .ql-toolbar { background-color: #252535 !important; border-color: #2E2E4E !important; }
+  .dark .handbook-quill .ql-container { background-color: #1E1E2E !important; border-color: #2E2E4E !important; color: #E8E8F0 !important; }
+  .dark .handbook-quill .ql-editor { color: #E8E8F0 !important; }
+  .dark .handbook-quill .ql-editor.ql-blank::before { color: #6060A0 !important; }
+  .dark .handbook-quill .ql-stroke { stroke: #C0C0E0 !important; }
+  .dark .handbook-quill .ql-fill { fill: #C0C0E0 !important; }
+  .dark .handbook-quill .ql-picker-label { color: #C0C0E0 !important; }
+  .dark .handbook-quill .ql-picker-options { background-color: #1E1E2E !important; border-color: #2E2E4E !important; }
+  .dark .handbook-quill button:hover .ql-stroke { stroke: #ffffff !important; }
+
+/* Quill editor height */
+.handbook-quill .ql-editor { min-height: 320px; font-family: var(--font-dm); font-size: 0.875rem; }
+.handbook-quill .ql-toolbar { border-top-left-radius: 0; border-top-right-radius: 0; }
+
+  /* Handbook content display */
+  .handbook-content p { margin-bottom: 0.5rem; color: #374151; font-size: 0.875rem; line-height: 1.6; }
+  .handbook-content h1, .handbook-content h2, .handbook-content h3 { font-weight: 700; color: #242450; margin-bottom: 0.5rem; margin-top: 1rem; }
+  .handbook-content h1 { font-size: 1.25rem; }
+  .handbook-content h2 { font-size: 1.05rem; }
+  .handbook-content h3 { font-size: 0.95rem; }
+  .handbook-content ul, .handbook-content ol { padding-left: 1.25rem; margin-bottom: 0.75rem; }
+  .handbook-content li { font-size: 0.875rem; color: #374151; margin-bottom: 0.25rem; }
+  .handbook-content a { color: #8403C5; text-decoration: underline; word-break: break-all; }
+  .handbook-content strong { font-weight: 700; }
+  .handbook-content em { font-style: italic; }
+  .dark .handbook-content p { color: #E8E8F0 !important; }
+  .dark .handbook-content h1, .dark .handbook-content h2, .dark .handbook-content h3 { color: #FFFFFF !important; }
+  .dark .handbook-content li { color: #E8E8F0 !important; }
+  .dark .handbook-content a { color: #c060e8 !important; }
+
   /* --- Scrollbar --- */
   .dark ::-webkit-scrollbar { width: 6px; height: 6px; }
   .dark ::-webkit-scrollbar-track { background: #1E1E2E; }
