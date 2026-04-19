@@ -168,7 +168,7 @@ export default function AppShell() {
         {tab === 'deals' && <Deals onRenewalProposal={(data) => { handleProposalHandoff(data); }} onViewClient={(clientId) => { setTab('clients'); }} />}
         {tab === 'sprints' && <Sprints />}
         {tab === 'marketing' && <Marketing />}
-        {tab === 'handbook' && <Handbook />}
+        {tab === 'handbook' && <Handbook onNavigate={(t) => setTab(t)} />}
         {tab === 'requests' && <Requests />}
         {tab === 'hr' && <HR />}
         {tab === 'competitors' && <Competitors />}
