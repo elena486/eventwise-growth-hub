@@ -1,0 +1,60 @@
+{
+  "name": "TimeOffRecord",
+  "type": "object",
+  "properties": {
+    "teamMember": {
+      "type": "string",
+      "enum": [
+        "Chris",
+        "Elena",
+        "Martinique",
+        "George",
+        "Ramesh",
+        "Sreeja",
+        "David"
+      ]
+    },
+    "type": {
+      "type": "string",
+      "enum": [
+        "Vacation",
+        "Sick Day",
+        "Other"
+      ]
+    },
+    "startDate": {
+      "type": "string",
+      "format": "date"
+    },
+    "endDate": {
+      "type": "string",
+      "format": "date"
+    },
+    "workingDays": {
+      "type": "number"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "Approved",
+        "Pending",
+        "Declined"
+      ],
+      "default": "Pending"
+    },
+    "year": {
+      "type": "number"
+    },
+    "notes": {
+      "type": "string"
+    },
+    "declineReason": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "teamMember",
+    "type",
+    "startDate"
+  ]
+}

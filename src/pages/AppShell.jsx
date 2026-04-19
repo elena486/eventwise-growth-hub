@@ -12,6 +12,7 @@ import Sprints from './Sprints';
 import Marketing from './Marketing';
 import Handbook from './Handbook';
 import Requests from './Requests';
+import HR from './HR';
 import SalesAssets from './SalesAssets';
 import { LOGO_BLACK, LOGO_WHITE } from '@/lib/proposalData';
 import ClientDetailPanel from '@/components/clients/ClientDetailPanel';
@@ -34,6 +35,7 @@ const GROUPS = [
   { id: 'ops', label: 'Operations', tabs: [
     { id: 'sprints', label: 'Sprints' },
     { id: 'requests', label: 'Requests' },
+    { id: 'hr', label: 'HR' },
   ]},
   { id: 'marketing', label: 'Marketing', tabs: [
     { id: 'marketing', label: 'Marketing' },
@@ -166,6 +168,7 @@ export default function AppShell() {
         {tab === 'marketing' && <Marketing />}
         {tab === 'handbook' && <Handbook />}
         {tab === 'requests' && <Requests />}
+        {tab === 'hr' && <HR />}
         {tab === 'bugs' && <BugTracker />}
         {tab === 'assets' && <SalesAssets />}
       </div>
