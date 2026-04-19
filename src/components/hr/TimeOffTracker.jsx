@@ -20,14 +20,6 @@ const TYPE_STYLES = {
   Other:     'bg-gray-100 text-gray-600',
 };
 
-const ALLOWANCE_NOTE = `2026 Holiday Allowances (working days):
-• Martinique: 20 days
-• George: 20 days
-• Sreeja: 20 days
-• Ramesh: pro-rata (fractional — confirm with Chris)
-• Chris / Elena / David: directors — self-managed
-Update this note each January.`;
-
 function fmtDate(d) {
   if (!d) return '—';
   try { return format(parseISO(d), 'd MMM yyyy'); } catch { return d; }
@@ -56,9 +48,7 @@ export default function TimeOffTracker() {
   const [editRecord, setEditRecord] = useState(null);
   const [deleteConfirm, setDeleteConfirm] = useState(null);
   const [declineRecord, setDeclineRecord] = useState(null);
-  const [allowanceNote, setAllowanceNote] = useState(ALLOWANCE_NOTE);
-  const [editingNote, setEditingNote] = useState(false);
-  const [noteDraft, setNoteDraft] = useState(ALLOWANCE_NOTE);
+
 
   const load = async () => {
     const data = await base44.entities.TimeOffRecord.list('-startDate');
@@ -134,33 +124,6 @@ export default function TimeOffTracker() {
         </button>
       </div>
 
-      {/* Allowance note */}
-      <div className="mb-5 bg-[#F3E8FF] border border-[#8403C5]/20 rounded-xl px-5 py-3">
-        {editingNote ? (
-          <div className="space-y-2">
-            <textarea
-              className="w-full text-sm bg-white border border-ew-border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-navy/20 resize-none"
-              rows={7}
-              value={noteDraft}
-              onChange={e => setNoteDraft(e.target.value)}
-            />
-            <div className="flex gap-2">
-              <button onClick={() => { setAllowanceNote(noteDraft); setEditingNote(false); }}
-                className="px-3 py-1.5 text-xs font-semibold bg-navy text-white rounded-lg hover:bg-navy/90">Save</button>
-              <button onClick={() => { setNoteDraft(allowanceNote); setEditingNote(false); }}
-                className="px-3 py-1.5 text-xs font-medium text-ew-body hover:bg-white/60 rounded-lg">Cancel</button>
-            </div>
-          </div>
-        ) : (
-          <div className="flex items-start justify-between gap-3">
-            <pre className="text-xs text-[#7E22CE] font-dm whitespace-pre-wrap leading-relaxed">{allowanceNote}</pre>
-            <button onClick={() => { setNoteDraft(allowanceNote); setEditingNote(true); }}
-              className="shrink-0 p-1.5 rounded-lg hover:bg-white/50 text-[#7E22CE] transition-colors">
-              <Pencil className="w-3.5 h-3.5" />
-            </button>
-          </div>
-        )}
-      </div>
 
       {/* Stats */}
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 mb-5">
