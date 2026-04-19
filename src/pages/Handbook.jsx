@@ -4,6 +4,10 @@ import { DEFAULT_HANDBOOK } from '@/lib/handbookData';
 import HandbookSidebar from '@/components/handbook/HandbookSidebar';
 import HandbookContentPage from '@/components/handbook/HandbookContentPage';
 import HandbookLinkPage from '@/components/handbook/HandbookLinkPage';
+import AboutPage from '@/components/handbook/pages/AboutPage';
+import BrandPage from '@/components/handbook/pages/BrandPage';
+import TechStackPage from '@/components/handbook/pages/TechStackPage';
+import TeamPage from '@/components/handbook/pages/TeamPage';
 
 const STORAGE_KEY = 'handbook_v2';
 
@@ -137,26 +141,21 @@ export default function Handbook({ onNavigate }) {
       />
 
       <div className="flex-1 overflow-hidden flex">
-        {activePage ? (
-          activePage.type === 'content' ? (
-            <HandbookContentPage
-              key={activePage.id}
-              section={activeSection}
-              page={activePage}
-              onUpdate={(updated) => updatePage(activeSection.id, updated)}
-              onDelete={() => deletePage(activeSection.id, activePage.id)}
-            />
-          ) : (
-            <HandbookLinkPage
-              key={activePage.id}
-              section={activeSection}
-              page={activePage}
-              onUpdate={(updated) => updatePage(activeSection.id, updated)}
-              onDelete={() => deletePage(activeSection.id, activePage.id)}
-              onNavigate={handleInternalNavigate}
-            />
-          )
-        ) : (
+        {activePage ? (() => {
+          const props = {
+            key: activePage.id,
+            section: activeSection,
+            page: activePage,
+            onUpdate: (updated) => updatePage(activeSection.id, updated),
+            onDelete: () => deletePage(activeSection.id, activePage.id),
+          };
+          if (activePage.id === 'about')      return <AboutPage {...props} />;
+          if (activePage.id === 'brand')      return <BrandPage {...props} />;
+          if (activePage.id === 'techstack')  return <TechStackPage {...props} />;
+          if (activePage.id === 'team-roles') return <TeamPage {...props} />;
+          if (activePage.type === 'link')     return <HandbookLinkPage {...props} onNavigate={handleInternalNavigate} />;
+          return <HandbookContentPage {...props} />;
+        })() : (
           <div className="flex-1 flex items-center justify-center bg-[#F7F8FC]">
             <p className="text-ew-muted text-sm">Select a page from the sidebar.</p>
           </div>
