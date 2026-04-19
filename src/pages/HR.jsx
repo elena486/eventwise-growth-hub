@@ -34,7 +34,7 @@ export default function HR() {
         ))}
       </div>
 
-      <div className="flex-1 overflow-hidden">
+      <div className="flex-1 overflow-y-auto">
         {tab === 'tracker' && <TimeOffTracker key={refreshKey} />}
         {tab === 'request' && <HRRequestForm onSubmitted={handleSubmitted} />}
       </div>

@@ -93,7 +93,7 @@ export default function HRRequestForm({ onSubmitted }) {
   }
 
   return (
-    <div className="flex-1 bg-ew-bg overflow-y-auto p-8 font-dm">
+    <div className="bg-ew-bg p-8 font-dm min-h-full">
       <div className="max-w-lg mx-auto">
         <div className="mb-6">
           <h1 className="text-2xl font-bold text-navy">Submit a Time Off Request</h1>

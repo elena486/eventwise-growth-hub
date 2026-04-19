@@ -119,7 +119,7 @@ export default function TimeOffTracker() {
   const years = ['2025', '2026', 'All'];
 
   return (
-    <div className="flex-1 bg-ew-bg overflow-y-auto p-8 font-dm">
+    <div className="bg-ew-bg p-8 font-dm min-h-full">
       {/* Header */}
       <div className="flex items-start justify-between mb-5">
         <div>
