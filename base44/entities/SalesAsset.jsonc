@@ -5,60 +5,54 @@
     "title": {
       "type": "string"
     },
-    "category": {
+    "type": {
       "type": "string",
       "enum": [
-        "Email Sequence",
-        "PDF",
         "Video",
-        "Presentation",
-        "Document",
+        "One-Pager",
+        "Deck",
+        "Tool",
+        "Guide",
+        "Case Study",
+        "Podcast",
+        "Template",
         "Other"
-      ]
-    },
-    "audience": {
-      "type": "string",
-      "enum": [
-        "Event Organisers",
-        "Agencies",
-        "Suppliers",
-        "All"
       ]
     },
     "status": {
       "type": "string",
       "enum": [
-        "Approved",
-        "In Review",
-        "Draft",
-        "Archived"
+        "Good to Use",
+        "Needs Update",
+        "Editing",
+        "Working on It",
+        "Chris to Review",
+        "ON HOLD",
+        "Needs Creating"
       ],
-      "default": "Draft"
+      "default": "Good to Use"
+    },
+    "url": {
+      "type": "string",
+      "description": "External link \u2014 Canva, Loom, Google Docs, etc."
+    },
+    "fileUrl": {
+      "type": "string",
+      "description": "Uploaded file URL (PDFs and attachments)"
+    },
+    "fileName": {
+      "type": "string",
+      "description": "Original file name for display"
+    },
+    "lastUpdated": {
+      "type": "string",
+      "format": "date"
+    },
+    "addedBy": {
+      "type": "string"
     },
     "notes": {
       "type": "string"
-    },
-    "mondayDocLink": {
-      "type": "string"
-    },
-    "fileUrl": {
-      "type": "string"
-    },
-    "videoLink": {
-      "type": "string"
-    },
-    "addedBy": {
-      "type": "string",
-      "enum": [
-        "Elena",
-        "Chris",
-        "George",
-        "Ramesh"
-      ]
-    },
-    "dateAdded": {
-      "type": "string",
-      "format": "date"
     }
   },
   "required": [
