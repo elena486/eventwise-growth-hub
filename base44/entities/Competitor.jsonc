@@ -1,0 +1,81 @@
+{
+  "name": "Competitor",
+  "type": "object",
+  "properties": {
+    "companyName": {
+      "type": "string"
+    },
+    "url": {
+      "type": "string"
+    },
+    "category": {
+      "type": "string",
+      "enum": [
+        "Forecasting Tool",
+        "Event Management",
+        "Procurement & Approvals",
+        "Accounting Software",
+        "Project Management",
+        "Expense Management",
+        "Other"
+      ]
+    },
+    "threatLevel": {
+      "type": "string",
+      "enum": [
+        "High",
+        "Medium",
+        "Low",
+        "Monitor"
+      ],
+      "default": "Monitor"
+    },
+    "marketStrategy": {
+      "type": "string"
+    },
+    "techStack": {
+      "type": "string"
+    },
+    "teamSize": {
+      "type": "string"
+    },
+    "pricing": {
+      "type": "string"
+    },
+    "keyFeatures": {
+      "type": "string"
+    },
+    "integrations": {
+      "type": "string"
+    },
+    "targetAudience": {
+      "type": "string"
+    },
+    "platformAdaptability": {
+      "type": "string"
+    },
+    "mainDifferences": {
+      "type": "string"
+    },
+    "customerSatisfaction": {
+      "type": "string"
+    },
+    "customerSupport": {
+      "type": "string"
+    },
+    "notes": {
+      "type": "string"
+    },
+    "lastUpdated": {
+      "type": "string",
+      "format": "date"
+    },
+    "needsResearch": {
+      "type": "boolean",
+      "default": false
+    }
+  },
+  "required": [
+    "companyName"
+  ]
+}
