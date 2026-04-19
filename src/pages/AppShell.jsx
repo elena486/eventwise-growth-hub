@@ -35,7 +35,7 @@ const GROUPS = [
   { id: 'ops', label: 'Operations', tabs: [
     { id: 'sprints', label: 'Sprints' },
     { id: 'requests', label: 'Requests' },
-    { id: 'hr', label: 'HR' },
+    { id: 'hr', label: 'Time Off Requests' },
   ]},
   { id: 'marketing', label: 'Marketing', tabs: [
     { id: 'marketing', label: 'Marketing' },
