@@ -1,0 +1,67 @@
+{
+  "name": "SalesAsset",
+  "type": "object",
+  "properties": {
+    "title": {
+      "type": "string"
+    },
+    "category": {
+      "type": "string",
+      "enum": [
+        "Email Sequence",
+        "PDF",
+        "Video",
+        "Presentation",
+        "Document",
+        "Other"
+      ]
+    },
+    "audience": {
+      "type": "string",
+      "enum": [
+        "Event Organisers",
+        "Agencies",
+        "Suppliers",
+        "All"
+      ]
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "Approved",
+        "In Review",
+        "Draft",
+        "Archived"
+      ],
+      "default": "Draft"
+    },
+    "notes": {
+      "type": "string"
+    },
+    "mondayDocLink": {
+      "type": "string"
+    },
+    "fileUrl": {
+      "type": "string"
+    },
+    "videoLink": {
+      "type": "string"
+    },
+    "addedBy": {
+      "type": "string",
+      "enum": [
+        "Elena",
+        "Chris",
+        "George",
+        "Ramesh"
+      ]
+    },
+    "dateAdded": {
+      "type": "string",
+      "format": "date"
+    }
+  },
+  "required": [
+    "title"
+  ]
+}

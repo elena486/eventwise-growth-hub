@@ -12,6 +12,7 @@ import Sprints from './Sprints';
 import Marketing from './Marketing';
 import Handbook from './Handbook';
 import Requests from './Requests';
+import SalesAssets from './SalesAssets';
 import { LOGO_BLACK, LOGO_WHITE } from '@/lib/proposalData';
 import ClientDetailPanel from '@/components/clients/ClientDetailPanel';
 import { useDarkMode } from '@/hooks/useDarkMode';
@@ -22,6 +23,7 @@ const GROUPS = [
     { id: 'pipeline', label: 'Pipeline' },
     { id: 'proposal', label: 'Proposal' },
     { id: 'deals', label: 'Deals' },
+    { id: 'assets', label: 'Assets' },
   ]},
   { id: 'cs', label: 'Customer Success', tabs: [
     { id: 'clients', label: 'Clients' },
@@ -165,6 +167,7 @@ export default function AppShell() {
         {tab === 'handbook' && <Handbook />}
         {tab === 'requests' && <Requests />}
         {tab === 'bugs' && <BugTracker />}
+        {tab === 'assets' && <SalesAssets />}
       </div>
       {detailClient && (
         <ClientDetailPanel
