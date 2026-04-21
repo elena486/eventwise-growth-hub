@@ -51,7 +51,7 @@ export default function TimeOffTracker() {
 
 
   const load = async () => {
-    const data = await base44.entities.TimeOffRecord.list('-startDate');
+    const data = await base44.entities.TimeOffRecord.list('-created_date');
     setRecords(data);
     setLoading(false);
   };

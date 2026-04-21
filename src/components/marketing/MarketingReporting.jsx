@@ -39,7 +39,7 @@ export default function MarketingReporting() {
   const [confirmId, setConfirmId] = useState(null);
   const [subTab, setSubTab] = useState('dashboard');
 
-  const load = () => base44.entities.MarketingReport.list('-year,-month', 100).then(r => {
+  const load = () => base44.entities.MarketingReport.list('-year', 100).then(r => {
     // Sort by year desc, then month desc
     const sorted = r.sort((a, b) => {
       if (b.year !== a.year) return b.year - a.year;
