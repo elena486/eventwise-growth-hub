@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { base44 } from '@/api/base44Client';
 import { CheckCircle2 } from 'lucide-react';
+import MultiFileUpload from '@/components/shared/MultiFileUpload';
 
 const REQUESTERS = ['Chris', 'Martinique', 'George', 'Ramesh', 'Sreeja', 'David', 'Elena'];
 const RECIPIENTS = ['Elena', 'George', 'Chris', 'Martinique', 'Sreeja', 'Ramesh', 'David'];
@@ -16,7 +17,7 @@ const DEFAULT = { requestedBy: '', recipient: 'Elena', title: '', category: '', 
 
 export default function RequestForm({ onSubmitted }) {
   const [form, setForm] = useState(DEFAULT);
-  const [file, setFile] = useState(null);
+  const [files, setFiles] = useState([]);
   const [submitting, setSubmitting] = useState(false);
   const [done, setDone] = useState(false);
 
@@ -27,13 +28,8 @@ export default function RequestForm({ onSubmitted }) {
     if (!form.title || !form.requestedBy) return;
     setSubmitting(true);
 
-    let attachmentUrl = '';
-    let attachmentName = '';
-    if (file) {
-      const { file_url } = await base44.integrations.Core.UploadFile({ file });
-      attachmentUrl = file_url;
-      attachmentName = file.name;
-    }
+    const attachmentUrl = files.map(f => f.url).join(',');
+    const attachmentName = files.map(f => f.name).join(', ');
 
     // Get count for request number
     const existing = await base44.entities.Request.list('-requestNumber', 1);
@@ -68,7 +64,7 @@ export default function RequestForm({ onSubmitted }) {
     setTimeout(() => {
       setDone(false);
       setForm(DEFAULT);
-      setFile(null);
+      setFiles([]);
       if (onSubmitted) onSubmitted();
     }, 2500);
   };
@@ -141,11 +137,8 @@ export default function RequestForm({ onSubmitted }) {
       </Field>
 
       {/* Attachment */}
-      <Field label="Attachments" hint="Optional — images, PDFs, docs">
-        <input type="file" accept="image/*,.pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx"
-          onChange={e => setFile(e.target.files[0] || null)}
-          className="text-sm text-ew-body file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-navy/10 file:text-navy hover:file:bg-navy/20 cursor-pointer" />
-        {file && <p className="text-xs text-ew-muted mt-1">Selected: {file.name}</p>}
+      <Field label="Attachments" hint="Optional">
+        <MultiFileUpload files={files} onChange={setFiles} />
       </Field>
 
       {/* Extra notes */}

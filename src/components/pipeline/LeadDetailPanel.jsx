@@ -5,6 +5,7 @@ import {
   X, Mail, ExternalLink, Phone, Linkedin, Plus, Pencil, Trash2,
   Check, Upload, Link, ChevronDown, ChevronUp, AlertTriangle
 } from 'lucide-react';
+import MultiFileUpload from '@/components/shared/MultiFileUpload';
 import StageBadge from './Stagebadge';
 
 const STAGES = ['New Lead', 'Contacted', 'Discovery Call', 'Demo Booked', 'Proposal Sent', 'Negotiation', 'Closed Won', 'Closed Lost', 'On Hold'];
@@ -248,6 +249,7 @@ export default function LeadDetailPanel({ lead, onClose, onUpdate, onDelete, onC
 
   const logEntries = (() => { try { return JSON.parse(data.activityLog || '[]'); } catch { return []; } })();
   const extLinks = (() => { try { return JSON.parse(data.externalLinks || '[]'); } catch { return []; } })();
+  const leadFiles = (() => { try { const p = JSON.parse(data.fileUrl || '[]'); return Array.isArray(p) ? p : []; } catch { return data.fileUrl ? [{ name: data.fileName || data.fileUrl, url: data.fileUrl }] : []; } })();
 
   const autoSave = useCallback((updates) => {
     const merged = { ...data, ...updates };
@@ -290,6 +292,10 @@ export default function LeadDetailPanel({ lead, onClose, onUpdate, onDelete, onC
 
   const saveExtLinks = (links) => {
     autoSave({ externalLinks: JSON.stringify(links) });
+  };
+
+  const saveFiles = (files) => {
+    autoSave({ fileUrl: JSON.stringify(files), fileName: files.map(f => f.name).join(', ') });
   };
 
   const annual = (parseFloat(data.dealValueMonthly) || 0) * 12;
@@ -577,6 +583,11 @@ export default function LeadDetailPanel({ lead, onClose, onUpdate, onDelete, onC
           <div className="mt-3">
             <label className="block text-[11px] font-medium text-ew-muted mb-2">External links</label>
             <ExternalLinksEditor links={extLinks} onChange={saveExtLinks} />
+          </div>
+
+          <div className="mt-4">
+            <label className="block text-[11px] font-medium text-ew-muted mb-2">File attachments</label>
+            <MultiFileUpload files={leadFiles} onChange={saveFiles} />
           </div>
         </div>
 

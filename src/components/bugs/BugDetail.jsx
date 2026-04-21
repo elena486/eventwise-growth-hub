@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { base44 } from '@/api/base44Client';
 import { format } from 'date-fns';
-import { ChevronLeft, Paperclip } from 'lucide-react';
+import { ChevronLeft } from 'lucide-react';
+import MultiFileUpload from '@/components/shared/MultiFileUpload';
 
 const REPORTERS = ['Chris', 'Martinique', 'George', 'Sreeja', 'Elena'];
 const ASSIGNEES = ['Chris', 'Martinique', 'Sreeja', 'Elena'];
@@ -30,20 +31,22 @@ const labelCls = 'block text-xs font-semibold text-ew-muted uppercase tracking-[
 export default function BugDetail({ bug, clients, onBack, onUpdate }) {
   const [form, setForm] = useState({ ...bug });
   const [saving, setSaving] = useState(false);
-  const [file, setFile] = useState(null);
 
   const up = (field, value) => setForm(f => ({ ...f, [field]: value }));
 
+  const getBugFiles = () => {
+    try { const p = JSON.parse(form.attachmentUrl || '[]'); if (Array.isArray(p)) return p; } catch {}
+    if (form.attachmentUrl) return [{ name: form.attachmentName || form.attachmentUrl, url: form.attachmentUrl }];
+    return [];
+  };
+  const setBugFiles = (files) => {
+    up('attachmentUrl', JSON.stringify(files));
+    up('attachmentName', files.map(f => f.name).join(', '));
+  };
+
   const handleSave = async () => {
     setSaving(true);
-    let attachmentUrl = form.attachmentUrl;
-    let attachmentName = form.attachmentName;
-    if (file) {
-      const { file_url } = await base44.integrations.Core.UploadFile({ file });
-      attachmentUrl = file_url;
-      attachmentName = file.name;
-    }
-    const updated = { ...form, attachmentUrl, attachmentName };
+    const updated = { ...form };
     await base44.entities.Bug.update(bug.id, updated);
     setSaving(false);
     onUpdate(updated);
@@ -150,17 +153,8 @@ export default function BugDetail({ bug, clients, onBack, onUpdate }) {
         </div>
 
         <div className="mb-6">
-          <label className={labelCls}>Attachment</label>
-          {form.attachmentUrl && (
-            <a href={form.attachmentUrl} target="_blank" rel="noopener noreferrer"
-              className="flex items-center gap-1.5 text-xs text-[#8403C5] hover:underline mb-2">
-              <Paperclip className="w-3.5 h-3.5" /> {form.attachmentName || 'View attachment'}
-            </a>
-          )}
-          <input type="file" accept="image/*,.pdf,.doc,.docx"
-            onChange={e => setFile(e.target.files[0] || null)}
-            className="text-sm text-ew-body file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-navy/10 file:text-navy cursor-pointer" />
-          {file && <p className="text-xs text-ew-muted mt-1">Selected: {file.name}</p>}
+          <label className={labelCls}>Attachments</label>
+          <MultiFileUpload files={getBugFiles()} onChange={setBugFiles} />
         </div>
 
         <div className="flex justify-end gap-2">

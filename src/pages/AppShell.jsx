@@ -14,6 +14,7 @@ import Handbook from './Handbook';
 import Requests from './Requests';
 import HR from './HR';
 import SalesAssets from './SalesAssets';
+import OutreachAnalytics from './OutreachAnalytics';
 import Competitors from './Competitors';
 import { LOGO_BLACK, LOGO_WHITE } from '@/lib/proposalData';
 import ClientDetailPanel from '@/components/clients/ClientDetailPanel';
@@ -26,6 +27,7 @@ const GROUPS = [
     { id: 'proposal', label: 'Proposal' },
     { id: 'deals', label: 'Deals' },
     { id: 'assets', label: 'Assets' },
+    { id: 'outreach', label: 'Outreach Analytics' },
   ]},
   { id: 'cs', label: 'Customer Success', tabs: [
     { id: 'clients', label: 'Clients' },
@@ -174,6 +176,7 @@ export default function AppShell() {
         {tab === 'competitors' && <Competitors />}
         {tab === 'bugs' && <BugTracker />}
         {tab === 'assets' && <SalesAssets />}
+        {tab === 'outreach' && <OutreachAnalytics />}
       </div>
       {detailClient && (
         <ClientDetailPanel

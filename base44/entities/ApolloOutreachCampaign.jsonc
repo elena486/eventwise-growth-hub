@@ -1,0 +1,96 @@
+{
+  "name": "ApolloOutreachCampaign",
+  "type": "object",
+  "properties": {
+    "campaignName": {
+      "type": "string"
+    },
+    "audienceSegment": {
+      "type": "string",
+      "enum": [
+        "Events",
+        "Agencies",
+        "Suppliers",
+        "Mixed"
+      ]
+    },
+    "touchPoint": {
+      "type": "string",
+      "enum": [
+        "TP1",
+        "TP2",
+        "TP3",
+        "TP4",
+        "TP5",
+        "TP6"
+      ]
+    },
+    "variant": {
+      "type": "string",
+      "enum": [
+        "A",
+        "B",
+        "C",
+        "D"
+      ],
+      "default": "A"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "Active",
+        "Paused",
+        "Completed",
+        "Killed"
+      ],
+      "default": "Active"
+    },
+    "launchDate": {
+      "type": "string",
+      "format": "date"
+    },
+    "endDate": {
+      "type": "string",
+      "format": "date"
+    },
+    "assetUsed": {
+      "type": "string"
+    },
+    "notes": {
+      "type": "string"
+    },
+    "subjectLine": {
+      "type": "string"
+    },
+    "subjectLineNotes": {
+      "type": "string"
+    },
+    "emailsSent": {
+      "type": "number"
+    },
+    "openRate": {
+      "type": "number"
+    },
+    "clickRate": {
+      "type": "number"
+    },
+    "replyRate": {
+      "type": "number"
+    },
+    "positiveReplies": {
+      "type": "number"
+    },
+    "meetingsBooked": {
+      "type": "number"
+    },
+    "unsubscribes": {
+      "type": "number"
+    },
+    "bounces": {
+      "type": "number"
+    }
+  },
+  "required": [
+    "campaignName"
+  ]
+}

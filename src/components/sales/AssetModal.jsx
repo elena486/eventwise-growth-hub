@@ -3,6 +3,7 @@ import { X } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
 import { format } from 'date-fns';
 import { TYPES } from '@/pages/SalesAssets';
+import MultiFileUpload from '@/components/shared/MultiFileUpload';
 
 const inputCls = 'w-full text-sm border border-ew-border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-navy/20 bg-white';
 const labelCls = 'block text-xs font-medium text-ew-body mb-1';
@@ -19,19 +20,19 @@ const EMPTY = {
 export default function AssetModal({ asset, onClose, onSaved }) {
   const [form, setForm] = useState(asset ? { ...asset } : { ...EMPTY });
   const [saving, setSaving] = useState(false);
-  const [uploading, setUploading] = useState(false);
+
+  // files stored as JSON array in fileUrl field
+  const getFiles = () => {
+    try { const p = JSON.parse(form.fileUrl); if (Array.isArray(p)) return p; } catch {}
+    if (form.fileUrl) return [{ name: form.fileName || form.fileUrl, url: form.fileUrl }];
+    return [];
+  };
+  const setFiles = (files) => {
+    up('fileUrl', JSON.stringify(files));
+    up('fileName', files.map(f => f.name).join(', '));
+  };
 
   const up = (k, v) => setForm(prev => ({ ...prev, [k]: v }));
-
-  const handleFileUpload = async (e) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    setUploading(true);
-    const { file_url } = await base44.integrations.Core.UploadFile({ file });
-    up('fileUrl', file_url);
-    up('fileName', file.name);
-    setUploading(false);
-  };
 
   const handleSave = async () => {
     if (!form.title.trim()) return;
@@ -83,18 +84,8 @@ export default function AssetModal({ asset, onClose, onSaved }) {
           </div>
 
           <div>
-            <label className={labelCls}>Download File <span className="text-ew-muted font-normal">(PDF, PPTX…)</span></label>
-            {form.fileUrl ? (
-              <div className="flex items-center gap-2">
-                <span className="text-xs text-ew-body flex-1 truncate">{form.fileName || form.fileUrl}</span>
-                <button onClick={() => { up('fileUrl', ''); up('fileName', ''); }} className="text-xs text-red-500 hover:text-red-700 shrink-0">Remove</button>
-              </div>
-            ) : (
-              <div className="flex items-center gap-2">
-                <input type="file" accept=".pdf,.pptx,.xlsx,.docx,.zip" onChange={handleFileUpload} className="text-xs text-ew-body flex-1" disabled={uploading} />
-                {uploading && <span className="text-xs text-ew-muted">Uploading…</span>}
-              </div>
-            )}
+            <label className={labelCls}>Download Files <span className="text-ew-muted font-normal">(PDF, DOCX, ZIP…)</span></label>
+            <MultiFileUpload files={getFiles()} onChange={setFiles} />
           </div>
 
           <div className="grid grid-cols-2 gap-3">
@@ -116,7 +107,7 @@ export default function AssetModal({ asset, onClose, onSaved }) {
 
         <div className="px-5 py-4 border-t border-ew-border shrink-0 flex justify-end gap-3">
           <button onClick={onClose} className="px-4 py-2 text-sm font-medium text-ew-body hover:bg-ew-bg rounded-lg transition-colors">Cancel</button>
-          <button onClick={handleSave} disabled={saving || uploading || !form.title.trim()}
+          <button onClick={handleSave} disabled={saving || !form.title.trim()}
             className="px-5 py-2 text-sm font-semibold bg-navy text-white rounded-lg hover:bg-navy/90 transition-colors disabled:opacity-40">
             {saving ? 'Saving…' : asset ? 'Save changes' : 'Add asset'}
           </button>
