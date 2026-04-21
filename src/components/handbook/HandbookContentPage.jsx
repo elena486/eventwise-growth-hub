@@ -2,6 +2,9 @@ import React, { useState } from 'react';
 import { Pencil, Check, X, Trash2 } from 'lucide-react';
 import { format } from 'date-fns';
 import ReactQuill from 'react-quill';
+import { useAuth } from '@/lib/AuthContext';
+
+const ALLOWED_EDITORS = ['chris@eventwise.com', 'elena@eventwise.com'];
 
 const QUILL_MODULES = {
   toolbar: [
@@ -16,6 +19,8 @@ const QUILL_MODULES = {
 const QUILL_FORMATS = ['header', 'bold', 'italic', 'underline', 'list', 'bullet', 'link'];
 
 export default function HandbookContentPage({ section, page, onUpdate, onDelete }) {
+  const { user } = useAuth();
+  const canEdit = ALLOWED_EDITORS.includes(user?.email?.toLowerCase());
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState('');
   const [titleDraft, setTitleDraft] = useState('');
@@ -88,7 +93,7 @@ export default function HandbookContentPage({ section, page, onUpdate, onDelete 
               {page.updatedAt && !editing && (
                 <span className="text-[11px] text-ew-muted hidden sm:block">Updated {fmtDate(page.updatedAt)}</span>
               )}
-              {editing ? (
+              {canEdit && (editing ? (
                 <>
                   <button onClick={saveEdit}
                     className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold bg-[#8403C5] text-white rounded-lg hover:bg-[#7002A8] transition-colors">
@@ -110,7 +115,7 @@ export default function HandbookContentPage({ section, page, onUpdate, onDelete 
                     <Trash2 className="w-3.5 h-3.5" />
                   </button>
                 </>
-              )}
+              ))}
             </div>
           </div>
         </div>

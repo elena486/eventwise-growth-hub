@@ -1,6 +1,9 @@
 import React, { useState } from 'react';
 import { Pencil, Trash2, Plus, Check, X, Mail } from 'lucide-react';
 import HandbookPageShell from '../HandbookPageShell';
+import { useAuth } from '@/lib/AuthContext';
+
+const ALLOWED_EDITORS = ['chris@eventwise.com', 'elena@eventwise.com'];
 
 const DEFAULT_TEAM = [
   { id: 1, name: 'Chris Carter',      role: 'CEO',                    email: 'chris@eventwise.com',  responsibilities: ['Sales, product direction, client relationships', 'Investor comms and board management', 'CS oversight'] },
@@ -14,13 +17,15 @@ const DEFAULT_TEAM = [
 
 const ic = 'w-full text-xs border border-ew-border rounded-lg px-2 py-1.5 outline-none focus:border-[#8403C5] bg-white';
 
-function TeamCard({ member, onEdit, onDelete }) {
+function TeamCard({ member, onEdit, onDelete, canEdit }) {
   return (
     <div className="bg-white border border-ew-border rounded-xl p-4 relative group">
-      <div className="absolute top-3 right-3 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-        <button onClick={() => onEdit(member)} className="p-1 text-ew-muted hover:text-navy rounded transition-colors"><Pencil className="w-3.5 h-3.5" /></button>
-        <button onClick={() => onDelete(member.id)} className="p-1 text-ew-muted hover:text-red-500 rounded transition-colors"><Trash2 className="w-3.5 h-3.5" /></button>
-      </div>
+      {canEdit && (
+        <div className="absolute top-3 right-3 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+          <button onClick={() => onEdit(member)} className="p-1 text-ew-muted hover:text-navy rounded transition-colors"><Pencil className="w-3.5 h-3.5" /></button>
+          <button onClick={() => onDelete(member.id)} className="p-1 text-ew-muted hover:text-red-500 rounded transition-colors"><Trash2 className="w-3.5 h-3.5" /></button>
+        </div>
+      )}
 
       <div className="mb-3 pr-12">
         <p className="font-bold text-navy text-sm leading-tight">{member.name}</p>
@@ -92,6 +97,8 @@ function TeamEditModal({ member, onSave, onClose }) {
 }
 
 export default function TeamPage({ section, page, onUpdate, onDelete }) {
+  const { user } = useAuth();
+  const canEdit = ALLOWED_EDITORS.includes(user?.email?.toLowerCase());
   const team = page.team || DEFAULT_TEAM;
 
   const setTeam = (newTeam) => {
@@ -126,15 +133,18 @@ export default function TeamPage({ section, page, onUpdate, onDelete }) {
             member={member}
             onEdit={setEditMember}
             onDelete={setDeleteConfirm}
+            canEdit={canEdit}
           />
         ))}
       </div>
 
       {/* Add button */}
-      <button onClick={() => setAddingNew(true)}
-        className="flex items-center gap-1.5 text-sm text-[#8403C5] hover:underline mt-4">
-        <Plus className="w-3.5 h-3.5" /> Add team member
-      </button>
+      {canEdit && (
+        <button onClick={() => setAddingNew(true)}
+          className="flex items-center gap-1.5 text-sm text-[#8403C5] hover:underline mt-4">
+          <Plus className="w-3.5 h-3.5" /> Add team member
+        </button>
+      )}
 
       {/* Timezone note */}
       <div className="flex items-start gap-2 mt-5 bg-amber-50 border border-amber-200 rounded-lg px-4 py-3">

@@ -2,8 +2,13 @@ import React, { useState } from 'react';
 import { Pencil, Check, X, Trash2, ExternalLink, Plus, AlertTriangle } from 'lucide-react';
 import { format } from 'date-fns';
 import { INTERNAL_NAV } from '@/lib/handbookData';
+import { useAuth } from '@/lib/AuthContext';
+
+const ALLOWED_EDITORS = ['chris@eventwise.com', 'elena@eventwise.com'];
 
 export default function HandbookLinkPage({ section, page, onUpdate, onDelete, onNavigate }) {
+  const { user } = useAuth();
+  const canEdit = ALLOWED_EDITORS.includes(user?.email?.toLowerCase());
   const [editing, setEditing] = useState(false);
   const [editLinks, setEditLinks] = useState([]);
   const [titleDraft, setTitleDraft] = useState('');
@@ -99,7 +104,7 @@ export default function HandbookLinkPage({ section, page, onUpdate, onDelete, on
               {page.updatedAt && !editing && (
                 <span className="text-[11px] text-ew-muted hidden sm:block">Updated {fmtDate(page.updatedAt)}</span>
               )}
-              {editing ? (
+              {canEdit && (editing ? (
                 <>
                   <button onClick={saveEdit}
                     className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold bg-[#8403C5] text-white rounded-lg hover:bg-[#7002A8] transition-colors">
@@ -121,7 +126,7 @@ export default function HandbookLinkPage({ section, page, onUpdate, onDelete, on
                     <Trash2 className="w-3.5 h-3.5" />
                   </button>
                 </>
-              )}
+              ))}
             </div>
           </div>
         </div>

@@ -1,6 +1,9 @@
 import React, { useState } from 'react';
 import { Pencil, Trash2, Plus, Check, X, ExternalLink } from 'lucide-react';
 import HandbookPageShell from '../HandbookPageShell';
+import { useAuth } from '@/lib/AuthContext';
+
+const ALLOWED_EDITORS = ['chris@eventwise.com', 'elena@eventwise.com'];
 
 const STATUS_STYLES = {
   Active:     'bg-green-50 text-green-700 border-green-200',
@@ -29,6 +32,8 @@ const DEFAULT_TOOLS = [
 const ic = 'w-full text-xs border border-ew-border rounded px-2 py-1.5 outline-none focus:border-[#8403C5] bg-white';
 
 export default function TechStackPage({ section, page, onUpdate, onDelete }) {
+  const { user } = useAuth();
+  const canEdit = ALLOWED_EDITORS.includes(user?.email?.toLowerCase());
   const tools = page.tools || DEFAULT_TOOLS;
 
   const setTools = (newTools) => {
@@ -113,10 +118,12 @@ export default function TechStackPage({ section, page, onUpdate, onDelete }) {
                       </span>
                     </td>
                     <td className="px-3 py-2.5">
-                      <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <button onClick={() => startEdit(row)} className="p-1 text-ew-muted hover:text-navy transition-colors"><Pencil className="w-3.5 h-3.5" /></button>
-                        <button onClick={() => setDeleteConfirm(row.id)} className="p-1 text-ew-muted hover:text-red-500 transition-colors"><Trash2 className="w-3.5 h-3.5" /></button>
-                      </div>
+                      {canEdit && (
+                        <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                          <button onClick={() => startEdit(row)} className="p-1 text-ew-muted hover:text-navy transition-colors"><Pencil className="w-3.5 h-3.5" /></button>
+                          <button onClick={() => setDeleteConfirm(row.id)} className="p-1 text-ew-muted hover:text-red-500 transition-colors"><Trash2 className="w-3.5 h-3.5" /></button>
+                        </div>
+                      )}
                     </td>
                   </>
                 )}
@@ -124,10 +131,12 @@ export default function TechStackPage({ section, page, onUpdate, onDelete }) {
             ))}
           </tbody>
         </table>
-        <button onClick={addRow}
-          className="flex items-center gap-1.5 text-xs text-[#8403C5] hover:underline mt-3 px-3">
-          <Plus className="w-3.5 h-3.5" /> Add tool
-        </button>
+        {canEdit && (
+          <button onClick={addRow}
+            className="flex items-center gap-1.5 text-xs text-[#8403C5] hover:underline mt-3 px-3">
+            <Plus className="w-3.5 h-3.5" /> Add tool
+          </button>
+        )}
         <p className="text-xs text-ew-muted italic mt-4 px-3">Credentials are not stored here. See password manager for logins.</p>
       </div>
 

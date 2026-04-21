@@ -1,6 +1,9 @@
 import React, { useState } from 'react';
 import { Pencil, Check, X, Trash2 } from 'lucide-react';
 import { format } from 'date-fns';
+import { useAuth } from '@/lib/AuthContext';
+
+const ALLOWED_EDITORS = ['chris@eventwise.com', 'elena@eventwise.com'];
 
 /**
  * Shared shell for custom handbook pages.
@@ -8,6 +11,8 @@ import { format } from 'date-fns';
  * Children = the main content area body.
  */
 export default function HandbookPageShell({ section, page, onUpdate, onDelete, children }) {
+  const { user } = useAuth();
+  const canEdit = ALLOWED_EDITORS.includes(user?.email?.toLowerCase());
   const [editingTitle, setEditingTitle] = useState(false);
   const [titleDraft, setTitleDraft] = useState('');
   const [editingDesc, setEditingDesc] = useState(false);
@@ -43,10 +48,12 @@ export default function HandbookPageShell({ section, page, onUpdate, onDelete, c
               ) : (
                 <div className="flex items-center gap-2 group mb-2">
                   <h1 className="text-xl font-bold text-navy">{page.title}</h1>
-                  <button onClick={() => { setTitleDraft(page.title); setEditingTitle(true); }}
-                    className="opacity-0 group-hover:opacity-100 text-ew-muted hover:text-navy transition-opacity">
-                    <Pencil className="w-3.5 h-3.5" />
-                  </button>
+                  {canEdit && (
+                    <button onClick={() => { setTitleDraft(page.title); setEditingTitle(true); }}
+                      className="opacity-0 group-hover:opacity-100 text-ew-muted hover:text-navy transition-opacity">
+                      <Pencil className="w-3.5 h-3.5" />
+                    </button>
+                  )}
                 </div>
               )}
               {editingDesc ? (
@@ -64,10 +71,12 @@ export default function HandbookPageShell({ section, page, onUpdate, onDelete, c
                   <p className="text-sm text-ew-muted">
                     {page.description || <span className="italic text-ew-muted/50">Add a description…</span>}
                   </p>
-                  <button onClick={() => { setDescDraft(page.description || ''); setEditingDesc(true); }}
-                    className="opacity-0 group-hover:opacity-100 text-ew-muted hover:text-navy transition-opacity">
-                    <Pencil className="w-3 h-3" />
-                  </button>
+                  {canEdit && (
+                    <button onClick={() => { setDescDraft(page.description || ''); setEditingDesc(true); }}
+                      className="opacity-0 group-hover:opacity-100 text-ew-muted hover:text-navy transition-opacity">
+                      <Pencil className="w-3 h-3" />
+                    </button>
+                  )}
                 </div>
               )}
             </div>
@@ -75,10 +84,12 @@ export default function HandbookPageShell({ section, page, onUpdate, onDelete, c
               {page.updatedAt && (
                 <span className="text-[11px] text-ew-muted hidden sm:block">Updated {fmtDate(page.updatedAt)}</span>
               )}
-              <button onClick={() => setConfirmDelete(true)}
-                className="p-1.5 text-ew-muted hover:text-red-500 rounded-lg hover:bg-red-50 transition-colors">
-                <Trash2 className="w-3.5 h-3.5" />
-              </button>
+              {canEdit && (
+                <button onClick={() => setConfirmDelete(true)}
+                  className="p-1.5 text-ew-muted hover:text-red-500 rounded-lg hover:bg-red-50 transition-colors">
+                  <Trash2 className="w-3.5 h-3.5" />
+                </button>
+              )}
             </div>
           </div>
         </div>
