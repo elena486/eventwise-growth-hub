@@ -5,8 +5,8 @@ import PlanBadge from './PlanBadge';
 import InlineCell from '@/components/shared/InlineCell';
 import { ChevronUp, ChevronDown, ChevronsUpDown, FileText, Trash2, Check, X, Pencil } from 'lucide-react';
 
-const STAGE_ORDER = ['Contacted', 'Discovery Call', 'Proposal Sent', 'In Negotiation', 'Closed Won', 'Closed Lost'];
-const PLANS = ['Starter', 'Professional', 'Business'];
+const STAGE_ORDER = ['New Lead', 'Contacted', 'Discovery Call', 'Demo Booked', 'Proposal Sent', 'Negotiation', 'Closed Won', 'Closed Lost', 'On Hold'];
+const PLANS = ['Starter', 'Growth', 'Scale', 'Professional', 'Custom'];
 const OWNERS = ['Chris', 'Ramesh', 'George'];
 
 function fmt(n) {
@@ -106,7 +106,7 @@ function SectionHeader({ label }) {
   );
 }
 
-export default function LeadTable({ leads, onDelete, onProposal, onUpdateField, newLeadId, showOwnerSections }) {
+export default function LeadTable({ leads, onDelete, onProposal, onUpdateField, newLeadId, showOwnerSections, onRowClick, selectedLeadId }) {
   const [sortCol, setSortCol] = useState('stage');
   const [sortDir, setSortDir] = useState('asc');
   const [deletingId, setDeletingId] = useState(null);
@@ -145,13 +145,15 @@ export default function LeadTable({ leads, onDelete, onProposal, onUpdateField, 
 
   const renderRow = (lead, i) => {
     const isNew = lead.id === newLeadId;
+    const isSelected = lead.id === selectedLeadId;
     return (
       <tr
         key={lead.id}
-        className={`border-b border-ew-border last:border-0 hover:bg-navy/[0.02] transition-colors ${isNew ? 'bg-blue-50/40' : i % 2 === 1 ? 'bg-[#FAFBFE]' : 'bg-white'}`}
+        onClick={() => onRowClick && onRowClick(lead)}
+        className={`border-b border-ew-border last:border-0 hover:bg-navy/[0.02] transition-colors cursor-pointer ${isSelected ? 'bg-[#F3E8FF] border-l-2 border-l-[#8403C5]' : ''} ${isNew ? 'bg-blue-50/40' : i % 2 === 1 ? 'bg-[#FAFBFE]' : 'bg-white'}`}
       >
         {/* Company + Contact */}
-        <td className="px-4 py-3 min-w-[160px]">
+        <td className="px-4 py-3 min-w-[160px]" onClick={e => e.stopPropagation()}>
           <InlineCell
             value={lead.companyName}
             onSave={save(lead.id, 'companyName')}
@@ -211,7 +213,7 @@ export default function LeadTable({ leads, onDelete, onProposal, onUpdateField, 
         </td>
 
         {/* Stage */}
-        <td className="px-4 py-3 min-w-[140px]">
+        <td className="px-4 py-3 min-w-[140px]" onClick={e => e.stopPropagation()}>
           <InlineCell
             value={lead.stage}
             onSave={save(lead.id, 'stage')}
@@ -248,7 +250,7 @@ export default function LeadTable({ leads, onDelete, onProposal, onUpdateField, 
         </td>
 
         {/* Actions */}
-        <td className="px-4 py-3">
+        <td className="px-4 py-3" onClick={e => e.stopPropagation()}>
           <div className="flex items-center gap-1.5 justify-end">
             <button
               onClick={() => onProposal(lead)}
