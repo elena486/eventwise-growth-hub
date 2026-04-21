@@ -30,7 +30,7 @@ export default function Requests() {
       </div>
 
       {/* Content */}
-      <div className="flex-1 overflow-y-auto">
+      <div className="flex-1 overflow-y-auto bg-[#F7F7F8]">
         {tab === 'form' && <RequestForm onSubmitted={handleSubmitted} />}
         {tab === 'board' && <RequestBoard refresh={boardRefresh} />}
       </div>
