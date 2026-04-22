@@ -92,12 +92,12 @@ export default function HandbookSidebar({
                   className="flex-1 flex items-center gap-1 text-left min-w-0"
                 >
                   {section.expanded
-                    ? <ChevronDown className="w-3.5 h-3.5 text-white/40 shrink-0" />
-                    : <ChevronRight className="w-3.5 h-3.5 text-white/40 shrink-0" />}
+                    ? <ChevronDown className="w-3 h-3 text-white/30 shrink-0" />
+                    : <ChevronRight className="w-3 h-3 text-white/30 shrink-0" />}
                   {renamingSection === section.id ? (
                     <input
                       autoFocus
-                      className="text-[12px] font-semibold bg-white/10 text-white outline-none rounded px-1 flex-1 min-w-0"
+                      className="text-[11px] font-bold bg-white/10 text-white outline-none rounded px-1 flex-1 min-w-0 uppercase tracking-[0.08em]"
                       value={renameSectionVal}
                       onChange={e => setRenameSectionVal(e.target.value)}
                       onKeyDown={e => {
@@ -108,7 +108,7 @@ export default function HandbookSidebar({
                       onClick={e => e.stopPropagation()}
                     />
                   ) : (
-                    <span className="text-[12px] font-semibold text-white/80 group-hover:text-white transition-colors truncate">
+                    <span className="text-[11px] font-bold text-[#9CA3AF] uppercase tracking-[0.08em] group-hover:text-white/70 transition-colors truncate">
                       {section.label}
                     </span>
                   )}
@@ -121,7 +121,7 @@ export default function HandbookSidebar({
                     </>
                   ) : (
                     <>
-                      <button onClick={e => startRenameSection(section.id, section.label, e)} className="p-0.5 text-white/40 hover:text-white/80" title="Rename section"><Pencil className="w-3 h-3" /></button>
+                      <button onClick={e => startRenameSection(section.id, section.label, e)} className="p-0.5 text-white/30 hover:text-white/80" title="Rename section"><Pencil className="w-3 h-3" /></button>
                       <button onClick={e => { e.stopPropagation(); setDeleteSectionConfirm({ sectionId: section.id, label: section.label }); }} className="p-0.5 text-white/30 hover:text-red-400" title="Delete section"><Trash2 className="w-3 h-3" /></button>
                     </>
                   )}
@@ -146,8 +146,9 @@ export default function HandbookSidebar({
                         onDragEnd={handleDragEnd}
                         className={`group/page relative flex items-center transition-all ${isDraggingThis ? 'opacity-40' : ''} ${isDragTarget ? 'border-t-2 border-[#8403C5]' : ''}`}
                       >
+                        {/* Active left border */}
                         {isActive && (
-                          <span className="absolute left-0 top-1 bottom-1 w-0.5 bg-[#8403C5] rounded-r-full" />
+                          <span className="absolute left-0 top-0.5 bottom-0.5 w-[3px] bg-[#8403C5] rounded-r-full" />
                         )}
                         {/* Drag handle */}
                         <span className="pl-4 pr-1 opacity-0 group-hover/page:opacity-40 hover:!opacity-80 cursor-grab shrink-0">
@@ -168,8 +169,10 @@ export default function HandbookSidebar({
                         ) : (
                           <button
                             onClick={() => onSelectPage(section, page)}
-                            className={`flex-1 text-left py-1.5 pr-1 text-[12px] transition-all truncate ${
-                              isActive ? 'text-white font-semibold' : 'text-white/55 hover:text-white/85 font-normal'
+                            className={`flex-1 text-left py-1.5 pr-1 text-[12px] rounded transition-all truncate mx-1 px-2 ${
+                              isActive
+                                ? 'text-white font-semibold bg-white/10'
+                                : 'text-[#6B7280] hover:text-white hover:bg-white/5 font-normal'
                             }`}
                           >
                             {page.title}
@@ -201,7 +204,7 @@ export default function HandbookSidebar({
                   })}
                   <button
                     onClick={() => onAddPage(section.id)}
-                    className="w-full flex items-center gap-1.5 pl-8 pr-4 py-1.5 text-[11px] text-white/30 hover:text-white/60 transition-colors"
+                    className="w-full flex items-center gap-1.5 pl-8 pr-4 py-1.5 text-[12px] text-[#8403C5] hover:text-purple-300 transition-colors opacity-0 hover:opacity-100 group-hover:opacity-100"
                   >
                     <Plus className="w-3 h-3" /> Add page
                   </button>

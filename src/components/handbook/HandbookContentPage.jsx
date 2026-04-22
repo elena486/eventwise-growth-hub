@@ -56,25 +56,25 @@ export default function HandbookContentPage({ section, page, onUpdate, onDelete 
     <div className="flex-1 overflow-y-auto bg-[#F7F8FC] p-8">
       <div className="max-w-3xl mx-auto">
         {/* Breadcrumb */}
-        <p className="text-xs text-ew-muted mb-4">
+        <p className="text-xs text-[#9CA3AF] mb-4">
           {section.label.replace(/^[^\w]+/, '').trim()} › {editing ? titleDraft : page.title}
         </p>
 
         {/* Header card */}
-        <div className="bg-white rounded-xl border border-ew-border p-6 mb-4">
+        <div className="bg-white rounded-xl border border-ew-border shadow-sm p-6 mb-4">
           <div className="flex items-start justify-between gap-4">
             <div className="flex-1 min-w-0">
               {editing ? (
                 <>
                   <input
                     autoFocus
-                    className="text-xl font-bold text-navy border-b-2 border-[#8403C5] outline-none bg-transparent w-full mb-2"
+                    className="text-2xl font-bold text-[#242450] border-b-2 border-[#8403C5] outline-none bg-transparent w-full mb-2"
                     value={titleDraft}
                     onChange={e => setTitleDraft(e.target.value)}
                     placeholder="Page title…"
                   />
                   <input
-                    className="text-sm text-ew-muted border-b border-ew-border outline-none bg-transparent w-full"
+                    className="text-sm italic text-[#6B7280] border-b border-ew-border outline-none bg-transparent w-full"
                     value={descDraft}
                     onChange={e => setDescDraft(e.target.value)}
                     placeholder="Add a description…"
@@ -82,16 +82,17 @@ export default function HandbookContentPage({ section, page, onUpdate, onDelete 
                 </>
               ) : (
                 <>
-                  <h1 className="text-xl font-bold text-navy mb-1">{page.title}</h1>
-                  {page.description && <p className="text-sm text-ew-muted">{page.description}</p>}
-                  {!page.description && <p className="text-sm text-ew-muted/40 italic">No description</p>}
+                  <h1 className="text-2xl font-bold text-[#242450] mb-1">{page.title}</h1>
+                  {page.description
+                    ? <p className="text-[14px] italic text-[#6B7280]">{page.description}</p>
+                    : <p className="text-[14px] italic text-[#9CA3AF]">No description</p>}
                 </>
               )}
             </div>
 
             <div className="flex items-center gap-2 shrink-0">
               {page.updatedAt && !editing && (
-                <span className="text-[11px] text-ew-muted hidden sm:block">Updated {fmtDate(page.updatedAt)}</span>
+                <span className="text-[12px] text-[#9CA3AF] hidden sm:block">Updated {fmtDate(page.updatedAt)}</span>
               )}
               {canEdit && (editing ? (
                 <>
@@ -107,7 +108,7 @@ export default function HandbookContentPage({ section, page, onUpdate, onDelete 
               ) : (
                 <>
                   <button onClick={startEdit}
-                    className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-ew-body border border-ew-border rounded-lg hover:bg-ew-bg transition-colors">
+                    className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-[#374151] border border-ew-border rounded-lg hover:bg-ew-bg transition-colors">
                     <Pencil className="w-3 h-3" /> Edit
                   </button>
                   <button onClick={() => setConfirmDelete(true)}
@@ -118,10 +119,11 @@ export default function HandbookContentPage({ section, page, onUpdate, onDelete 
               ))}
             </div>
           </div>
+          <hr className="border-ew-border mt-4" />
         </div>
 
         {/* Content area */}
-        <div className="bg-white rounded-xl border border-ew-border overflow-hidden">
+        <div className="bg-white rounded-xl border border-ew-border shadow-sm overflow-hidden">
           {editing ? (
             <div className="handbook-quill">
               <ReactQuill
@@ -136,8 +138,9 @@ export default function HandbookContentPage({ section, page, onUpdate, onDelete 
             </div>
           ) : (
             <div
-              className="p-6 prose prose-sm max-w-none handbook-content"
-              dangerouslySetInnerHTML={{ __html: displayHtml || '<p class="text-ew-muted italic text-sm">No content yet — click Edit to add some.</p>' }}
+              className="p-6 handbook-content"
+              style={{ fontSize: 15, lineHeight: 1.7, color: '#374151' }}
+              dangerouslySetInnerHTML={{ __html: displayHtml || '<p style="color:#9CA3AF;font-style:italic;font-size:14px">No content yet — click Edit to add some.</p>' }}
             />
           )}
         </div>

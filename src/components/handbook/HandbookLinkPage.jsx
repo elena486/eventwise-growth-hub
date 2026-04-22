@@ -66,25 +66,25 @@ export default function HandbookLinkPage({ section, page, onUpdate, onDelete, on
     <div className="flex-1 overflow-y-auto bg-[#F7F8FC] p-8">
       <div className="max-w-3xl mx-auto">
         {/* Breadcrumb */}
-        <p className="text-xs text-ew-muted mb-4">
+        <p className="text-xs text-[#9CA3AF] mb-4">
           {section.label.replace(/^[^\w]+/, '').trim()} › {editing ? titleDraft : page.title}
         </p>
 
         {/* Header card */}
-        <div className="bg-white rounded-xl border border-ew-border p-6 mb-4">
+        <div className="bg-white rounded-xl border border-ew-border shadow-sm p-6 mb-4">
           <div className="flex items-start justify-between gap-4">
             <div className="flex-1 min-w-0">
               {editing ? (
                 <>
                   <input
                     autoFocus
-                    className="text-xl font-bold text-navy border-b-2 border-[#8403C5] outline-none bg-transparent w-full mb-2"
+                    className="text-2xl font-bold text-[#242450] border-b-2 border-[#8403C5] outline-none bg-transparent w-full mb-2"
                     value={titleDraft}
                     onChange={e => setTitleDraft(e.target.value)}
                     placeholder="Page title…"
                   />
                   <input
-                    className="text-sm text-ew-muted border-b border-ew-border outline-none bg-transparent w-full"
+                    className="text-[14px] italic text-[#6B7280] border-b border-ew-border outline-none bg-transparent w-full"
                     value={descDraft}
                     onChange={e => setDescDraft(e.target.value)}
                     placeholder="Add a description…"
@@ -92,17 +92,17 @@ export default function HandbookLinkPage({ section, page, onUpdate, onDelete, on
                 </>
               ) : (
                 <>
-                  <h1 className="text-xl font-bold text-navy mb-1">{page.title}</h1>
+                  <h1 className="text-2xl font-bold text-[#242450] mb-1">{page.title}</h1>
                   {page.description
-                    ? <p className="text-sm text-ew-muted">{page.description}</p>
-                    : <p className="text-sm text-ew-muted/40 italic">No description</p>}
+                    ? <p className="text-[14px] italic text-[#6B7280]">{page.description}</p>
+                    : <p className="text-[14px] italic text-[#9CA3AF]">No description</p>}
                 </>
               )}
             </div>
 
             <div className="flex items-center gap-2 shrink-0">
               {page.updatedAt && !editing && (
-                <span className="text-[11px] text-ew-muted hidden sm:block">Updated {fmtDate(page.updatedAt)}</span>
+                <span className="text-[12px] text-[#9CA3AF] hidden sm:block">Updated {fmtDate(page.updatedAt)}</span>
               )}
               {canEdit && (editing ? (
                 <>
@@ -118,7 +118,7 @@ export default function HandbookLinkPage({ section, page, onUpdate, onDelete, on
               ) : (
                 <>
                   <button onClick={startEdit}
-                    className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-ew-body border border-ew-border rounded-lg hover:bg-ew-bg transition-colors">
+                    className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-[#374151] border border-ew-border rounded-lg hover:bg-ew-bg transition-colors">
                     <Pencil className="w-3 h-3" /> Edit links
                   </button>
                   <button onClick={() => setConfirmDelete(true)}
@@ -129,17 +129,18 @@ export default function HandbookLinkPage({ section, page, onUpdate, onDelete, on
               ))}
             </div>
           </div>
+          <hr className="border-ew-border mt-4" />
         </div>
 
         {/* Links area */}
-        <div className="bg-white rounded-xl border border-ew-border p-6">
+        <div className="bg-white rounded-xl border border-ew-border shadow-sm p-6">
           {editing ? (
             <div className="space-y-3">
               {editLinks.map(link => (
-                <div key={link.id} className="border border-ew-border rounded-lg p-3 space-y-2">
+                <div key={link.id} className="border border-ew-border rounded-xl p-3 space-y-2">
                   <div className="flex items-center gap-2">
                     <input
-                      className="flex-1 text-sm border border-ew-border rounded px-2 py-1.5 outline-none focus:border-[#8403C5]"
+                      className="flex-1 text-sm border border-ew-border rounded-lg px-2 py-1.5 outline-none focus:border-[#8403C5]"
                       placeholder="Button label"
                       value={link.label}
                       onChange={e => updateLink(link.id, 'label', e.target.value)}
@@ -149,13 +150,13 @@ export default function HandbookLinkPage({ section, page, onUpdate, onDelete, on
                     </button>
                   </div>
                   <input
-                    className="w-full text-sm border border-ew-border rounded px-2 py-1.5 outline-none focus:border-[#8403C5]"
+                    className="w-full text-sm border border-ew-border rounded-lg px-2 py-1.5 outline-none focus:border-[#8403C5]"
                     placeholder="URL (https://…)"
                     value={link.url}
                     onChange={e => updateLink(link.id, 'url', e.target.value)}
                   />
                   <input
-                    className="w-full text-xs border border-ew-border rounded px-2 py-1.5 outline-none focus:border-[#8403C5] text-ew-muted"
+                    className="w-full text-xs border border-ew-border rounded-lg px-2 py-1.5 outline-none focus:border-[#8403C5] text-ew-muted"
                     placeholder="Note below button (optional)"
                     value={link.note || ''}
                     onChange={e => updateLink(link.id, 'note', e.target.value)}
@@ -174,35 +175,44 @@ export default function HandbookLinkPage({ section, page, onUpdate, onDelete, on
               </div>
             </div>
           ) : (
-            <div className="space-y-3">
+            <div className="space-y-2">
+              {(!page.links || page.links.length === 0) && (
+                <div className="flex items-center gap-2 px-3 py-2.5 bg-amber-50 border border-amber-200 rounded-xl text-xs text-amber-700 mb-3">
+                  <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
+                  No links added yet — click "Edit links" to add URLs
+                </div>
+              )}
               {(page.links || []).map(link => (
                 <div key={link.id}>
                   {isInternal(link.url) ? (
                     <button
                       onClick={() => handleLinkClick(link.url)}
-                      className="flex items-center gap-2 px-5 py-3 border-2 border-[#8403C5] text-[#8403C5] rounded-lg text-sm font-semibold hover:bg-[#8403C5] hover:text-white transition-all w-full sm:w-auto"
+                      className="w-full flex items-center justify-between px-4 py-3.5 border border-[#8403C5] text-[#8403C5] rounded-xl text-[14px] font-medium hover:bg-[#8403C5] hover:text-white transition-all group"
                     >
-                      {link.label}
+                      <span>{link.label}</span>
+                      <ExternalLink className="w-4 h-4 opacity-60 group-hover:opacity-100" />
                     </button>
                   ) : link.url ? (
                     <a
                       href={link.url}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="inline-flex items-center gap-2 px-5 py-3 border-2 border-[#8403C5] text-[#8403C5] rounded-lg text-sm font-semibold hover:bg-[#8403C5] hover:text-white transition-all"
+                      className="w-full flex items-center justify-between px-4 py-3.5 border border-[#8403C5] text-[#8403C5] rounded-xl text-[14px] font-medium hover:bg-[#8403C5] hover:text-white transition-all group"
                     >
-                      <ExternalLink className="w-4 h-4" /> {link.label}
+                      <span>{link.label}</span>
+                      <ExternalLink className="w-4 h-4 opacity-60 group-hover:opacity-100" />
                     </a>
                   ) : (
                     <button
-                      onClick={startEdit}
-                      className="inline-flex items-center gap-2 px-5 py-3 border-2 border-dashed border-ew-border text-ew-muted rounded-lg text-sm hover:border-[#8403C5] hover:text-[#8403C5] transition-all"
+                      disabled
+                      className="w-full flex items-center justify-between px-4 py-3.5 border border-ew-border text-[#9CA3AF] rounded-xl text-[14px] cursor-not-allowed opacity-60"
                     >
-                      <Plus className="w-4 h-4" /> {link.label} — click Edit to add URL
+                      <span>URL not set — click Edit links to add</span>
+                      <ExternalLink className="w-4 h-4 opacity-40" />
                     </button>
                   )}
                   {link.note && (
-                    <div className={`mt-2 flex items-start gap-2 px-3 py-2 rounded-lg text-xs ${link.note.startsWith('⚠️') ? 'bg-amber-50 text-amber-700 border border-amber-200' : 'bg-ew-bg text-ew-muted'}`}>
+                    <div className={`mt-1.5 flex items-start gap-2 px-3 py-2 rounded-lg text-xs ${link.note.startsWith('⚠️') ? 'bg-amber-50 text-amber-700 border border-amber-200' : 'bg-ew-bg text-ew-muted'}`}>
                       {link.note.startsWith('⚠️') && <AlertTriangle className="w-3.5 h-3.5 shrink-0 mt-0.5" />}
                       <span>{link.note.replace(/^⚠️\s*/, '')}</span>
                     </div>
@@ -212,12 +222,6 @@ export default function HandbookLinkPage({ section, page, onUpdate, onDelete, on
 
               {page.footerNote && (
                 <p className="text-xs text-ew-muted italic pt-2 border-t border-ew-border">{page.footerNote}</p>
-              )}
-
-              {(!page.links || page.links.length === 0) && (
-                <button onClick={startEdit} className="text-sm text-ew-muted italic hover:text-[#8403C5]">
-                  No links yet — click "Edit links" to add some.
-                </button>
               )}
             </div>
           )}

@@ -19,31 +19,31 @@ const ic = 'w-full text-xs border border-ew-border rounded-lg px-2 py-1.5 outlin
 
 function TeamCard({ member, onEdit, onDelete, canEdit }) {
   return (
-    <div className="bg-white border border-ew-border rounded-xl p-4 relative group">
+    <div className="bg-white border border-[#E5E7EB] rounded-xl p-5 relative group shadow-sm hover:shadow-md transition-shadow">
       {canEdit && (
         <div className="absolute top-3 right-3 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-          <button onClick={() => onEdit(member)} className="p-1 text-ew-muted hover:text-navy rounded transition-colors"><Pencil className="w-3.5 h-3.5" /></button>
+          <button onClick={() => onEdit(member)} className="p-1 text-ew-muted hover:text-[#242450] rounded transition-colors"><Pencil className="w-3.5 h-3.5" /></button>
           <button onClick={() => onDelete(member.id)} className="p-1 text-ew-muted hover:text-red-500 rounded transition-colors"><Trash2 className="w-3.5 h-3.5" /></button>
         </div>
       )}
 
-      <div className="mb-3 pr-12">
-        <p className="font-bold text-navy text-sm leading-tight">{member.name}</p>
+      <div className="mb-2 pr-12">
+        <p className="text-[16px] font-semibold text-[#111827] leading-tight">{member.name}</p>
         {member.email && (
           <a href={`mailto:${member.email}`}
-            className="inline-flex items-center gap-1 text-[11px] text-ew-muted hover:text-[#8403C5] transition-colors mt-0.5">
+            className="inline-flex items-center gap-1 text-[12px] text-ew-muted hover:text-[#8403C5] transition-colors mt-0.5">
             <Mail className="w-2.5 h-2.5" /> {member.email}
           </a>
         )}
       </div>
 
-      <span className="inline-block text-[11px] font-semibold px-2.5 py-0.5 rounded-full bg-[#F3E8FF] text-[#7E22CE] mb-3">
+      <span className="inline-block text-[11px] font-semibold px-2.5 py-0.5 rounded-full bg-[#8403C5] text-white mb-3">
         {member.role}
       </span>
 
       <ul className="space-y-1">
         {(member.responsibilities || []).map((r, i) => (
-          <li key={i} className="flex items-start gap-1.5 text-xs text-ew-body">
+          <li key={i} className="flex items-start gap-1.5 text-[13px] text-[#6B7280]">
             <span className="text-[#8403C5] shrink-0 mt-0.5">•</span>
             {r}
           </li>

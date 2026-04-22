@@ -27,18 +27,18 @@ export default function HandbookPageShell({ section, page, onUpdate, onDelete, c
   return (
     <div className="flex-1 overflow-y-auto bg-[#F7F8FC] p-8">
       <div className="max-w-3xl mx-auto">
-        <p className="text-xs text-ew-muted mb-4">
+        <p className="text-xs text-[#9CA3AF] mb-4">
           {section.label.replace(/^[^\w]+/, '').trim()} › {page.title}
         </p>
 
         {/* Header card */}
-        <div className="bg-white rounded-xl border border-ew-border p-6 mb-4">
+        <div className="bg-white rounded-xl border border-ew-border shadow-sm p-6 mb-4">
           <div className="flex items-start justify-between gap-4">
             <div className="flex-1 min-w-0">
               {editingTitle ? (
                 <div className="flex items-center gap-2 mb-2">
                   <input autoFocus
-                    className="text-xl font-bold text-navy border-b-2 border-[#8403C5] outline-none bg-transparent flex-1"
+                    className="text-2xl font-bold text-[#242450] border-b-2 border-[#8403C5] outline-none bg-transparent flex-1"
                     value={titleDraft} onChange={e => setTitleDraft(e.target.value)}
                     onKeyDown={e => { if (e.key === 'Enter') saveTitle(); if (e.key === 'Escape') setEditingTitle(false); }}
                   />
@@ -46,8 +46,8 @@ export default function HandbookPageShell({ section, page, onUpdate, onDelete, c
                   <button onClick={() => setEditingTitle(false)} className="text-gray-400"><X className="w-4 h-4" /></button>
                 </div>
               ) : (
-                <div className="flex items-center gap-2 group mb-2">
-                  <h1 className="text-xl font-bold text-navy">{page.title}</h1>
+                <div className="flex items-center gap-2 group mb-1">
+                  <h1 className="text-2xl font-bold text-[#242450]">{page.title}</h1>
                   {canEdit && (
                     <button onClick={() => { setTitleDraft(page.title); setEditingTitle(true); }}
                       className="opacity-0 group-hover:opacity-100 text-ew-muted hover:text-navy transition-opacity">
@@ -59,7 +59,7 @@ export default function HandbookPageShell({ section, page, onUpdate, onDelete, c
               {editingDesc ? (
                 <div className="flex items-center gap-2">
                   <input autoFocus
-                    className="text-sm text-ew-muted border-b border-ew-border outline-none bg-transparent flex-1"
+                    className="text-sm italic text-[#6B7280] border-b border-ew-border outline-none bg-transparent flex-1"
                     value={descDraft} onChange={e => setDescDraft(e.target.value)}
                     onKeyDown={e => { if (e.key === 'Enter') saveDesc(); if (e.key === 'Escape') setEditingDesc(false); }}
                   />
@@ -68,8 +68,8 @@ export default function HandbookPageShell({ section, page, onUpdate, onDelete, c
                 </div>
               ) : (
                 <div className="flex items-center gap-2 group">
-                  <p className="text-sm text-ew-muted">
-                    {page.description || <span className="italic text-ew-muted/50">Add a description…</span>}
+                  <p className="text-[14px] italic text-[#6B7280]">
+                    {page.description || <span className="text-[#9CA3AF]">Add a description…</span>}
                   </p>
                   {canEdit && (
                     <button onClick={() => { setDescDraft(page.description || ''); setEditingDesc(true); }}
@@ -82,7 +82,7 @@ export default function HandbookPageShell({ section, page, onUpdate, onDelete, c
             </div>
             <div className="flex items-center gap-2 shrink-0">
               {page.updatedAt && (
-                <span className="text-[11px] text-ew-muted hidden sm:block">Updated {fmtDate(page.updatedAt)}</span>
+                <span className="text-[12px] text-[#9CA3AF] hidden sm:block">Updated {fmtDate(page.updatedAt)}</span>
               )}
               {canEdit && (
                 <button onClick={() => setConfirmDelete(true)}
@@ -92,10 +92,11 @@ export default function HandbookPageShell({ section, page, onUpdate, onDelete, c
               )}
             </div>
           </div>
+          <hr className="border-ew-border mt-4" />
         </div>
 
         {/* Content */}
-        <div className="bg-white rounded-xl border border-ew-border p-6">
+        <div className="bg-white rounded-xl border border-ew-border shadow-sm p-6">
           {children}
         </div>
       </div>
