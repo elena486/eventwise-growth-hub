@@ -3,6 +3,7 @@ import { base44 } from '@/api/base44Client';
 import { format } from 'date-fns';
 import { ChevronLeft } from 'lucide-react';
 import MultiFileUpload from '@/components/shared/MultiFileUpload';
+import MentionTextarea, { sendMentionNotifications } from '@/components/shared/MentionTextarea';
 
 const REPORTERS = ['Chris', 'Martinique', 'George', 'Sreeja', 'Elena'];
 const ASSIGNEES = ['Chris', 'Martinique', 'Sreeja', 'Elena'];
@@ -132,23 +133,29 @@ export default function BugDetail({ bug, clients, onBack, onUpdate }) {
 
         <div className="mb-4">
           <label className={labelCls}>Description</label>
-          <textarea
+          <MentionTextarea
             rows={5}
             className={inputCls + ' resize-none'}
             value={form.description || ''}
-            onChange={e => up('description', e.target.value)}
+            onChange={v => up('description', v)}
             placeholder="Describe the bug, steps to reproduce, what was expected vs what happened..."
+            author={form.reportedBy}
+            section={`Bug Tracker / #${form.bugNumber}`}
+            appUrl="https://app.base44.com/apps/68036e9feb8b4d9b7625aaa5/AppShell?tab=bugs"
           />
         </div>
 
         <div className="mb-4">
           <label className={labelCls}>Resolution notes</label>
-          <textarea
+          <MentionTextarea
             rows={3}
             className={inputCls + ' resize-none'}
             value={form.resolutionNotes || ''}
-            onChange={e => up('resolutionNotes', e.target.value)}
+            onChange={v => up('resolutionNotes', v)}
             placeholder="How was this resolved?"
+            author={form.assignedTo}
+            section={`Bug Tracker / #${form.bugNumber} / Resolution`}
+            appUrl="https://app.base44.com/apps/68036e9feb8b4d9b7625aaa5/AppShell?tab=bugs"
           />
         </div>
 

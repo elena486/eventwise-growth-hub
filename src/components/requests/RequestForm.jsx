@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { base44 } from '@/api/base44Client';
 import { CheckCircle2 } from 'lucide-react';
 import MultiFileUpload from '@/components/shared/MultiFileUpload';
+import MentionTextarea from '@/components/shared/MentionTextarea';
 
 const REQUESTERS = ['Chris', 'Martinique', 'George', 'Ramesh', 'Sreeja', 'David', 'Elena'];
 const RECIPIENTS = ['Elena', 'George', 'Chris', 'Martinique', 'Sreeja', 'Ramesh', 'David'];
@@ -116,7 +117,16 @@ export default function RequestForm({ onSubmitted }) {
 
       {/* Description */}
       <Field label="Description" required>
-        <textarea value={form.description} onChange={e => set('description', e.target.value)} required placeholder="Describe what you need and any relevant context..." rows={4} className={inputCls + ' resize-none'} />
+        <MentionTextarea
+          value={form.description}
+          onChange={v => set('description', v)}
+          placeholder="Describe what you need and any relevant context..."
+          rows={4}
+          className={inputCls + ' resize-none'}
+          author={form.requestedBy}
+          section="Requests"
+          appUrl="https://app.base44.com/apps/68036e9feb8b4d9b7625aaa5/AppShell?tab=requests"
+        />
       </Field>
 
       {/* Priority */}
@@ -143,7 +153,16 @@ export default function RequestForm({ onSubmitted }) {
 
       {/* Extra notes */}
       <Field label="Anything else they should know?" hint="Optional">
-        <textarea value={form.extraNotes} onChange={e => set('extraNotes', e.target.value)} placeholder="Any extra context, links, references…" rows={3} className={inputCls + ' resize-none'} />
+        <MentionTextarea
+          value={form.extraNotes}
+          onChange={v => set('extraNotes', v)}
+          placeholder="Any extra context, links, references…"
+          rows={3}
+          className={inputCls + ' resize-none'}
+          author={form.requestedBy}
+          section="Requests"
+          appUrl="https://app.base44.com/apps/68036e9feb8b4d9b7625aaa5/AppShell?tab=requests"
+        />
       </Field>
 
       <button type="submit" disabled={submitting}

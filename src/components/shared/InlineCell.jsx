@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Pencil, Lock } from 'lucide-react';
+import MentionTextarea from './MentionTextarea';
 
 /**
  * Reusable inline-editable cell component.
@@ -21,6 +22,7 @@ export default function InlineCell({
   displayEl, className = '',
   autoEdit = false,
   min, max,
+  section, appUrl, author,
 }) {
   const [editing, setEditing] = useState(autoEdit);
   const [draft, setDraft] = useState('');
@@ -95,10 +97,18 @@ export default function InlineCell({
     );
 
     if (type === 'textarea') return (
-      <textarea className={`${ic} min-h-[60px] resize-none`} value={draft} autoFocus
-        onChange={e => setDraft(e.target.value)}
-        onBlur={() => doSave(draft)}
-        onKeyDown={e => { if (e.key === 'Escape') { doSave(draft); cancel(); } }} />
+      <MentionTextarea
+        className={`${ic} min-h-[60px] resize-none`}
+        value={draft}
+        autoFocus
+        rows={3}
+        onChange={setDraft}
+        onSave={(val) => doSave(val)}
+        onKeyDown={e => { if (e.key === 'Escape') { doSave(draft); cancel(); } }}
+        section={section}
+        appUrl={appUrl}
+        author={author}
+      />
     );
 
     // text

@@ -1,19 +1,30 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.25';
 
+const EMAIL_MAP = {
+  Elena: 'elena@eventwise.com',
+  George: 'george@eventwise.com',
+  Martinique: 'martinique@eventwise.com',
+  Chris: 'chris@eventwise.com',
+  Ramesh: 'ramesh@eventwise.com',
+  Sreeja: 'sreeja@eventwise.com',
+  David: 'david@eventwise.com',
+};
+
 Deno.serve(async (req) => {
   const base44 = createClientFromRequest(req);
   const { requestedBy, recipient, title, category, priority, deadline, description, extraNotes, submittedAt } = await req.json();
 
-  const deadlineStr = deadline || 'No deadline specified';
-  const notesStr = extraNotes || 'None';
-  const submittedStr = submittedAt ? new Date(submittedAt).toLocaleString('en-GB', { dateStyle: 'long', timeStyle: 'short' }) : new Date().toLocaleString('en-GB', { dateStyle: 'long', timeStyle: 'short' });
-  const appUrl = 'https://app.base44.com/apps/AppShell?tab=requests';
+  const toEmail = EMAIL_MAP[recipient];
+  if (!toEmail) return Response.json({ ok: false, error: 'Unknown recipient' }, { status: 400 });
 
-  const EMAIL_MAP = { 'George': 'george@eventwise.com' };
-  const toEmail = EMAIL_MAP[recipient] || 'elena@eventwise.com';
-  const recipientName = recipient || 'Elena';
+  const deadlineStr = deadline ? deadline : 'No deadline specified';
+  const submittedStr = submittedAt
+    ? new Date(submittedAt).toLocaleString('en-GB', { dateStyle: 'long', timeStyle: 'short' })
+    : new Date().toLocaleString('en-GB', { dateStyle: 'long', timeStyle: 'short' });
 
-  const body = `A new request has been submitted for ${recipientName}.
+  const appUrl = 'https://app.base44.com/apps/68036e9feb8b4d9b7625aaa5/AppShell?tab=requests';
+
+  let body = `You have a new request in Eventwise HQ.
 
 From: ${requestedBy}
 Title: ${title}
@@ -22,18 +33,19 @@ Priority: ${priority}
 Deadline: ${deadlineStr}
 
 Description:
-${description}
+${description}`;
 
-Additional notes:
-${notesStr}
+  if (extraNotes) {
+    body += `\n\nNotes: ${extraNotes}`;
+  }
 
-Submitted: ${submittedStr}
+  body += `\n\nSubmitted: ${submittedStr}
 
-View all requests in Eventwise HQ → ${appUrl}`;
+View all requests → ${appUrl}`;
 
   await base44.asServiceRole.integrations.Core.SendEmail({
     to: toEmail,
-    subject: `New request for you from ${requestedBy} — ${title}`,
+    subject: `New request from ${requestedBy} — ${title}`,
     body,
   });
 

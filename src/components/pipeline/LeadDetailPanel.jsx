@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { base44 } from '@/api/base44Client';
 import { format } from 'date-fns';
+import MentionTextarea, { sendMentionNotifications } from '@/components/shared/MentionTextarea';
 import {
   X, Mail, ExternalLink, Phone, Linkedin, Plus, Pencil, Trash2,
   Check, Upload, Link, ChevronDown, ChevronUp, AlertTriangle
@@ -121,7 +122,16 @@ function ActivityLog({ entries, onSave }) {
           </div>
           <div>
             <label className="block text-[11px] font-medium text-ew-muted mb-1">Summary</label>
-            <textarea className={ic + ' h-20 resize-none'} value={newEntry.summary} onChange={e => setNewEntry(n => ({ ...n, summary: e.target.value }))} placeholder="What happened?" />
+            <MentionTextarea
+              className={ic + ' h-20 resize-none'}
+              value={newEntry.summary}
+              onChange={v => setNewEntry(n => ({ ...n, summary: v }))}
+              placeholder="What happened?"
+              rows={3}
+              author={newEntry.addedBy}
+              section={`Pipeline / Activity Log`}
+              appUrl="https://app.base44.com/apps/68036e9feb8b4d9b7625aaa5/AppShell?tab=pipeline"
+            />
           </div>
           <div>
             <label className="block text-[11px] font-medium text-ew-muted mb-1">Added by</label>
@@ -151,7 +161,7 @@ function ActivityLog({ entries, onSave }) {
                   </select>
                   <input type="date" className={ic + ' text-xs py-1'} value={editDraft.date} onChange={e => setEditDraft(d => ({ ...d, date: e.target.value }))} />
                 </div>
-                <textarea className={ic + ' h-16 resize-none text-xs'} value={editDraft.summary} onChange={e => setEditDraft(d => ({ ...d, summary: e.target.value }))} />
+                <MentionTextarea className={ic + ' h-16 resize-none text-xs'} value={editDraft.summary} onChange={v => setEditDraft(d => ({ ...d, summary: v }))} rows={3} section="Pipeline / Activity Log" appUrl="https://app.base44.com/apps/68036e9feb8b4d9b7625aaa5/AppShell?tab=pipeline" />
                 <div className="flex gap-2 justify-end">
                   <button onClick={() => setEditingId(null)} className="px-2 py-1 text-xs text-ew-body hover:bg-ew-bg rounded">Cancel</button>
                   <button onClick={() => saveEdit(entry.id)} className="px-3 py-1 text-xs font-semibold bg-[#8403C5] text-white rounded">Save</button>
@@ -515,17 +525,17 @@ export default function LeadDetailPanel({ lead, onClose, onUpdate, onDelete, onC
           <SectionTitle>Objections & Intelligence</SectionTitle>
           <div className="space-y-3">
             <FieldRow label="Objections raised">
-              <textarea className={ic + ' h-20 resize-none'} value={data.objections || ''} onChange={f('objections')} placeholder="What concerns or objections has the prospect raised?" />
+              <MentionTextarea className={ic + ' h-20 resize-none'} value={data.objections || ''} onChange={v => autoSave({ objections: v })} placeholder="What concerns or objections has the prospect raised?" rows={3} section={`Pipeline / ${data.companyName} / Objections`} appUrl="https://app.base44.com/apps/68036e9feb8b4d9b7625aaa5/AppShell?tab=pipeline" />
             </FieldRow>
             <FieldRow label="How objections were addressed">
-              <textarea className={ic + ' h-20 resize-none'} value={data.objectionsAddressed || ''} onChange={f('objectionsAddressed')} placeholder="How have you handled these?" />
+              <MentionTextarea className={ic + ' h-20 resize-none'} value={data.objectionsAddressed || ''} onChange={v => autoSave({ objectionsAddressed: v })} placeholder="How have you handled these?" rows={3} section={`Pipeline / ${data.companyName} / Objections`} appUrl="https://app.base44.com/apps/68036e9feb8b4d9b7625aaa5/AppShell?tab=pipeline" />
             </FieldRow>
             <FieldRow label="Key pain points identified">
-              <textarea className={ic + ' h-20 resize-none'} value={data.painPoints || ''} onChange={f('painPoints')} placeholder="What financial or operational problems are they trying to solve?" />
+              <MentionTextarea className={ic + ' h-20 resize-none'} value={data.painPoints || ''} onChange={v => autoSave({ painPoints: v })} placeholder="What financial or operational problems are they trying to solve?" rows={3} section={`Pipeline / ${data.companyName} / Pain Points`} appUrl="https://app.base44.com/apps/68036e9feb8b4d9b7625aaa5/AppShell?tab=pipeline" />
             </FieldRow>
             <div>
               <label className="block text-[11px] font-medium text-ew-muted mb-1">🔒 Internal only — not shared with prospect</label>
-              <textarea className="w-full text-sm border border-amber-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-amber-300/40 bg-amber-50 h-20 resize-none" value={data.internalNotes || ''} onChange={f('internalNotes')} placeholder="Internal notes…" />
+              <MentionTextarea className="w-full text-sm border border-amber-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-amber-300/40 bg-amber-50 h-20 resize-none" value={data.internalNotes || ''} onChange={v => autoSave({ internalNotes: v })} placeholder="Internal notes…" rows={3} section={`Pipeline / ${data.companyName} / Internal Notes`} appUrl="https://app.base44.com/apps/68036e9feb8b4d9b7625aaa5/AppShell?tab=pipeline" />
             </div>
           </div>
         </div>
