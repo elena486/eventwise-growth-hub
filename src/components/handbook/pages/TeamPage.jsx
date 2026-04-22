@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
-import { Pencil, Trash2, Plus, Check, X, Mail } from 'lucide-react';
+import React, { useState, useRef } from 'react';
+import { Pencil, Trash2, Plus, Check, X, Mail, Upload, User } from 'lucide-react';
 import HandbookPageShell from '../HandbookPageShell';
 import { useAuth } from '@/lib/AuthContext';
+import { base44 } from '@/api/base44Client';
 
 const ALLOWED_EDITORS = ['chris@eventwise.com', 'elena@eventwise.com'];
 
@@ -27,14 +28,23 @@ function TeamCard({ member, onEdit, onDelete, canEdit }) {
         </div>
       )}
 
-      <div className="mb-2 pr-12">
-        <p className="text-[16px] font-semibold text-[#111827] leading-tight">{member.name}</p>
-        {member.email && (
-          <a href={`mailto:${member.email}`}
-            className="inline-flex items-center gap-1 text-[12px] text-ew-muted hover:text-[#8403C5] transition-colors mt-0.5">
-            <Mail className="w-2.5 h-2.5" /> {member.email}
-          </a>
+      <div className="flex items-center gap-3 mb-3 pr-12">
+        {member.photoUrl ? (
+          <img src={member.photoUrl} alt={member.name} className="w-10 h-10 rounded-full object-cover shrink-0 border border-[#E5E7EB]" />
+        ) : (
+          <div className="w-10 h-10 rounded-full bg-[#F3E8FF] flex items-center justify-center shrink-0">
+            <User className="w-5 h-5 text-[#8403C5]" />
+          </div>
         )}
+        <div>
+          <p className="text-[16px] font-semibold text-[#111827] leading-tight">{member.name}</p>
+          {member.email && (
+            <a href={`mailto:${member.email}`}
+              className="inline-flex items-center gap-1 text-[12px] text-ew-muted hover:text-[#8403C5] transition-colors mt-0.5">
+              <Mail className="w-2.5 h-2.5" /> {member.email}
+            </a>
+          )}
+        </div>
       </div>
 
       <span className="inline-block text-[11px] font-semibold px-2.5 py-0.5 rounded-full bg-[#8403C5] text-white mb-3">
@@ -56,10 +66,22 @@ function TeamCard({ member, onEdit, onDelete, canEdit }) {
 function TeamEditModal({ member, onSave, onClose }) {
   const [draft, setDraft] = useState({ ...member });
   const [respStr, setRespStr] = useState((member.responsibilities || []).join('\n'));
+  const [uploading, setUploading] = useState(false);
+  const fileRef = useRef(null);
 
   const save = () => {
     const responsibilities = respStr.split('\n').map(s => s.trim()).filter(Boolean);
     onSave({ ...draft, responsibilities });
+  };
+
+  const handlePhoto = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploading(true);
+    const { file_url } = await base44.integrations.Core.UploadFile({ file });
+    setDraft(d => ({ ...d, photoUrl: file_url }));
+    setUploading(false);
+    e.target.value = '';
   };
 
   return (
@@ -67,6 +89,30 @@ function TeamEditModal({ member, onSave, onClose }) {
       <div className="bg-white rounded-xl shadow-2xl w-full max-w-md p-6" onClick={e => e.stopPropagation()}>
         <h3 className="text-sm font-bold text-navy mb-4">{member.id ? 'Edit Team Member' : 'Add Team Member'}</h3>
         <div className="space-y-3">
+          {/* Photo */}
+          <div>
+            <label className="block text-[11px] font-semibold text-ew-muted mb-1">Photo</label>
+            <div className="flex items-center gap-3">
+              {draft.photoUrl ? (
+                <img src={draft.photoUrl} alt={draft.name} className="w-12 h-12 rounded-full object-cover border border-[#E5E7EB]" />
+              ) : (
+                <div className="w-12 h-12 rounded-full bg-[#F3E8FF] flex items-center justify-center">
+                  <User className="w-6 h-6 text-[#8403C5]" />
+                </div>
+              )}
+              <div className="flex gap-2">
+                <button type="button" onClick={() => fileRef.current?.click()} disabled={uploading}
+                  className="flex items-center gap-1.5 text-xs text-[#8403C5] border border-[#8403C5] rounded-lg px-3 py-1.5 hover:bg-[#F3E8FF] transition-colors disabled:opacity-40">
+                  <Upload className="w-3 h-3" /> {uploading ? 'Uploading…' : 'Upload photo'}
+                </button>
+                {draft.photoUrl && (
+                  <button type="button" onClick={() => setDraft(d => ({ ...d, photoUrl: '' }))}
+                    className="text-xs text-red-400 hover:text-red-600 px-2">Remove</button>
+                )}
+              </div>
+              <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={handlePhoto} />
+            </div>
+          </div>
           <div>
             <label className="block text-[11px] font-semibold text-ew-muted mb-1">Name *</label>
             <input className={ic} value={draft.name} onChange={e => setDraft(d => ({...d, name: e.target.value}))} placeholder="Full name" />
