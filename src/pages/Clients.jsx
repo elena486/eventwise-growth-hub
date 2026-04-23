@@ -4,7 +4,6 @@ import { format, isPast, differenceInDays, isToday } from 'date-fns';
 import { Plus, AlertTriangle, Sparkles, ExternalLink, Trash2 } from 'lucide-react';
 import ClientModal from '@/components/clients/ClientModal';
 import ClientDetailPanel from '@/components/clients/ClientDetailPanel';
-import ClientFullPanel from '@/components/clients/ClientFullPanel';
 import InlineCell from '@/components/shared/InlineCell';
 import SmartAlertsPanel from '@/components/cs/SmartAlertsPanel';
 import AINextActionPanel from '@/components/cs/AINextActionPanel';
@@ -87,7 +86,7 @@ function HealthCell({ client }) {
   );
 }
 
-export default function Clients({ onViewHealth, onViewOnboarding, onViewDetail }) {
+export default function Clients({ onViewHealth, onViewOnboarding, onViewDetail, onOpenFullPanel }) {
   const [clients, setClients] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState('All');
@@ -96,7 +95,7 @@ export default function Clients({ onViewHealth, onViewOnboarding, onViewDetail }
   const [aiPanelClient, setAiPanelClient] = useState(null);
   const [aiPanelAlert, setAiPanelAlert] = useState(null);
   const [emailModal, setEmailModal] = useState(null);
-  const [detailClient, setDetailClient] = useState(null);
+  const [activeClientId, setActiveClientId] = useState(null);
   const [deleteConfirmId, setDeleteConfirmId] = useState(null);
   const aiPanelRef = useRef(null);
 
@@ -135,7 +134,7 @@ export default function Clients({ onViewHealth, onViewOnboarding, onViewDetail }
     await Promise.all([...obs.map(x => base44.entities.OnboardingRecord.delete(x.id)), ...hs.map(x => base44.entities.HealthScore.delete(x.id))]);
     setClients(prev => prev.filter(c => c.id !== id));
     setDeleteConfirmId(null);
-    if (detailClient?.id === id) setDetailClient(null);
+    if (activeClientId === id) setActiveClientId(null);
   };
 
   const handleAddClient = async (form) => {
@@ -252,8 +251,8 @@ export default function Clients({ onViewHealth, onViewOnboarding, onViewDetail }
             </thead>
             <tbody>
               {sorted.map((c, i) => (
-                <tr key={c.id} className={`border-b border-[#F2F2F4] last:border-0 hover:bg-[#F9FAFB] transition-colors cursor-pointer group ${detailClient?.id === c.id ? 'bg-[#FAF5FF]' : ''}`}
-                  onClick={() => setDetailClient(c)}>
+                <tr key={c.id} className={`border-b border-[#F2F2F4] last:border-0 hover:bg-[#F9FAFB] transition-colors cursor-pointer group ${activeClientId === c.id ? 'bg-[#FAF5FF]' : ''}`}
+                  onClick={() => { setActiveClientId(c.id); onOpenFullPanel && onOpenFullPanel(c, clients); }}>
                   {/* Client name / contact */}
                   <td className="px-4 py-3 min-w-[180px]" onClick={e => e.stopPropagation()}>
                     <InlineCell value={c.name} onSave={save(c.id, 'name')} placeholder="Company name" className="font-semibold text-navy text-sm" />
@@ -395,7 +394,7 @@ export default function Clients({ onViewHealth, onViewOnboarding, onViewDetail }
                         Draft email
                       </button>
                       <button
-                        onClick={e => { e.stopPropagation(); setDetailClient(c); }}
+                        onClick={e => { e.stopPropagation(); setActiveClientId(c.id); onOpenFullPanel && onOpenFullPanel(c, clients); }}
                         className="text-xs px-2.5 py-1.5 font-medium text-[#6B7280] hover:text-[#374151] bg-white hover:bg-[#F9FAFB] rounded-lg transition-colors flex items-center gap-1"
                         style={{ border: '1.5px solid #E5E7EB' }}
                         title="View details"
@@ -428,21 +427,7 @@ export default function Clients({ onViewHealth, onViewOnboarding, onViewDetail }
         />
       )}
 
-      {detailClient && (
-        <ClientFullPanel
-          client={detailClient}
-          onClose={() => setDetailClient(null)}
-          onUpdated={(updated) => {
-            setClients(prev => prev.map(c => c.id === updated.id ? updated : c));
-            setDetailClient(updated);
-          }}
-          onDelete={(id) => {
-            setClients(prev => prev.filter(c => c.id !== id));
-            setDetailClient(null);
-          }}
-          onViewOnboarding={onViewOnboarding}
-        />
-      )}
+
     </div>
   );
 }

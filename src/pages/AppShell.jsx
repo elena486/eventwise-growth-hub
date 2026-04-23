@@ -18,6 +18,7 @@ import OutreachAnalytics from './OutreachAnalytics';
 import Competitors from './Competitors';
 import { LOGO_BLACK, LOGO_WHITE } from '@/lib/proposalData';
 import ClientDetailPanel from '@/components/clients/ClientDetailPanel';
+import ClientFullPanel from '@/components/clients/ClientFullPanel';
 import { useDarkMode } from '@/hooks/useDarkMode';
 import { Moon, Sun } from 'lucide-react';
 
@@ -60,6 +61,8 @@ export default function AppShell() {
   const [proposalHandoff, setProposalHandoff] = useState(null);
   const [focusClientId, setFocusClientId] = useState(null);
   const [detailClient, setDetailClient] = useState(null);
+  const [fullPanelClient, setFullPanelClient] = useState(null);
+  const [fullPanelClients, setFullPanelClients] = useState([]);
   const [dark, setDark] = useDarkMode();
 
   const setTab = (t) => setSearchParams({ tab: t });
@@ -164,7 +167,7 @@ export default function AppShell() {
       <div className="flex-1 overflow-hidden flex dark:bg-[#0F0F1A]">
         {tab === 'pipeline' && <Pipeline onProposalHandoff={handleProposalHandoff} onViewDeals={() => setTab('deals')} />}
         {tab === 'proposal' && <ProposalGeneratorInner handoff={proposalHandoff} onHandoffConsumed={() => setProposalHandoff(null)} />}
-        {tab === 'clients' && <Clients onViewHealth={handleViewHealth} onViewOnboarding={handleViewOnboarding} onViewDetail={setDetailClient} />}
+        {tab === 'clients' && <Clients onViewHealth={handleViewHealth} onViewOnboarding={handleViewOnboarding} onViewDetail={setDetailClient} onOpenFullPanel={(client, allClients) => { setFullPanelClient(client); setFullPanelClients(allClients || []); }} />}
         {tab === 'onboarding' && <Onboarding focusClientId={focusClientId} />}
         {tab === 'health' && <HealthRenewals focusClientId={focusClientId} />}
         {tab === 'deals' && <Deals onRenewalProposal={(data) => { handleProposalHandoff(data); }} onViewClient={(clientId) => { setTab('clients'); }} />}
@@ -183,6 +186,21 @@ export default function AppShell() {
           client={detailClient}
           onClose={() => setDetailClient(null)}
           onUpdated={(updated) => setDetailClient(updated)}
+        />
+      )}
+      {fullPanelClient && (
+        <ClientFullPanel
+          client={fullPanelClient}
+          onClose={() => setFullPanelClient(null)}
+          onUpdated={(updated) => {
+            setFullPanelClient(updated);
+            setFullPanelClients(prev => prev.map(c => c.id === updated.id ? updated : c));
+          }}
+          onDelete={(id) => {
+            setFullPanelClients(prev => prev.filter(c => c.id !== id));
+            setFullPanelClient(null);
+          }}
+          onViewOnboarding={handleViewOnboarding}
         />
       )}
     </div>
