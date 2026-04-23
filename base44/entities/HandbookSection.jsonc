@@ -5,9 +5,13 @@
     "sectionKey": {
       "type": "string"
     },
+    "fileUrl": {
+      "type": "string",
+      "description": "URL to uploaded JSON file containing handbook data (used instead of inline data field to avoid size limits)"
+    },
     "data": {
       "type": "string",
-      "description": "JSON stringified section data"
+      "description": "Legacy inline JSON data (deprecated \u2014 use fileUrl instead)"
     }
   },
   "required": [

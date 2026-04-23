@@ -17,38 +17,44 @@ export default function Handbook({ onNavigate }) {
   const [activePageId, setActivePageId] = useState('about');
   const [loaded, setLoaded] = useState(false);
 
-  // Load from DB — merge in any new default sections missing from saved data
+  // Merge missing default sections into loaded data
+  const mergeDefaults = useCallback((parsed) => {
+    const existingIds = new Set(parsed.sections.map(s => s.id));
+    const missingSections = DEFAULT_HANDBOOK.sections.filter(s => !existingIds.has(s.id));
+    if (missingSections.length === 0) return parsed;
+    const defaultOrder = DEFAULT_HANDBOOK.sections.map(s => s.id);
+    const merged = [...parsed.sections];
+    missingSections.forEach(missing => {
+      const defaultIdx = defaultOrder.indexOf(missing.id);
+      let insertAfterIdx = -1;
+      for (let i = defaultIdx - 1; i >= 0; i--) {
+        const pos = merged.findIndex(s => s.id === defaultOrder[i]);
+        if (pos !== -1) { insertAfterIdx = pos; break; }
+      }
+      merged.splice(insertAfterIdx + 1, 0, missing);
+    });
+    return { ...parsed, sections: merged };
+  }, []);
+
+  // Load from DB — data stored as uploaded file URL to avoid size limits
   useEffect(() => {
-    base44.entities.HandbookSection.filter({ sectionKey: STORAGE_KEY }).then(results => {
+    base44.entities.HandbookSection.filter({ sectionKey: STORAGE_KEY }).then(async results => {
       if (results.length > 0) {
         try {
-          const parsed = JSON.parse(results[0].data || '{}');
-          if (parsed.sections) {
-            // Inject any default sections not present in saved data
-            const existingIds = new Set(parsed.sections.map(s => s.id));
-            const missingSections = DEFAULT_HANDBOOK.sections.filter(s => !existingIds.has(s.id));
-            if (missingSections.length > 0) {
-              // Insert missing sections in the correct position relative to DEFAULT order
-              const defaultOrder = DEFAULT_HANDBOOK.sections.map(s => s.id);
-              const merged = [...parsed.sections];
-              missingSections.forEach(missing => {
-                const defaultIdx = defaultOrder.indexOf(missing.id);
-                // Find the best insertion point: after the previous default section that exists
-                let insertAfterIdx = -1;
-                for (let i = defaultIdx - 1; i >= 0; i--) {
-                  const prevId = defaultOrder[i];
-                  const pos = merged.findIndex(s => s.id === prevId);
-                  if (pos !== -1) { insertAfterIdx = pos; break; }
-                }
-                merged.splice(insertAfterIdx + 1, 0, missing);
-              });
-              const migrated = { ...parsed, sections: merged };
-              setHb(migrated);
-              // Persist the migrated version
-              base44.entities.HandbookSection.update(results[0].id, { sectionKey: STORAGE_KEY, data: JSON.stringify(migrated) });
-            } else {
-              setHb(parsed);
-            }
+          const record = results[0];
+          let parsed = null;
+          // Try loading from fileUrl first (new format), fall back to inline data (legacy)
+          if (record.fileUrl) {
+            const res = await fetch(record.fileUrl);
+            parsed = await res.json();
+          } else if (record.data) {
+            parsed = JSON.parse(record.data);
+          }
+          if (parsed?.sections) {
+            const merged = mergeDefaults(parsed);
+            setHb(merged);
+            // If we merged new sections, persist the update
+            if (merged !== parsed) persist(merged, record);
             setLoaded(true);
             return;
           }
@@ -59,18 +65,28 @@ export default function Handbook({ onNavigate }) {
     });
   }, []);
 
-  const persist = useCallback((newHb) => {
-    const payload = { sectionKey: STORAGE_KEY, data: JSON.stringify(newHb) };
-    base44.entities.HandbookSection.filter({ sectionKey: STORAGE_KEY }).then(results => {
-      if (results.length > 0) base44.entities.HandbookSection.update(results[0].id, payload);
-      else base44.entities.HandbookSection.create(payload);
-    });
+  const persist = useCallback(async (newHb, existingRecord) => {
+    // Upload JSON as a file to avoid entity field size limits
+    const blob = new Blob([JSON.stringify(newHb)], { type: 'application/json' });
+    const file = new File([blob], 'handbook.json', { type: 'application/json' });
+    const { file_url } = await base44.integrations.Core.UploadFile({ file });
+
+    const payload = { sectionKey: STORAGE_KEY, fileUrl: file_url, data: '' };
+    const results = existingRecord
+      ? [existingRecord]
+      : await base44.entities.HandbookSection.filter({ sectionKey: STORAGE_KEY });
+
+    if (results.length > 0) {
+      base44.entities.HandbookSection.update(results[0].id, payload);
+    } else {
+      base44.entities.HandbookSection.create(payload);
+    }
   }, []);
 
-  const updateHb = (newHb) => {
+  const updateHb = useCallback((newHb) => {
     setHb(newHb);
     persist(newHb);
-  };
+  }, [persist]);
 
   const toggleSection = (sectionId) => {
     updateHb({
