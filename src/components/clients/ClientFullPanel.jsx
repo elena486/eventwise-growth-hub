@@ -1,0 +1,442 @@
+import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { base44 } from '@/api/base44Client';
+import { format, differenceInDays, isPast } from 'date-fns';
+import {
+  X, Mail, Phone, Check, ChevronDown, ChevronUp, Trash2, AlertTriangle, MessageSquareOff
+} from 'lucide-react';
+import { STATUS_STYLES, HEALTH_DOT, OWNER_INITIALS, OWNER_COLORS, ONBOARDING_PHASES, calcHealth, initTasks } from '@/lib/csData';
+
+const TIER_STYLES = {
+  'High': 'bg-[#FEF9C3] text-[#A16207]',
+  'Medium': 'bg-[#DBEAFE] text-[#1D4ED8]',
+  'Low': 'bg-[#F3F4F6] text-[#6B7280]',
+};
+
+const STATUSES = ['Trial', 'Onboarding', 'Live', 'Churn'];
+const OWNERS = ['Chris Carter', 'Martinique Keeler'];
+const PLANS = ['', 'Starter', 'Professional', 'Business'];
+const TIER_OPTIONS = ['', 'High', 'Medium', 'Low'];
+const ONBOARDING_PLANS = ['', 'Basic', 'Standard', 'Enterprise', 'Option 1'];
+
+const ic = 'w-full text-sm border border-[#E5E7EB] rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#8403C5]/20 focus:border-[#8403C5] bg-white transition-colors';
+const labelCls = 'block text-[11px] font-semibold text-[#9CA3AF] uppercase tracking-[0.08em] mb-1';
+
+function fmtDate(d) {
+  if (!d) return '—';
+  try { return format(new Date(d), 'd MMM yyyy'); } catch { return d; }
+}
+
+function SectionTitle({ children }) {
+  return <p className="text-[11px] font-bold text-[#9CA3AF] uppercase tracking-[0.14em] mb-3 mt-5 first:mt-0">{children}</p>;
+}
+
+function ScoreDot({ score }) {
+  if (score == null || score === '') return null;
+  const n = Number(score);
+  const cls = n >= 4 ? 'bg-emerald-500' : n >= 3 ? 'bg-amber-400' : 'bg-red-500';
+  return <span className={`inline-block w-2 h-2 rounded-full ${cls} shrink-0`} />;
+}
+
+function ScoreRow({ label, value, onChange }) {
+  return (
+    <div className="flex items-center justify-between py-1.5 border-b border-[#F3F4F6] last:border-0">
+      <div className="flex items-center gap-2">
+        <ScoreDot score={value} />
+        <span className="text-sm text-[#374151]">{label}</span>
+      </div>
+      <div className="flex items-center gap-1.5">
+        <input
+          type="number" min="0" max="5" step="1"
+          value={value ?? ''}
+          onChange={e => onChange(Math.min(5, Math.max(0, Number(e.target.value))))}
+          className="w-12 text-center text-sm font-semibold border border-[#E5E7EB] rounded-md px-1 py-0.5 focus:outline-none focus:ring-1 focus:ring-[#8403C5]/30"
+        />
+        <span className="text-xs text-[#9CA3AF]">/5</span>
+      </div>
+    </div>
+  );
+}
+
+export default function ClientFullPanel({ client: initialClient, onClose, onUpdated, onDelete, onViewOnboarding }) {
+  const [client, setClient] = useState(initialClient);
+  const [healthRecord, setHealthRecord] = useState(null);
+  const [onboardingRecord, setOnboardingRecord] = useState(null);
+  const [showSalesHistory, setShowSalesHistory] = useState(false);
+  const [salesLead, setSalesLead] = useState(null);
+  const [deleteConfirm, setDeleteConfirm] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [notes, setNotes] = useState(initialClient.notes || '');
+  const notesTimer = useRef(null);
+  const saveTimer = useRef(null);
+
+  useEffect(() => {
+    setClient(initialClient);
+    setNotes(initialClient.notes || '');
+  }, [initialClient.id]);
+
+  useEffect(() => {
+    base44.entities.HealthScore.filter({ clientId: initialClient.id }).then(r => setHealthRecord(r[0] || null));
+    base44.entities.OnboardingRecord.filter({ clientId: initialClient.id }).then(r => setOnboardingRecord(r[0] || null));
+  }, [initialClient.id]);
+
+  const autoSave = useCallback((field, value) => {
+    const updated = { ...client, [field]: value };
+    setClient(updated);
+    onUpdated(updated);
+    clearTimeout(saveTimer.current);
+    saveTimer.current = setTimeout(() => {
+      base44.entities.Client.update(updated.id, { [field]: value });
+    }, 600);
+  }, [client, onUpdated]);
+
+  const handleNotesChange = (val) => {
+    setNotes(val);
+    clearTimeout(notesTimer.current);
+    notesTimer.current = setTimeout(() => {
+      base44.entities.Client.update(client.id, { notes: val });
+      const updated = { ...client, notes: val };
+      setClient(updated);
+      onUpdated(updated);
+    }, 800);
+  };
+
+  const handleLogContactToday = () => {
+    const today = format(new Date(), 'yyyy-MM-dd');
+    autoSave('lastContacted', today);
+  };
+
+  const noReplyEntries = (() => { try { return JSON.parse(client.noReplyLog || '[]'); } catch { return []; } })();
+  const latestNoReply = noReplyEntries[0];
+
+  // Health scores
+  const scores = healthRecord ? {
+    emails: healthRecord.emails ?? '',
+    meetings: healthRecord.meetings ?? '',
+    goals: healthRecord.goals ?? '',
+    adoption: healthRecord.adoption ?? '',
+    knowledge: healthRecord.knowledge ?? '',
+    cx: healthRecord.cx ?? '',
+    issues: healthRecord.issues ?? '',
+  } : { emails: '', meetings: '', goals: '', adoption: '', knowledge: '', cx: '', issues: '' };
+
+  const total = Object.values(scores).reduce((s, v) => s + (Number(v) || 0), 0);
+  const rating = total >= 28 ? 'Green' : total >= 18 ? 'Yellow' : 'Red';
+  const ratingCls = rating === 'Green' ? 'text-emerald-600 bg-emerald-50' : rating === 'Yellow' ? 'text-amber-600 bg-amber-50' : 'text-red-600 bg-red-50';
+
+  const handleScoreChange = async (field, value) => {
+    const updated = { ...healthRecord, [field]: value };
+    setHealthRecord(updated);
+    if (healthRecord?.id) {
+      await base44.entities.HealthScore.update(healthRecord.id, { [field]: value });
+    }
+  };
+
+  // Onboarding
+  const tasks = (() => { try { return JSON.parse(onboardingRecord?.tasks || '[]'); } catch { return []; } })();
+  const currentPhase = tasks.length > 0 ? (() => {
+    const incompletePhaseTasks = [1, 2, 3, 4].find(p => tasks.some(t => t.phase === p && !t.completed));
+    return incompletePhaseTasks || 4;
+  })() : 1;
+  const phaseTasks = tasks.filter(t => t.phase === currentPhase);
+  const completedCount = phaseTasks.filter(t => t.completed).length;
+  const pct = phaseTasks.length > 0 ? Math.round((completedCount / phaseTasks.length) * 100) : 0;
+
+  const toggleTask = async (taskIdx) => {
+    if (!onboardingRecord) return;
+    const allTasks = [...tasks];
+    const absIdx = allTasks.findIndex((t, i) => t.phase === currentPhase && tasks.filter(x => x.phase === currentPhase).indexOf(t) === taskIdx);
+    if (absIdx === -1) return;
+    allTasks[absIdx] = { ...allTasks[absIdx], completed: !allTasks[absIdx].completed };
+    const updated = { ...onboardingRecord, tasks: JSON.stringify(allTasks), lastUpdated: new Date().toISOString() };
+    setOnboardingRecord(updated);
+    await base44.entities.OnboardingRecord.update(onboardingRecord.id, { tasks: JSON.stringify(allTasks), lastUpdated: updated.lastUpdated });
+  };
+
+  // Sales history
+  const handleToggleSales = async () => {
+    if (!showSalesHistory && !salesLead) {
+      const leads = await base44.entities.Lead.filter({ companyName: client.name });
+      setSalesLead(leads[0] || null);
+    }
+    setShowSalesHistory(v => !v);
+  };
+
+  const salesActivityLog = (() => {
+    if (!salesLead) return [];
+    try { return JSON.parse(salesLead.activityLog || '[]'); } catch { return []; }
+  })();
+
+  const handleDelete = async () => {
+    setDeleting(true);
+    await Promise.all([
+      base44.entities.Client.delete(client.id),
+      base44.entities.OnboardingRecord.filter({ clientId: client.id }).then(r => r.forEach(x => base44.entities.OnboardingRecord.delete(x.id))),
+      base44.entities.HealthScore.filter({ clientId: client.id }).then(r => r.forEach(x => base44.entities.HealthScore.delete(x.id))),
+    ]);
+    setDeleting(false);
+    onDelete(client.id);
+    onClose();
+  };
+
+  // Renewal coloring
+  const renewalDate = client.renewalDate ? new Date(client.renewalDate) : null;
+  const renewalDiff = renewalDate ? differenceInDays(renewalDate, new Date()) : null;
+  const renewalCls = renewalDate
+    ? (renewalDiff !== null && renewalDiff <= 30) ? 'text-red-600 font-semibold'
+    : (renewalDiff !== null && renewalDiff <= 60) ? 'text-amber-600 font-semibold'
+    : 'text-[#374151]'
+    : 'text-[#9CA3AF]';
+
+  return (
+    <div className="fixed inset-0 z-40 flex pointer-events-none">
+      <div className="flex-1 pointer-events-auto" onClick={onClose} />
+      <div className="w-[58%] h-full bg-white border-l border-[#E5E7EB] shadow-2xl flex flex-col pointer-events-auto overflow-hidden">
+        {/* Header */}
+        <div className="shrink-0 px-6 py-4 border-b border-[#E5E7EB] bg-white">
+          <div className="flex items-start justify-between gap-3">
+            <div className="flex-1 min-w-0">
+              <h2 className="text-xl font-bold text-[#111827] leading-tight">{client.name}</h2>
+              <p className="text-xs text-[#9CA3AF] mt-0.5">
+                Updated {client.updated_date ? fmtDate(client.updated_date) : '—'}
+              </p>
+            </div>
+            <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-[#F7F7F8] text-[#9CA3AF] hover:text-[#374151] transition-colors shrink-0">
+              <X className="w-5 h-5" />
+            </button>
+          </div>
+          <div className="flex items-center gap-2 mt-2 flex-wrap">
+            {client.status && (
+              <span className={`text-[11px] font-semibold px-2.5 py-0.5 rounded-full ${STATUS_STYLES[client.status] || 'bg-[#F3F4F6] text-[#6B7280]'}`}>{client.status}</span>
+            )}
+            {client.priorityTier && (
+              <span className={`text-[11px] font-semibold px-2.5 py-0.5 rounded-full ${TIER_STYLES[client.priorityTier] || 'bg-[#F3F4F6] text-[#6B7280]'}`}>{client.priorityTier} priority</span>
+            )}
+            {latestNoReply && (
+              <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-[#FEF9C3] text-[#A16207] border border-amber-200 flex items-center gap-1">
+                <MessageSquareOff className="w-2.5 h-2.5" /> No reply — {fmtDate(latestNoReply.date)}
+              </span>
+            )}
+          </div>
+        </div>
+
+        {/* Body */}
+        <div className="flex-1 overflow-y-auto px-6 py-5 space-y-0">
+
+          {/* SECTION 1: Contact */}
+          <SectionTitle>Contact Details</SectionTitle>
+          <div className="grid grid-cols-2 gap-3 mb-4">
+            <div>
+              <label className={labelCls}>Contact name</label>
+              <input className={ic} value={client.contactName || ''} onChange={e => autoSave('contactName', e.target.value)} placeholder="—" />
+            </div>
+            <div>
+              <label className={labelCls}>Email</label>
+              <div className="relative">
+                <input className={ic + ' pr-8'} type="email" value={client.contactEmail || ''} onChange={e => autoSave('contactEmail', e.target.value)} placeholder="—" />
+                {client.contactEmail && (
+                  <a href={`mailto:${client.contactEmail}`} className="absolute right-2.5 top-2 text-[#9CA3AF] hover:text-[#8403C5]"><Mail className="w-4 h-4" /></a>
+                )}
+              </div>
+            </div>
+            <div>
+              <label className={labelCls}>Phone</label>
+              <div className="relative">
+                <input className={ic + ' pr-8'} value={client.contactPhone || ''} onChange={e => autoSave('contactPhone', e.target.value)} placeholder="—" />
+                {client.contactPhone && (
+                  <a href={`tel:${client.contactPhone}`} className="absolute right-2.5 top-2 text-[#9CA3AF] hover:text-[#8403C5]"><Phone className="w-4 h-4" /></a>
+                )}
+              </div>
+            </div>
+          </div>
+
+          <hr className="border-[#F3F4F6] mb-4" />
+
+          {/* SECTION 2: Account Info */}
+          <SectionTitle>Account Info</SectionTitle>
+          <div className="grid grid-cols-2 gap-3 mb-4">
+            <div>
+              <label className={labelCls}>Plan</label>
+              <select className={ic} value={client.plan || ''} onChange={e => autoSave('plan', e.target.value)}>
+                {PLANS.map(p => <option key={p} value={p}>{p || '— Select —'}</option>)}
+              </select>
+            </div>
+            <div>
+              <label className={labelCls}>Status</label>
+              <select className={ic} value={client.status || ''} onChange={e => autoSave('status', e.target.value)}>
+                {STATUSES.map(s => <option key={s}>{s}</option>)}
+              </select>
+            </div>
+            <div>
+              <label className={labelCls}>Priority Tier</label>
+              <select className={ic} value={client.priorityTier || ''} onChange={e => autoSave('priorityTier', e.target.value)}>
+                {TIER_OPTIONS.map(o => <option key={o} value={o}>{o || '— Not set —'}</option>)}
+              </select>
+            </div>
+            <div>
+              <label className={labelCls}>CS Owner</label>
+              <select className={ic} value={client.owner || ''} onChange={e => autoSave('owner', e.target.value)}>
+                {OWNERS.map(o => <option key={o}>{o}</option>)}
+              </select>
+            </div>
+            <div>
+              <label className={labelCls}>Subscription start</label>
+              <input type="date" className={ic} value={client.trialStartDate || ''} onChange={e => autoSave('trialStartDate', e.target.value)} />
+            </div>
+            <div>
+              <label className={labelCls}>Renewal date</label>
+              <input type="date" className={ic} value={client.renewalDate || ''} onChange={e => autoSave('renewalDate', e.target.value)} />
+              {client.renewalDate && (
+                <p className={`text-xs mt-0.5 ${renewalCls}`}>
+                  {renewalDiff !== null && renewalDiff <= 0 ? '⚠ Overdue' : renewalDiff !== null && renewalDiff <= 60 ? `⚠ ${renewalDiff}d away` : fmtDate(client.renewalDate)}
+                </p>
+              )}
+            </div>
+            <div>
+              <label className={labelCls}>Last contacted</label>
+              <div className="flex items-center gap-2">
+                <input type="date" className={ic} value={client.lastContacted || ''} onChange={e => autoSave('lastContacted', e.target.value)} />
+                <button onClick={handleLogContactToday} className="shrink-0 text-xs px-2.5 py-1.5 bg-[#F3E8FF] text-[#8403C5] rounded-lg hover:bg-[#EDE9FE] font-semibold transition-colors whitespace-nowrap">Today</button>
+              </div>
+            </div>
+            <div>
+              <label className={labelCls}>Onboarding plan</label>
+              <select className={ic} value={client.onboardingPlan || ''} onChange={e => autoSave('onboardingPlan', e.target.value)}>
+                {ONBOARDING_PLANS.map(p => <option key={p} value={p}>{p || '— Select —'}</option>)}
+              </select>
+            </div>
+          </div>
+
+          <hr className="border-[#F3F4F6] mb-4" />
+
+          {/* SECTION 3: Health Scores */}
+          <SectionTitle>Health Scores</SectionTitle>
+          {!healthRecord ? (
+            <p className="text-sm text-[#9CA3AF] italic mb-4">No health data yet.</p>
+          ) : (
+            <div className="mb-4">
+              <div className="bg-[#F9FAFB] border border-[#E5E7EB] rounded-xl p-4 mb-3">
+                <ScoreRow label="QOR — Emails" value={scores.emails} onChange={v => handleScoreChange('emails', v)} />
+                <ScoreRow label="QOR — Meetings" value={scores.meetings} onChange={v => handleScoreChange('meetings', v)} />
+                <ScoreRow label="ROI — Goals" value={scores.goals} onChange={v => handleScoreChange('goals', v)} />
+                <ScoreRow label="ROI — Adoption" value={scores.adoption} onChange={v => handleScoreChange('adoption', v)} />
+                <ScoreRow label="ROI — Knowledge" value={scores.knowledge} onChange={v => handleScoreChange('knowledge', v)} />
+                <ScoreRow label="ROI — CX" value={scores.cx} onChange={v => handleScoreChange('cx', v)} />
+                <ScoreRow label="Issue Resolution" value={scores.issues} onChange={v => handleScoreChange('issues', v)} />
+              </div>
+              <div className="flex items-center gap-3">
+                <span className="text-2xl font-bold text-[#111827]">{total}<span className="text-base font-normal text-[#9CA3AF]">/35</span></span>
+                <span className={`text-sm font-semibold px-3 py-1 rounded-full ${ratingCls}`}>{rating}</span>
+                <span className="text-xs text-[#9CA3AF]">{rating === 'Green' ? '28–35' : rating === 'Yellow' ? '18–27' : '0–17'}</span>
+              </div>
+            </div>
+          )}
+
+          <hr className="border-[#F3F4F6] mb-4" />
+
+          {/* SECTION 4: Onboarding Status */}
+          <SectionTitle>Onboarding Status</SectionTitle>
+          {!onboardingRecord ? (
+            <p className="text-sm text-[#9CA3AF] italic mb-4">No onboarding record yet.</p>
+          ) : (
+            <div className="mb-4">
+              <div className="flex items-center gap-3 mb-3">
+                <span className="text-sm font-semibold text-[#374151]">Phase {currentPhase}</span>
+                <div className="flex-1 h-2 bg-[#F3F4F6] rounded-full overflow-hidden">
+                  <div className="h-full bg-[#8403C5] rounded-full transition-all" style={{ width: `${pct}%` }} />
+                </div>
+                <span className="text-sm font-semibold text-[#374151]">{pct}%</span>
+              </div>
+              <div className="space-y-1.5 mb-3">
+                {phaseTasks.map((task, i) => (
+                  <div key={i} className="flex items-center gap-2.5 cursor-pointer group" onClick={() => toggleTask(i)}>
+                    <div className={`w-4 h-4 rounded border flex items-center justify-center shrink-0 transition-colors ${task.completed ? 'bg-[#8403C5] border-[#8403C5]' : 'border-[#D1D5DB] group-hover:border-[#8403C5]'}`}>
+                      {task.completed && <Check className="w-2.5 h-2.5 text-white" />}
+                    </div>
+                    <span className={`text-sm transition-colors ${task.completed ? 'line-through text-[#9CA3AF]' : 'text-[#374151] group-hover:text-[#111827]'}`}>{task.taskName}</span>
+                  </div>
+                ))}
+              </div>
+              {onViewOnboarding && (
+                <button onClick={() => onViewOnboarding(client)} className="text-sm text-[#8403C5] hover:underline font-medium">View full onboarding →</button>
+              )}
+            </div>
+          )}
+
+          <hr className="border-[#F3F4F6] mb-4" />
+
+          {/* SECTION 5: Sales Handover Notes */}
+          {client.handoffIncomplete && (
+            <>
+              <SectionTitle>Sales Handover</SectionTitle>
+              <div className="mb-4 bg-amber-50 border border-amber-200 rounded-xl p-4">
+                <p className="text-sm font-semibold text-amber-800 mb-1">📋 Handoff incomplete</p>
+                <p className="text-sm text-amber-700">The sales-to-CS handover checklist has not been fully completed for this client.</p>
+              </div>
+              <hr className="border-[#F3F4F6] mb-4" />
+            </>
+          )}
+
+          {/* SECTION 6: Notes & Activity */}
+          <SectionTitle>Notes & Activity</SectionTitle>
+          <textarea
+            className={`${ic} min-h-[100px] resize-none mb-3`}
+            value={notes}
+            onChange={e => handleNotesChange(e.target.value)}
+            placeholder="Add notes here — auto-saves..."
+          />
+          <button
+            onClick={handleToggleSales}
+            className="flex items-center gap-1.5 text-sm text-[#6B7280] hover:text-[#374151] font-medium mb-2 transition-colors"
+          >
+            {showSalesHistory ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+            View sales history
+          </button>
+          {showSalesHistory && (
+            <div className="bg-[#F9FAFB] border border-[#E5E7EB] rounded-xl p-4 mb-4">
+              {!salesLead ? (
+                <p className="text-sm text-[#9CA3AF] italic">No linked lead record found.</p>
+              ) : salesActivityLog.length === 0 ? (
+                <p className="text-sm text-[#9CA3AF] italic">No activity logged on lead.</p>
+              ) : (
+                <div className="space-y-3">
+                  {salesActivityLog.map((entry, i) => (
+                    <div key={i} className="text-sm">
+                      <div className="flex items-center gap-2 mb-0.5">
+                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#F3F4F6] text-[#6B7280]">{entry.type}</span>
+                        <span className="text-xs text-[#9CA3AF]">{fmtDate(entry.date)}</span>
+                        {entry.addedBy && <span className="text-xs text-[#9CA3AF]">· {entry.addedBy}</span>}
+                      </div>
+                      <p className="text-[#374151]">{entry.summary}</p>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Delete */}
+          <div className="border-t border-[#F3F4F6] pt-4 mt-4">
+            {deleteConfirm ? (
+              <div className="bg-red-50 border border-red-200 rounded-xl p-4">
+                <p className="text-sm text-[#374151] mb-3">
+                  Are you sure you want to delete <strong>{client.name}</strong>? This will also remove their onboarding checklist and health scores. This cannot be undone.
+                </p>
+                <div className="flex gap-2">
+                  <button onClick={handleDelete} disabled={deleting}
+                    className="px-4 py-2 text-sm font-semibold bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50 transition-colors">
+                    {deleting ? 'Deleting…' : 'Delete permanently'}
+                  </button>
+                  <button onClick={() => setDeleteConfirm(false)} className="px-4 py-2 text-sm font-medium text-[#6B7280] hover:bg-[#F7F7F8] rounded-lg transition-colors">Cancel</button>
+                </div>
+              </div>
+            ) : (
+              <button onClick={() => setDeleteConfirm(true)} className="flex items-center gap-1.5 text-sm text-red-500 hover:text-red-700 font-medium transition-colors">
+                <Trash2 className="w-4 h-4" /> Delete client
+              </button>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}

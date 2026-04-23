@@ -1,9 +1,10 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { base44 } from '@/api/base44Client';
 import { format, isPast, differenceInDays, isToday } from 'date-fns';
-import { Plus, AlertTriangle, Sparkles, ExternalLink } from 'lucide-react';
+import { Plus, AlertTriangle, Sparkles, ExternalLink, Trash2 } from 'lucide-react';
 import ClientModal from '@/components/clients/ClientModal';
 import ClientDetailPanel from '@/components/clients/ClientDetailPanel';
+import ClientFullPanel from '@/components/clients/ClientFullPanel';
 import InlineCell from '@/components/shared/InlineCell';
 import SmartAlertsPanel from '@/components/cs/SmartAlertsPanel';
 import AINextActionPanel from '@/components/cs/AINextActionPanel';
@@ -95,6 +96,8 @@ export default function Clients({ onViewHealth, onViewOnboarding, onViewDetail }
   const [aiPanelClient, setAiPanelClient] = useState(null);
   const [aiPanelAlert, setAiPanelAlert] = useState(null);
   const [emailModal, setEmailModal] = useState(null);
+  const [detailClient, setDetailClient] = useState(null);
+  const [deleteConfirmId, setDeleteConfirmId] = useState(null);
   const aiPanelRef = useRef(null);
 
   const load = async () => {
@@ -120,6 +123,19 @@ export default function Clients({ onViewHealth, onViewOnboarding, onViewDetail }
         });
       }
     }
+  };
+
+  const handleDeleteClient = async (id) => {
+    const client = clients.find(c => c.id === id);
+    await base44.entities.Client.delete(id);
+    const [obs, hs] = await Promise.all([
+      base44.entities.OnboardingRecord.filter({ clientId: id }),
+      base44.entities.HealthScore.filter({ clientId: id }),
+    ]);
+    await Promise.all([...obs.map(x => base44.entities.OnboardingRecord.delete(x.id)), ...hs.map(x => base44.entities.HealthScore.delete(x.id))]);
+    setClients(prev => prev.filter(c => c.id !== id));
+    setDeleteConfirmId(null);
+    if (detailClient?.id === id) setDetailClient(null);
   };
 
   const handleAddClient = async (form) => {
@@ -236,7 +252,8 @@ export default function Clients({ onViewHealth, onViewOnboarding, onViewDetail }
             </thead>
             <tbody>
               {sorted.map((c, i) => (
-                <tr key={c.id} className="border-b border-[#F2F2F4] last:border-0 hover:bg-[#F9FAFB] transition-colors">
+                <tr key={c.id} className={`border-b border-[#F2F2F4] last:border-0 hover:bg-[#F9FAFB] transition-colors cursor-pointer group ${detailClient?.id === c.id ? 'bg-[#FAF5FF]' : ''}`}
+                  onClick={() => setDetailClient(c)}>
                   {/* Client name / contact */}
                   <td className="px-4 py-3 min-w-[180px]" onClick={e => e.stopPropagation()}>
                     <InlineCell value={c.name} onSave={save(c.id, 'name')} placeholder="Company name" className="font-semibold text-navy text-sm" />
@@ -338,15 +355,26 @@ export default function Clients({ onViewHealth, onViewOnboarding, onViewDetail }
                   {/* Actions */}
                   <td className="px-4 py-3" onClick={e => e.stopPropagation()}>
                     <div className="flex items-center gap-1 flex-wrap">
+                      {deleteConfirmId === c.id ? (
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-xs text-red-600">Delete?</span>
+                          <button onClick={() => handleDeleteClient(c.id)} className="text-xs px-2 py-1 bg-red-600 text-white rounded-md font-semibold hover:bg-red-700 transition-colors">Yes</button>
+                          <button onClick={() => setDeleteConfirmId(null)} className="text-xs px-2 py-1 text-[#6B7280] hover:bg-[#F3F4F6] rounded-md transition-colors">No</button>
+                        </div>
+                      ) : (
+                        <button onClick={e => { e.stopPropagation(); setDeleteConfirmId(c.id); }} className="opacity-0 group-hover:opacity-100 p-1.5 text-[#9CA3AF] hover:text-red-500 hover:bg-red-50 rounded-lg transition-all" title="Delete client">
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      )}
                       {(c.status === 'Live' || c.status === 'Onboarding') && (
-                        <button onClick={() => onViewHealth(c)} className="text-xs px-2.5 py-1.5 font-medium text-[#374151] bg-white hover:bg-[#F9FAFB] rounded-lg transition-colors" style={{ border: '1.5px solid #E5E7EB' }}>Health</button>
+                        <button onClick={e => { e.stopPropagation(); onViewHealth(c); }} className="text-xs px-2.5 py-1.5 font-medium text-[#374151] bg-white hover:bg-[#F9FAFB] rounded-lg transition-colors" style={{ border: '1.5px solid #E5E7EB' }}>Health</button>
                       )}
                       {c.status === 'Onboarding' && (
-                        <button onClick={() => onViewOnboarding(c)} className="text-xs px-2.5 py-1.5 font-medium text-[#374151] bg-white hover:bg-[#F9FAFB] rounded-lg transition-colors" style={{ border: '1.5px solid #E5E7EB' }}>Onboarding</button>
+                        <button onClick={e => { e.stopPropagation(); onViewOnboarding(c); }} className="text-xs px-2.5 py-1.5 font-medium text-[#374151] bg-white hover:bg-[#F9FAFB] rounded-lg transition-colors" style={{ border: '1.5px solid #E5E7EB' }}>Onboarding</button>
                       )}
                       <div className="relative" ref={aiPanelClient?.id === c.id ? aiPanelRef : null}>
                         <button
-                          onClick={() => aiPanelClient?.id === c.id ? setAiPanelClient(null) : handleSuggestAction(c, null)}
+                          onClick={e => { e.stopPropagation(); aiPanelClient?.id === c.id ? setAiPanelClient(null) : handleSuggestAction(c, null); }}
                           className="text-xs px-2.5 py-1.5 font-medium text-[#7E22CE] bg-[#F3E8FF] hover:bg-[#EDE9FE] rounded-lg transition-colors flex items-center gap-1"
                         >
                           <Sparkles className="w-3 h-3" /> AI
@@ -361,13 +389,13 @@ export default function Clients({ onViewHealth, onViewOnboarding, onViewDetail }
                         )}
                       </div>
                       <button
-                        onClick={() => handleDraftEmail(c, null, null)}
+                        onClick={e => { e.stopPropagation(); handleDraftEmail(c, null, null); }}
                         className="text-xs px-2.5 py-1.5 font-medium text-[#6B7280] hover:text-[#111827] rounded-lg transition-colors"
                       >
                         Draft email
                       </button>
                       <button
-                        onClick={() => onViewDetail && onViewDetail(c)}
+                        onClick={e => { e.stopPropagation(); setDetailClient(c); }}
                         className="text-xs px-2.5 py-1.5 font-medium text-[#6B7280] hover:text-[#374151] bg-white hover:bg-[#F9FAFB] rounded-lg transition-colors flex items-center gap-1"
                         style={{ border: '1.5px solid #E5E7EB' }}
                         title="View details"
@@ -397,6 +425,22 @@ export default function Clients({ onViewHealth, onViewOnboarding, onViewDetail }
           aiSuggestion={emailModal.aiSuggestion}
           onClose={() => setEmailModal(null)}
           onTouchpointLogged={() => { setEmailModal(null); load(); }}
+        />
+      )}
+
+      {detailClient && (
+        <ClientFullPanel
+          client={detailClient}
+          onClose={() => setDetailClient(null)}
+          onUpdated={(updated) => {
+            setClients(prev => prev.map(c => c.id === updated.id ? updated : c));
+            setDetailClient(updated);
+          }}
+          onDelete={(id) => {
+            setClients(prev => prev.filter(c => c.id !== id));
+            setDetailClient(null);
+          }}
+          onViewOnboarding={onViewOnboarding}
         />
       )}
     </div>
