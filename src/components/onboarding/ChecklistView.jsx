@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { ONBOARDING_PHASES } from '@/lib/csData';
 import { format } from 'date-fns';
 import { X, ChevronDown, ChevronRight } from 'lucide-react';
+import TranscriptSection from '@/components/shared/TranscriptSection';
 
 function phaseTasks(tasks, phase) {
   return tasks.filter(t => t.phase === phase);
@@ -16,6 +17,9 @@ function phaseCompletion(tasks, phase) {
 export default function ChecklistView({ record, client, onSave, onGoLive, onClose }) {
   const [tasks, setTasks] = useState(() => {
     try { return JSON.parse(record.tasks || '[]'); } catch { return []; }
+  });
+  const [transcripts, setTranscripts] = useState(() => {
+    try { return JSON.parse(record.transcripts || '[]'); } catch { return []; }
   });
   const [collapsed, setCollapsed] = useState({});
   const [saving, setSaving] = useState(false);
@@ -36,7 +40,7 @@ export default function ChecklistView({ record, client, onSave, onGoLive, onClos
 
   const handleSave = async () => {
     setSaving(true);
-    await onSave(tasks);
+    await onSave(tasks, transcripts);
     setSaving(false);
   };
 
@@ -114,6 +118,14 @@ export default function ChecklistView({ record, client, onSave, onGoLive, onClos
             );
           })}
         </div>
+
+          {/* Transcripts section */}
+          <div className="pb-4">
+            <TranscriptSection
+              transcripts={transcripts}
+              onChange={setTranscripts}
+            />
+          </div>
 
         {/* Footer */}
         <div className="px-6 py-4 border-t border-ew-border shrink-0 flex items-center justify-between gap-3">

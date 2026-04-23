@@ -63,9 +63,10 @@ export default function Onboarding({ focusClientId }) {
 
   useEffect(() => { load(); }, [focusClientId]);
 
-  const handleSaveTasks = async (tasks) => {
+  const handleSaveTasks = async (tasks, transcripts) => {
     await base44.entities.OnboardingRecord.update(checklist.record.id, {
       tasks: JSON.stringify(tasks),
+      transcripts: transcripts ? JSON.stringify(transcripts) : undefined,
       lastUpdated: new Date().toISOString(),
     });
     setChecklist(null);

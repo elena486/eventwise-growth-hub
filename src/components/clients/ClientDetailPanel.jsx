@@ -3,6 +3,7 @@ import { base44 } from '@/api/base44Client';
 import { format } from 'date-fns';
 import { X, MessageSquareOff, CheckCircle2 } from 'lucide-react';
 import { STATUS_STYLES, HEALTH_DOT, OWNER_INITIALS, OWNER_COLORS } from '@/lib/csData';
+import TranscriptSection from '@/components/shared/TranscriptSection';
 
 const TIER_STYLES = {
   'High': 'bg-[#FEF9C3] text-[#A16207]',
@@ -110,6 +111,18 @@ export default function ClientDetailPanel({ client, onClose, onUpdated }) {
             <div className="bg-[#F7F7F8] rounded-lg p-3 text-sm text-[#374151] whitespace-pre-wrap">{client.notes}</div>
           </div>
         )}
+
+        {/* Transcripts */}
+        <div className="px-6 pb-4">
+          <TranscriptSection
+            transcripts={(() => { try { return JSON.parse(client.transcripts || '[]'); } catch { return []; } })()}
+            onChange={async (val) => {
+              const updated = { ...client, transcripts: JSON.stringify(val) };
+              await base44.entities.Client.update(client.id, { transcripts: JSON.stringify(val) });
+              onUpdated(updated);
+            }}
+          />
+        </div>
 
         {/* No Reply log history */}
         {noReplyEntries.length > 0 && (

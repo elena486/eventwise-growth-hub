@@ -1,0 +1,26 @@
+{
+  "name": "OnboardingRecord",
+  "type": "object",
+  "properties": {
+    "clientId": {
+      "type": "string"
+    },
+    "clientName": {
+      "type": "string"
+    },
+    "tasks": {
+      "type": "string",
+      "description": "JSON array of task objects"
+    },
+    "transcripts": {
+      "type": "string",
+      "description": "JSON array of meeting transcript objects"
+    },
+    "lastUpdated": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "clientId"
+  ]
+}

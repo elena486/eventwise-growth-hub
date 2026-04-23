@@ -7,6 +7,7 @@ import {
   Check, Upload, Link, ChevronDown, ChevronUp, AlertTriangle
 } from 'lucide-react';
 import MultiFileUpload from '@/components/shared/MultiFileUpload';
+import TranscriptSection from '@/components/shared/TranscriptSection';
 import StageBadge from './Stagebadge';
 
 const STAGES = ['New Lead', 'Contacted', 'Discovery Call', 'Demo Booked', 'Proposal Sent', 'Negotiation', 'Closed Won', 'Closed Lost', 'On Hold'];
@@ -499,6 +500,12 @@ export default function LeadDetailPanel({ lead, onClose, onUpdate, onDelete, onC
 
         {/* ── SECTION C: Activity Log ── */}
         <ActivityLog entries={logEntries} onSave={saveActivityLog} />
+
+        {/* Transcripts */}
+        <TranscriptSection
+          transcripts={(() => { try { return JSON.parse(data.transcripts || '[]'); } catch { return []; } })()}
+          onChange={val => autoSave({ transcripts: JSON.stringify(val) })}
+        />
 
         {/* Demo fields */}
         <div className="grid grid-cols-2 gap-3 pt-1">

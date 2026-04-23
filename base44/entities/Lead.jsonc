@@ -10,6 +10,63 @@
       "type": "string",
       "description": "Contact name"
     },
+    "firstName": {
+      "type": "string"
+    },
+    "lastName": {
+      "type": "string"
+    },
+    "jobTitle": {
+      "type": "string"
+    },
+    "email": {
+      "type": "string"
+    },
+    "phone": {
+      "type": "string"
+    },
+    "linkedInUrl": {
+      "type": "string"
+    },
+    "companyWebsite": {
+      "type": "string"
+    },
+    "companySize": {
+      "type": "string",
+      "enum": [
+        "1\u201310",
+        "11\u201350",
+        "51\u2013200",
+        "201\u2013500",
+        "500+"
+      ]
+    },
+    "industry": {
+      "type": "string",
+      "enum": [
+        "Festival",
+        "Event Organiser",
+        "Event Agency",
+        "Corporate Events",
+        "Venue",
+        "Accountancy",
+        "Other"
+      ]
+    },
+    "heardAbout": {
+      "type": "string",
+      "enum": [
+        "LinkedIn",
+        "Referral",
+        "Inbound",
+        "Outbound",
+        "Event",
+        "EPS (Event Production Show)",
+        "EBL (Event Buyers Live)",
+        "AAA (Access All Areas)",
+        "Other"
+      ]
+    },
     "leadOwner": {
       "type": "string",
       "enum": [
@@ -24,8 +81,10 @@
       "type": "string",
       "enum": [
         "Starter",
+        "Growth",
+        "Scale",
         "Professional",
-        "Business"
+        "Custom"
       ],
       "description": "Eventwise plan"
     },
@@ -33,21 +92,140 @@
       "type": "number",
       "description": "Monthly deal value in GBP"
     },
-    "stage": {
+    "setupFee": {
+      "type": "number"
+    },
+    "accountingService": {
       "type": "string",
       "enum": [
-        "Contacted",
-        "Discovery Call",
-        "Proposal Sent",
-        "In Negotiation",
-        "Closed Won",
-        "Closed Lost"
+        "Not included",
+        "Included in plan",
+        "Included in accounting service fee",
+        "Separate fee"
       ],
-      "description": "Pipeline stage"
+      "description": "How accounting service is structured"
+    },
+    "accountingServiceFee": {
+      "type": "number",
+      "description": "Monthly accounting fee in GBP, only when accountingService = Separate fee"
+    },
+    "onboardingPlan": {
+      "type": "string",
+      "enum": [
+        "Basic",
+        "Standard",
+        "Enterprise",
+        "Option 1"
+      ]
+    },
+    "proposedStartDate": {
+      "type": "string",
+      "format": "date"
+    },
+    "contractLength": {
+      "type": "string",
+      "enum": [
+        "Monthly rolling",
+        "6 months",
+        "12 months",
+        "24 months"
+      ]
+    },
+    "probability": {
+      "type": "number"
+    },
+    "expectedCloseMonth": {
+      "type": "string",
+      "description": "Expected close month in YYYY-MM format"
+    },
+    "timelineToDecision": {
+      "type": "string"
+    },
+    "competitorsEvaluating": {
+      "type": "string"
+    },
+    "activityLog": {
+      "type": "string",
+      "description": "JSON array of activity log entries"
+    },
+    "transcripts": {
+      "type": "string",
+      "description": "JSON array of meeting transcript objects"
+    },
+    "demoCompleted": {
+      "type": "boolean"
+    },
+    "demoDate": {
+      "type": "string",
+      "format": "date"
+    },
+    "demoNotes": {
+      "type": "string"
+    },
+    "objections": {
+      "type": "string"
+    },
+    "objectionsAddressed": {
+      "type": "string"
+    },
+    "painPoints": {
+      "type": "string"
+    },
+    "internalNotes": {
+      "type": "string"
     },
     "nextAction": {
       "type": "string",
       "description": "Next action to take"
+    },
+    "nextActionDue": {
+      "type": "string",
+      "format": "date"
+    },
+    "followUpReminder": {
+      "type": "string",
+      "format": "date"
+    },
+    "followUpNote": {
+      "type": "string"
+    },
+    "stage": {
+      "type": "string",
+      "enum": [
+        "New Lead",
+        "Contacted",
+        "Discovery Call",
+        "Demo Booked",
+        "Proposal Sent",
+        "Negotiation",
+        "Closed Won",
+        "Closed Lost",
+        "On Hold"
+      ],
+      "description": "Pipeline stage"
+    },
+    "proposalStatus": {
+      "type": "string",
+      "enum": [
+        "Not sent",
+        "Sent",
+        "Accepted",
+        "Declined"
+      ]
+    },
+    "proposalSentDate": {
+      "type": "string",
+      "format": "date"
+    },
+    "fileUrl": {
+      "type": "string"
+    },
+    "fileName": {
+      "type": "string"
+    },
+    "externalLinks": {
+      "type": "string",
+      "description": "JSON array of {label, url} objects"
     },
     "lastActivity": {
       "type": "string",
@@ -61,9 +239,15 @@
       "type": "boolean",
       "description": "True if lead has been converted to a client"
     },
+    "convertedDate": {
+      "type": "string"
+    },
     "dealId": {
       "type": "string",
       "description": "Linked deal record ID after conversion"
+    },
+    "lostReason": {
+      "type": "string"
     }
   },
   "required": [

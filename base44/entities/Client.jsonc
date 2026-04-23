@@ -82,6 +82,10 @@
     "noReplyLog": {
       "type": "string",
       "description": "JSON array of no-reply entries [{date, note}]"
+    },
+    "transcripts": {
+      "type": "string",
+      "description": "JSON array of meeting transcript objects"
     }
   },
   "required": [
