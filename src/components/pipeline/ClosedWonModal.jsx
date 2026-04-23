@@ -22,11 +22,12 @@ function fmt(n) {
 function calcDeal(form) {
   const monthly = parseFloat(form.monthlyValue) || 0;
   const annual = monthly * 12;
-  const acctg = form.accountingServiceIncluded ? (parseFloat(form.accountingServiceValue) || 0) : 0;
+  const acctgMonthly = form.accountingService === 'Separate fee' ? (parseFloat(form.accountingServiceFee) || 0) : 0;
+  const acctg = acctgMonthly * 12;
   const fee = parseFloat(form.onboardingFee) || 0;
   const total = annual + acctg + fee;
   const year2 = annual + acctg;
-  return { monthly, annual, acctg, fee, total, year2 };
+  return { monthly, annual, acctg, acctgMonthly, fee, total, year2 };
 }
 
 export default function ClosedWonModal({ lead, onClose, onConverted }) {
@@ -42,8 +43,8 @@ export default function ClosedWonModal({ lead, onClose, onConverted }) {
     monthlyValue: lead.dealValueMonthly || '',
     subscriptionStartDate: today,
     subscriptionEndDate: endDate,
-    accountingServiceIncluded: false,
-    accountingServiceValue: '',
+    accountingService: lead.accountingService || 'Not included',
+    accountingServiceFee: lead.accountingServiceFee || '',
     onboardingPackage: 'Success Essential',
     onboardingFee: '0',
     notes: '',
@@ -94,8 +95,10 @@ export default function ClosedWonModal({ lead, onClose, onConverted }) {
       subscriptionEndDate: form.subscriptionEndDate,
       monthlyValue: calc.monthly,
       annualValue: calc.annual,
-      accountingServiceIncluded: form.accountingServiceIncluded,
-      accountingServiceValue: form.accountingServiceIncluded ? calc.acctg : 0,
+      accountingService: form.accountingService,
+      accountingServiceFee: form.accountingService === 'Separate fee' ? calc.acctgMonthly : 0,
+      accountingServiceIncluded: form.accountingService !== 'Not included',
+      accountingServiceValue: calc.acctg,
       onboardingPackage: form.onboardingPackage,
       onboardingFee: calc.fee,
       totalFirstYearValue: calc.total,
@@ -252,21 +255,21 @@ export default function ClosedWonModal({ lead, onClose, onConverted }) {
 
             {/* Accounting */}
             <div className="col-span-2 border-t border-ew-border pt-4">
-              <div className="flex items-center gap-3 mb-3">
-                <p className="text-[10px] font-semibold text-ew-muted uppercase tracking-[0.18em]">Accounting service</p>
-                <button
-                  onClick={() => up('accountingServiceIncluded', !form.accountingServiceIncluded)}
-                  className={`relative inline-flex h-5 w-9 rounded-full transition-colors ${form.accountingServiceIncluded ? 'bg-navy' : 'bg-gray-200'}`}
-                >
-                  <span className={`inline-block w-3.5 h-3.5 bg-white rounded-full shadow transition-transform mt-0.5 ${form.accountingServiceIncluded ? 'translate-x-4' : 'translate-x-1'}`} />
-                </button>
-              </div>
-              {form.accountingServiceIncluded && (
-                <div className="w-1/3">
-                  <label className={labelCls}>Value (£/yr)</label>
-                  <input type="number" className={inputCls} value={form.accountingServiceValue} onChange={e => up('accountingServiceValue', e.target.value)} placeholder="e.g. 7100" />
+              <p className="text-[10px] font-semibold text-ew-muted uppercase tracking-[0.18em] mb-3">Accounting service</p>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className={labelCls}>Accounting service</label>
+                  <select className={inputCls} value={form.accountingService} onChange={e => up('accountingService', e.target.value)}>
+                    {['Not included', 'Included in plan', 'Included in accounting service fee', 'Separate fee'].map(o => <option key={o}>{o}</option>)}
+                  </select>
                 </div>
-              )}
+                {form.accountingService === 'Separate fee' && (
+                  <div>
+                    <label className={labelCls}>Accounting fee (£/month)</label>
+                    <input type="number" className={inputCls} value={form.accountingServiceFee} onChange={e => up('accountingServiceFee', e.target.value)} placeholder="e.g. 592" />
+                  </div>
+                )}
+              </div>
             </div>
 
             {/* Onboarding */}

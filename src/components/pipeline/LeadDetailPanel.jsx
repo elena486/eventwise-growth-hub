@@ -12,9 +12,9 @@ import StageBadge from './Stagebadge';
 const STAGES = ['New Lead', 'Contacted', 'Discovery Call', 'Demo Booked', 'Proposal Sent', 'Negotiation', 'Closed Won', 'Closed Lost', 'On Hold'];
 const PLANS = ['Starter', 'Growth', 'Scale', 'Professional', 'Custom'];
 const CONTRACT_LENGTHS = ['Monthly rolling', '6 months', '12 months', '24 months'];
-const COMPANY_SIZES = ['1–10', '11–50', '51–200', '201–500', '500+'];
 const INDUSTRIES = ['Festival', 'Event Organiser', 'Event Agency', 'Corporate Events', 'Venue', 'Accountancy', 'Other'];
-const HEARD_ABOUT = ['LinkedIn', 'Referral', 'Inbound', 'Outbound', 'Event', 'Other'];
+const HEARD_ABOUT = ['LinkedIn', 'Referral', 'Inbound', 'Outbound', 'Event', 'EPS (Event Production Show)', 'EBL (Event Buyers Live)', 'AAA (Access All Areas)', 'Other'];
+const ACCOUNTING_SERVICE_OPTIONS = ['Not included', 'Included in plan', 'Included in accounting service fee', 'Separate fee'];
 const ONBOARDING_PLANS = ['Basic', 'Standard', 'Enterprise', 'Option 1'];
 const LOG_TYPES = ['Call', 'Email', 'Demo', 'Meeting', 'LinkedIn', 'Note'];
 const LOG_MEMBERS = ['Chris', 'Ramesh', 'George', 'Elena'];
@@ -409,12 +409,6 @@ export default function LeadDetailPanel({ lead, onClose, onUpdate, onDelete, onC
                 )}
               </div>
             </FieldRow>
-            <FieldRow label="Company size">
-              <select className={ic} value={data.companySize || ''} onChange={f('companySize')}>
-                <option value="">Select…</option>
-                {COMPANY_SIZES.map(s => <option key={s}>{s}</option>)}
-              </select>
-            </FieldRow>
             <FieldRow label="Industry">
               <select className={ic} value={data.industry || ''} onChange={f('industry')}>
                 <option value="">Select…</option>
@@ -437,7 +431,7 @@ export default function LeadDetailPanel({ lead, onClose, onUpdate, onDelete, onC
           <SectionTitle>Deal Info</SectionTitle>
           <div className="grid grid-cols-2 gap-3">
             <FieldRow label="Plan">
-              <select className={ic} value={data.plan || ''} onChange={f('plan')}>
+              <select className={ic} value={data.plan || ''} onChange={e => autoSave({ plan: e.target.value })}>
                 <option value="">Select…</option>
                 {PLANS.map(p => <option key={p}>{p}</option>)}
               </select>
@@ -455,9 +449,19 @@ export default function LeadDetailPanel({ lead, onClose, onUpdate, onDelete, onC
                 <input type="number" className={ic + ' pl-7'} value={data.setupFee || ''} onChange={f('setupFee')} placeholder="0" />
               </div>
             </FieldRow>
-            <FieldRow label="Includes accounting add-on?">
-              <Toggle value={!!data.accountingAddon} onChange={fBool('accountingAddon')} />
+            <FieldRow label="Accounting service">
+              <select className={ic} value={data.accountingService || 'Not included'} onChange={e => autoSave({ accountingService: e.target.value })}>
+                {ACCOUNTING_SERVICE_OPTIONS.map(o => <option key={o}>{o}</option>)}
+              </select>
             </FieldRow>
+            {data.accountingService === 'Separate fee' && (
+              <FieldRow label="Accounting fee (£/month)">
+                <div className="relative">
+                  <span className="absolute left-3 top-2.5 text-sm text-ew-muted">£</span>
+                  <input type="number" className={ic + ' pl-7'} value={data.accountingServiceFee || ''} onChange={f('accountingServiceFee')} placeholder="0" />
+                </div>
+              </FieldRow>
+            )}
             <FieldRow label="Onboarding plan">
               <select className={ic} value={data.onboardingPlan || ''} onChange={f('onboardingPlan')}>
                 <option value="">Select…</option>
@@ -479,11 +483,8 @@ export default function LeadDetailPanel({ lead, onClose, onUpdate, onDelete, onC
                 <span className="absolute right-3 top-2.5 text-sm text-ew-muted">%</span>
               </div>
             </FieldRow>
-            <FieldRow label="Budget confirmed">
-              <Toggle value={!!data.budgetConfirmed} onChange={fBool('budgetConfirmed')} />
-            </FieldRow>
-            <FieldRow label="Decision maker confirmed">
-              <Toggle value={!!data.decisionMakerConfirmed} onChange={fBool('decisionMakerConfirmed')} />
+            <FieldRow label="Expected close month">
+              <input type="month" className={ic} value={data.expectedCloseMonth || ''} onChange={f('expectedCloseMonth')} />
             </FieldRow>
             <FieldRow label="Timeline to decision">
               <input className={ic} value={data.timelineToDecision || ''} onChange={f('timelineToDecision')} placeholder="e.g. End of April" />

@@ -1,29 +1,54 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { base44 } from '@/api/base44Client';
-import { Plus } from 'lucide-react';
+import { Plus, SlidersHorizontal, ChevronDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 import StatsRow from '@/components/pipeline/StatsRow';
 import LeadTable from '@/components/pipeline/LeadTable';
-import HandoverModal from '@/components/pipeline/HandoverModal';
 import LeadDetailPanel from '@/components/pipeline/LeadDetailPanel';
+import ClosedWonModal from '@/components/pipeline/ClosedWonModal';
 
-const OWNER_FILTERS = ['All Leads', "Chris's Leads", "Ramesh's Leads", "George's Leads"];
+const OWNER_FILTERS = ['All Leads', "Chris's Leads", "Ramesh's Leads", "George's Leads", 'Lost Leads'];
 const OWNER_MAP = {
   "Chris's Leads": 'Chris',
   "Ramesh's Leads": 'Ramesh',
   "George's Leads": 'George',
 };
 
+const PROB_OPTIONS = [
+  { label: 'All', value: 0 },
+  { label: '25%+', value: 25 },
+  { label: '50%+', value: 50 },
+  { label: '75%+', value: 75 },
+];
+
+const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+function getMonthOptions() {
+  const opts = [{ label: 'Any month', value: '' }];
+  const now = new Date();
+  for (let i = 0; i < 18; i++) {
+    const d = new Date(now.getFullYear(), now.getMonth() + i, 1);
+    const val = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+    const label = `${MONTHS[d.getMonth()]} ${d.getFullYear()}`;
+    opts.push({ label, value: val });
+  }
+  return opts;
+}
+
 export default function Pipeline({ onProposalHandoff, onViewDeals }) {
   const [leads, setLeads] = useState([]);
   const [loading, setLoading] = useState(true);
   const [stageFilter, setStageFilter] = useState(null);
   const [ownerFilter, setOwnerFilter] = useState('All Leads');
+  const [probFilter, setProbFilter] = useState(0);
+  const [monthFilter, setMonthFilter] = useState('');
   const [closedWonLead, setClosedWonLead] = useState(null);
   const [newLeadId, setNewLeadId] = useState(null);
   const [selectedLead, setSelectedLead] = useState(null);
   const [showConverted, setShowConverted] = useState(false);
+  const [showMonthPicker, setShowMonthPicker] = useState(false);
+  const monthPickerRef = useRef(null);
 
   useEffect(() => {
     base44.entities.Lead.list('-created_date').then(data => {
@@ -32,10 +57,18 @@ export default function Pipeline({ onProposalHandoff, onViewDeals }) {
     });
   }, []);
 
+  // Close month picker on outside click
+  useEffect(() => {
+    const handler = (e) => {
+      if (monthPickerRef.current && !monthPickerRef.current.contains(e.target)) setShowMonthPicker(false);
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, []);
+
   const refresh = async () => {
     const data = await base44.entities.Lead.list('-created_date');
     setLeads(data);
-    // Keep selectedLead in sync
     if (selectedLead) {
       const updated = data.find(l => l.id === selectedLead.id);
       if (updated) setSelectedLead(updated);
@@ -68,6 +101,13 @@ export default function Pipeline({ onProposalHandoff, onViewDeals }) {
     refresh();
   };
 
+  const handleMarkLost = async (id, lostReason) => {
+    const now = new Date().toISOString();
+    setLeads(prev => prev.map(l => l.id === id ? { ...l, stage: 'Closed Lost', lostReason, lastActivity: now } : l));
+    if (selectedLead?.id === id) setSelectedLead(prev => ({ ...prev, stage: 'Closed Lost', lostReason }));
+    await base44.entities.Lead.update(id, { stage: 'Closed Lost', lostReason, lastActivity: now });
+  };
+
   const handleLeadUpdate = (updated) => {
     setLeads(prev => prev.map(l => l.id === updated.id ? updated : l));
     setSelectedLead(updated);
@@ -82,35 +122,50 @@ export default function Pipeline({ onProposalHandoff, onViewDeals }) {
     });
   };
 
-  const handleRowClick = (lead) => {
-    setSelectedLead(lead);
-  };
+  const handleRowClick = (lead) => setSelectedLead(lead);
 
   const handleClosedWon = (lead) => {
-    setSelectedLead(null); // close panel first
+    setSelectedLead(null);
     setClosedWonLead(lead);
   };
 
-  const handleHandoverConverted = async (clientId) => {
+  const handleHandoverConverted = async () => {
     setClosedWonLead(null);
     await refresh();
-    // Navigate to clients tab if clientId provided
-    if (clientId) {
-      // no-op for now — user can navigate manually
-    }
   };
 
-  // Split active vs converted
-  const activeLeads = leads.filter(l => !l.converted);
+  const isLostView = ownerFilter === 'Lost Leads';
+
+  // Build display leads
+  const activeLeads = leads.filter(l => !l.converted && l.stage !== 'Closed Lost');
+  const lostLeads = leads.filter(l => l.stage === 'Closed Lost');
   const convertedLeads = leads.filter(l => l.converted);
 
-  const ownerFiltered = ownerFilter === 'All Leads'
-    ? activeLeads
-    : activeLeads.filter(l => l.leadOwner === OWNER_MAP[ownerFilter]);
+  let baseLeads = isLostView ? lostLeads : activeLeads;
 
-  const displayLeads = stageFilter
-    ? ownerFiltered.filter(l => l.stage === stageFilter)
-    : ownerFiltered;
+  // Owner filter (only for non-lost view)
+  if (!isLostView && ownerFilter !== 'All Leads') {
+    baseLeads = baseLeads.filter(l => l.leadOwner === OWNER_MAP[ownerFilter]);
+  }
+
+  // Stats are based on owner-filtered active leads before prob/month filters
+  const statsLeads = baseLeads;
+
+  // Probability filter
+  if (probFilter > 0) baseLeads = baseLeads.filter(l => (l.probability || 0) >= probFilter);
+
+  // Month filter
+  if (monthFilter) baseLeads = baseLeads.filter(l => l.expectedCloseMonth === monthFilter);
+
+  // Stage filter
+  const displayLeads = stageFilter ? baseLeads.filter(l => l.stage === stageFilter) : baseLeads;
+
+  // Stats leads (apply prob + month but not stage filter)
+  const filteredStatsLeads = statsLeads
+    .filter(l => probFilter === 0 || (l.probability || 0) >= probFilter)
+    .filter(l => !monthFilter || l.expectedCloseMonth === monthFilter);
+
+  const selectedMonthLabel = getMonthOptions().find(o => o.value === monthFilter)?.label || 'Any month';
 
   return (
     <div className="flex flex-1 overflow-hidden">
@@ -119,27 +174,25 @@ export default function Pipeline({ onProposalHandoff, onViewDeals }) {
         {/* Header */}
         <div className="flex items-start justify-between mb-5">
           <div>
-            <h1 className="text-2xl font-bold text-navy">Warm Leads</h1>
-            <p className="text-ew-muted text-sm mt-0.5">Your active pipeline — updated as you go</p>
+            <h1 className="text-2xl font-bold text-navy">{isLostView ? 'Lost Leads' : 'Warm Leads'}</h1>
+            <p className="text-ew-muted text-sm mt-0.5">{isLostView ? 'All closed lost leads' : 'Your active pipeline — updated as you go'}</p>
           </div>
-          <Button
-            onClick={handleAddLead}
-            className="h-9 bg-navy hover:bg-navy/90 text-white font-semibold text-sm"
-          >
-            <Plus className="w-4 h-4 mr-1.5" />
-            Add Lead
-          </Button>
+          {!isLostView && (
+            <Button onClick={handleAddLead} className="h-9 bg-navy hover:bg-navy/90 text-white font-semibold text-sm">
+              <Plus className="w-4 h-4 mr-1.5" />Add Lead
+            </Button>
+          )}
         </div>
 
-        {/* Owner filter bar */}
-        <div className="flex items-center gap-1.5 mb-5 flex-wrap">
+        {/* Owner + filter bar */}
+        <div className="flex items-center gap-1.5 mb-4 flex-wrap">
           {OWNER_FILTERS.map(f => (
             <button
               key={f}
               onClick={() => { setOwnerFilter(f); setStageFilter(null); }}
               className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors border ${
                 ownerFilter === f
-                  ? 'bg-navy text-white border-navy'
+                  ? f === 'Lost Leads' ? 'bg-red-600 text-white border-red-600' : 'bg-navy text-white border-navy'
                   : 'bg-white border-ew-border text-ew-body hover:bg-ew-bg'
               }`}
             >
@@ -148,8 +201,58 @@ export default function Pipeline({ onProposalHandoff, onViewDeals }) {
           ))}
         </div>
 
-        {/* Stats */}
-        <StatsRow leads={ownerFiltered} stageFilter={stageFilter} onStageFilter={setStageFilter} />
+        {/* Probability + Month filters (only for non-lost) */}
+        {!isLostView && (
+          <div className="flex items-center gap-2 mb-5 flex-wrap">
+            <SlidersHorizontal className="w-3.5 h-3.5 text-ew-muted" />
+            <span className="text-xs text-ew-muted font-medium">Probability:</span>
+            {PROB_OPTIONS.map(opt => (
+              <button
+                key={opt.value}
+                onClick={() => setProbFilter(opt.value)}
+                className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-colors border ${
+                  probFilter === opt.value ? 'bg-[#8403C5] text-white border-[#8403C5]' : 'bg-white border-ew-border text-ew-body hover:bg-ew-bg'
+                }`}
+              >
+                {opt.label}
+              </button>
+            ))}
+            <span className="w-px h-4 bg-ew-border mx-1" />
+            <span className="text-xs text-ew-muted font-medium">Expected close:</span>
+            <div className="relative" ref={monthPickerRef}>
+              <button
+                onClick={() => setShowMonthPicker(v => !v)}
+                className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg transition-colors border ${
+                  monthFilter ? 'bg-[#8403C5] text-white border-[#8403C5]' : 'bg-white border-ew-border text-ew-body hover:bg-ew-bg'
+                }`}
+              >
+                {selectedMonthLabel}
+                <ChevronDown className="w-3 h-3" />
+              </button>
+              {showMonthPicker && (
+                <div className="absolute top-full left-0 mt-1 bg-white border border-ew-border rounded-xl shadow-lg z-20 py-1 max-h-48 overflow-y-auto min-w-[140px]">
+                  {getMonthOptions().map(opt => (
+                    <button
+                      key={opt.value}
+                      onClick={() => { setMonthFilter(opt.value); setShowMonthPicker(false); }}
+                      className={`w-full text-left px-3 py-1.5 text-sm hover:bg-ew-bg transition-colors ${monthFilter === opt.value ? 'text-[#8403C5] font-semibold' : 'text-ew-body'}`}
+                    >
+                      {opt.label}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+            {(probFilter > 0 || monthFilter) && (
+              <button onClick={() => { setProbFilter(0); setMonthFilter(''); }} className="text-xs text-ew-muted hover:text-navy underline">Clear filters</button>
+            )}
+          </div>
+        )}
+
+        {/* Stats (only for non-lost view) */}
+        {!isLostView && (
+          <StatsRow leads={filteredStatsLeads} stageFilter={stageFilter} onStageFilter={setStageFilter} />
+        )}
 
         {/* Stage filter indicator */}
         {stageFilter && (
@@ -159,21 +262,21 @@ export default function Pipeline({ onProposalHandoff, onViewDeals }) {
           </div>
         )}
 
-        {/* Table or empty state */}
+        {/* Table */}
         {loading ? (
           <div className="flex items-center justify-center h-48">
             <div className="w-6 h-6 border-2 border-navy/20 border-t-navy rounded-full animate-spin" />
           </div>
         ) : displayLeads.length === 0 ? (
           <div className="bg-white border border-ew-border rounded-xl flex flex-col items-center justify-center py-20">
-            <div className="w-14 h-14 rounded-2xl bg-ew-bg flex items-center justify-center mb-4">
-              <span className="text-3xl">🎯</span>
-            </div>
-            <h3 className="text-base font-semibold text-navy mb-1">No warm leads yet</h3>
-            <p className="text-ew-muted text-sm mb-5">Add your first lead to start tracking your pipeline.</p>
-            <Button onClick={handleAddLead} className="h-9 bg-navy hover:bg-navy/90 text-white font-semibold text-sm">
-              <Plus className="w-4 h-4 mr-1.5" />Add your first lead
-            </Button>
+            <span className="text-3xl mb-3">{isLostView ? '❌' : '🎯'}</span>
+            <h3 className="text-base font-semibold text-navy mb-1">{isLostView ? 'No lost leads' : 'No warm leads yet'}</h3>
+            <p className="text-ew-muted text-sm">{isLostView ? 'No leads marked as Closed Lost.' : 'Add your first lead to start tracking your pipeline.'}</p>
+            {!isLostView && (
+              <Button onClick={handleAddLead} className="h-9 bg-navy hover:bg-navy/90 text-white font-semibold text-sm mt-5">
+                <Plus className="w-4 h-4 mr-1.5" />Add your first lead
+              </Button>
+            )}
           </div>
         ) : (
           <LeadTable
@@ -182,14 +285,16 @@ export default function Pipeline({ onProposalHandoff, onViewDeals }) {
             onDelete={handleDelete}
             onProposal={handleProposal}
             onUpdateField={handleUpdateField}
+            onMarkLost={handleMarkLost}
             newLeadId={newLeadId}
             onRowClick={handleRowClick}
             selectedLeadId={selectedLead?.id}
+            isLostView={isLostView}
           />
         )}
 
         {/* Converted leads toggle */}
-        {convertedLeads.length > 0 && (
+        {!isLostView && convertedLeads.length > 0 && (
           <div className="mt-6">
             <button
               onClick={() => setShowConverted(v => !v)}
@@ -244,9 +349,9 @@ export default function Pipeline({ onProposalHandoff, onViewDeals }) {
         </div>
       )}
 
-      {/* Handover Modal */}
+      {/* Closed Won Modal */}
       {closedWonLead && (
-        <HandoverModal
+        <ClosedWonModal
           lead={closedWonLead}
           onClose={() => setClosedWonLead(null)}
           onConverted={handleHandoverConverted}

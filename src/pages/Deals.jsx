@@ -5,6 +5,7 @@ import { ChevronDown, ChevronRight, Pencil, RefreshCw, X, User, Trash2 } from 'l
 import InlineCell from '@/components/shared/InlineCell';
 import DealEditModal from '@/components/deals/DealEditModal';
 import RenewModal from '@/components/deals/RenewModal';
+import DealDetailPanel from '@/components/deals/DealDetailPanel';
 
 function fmt(n) {
   if (!n && n !== 0) return '—';
@@ -59,11 +60,12 @@ function IconBtn({ icon: Icon, label, onClick, className = '' }) {
   );
 }
 
-export default function Deals({ onRenewalProposal, onViewClient }) {
+export default function Deals({ onRenewalProposal, onViewClient, onNavigate }) {
   const [deals, setDeals] = useState([]);
   const [loading, setLoading] = useState(true);
   const [expanded, setExpanded] = useState(null);
   const [filter, setFilter] = useState('Active');
+  const [selectedDeal, setSelectedDeal] = useState(null);
 
   // Modals
   const [editDeal, setEditDeal] = useState(null);
@@ -108,6 +110,7 @@ export default function Deals({ onRenewalProposal, onViewClient }) {
 
   const handleSaved = (updated) => {
     setDeals(prev => prev.map(d => d.id === updated.id ? updated : d));
+    if (selectedDeal?.id === updated.id) setSelectedDeal(updated);
   };
 
   const save = (id, field) => (value) => handleUpdateField(id, field, value);
@@ -174,14 +177,7 @@ export default function Deals({ onRenewalProposal, onViewClient }) {
                 {['Client', 'Plan', 'Monthly', 'Annual ▾', 'Year 1 total'].map(h => (
                   <th key={h} className="px-4 py-3 text-left text-[11px] font-semibold text-ew-muted uppercase tracking-[0.12em]">{h}</th>
                 ))}
-                <th className="px-4 py-3 text-left text-[11px] font-semibold text-ew-muted uppercase tracking-[0.12em]">
-                  <span className="group relative inline-flex items-center gap-1 cursor-help">
-                    Includes Accounting Add-on?
-                    <span className="absolute bottom-full left-0 mb-1.5 w-64 bg-navy text-white text-xs rounded-lg px-3 py-2 shadow-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10 normal-case tracking-normal font-normal whitespace-normal">
-                      Toggle on if this client has purchased the accounting integration as part of their plan.
-                    </span>
-                  </span>
-                </th>
+                <th className="px-4 py-3 text-left text-[11px] font-semibold text-ew-muted uppercase tracking-[0.12em]">Accounting service</th>
                 {['Start date', 'End date', 'Status', 'Actions'].map(h => (
                   <th key={h} className="px-4 py-3 text-left text-[11px] font-semibold text-ew-muted uppercase tracking-[0.12em]">{h}</th>
                 ))}
@@ -190,7 +186,8 @@ export default function Deals({ onRenewalProposal, onViewClient }) {
             <tbody>
               {displayDeals.map((deal, i) => (
                 <React.Fragment key={deal.id}>
-                  <tr className={`group border-b border-ew-border hover:bg-navy/[0.02] transition-colors ${expanded === deal.id ? 'bg-navy/[0.02]' : i % 2 === 1 ? 'bg-[#FAFBFE]' : 'bg-white'}`}>
+                  <tr className={`group border-b border-ew-border hover:bg-navy/[0.02] transition-colors cursor-pointer ${selectedDeal?.id === deal.id ? 'bg-[#F3E8FF] border-l-2 border-l-[#8403C5]' : expanded === deal.id ? 'bg-navy/[0.02]' : i % 2 === 1 ? 'bg-[#FAFBFE]' : 'bg-white'}`}
+                    onClick={() => setSelectedDeal(deal)}>
                     {/* Client */}
                     <td className="px-4 py-3 min-w-[140px]">
                       <InlineCell value={deal.clientName} onSave={save(deal.id, 'clientName')} className="font-semibold text-navy" />
@@ -204,7 +201,7 @@ export default function Deals({ onRenewalProposal, onViewClient }) {
                       <InlineCell value={deal.monthlyValue} onSave={save(deal.id, 'monthlyValue')} type="number" displayEl={<span className="font-semibold text-navy">{fmt(deal.monthlyValue)}</span>} placeholder="Set value" />
                     </td>
                     {/* Annual expandable */}
-                    <td className="px-4 py-3 min-w-[110px]">
+                    <td className="px-4 py-3 min-w-[110px]" onClick={e => e.stopPropagation()}>
                       <button onClick={() => setExpanded(prev => prev === deal.id ? null : deal.id)} className="flex items-center gap-1 font-semibold text-navy hover:text-navy/70 transition-colors">
                         {fmt(deal.annualValue || (deal.monthlyValue || 0) * 12)}
                         {expanded === deal.id ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5" />}
@@ -215,13 +212,11 @@ export default function Deals({ onRenewalProposal, onViewClient }) {
                       <InlineCell value={deal.totalFirstYearValue} readOnly displayEl={<span className="font-semibold text-navy">{fmt(deal.totalFirstYearValue)}</span>} />
                     </td>
                     {/* Accounting */}
-                    <td className="px-4 py-3">
-                      <div className="flex flex-col gap-1">
-                        <InlineCell value={deal.accountingServiceIncluded} onSave={save(deal.id, 'accountingServiceIncluded')} type="boolean" />
-                        {deal.accountingServiceIncluded && (
-                          <InlineCell value={deal.accountingServiceValue} onSave={save(deal.id, 'accountingServiceValue')} type="number" displayEl={<span className="text-xs text-ew-body">{fmt(deal.accountingServiceValue)}/yr</span>} placeholder="Set value" />
-                        )}
-                      </div>
+                    <td className="px-4 py-3 min-w-[160px]">
+                      <span className="text-xs text-ew-body">{deal.accountingService || (deal.accountingServiceIncluded ? 'Included' : 'Not included')}</span>
+                      {deal.accountingService === 'Separate fee' && deal.accountingServiceFee > 0 && (
+                        <p className="text-xs text-ew-muted">{fmt(deal.accountingServiceFee)}/mo</p>
+                      )}
                     </td>
                     {/* Start date */}
                     <td className="px-4 py-3 min-w-[110px]">
@@ -241,7 +236,7 @@ export default function Deals({ onRenewalProposal, onViewClient }) {
                       />
                     </td>
                     {/* Actions */}
-                    <td className="px-4 py-3 min-w-[130px]">
+                    <td className="px-4 py-3 min-w-[130px]" onClick={e => e.stopPropagation()}>
                       <div className="flex items-center gap-0.5">
                         {/* Edit */}
                         <IconBtn icon={Pencil} label="View / Edit deal" onClick={() => setEditDeal(deal)} className="text-ew-muted hover:text-navy hover:bg-ew-bg" />
@@ -263,7 +258,7 @@ export default function Deals({ onRenewalProposal, onViewClient }) {
                     </td>
                   </tr>
                   {expanded === deal.id && (
-                    <tr className="border-b border-ew-border bg-navy/[0.01]">
+                    <tr className="border-b border-ew-border bg-navy/[0.01]" onClick={e => e.stopPropagation()}>
                       <td colSpan={10} className="px-4 pb-3"><ValueBreakdown deal={deal} /></td>
                     </tr>
                   )}
@@ -311,6 +306,20 @@ export default function Deals({ onRenewalProposal, onViewClient }) {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Deal detail panel */}
+      {selectedDeal && (
+        <DealDetailPanel
+          deal={selectedDeal}
+          onClose={() => setSelectedDeal(null)}
+          onUpdated={handleSaved}
+          onDelete={(id) => {
+            setDeals(prev => prev.filter(d => d.id !== id));
+            setSelectedDeal(null);
+          }}
+          onNavigate={onNavigate}
+        />
       )}
     </div>
   );

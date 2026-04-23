@@ -9,6 +9,41 @@ import { Textarea } from '@/components/ui/textarea';
 import { PLANS, DEFAULT_ACCOUNTING_SERVICES } from '@/lib/proposalData';
 import { FileDown, Sparkles, Plus } from 'lucide-react';
 
+const MONTH_NAMES = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+
+function MonthYearSelect({ value, onChange }) {
+  const now = new Date();
+  const currentYear = now.getFullYear();
+  const years = [currentYear - 1, currentYear, currentYear + 1, currentYear + 2];
+
+  const [selYear, setSelYear] = React.useState(() => value ? parseInt(value.split('-')[0]) : currentYear);
+  const [selMonth, setSelMonth] = React.useState(() => value ? parseInt(value.split('-')[1]) - 1 : now.getMonth());
+
+  const handleChange = (y, m) => {
+    const val = `${y}-${String(m + 1).padStart(2, '0')}`;
+    onChange(val);
+  };
+
+  return (
+    <div className="flex gap-1">
+      <select
+        className="flex-1 h-9 text-sm border border-input rounded-md px-2 bg-background focus:outline-none"
+        value={selMonth}
+        onChange={e => { const m = parseInt(e.target.value); setSelMonth(m); handleChange(selYear, m); }}
+      >
+        {MONTH_NAMES.map((name, i) => <option key={i} value={i}>{name.slice(0, 3)}</option>)}
+      </select>
+      <select
+        className="w-[72px] h-9 text-sm border border-input rounded-md px-2 bg-background focus:outline-none"
+        value={selYear}
+        onChange={e => { const y = parseInt(e.target.value); setSelYear(y); handleChange(y, selMonth); }}
+      >
+        {years.map(y => <option key={y} value={y}>{y}</option>)}
+      </select>
+    </div>
+  );
+}
+
 function SectionHeader({ label }) {
   return (
     <p className="text-[10px] font-semibold text-ew-muted uppercase tracking-[0.18em]">{label}</p>
@@ -163,12 +198,7 @@ export default function Sidebar({ form, setForm, onGenerate, onDownload, hasProp
           <div className="grid grid-cols-2 gap-2">
             <div>
               <Label className="text-xs font-medium text-ew-body mb-1.5 block">Month / Year</Label>
-              <Input
-                type="month"
-                value={form.date}
-                onChange={e => updateField('date', e.target.value)}
-                className="h-9 text-sm"
-              />
+              <MonthYearSelect value={form.date} onChange={v => updateField('date', v)} />
             </div>
             <div>
               <Label className="text-xs font-medium text-ew-body mb-1.5 block">Valid until</Label>
