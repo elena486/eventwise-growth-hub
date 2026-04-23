@@ -30,7 +30,7 @@ export default function HandbookContentPage({ section, page, onUpdate, onDelete 
   const fmtDate = (d) => { try { return format(new Date(d), 'd MMM yyyy'); } catch { return d; } };
 
   const startEdit = () => {
-    setDraft(page.richContent || convertToHtml(page.content || ''));
+    setDraft(page.richContent || (isHtml(page.content) ? page.content : convertToHtml(page.content || '')));
     setTitleDraft(page.title || '');
     setDescDraft(page.description || '');
     setEditing(true);
@@ -50,7 +50,7 @@ export default function HandbookContentPage({ section, page, onUpdate, onDelete 
   };
 
   // Convert old plain-text content to basic HTML for display
-  const displayHtml = page.richContent || convertToHtml(page.content || '');
+  const displayHtml = page.richContent || (isHtml(page.content) ? page.content : convertToHtml(page.content || ''));
 
   return (
     <div className="flex-1 overflow-y-auto bg-[#F7F8FC] p-8">
@@ -160,6 +160,11 @@ export default function HandbookContentPage({ section, page, onUpdate, onDelete 
       )}
     </div>
   );
+}
+
+// Detect if content is already HTML
+function isHtml(text) {
+  return text && /<[a-z][\s\S]*>/i.test(text);
 }
 
 // Convert old plain-text format to basic HTML

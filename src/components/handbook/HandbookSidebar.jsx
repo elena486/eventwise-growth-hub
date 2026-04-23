@@ -80,7 +80,7 @@ export default function HandbookSidebar({
     <>
       <div className="w-56 shrink-0 bg-[#242450] flex flex-col overflow-y-auto h-full">
         <div className="px-4 py-4 border-b border-white/10">
-          <p className="text-[11px] font-bold text-white/40 uppercase tracking-[0.15em]">Handbook</p>
+          <p className="text-[11px] font-bold text-white/40 uppercase tracking-[0.15em]">Eventwise Wiki</p>
         </div>
         <nav className="flex-1 py-3 overflow-y-auto" style={{ scrollbarWidth: 'none' }}>
           {sections.map(section => (

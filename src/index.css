@@ -415,7 +415,8 @@
 
   /* Handbook content display */
   .handbook-content p { margin-bottom: 0.5rem; color: #374151; font-size: 0.875rem; line-height: 1.6; }
-  .handbook-content h1, .handbook-content h2, .handbook-content h3 { font-weight: 700; color: #242450; margin-bottom: 0.5rem; margin-top: 1rem; }
+  .handbook-content h1, .handbook-content h2, .handbook-content h3 { font-weight: 700; color: #242450; margin-bottom: 0.5rem; margin-top: 1.75rem; padding-top: 1.25rem; border-top: 1px solid #F3F4F6; }
+  .handbook-content h1:first-child, .handbook-content h2:first-child, .handbook-content h3:first-child { margin-top: 0; padding-top: 0; border-top: none; }
   .handbook-content h1 { font-size: 1.25rem; }
   .handbook-content h2 { font-size: 1.05rem; }
   .handbook-content h3 { font-size: 0.95rem; }

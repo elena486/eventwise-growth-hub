@@ -45,8 +45,8 @@ const GROUPS = [
   { id: 'marketing', label: 'Marketing', tabs: [
     { id: 'marketing', label: 'Marketing' },
   ]},
-  { id: 'handbook', label: 'Handbook', tabs: [
-    { id: 'handbook', label: 'Handbook' },
+  { id: 'handbook', label: 'Eventwise Wiki', tabs: [
+    { id: 'handbook', label: 'Eventwise Wiki' },
   ]},
 ];
 

@@ -49,6 +49,166 @@ export const DEFAULT_HANDBOOK = {
       ],
     },
     {
+      id: 'hr-people', label: '👤 HR & People', expanded: true,
+      pages: [
+        {
+          id: 'employee-handbook', title: 'Employee Handbook', type: 'content',
+          description: 'Full company policies, benefits, and employment terms.',
+          content: `<h2>Introduction</h2>
+<p>Welcome to Eventwise. This handbook covers our company policies, procedures, and benefits. While it covers many topics, it may not address every situation — reach out to Elena or Chris with any questions.</p>
+
+<h2>Core Values</h2>
+<p><strong>Innovation</strong> — We constantly seek new ways to improve our software and services.<br/><strong>Efficiency</strong> — We strive to streamline event management processes for our clients.<br/><strong>Collaboration</strong> — We believe in the power of teamwork, both internally and for our clients.<br/><strong>Client-Centric</strong> — Our clients' success is our success.<br/><strong>Adaptability</strong> — We help our clients prepare for every possible scenario.</p>
+
+<h2>Employment Basics</h2>
+<p><strong>Employment types:</strong> Full-time (40hrs/week), Part-time (under 40hrs/week), Temporary/Freelance/Contracted.</p>
+<p><strong>Probationary period:</strong> 6 months for all new employees. Performance closely monitored — period may be extended.</p>
+<p><strong>Work hours:</strong> Monday to Friday, 9:00 AM – 5:00 PM. Flexible schedules available depending on role.</p>
+<p><strong>Pay:</strong> Monthly via bank transfer on the last day of the month. Payslip provided detailing tax, pension, and NI contributions.</p>
+<p><strong>Contracted/Freelance:</strong> Paid monthly on receipt of a correct invoice at the agreed amount.</p>
+
+<h2>Employee Benefits</h2>
+<p><strong>Pension:</strong> Statutory contribution of 3% of salary.</p>
+<p><strong>Flexible work hours:</strong> Available upon management approval. Employees may work extra hours during the week to take a half day on Friday or Monday, provided work is up to date and performance is excellent. Not a contractual change. Flexible Working Application form available from HR for any other flexibility requests.</p>
+<p><strong>Paid Time Off (PTO):</strong></p>
+<ul>
+<li>Vacation: 25 days per year, accrued monthly, plus England and Wales Bank Holidays.</li>
+<li>Everyone must take the Christmas/New Year office closure period from their 25 days.</li>
+<li>Holidays cannot be taken within 2 weeks before or after a festival an employee is working on, except with management approval.</li>
+<li>Personal days: Birthday day off (1 day/year) + 3 volunteering days annually.</li>
+</ul>
+<p><strong>Volunteering day conditions:</strong> Proposal must be submitted to management before activities; funding requests considered case-by-case; must be scheduled October–March; all proposals approved before proceeding.</p>
+<p><strong>Professional development:</strong> Reimbursement available for job-related courses and certifications. Prior management approval required before enrolling.</p>
+
+<h2>Workplace Policies</h2>
+<p><strong>Code of Conduct:</strong> All employees must conduct themselves professionally, ethically, and respectfully. We are committed to equal opportunities and a workplace free from discrimination on any protected characteristic. Harassment and bullying are disciplinary offences treated as gross misconduct.</p>
+<p><strong>Dress Code:</strong> Business casual. Professional attire when meeting clients or attending events.</p>
+<p><strong>Confidentiality:</strong> All employees must sign an NDA and comply with data protection policies. Data protection training is mandatory when requested.</p>
+<p><strong>Social Media:</strong> Use good judgment. Do not share confidential information or speak negatively about the company or clients. Remove references to working here when you leave.</p>
+<p><strong>Conflict of Interest:</strong> Disclose any situations where personal interests may conflict with company interests.</p>
+
+<h2>Leave Policies</h2>
+<p><strong>Bank Holidays (8 per year):</strong> New Year's Day, Good Friday, Easter Monday, Early May bank holiday, Spring bank holiday, Summer bank holiday, Christmas Day, Boxing Day.</p>
+<p><strong>Maternity Leave:</strong> 12 months total. Statutory maternity leave and pay per current UK regulations.</p>
+<p><strong>Paternity Leave:</strong> Statutory paternity leave and pay per current UK regulations.</p>
+<p><strong>Shared Parental Leave:</strong> Eligible parents/adopters can share childcare during the first year of birth or adoption.</p>
+<p><strong>Parental Leave:</strong> Up to 18 weeks unpaid leave to care for a child up to age 18, based on statutory entitlements.</p>
+<p><strong>Bereavement Leave:</strong> Up to 5 days paid leave for immediate family members. Additional Parental Bereavement Leave per statutory criteria.</p>
+<p><strong>Unpaid Carer's Leave:</strong> Up to one week unpaid to care for a dependant with a long-term care need.</p>
+
+<h2>Sickness Absence</h2>
+<p><strong>Reporting:</strong> Notify your line manager on the first day of absence before your normal start time. Provide: nature of illness, expected length, contact details, any urgent work needing attention. A fit note from your GP is required after 7 calendar days.</p>
+<p><strong>Sick Pay:</strong> Statutory Sick Pay (SSP) if off for 4+ days in a row. SSP payable for up to 28 weeks. Must earn average of at least £123/week to qualify (2023/2024 rate).</p>
+<p><strong>Return to Work:</strong> Inform manager of return date as soon as possible. Return-to-work interview required. Fit note required for absences over 7 days.</p>
+<p><strong>Long-term absence:</strong> Defined as over 4 weeks. May involve occupational health assessment, reasonable adjustments, or phased return.</p>
+<p><strong>Frequent short-term absences:</strong> Reviewed if: 3+ instances in a rolling 3 months, 5+ instances in a rolling 12 months, or a noticeable pattern (e.g. always Mondays/Fridays). Reviews aim to understand causes and offer support — not punitive by default.</p>
+
+<h2>Performance Management</h2>
+<p><strong>Formal reviews:</strong> Every 12 months with informal check-ins quarterly.</p>
+<p><strong>Goal setting:</strong> Individual and team goals set with managers, aligned to company objectives.</p>
+<p><strong>Development plans:</strong> Each employee has a personalised development plan.</p>
+
+<h2>Health and Safety</h2>
+<p><strong>Safety:</strong> Follow all safety protocols and report hazards immediately.</p>
+<p><strong>Alcohol & Drugs:</strong> Not permitted during working hours or on company premises. At business/client social functions outside work, moderate drinking is expected — consuming drugs on any such occasion is strictly forbidden.</p>
+<p><strong>Emergency procedures:</strong> Evacuation routes and assembly points posted throughout the office. Read the office welcome pack and procedures.</p>
+<p><strong>Accidents or injuries:</strong> Report immediately to manager and HR. Submit the accident/injury form: <a href="https://forms.gle/1ox6KDeME94JCCPE6">https://forms.gle/1ox6KDeME94JCCPE6</a></p>
+
+<h2>IT and Communication</h2>
+<p><strong>Company equipment:</strong> Laptop and phone provided for business use. Limited personal use permitted. Look after equipment carefully — damage, loss, or theft may result in deductions from final pay. All equipment must be returned on the last day of employment.</p>
+<p><strong>Email:</strong> Primarily for business purposes. All communications may be monitored.</p>
+<p><strong>Software:</strong> Only approved software may be installed on company devices.</p>
+
+<h2>Travel and Expenses</h2>
+<p>All business travel must be approved in advance. Choose cost-effective options and obtain VAT receipts where possible.</p>
+<p><strong>Expense reporting:</strong> Submit with valid receipts within 30 days to chris@eventwise.com and david@eventwise.com. Reimbursement within 2 weeks, included in monthly salary.</p>
+
+<h2>Disciplinary Procedures</h2>
+<p><strong>Progressive discipline:</strong> Verbal warning → Written warning → Final written warning → Termination. All matters investigated before formal hearing. 48 hours' advance notice of any disciplinary hearing. Employees have the right to be accompanied by a colleague or Trade Union Rep. Verbal warnings live for 6 months; written warnings for 12 months. Gross misconduct (e.g. theft, fraud, violence, serious data breach) may result in summary dismissal without notice.</p>
+<p><strong>Grievance:</strong> Raise with your immediate supervisor first. Escalate to HR or management if unresolved. Do not use the grievance process for disciplinary appeals.</p>
+<p><strong>Whistleblowing:</strong> Report concerns about underhand or illegal practices to your supervisor or HR directly. All disclosures handled in confidence.</p>
+
+<h2>Termination</h2>
+<p><strong>Resignation:</strong> Provide at least one month's written notice to your manager, unless contract states otherwise.</p>
+<p><strong>Exit interview:</strong> All departing employees invited to participate.</p>
+<p><strong>Return of property:</strong> All company property must be returned on or before the last day.</p>
+
+<h2>Event-Specific Policies</h2>
+<p><strong>On-site behaviour:</strong> Maintain professional behaviour at all times when representing Eventwise at events.</p>
+<p><strong>Client interaction:</strong> Always be courteous, responsive, and solution-oriented.</p>
+<p><strong>Event safety:</strong> Familiarise yourself with venue-specific safety procedures for each event.</p>
+
+<h2>Software and Training</h2>
+<p>All employees should be familiar with Eventwise platform features. Regular training sessions provided. Training resources and support documentation available in Eventwise Wiki (accessible via Eventwise HQ top navigation).</p>
+
+<h2>Sustainability</h2>
+<p>We encourage sustainable practices in our operations and client events. Suggestions for improving our environmental impact are welcome. Employees are encouraged to participate in company-sponsored volunteering activities.</p>`,
+          updatedAt: '2026-04-23',
+        },
+        {
+          id: 'employee-onboarding-checklist', title: 'Employee Onboarding Checklist', type: 'content',
+          description: 'Standard checklist for all new team members joining Eventwise.',
+          content: `<h2>👋 Welcome to the team!</h2>
+<p>Use this checklist when you join. Your onboarding buddies are <strong>Chris Carter</strong> and <strong>Elena Brouckaert</strong> — reach out to either of us if you need anything.</p>
+
+<h2>Day 1</h2>
+<ul>
+<li>☐ Read your onboarding deck</li>
+<li>☐ Set up your hardware and software</li>
+<li>☐ Get access to: Eventwise HQ (your main ops platform) / Google Workspace (email, Drive, Calendar) / Relevant Google Chat channels / Eventwise platform / Apollo (Sales team only)</li>
+<li>☐ Meet Chris and Elena — intro call on your first day</li>
+<li>☐ Go through Brand Guidelines (Eventwise Wiki → Company → Brand Guidelines)</li>
+</ul>
+
+<h2>First Week</h2>
+<ul>
+<li>☐ Read the Employee Handbook (Eventwise Wiki → HR & People → Employee Handbook)</li>
+<li>☐ Fill out your employee profile</li>
+<li>☐ Sign the NDA</li>
+<li>☐ Learn about your role, first project, and objectives — speak to your manager</li>
+<li>☐ Read security and data privacy guidelines</li>
+<li>☐ Familiarise yourself with the Eventwise platform (you're selling/supporting it — know it)</li>
+</ul>
+
+<h2>First Month</h2>
+<ul>
+<li>☐ Submit your first weekly sprint update (every Monday via Eventwise HQ → Sprints tab)</li>
+<li>☐ Complete any role-specific training or onboarding as discussed with your manager</li>
+</ul>
+
+<h2>Useful Links</h2>
+<p><em>All live in Eventwise Wiki:</em></p>
+<ul>
+<li>Company info and values: Wiki → Company → About Eventwise</li>
+<li>Tech stack: Wiki → Company → Tech Stack</li>
+<li>Team and contacts: Wiki → Team → Team & Roles</li>
+<li>Time off requests: Eventwise HQ → Operations → HR</li>
+<li>Submit a request to Elena: Eventwise HQ → Operations → Requests</li>
+</ul>
+<p><em>Note to Elena: Update the new hire's name, role, and any role-specific access items before sharing this checklist with them.</em></p>`,
+          updatedAt: '2026-04-23',
+        },
+        {
+          id: 'important-contacts', title: 'Important Contacts', type: 'content',
+          description: 'Key internal and external contacts for HR, IT, and support.',
+          content: `<h2>HR Department</h2>
+<p><strong>Chris Carter</strong> — chris@eventwise.com — +447747568996<br/><strong>Elena Brouckaert</strong> — elena@eventwise.com — +447445319847</p>
+
+<h2>IT and Tech Support</h2>
+<p><strong>General IT:</strong> Chris Carter — chris@eventwise.com — +447747568996<br/><strong>Websites:</strong> Justice Annan — justide14@gmail.com<br/><strong>Software development:</strong> Matt Hadfield (Senior Software Developer, Synergitech) — matt@synergitech.co.uk</p>
+
+<h2>Forms and Documents</h2>
+<ul>
+<li><strong>Accident or Injury Form:</strong> <a href="https://forms.gle/1ox6KDeME94JCCPE6">https://forms.gle/1ox6KDeME94JCCPE6</a></li>
+<li><strong>Professional Development Plan Template:</strong> <a href="https://docs.google.com/document/d/1NvYgDhppKOaHp3wKf7cyswQkiUFkWMiG7sD7f2QK6u0/edit">Open in Google Docs</a></li>
+<li><strong>Expense Report Template:</strong> [add link]</li>
+<li><strong>Software Training Material:</strong> [add link]</li>
+</ul>`,
+          updatedAt: '2026-04-23',
+        },
+      ],
+    },
+    {
       id: 'sales', label: '💼 Sales', expanded: false,
       pages: [
         {
