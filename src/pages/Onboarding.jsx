@@ -137,12 +137,12 @@ export default function Onboarding({ focusClientId }) {
                   <tr
                     key={c.id}
                     className={`border-b border-ew-border last:border-0 hover:bg-navy/[0.02] transition-colors cursor-pointer ${i % 2 === 1 ? 'bg-[#FAFBFE]' : 'bg-white'}`}
-                    onClick={() => setSummaryPanel({ client: c, record: record || { tasks: '[]' }, tasks })}
+                    onClick={() => setChecklist({ client: c, record: record || { tasks: '[]', transcripts: '[]', phaseNotes: '{}' } })}
                   >
                     <td className="px-4 py-3" onClick={e => e.stopPropagation()}>
                       <button
                         className="text-left group"
-                        onClick={() => setSummaryPanel({ client: c, record: record || { tasks: '[]' }, tasks })}
+                        onClick={() => setChecklist({ client: c, record: record || { tasks: '[]', transcripts: '[]', phaseNotes: '{}' } })}
                       >
                         <p className="font-semibold text-navy text-sm group-hover:underline">{c.name}</p>
                         <p className="text-xs text-ew-muted">{c.contactName}</p>
@@ -170,7 +170,7 @@ export default function Onboarding({ focusClientId }) {
                     <td className="px-4 py-3"><OwnerAvatar owner={c.owner} /></td>
                     <td className="px-4 py-3" onClick={e => e.stopPropagation()}>
                       <button
-                        onClick={() => setChecklist({ client: c, record: record || { tasks: '[]' } })}
+                        onClick={() => setChecklist({ client: c, record: record || { tasks: '[]', transcripts: '[]', phaseNotes: '{}' } })}
                         className="flex items-center gap-1 text-xs font-medium px-2.5 py-1.5 bg-navy-tint text-navy border border-navy/10 rounded-lg hover:bg-navy hover:text-white transition-colors"
                       >
                         <ClipboardList className="w-3 h-3" /> Checklist

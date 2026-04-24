@@ -16,14 +16,15 @@ function phaseCompletion(tasks, phase) {
 const ic = 'w-full text-xs border border-ew-border rounded-lg px-2.5 py-1.5 focus:outline-none focus:ring-1 focus:ring-navy/20 bg-white placeholder:text-ew-muted-light';
 
 export default function ChecklistView({ record, client, onSave, onGoLive, onClose }) {
+  const safeRecord = record || {};
   const [tasks, setTasks] = useState(() => {
-    try { return JSON.parse(record.tasks || '[]'); } catch { return []; }
+    try { return JSON.parse(safeRecord.tasks || '[]'); } catch { return []; }
   });
   const [phaseNotes, setPhaseNotes] = useState(() => {
-    try { return JSON.parse(record.phaseNotes || '{}'); } catch { return {}; }
+    try { return JSON.parse(safeRecord.phaseNotes || '{}'); } catch { return {}; }
   });
   const [transcripts, setTranscripts] = useState(() => {
-    try { return JSON.parse(record.transcripts || '[]'); } catch { return []; }
+    try { return JSON.parse(safeRecord.transcripts || '[]'); } catch { return []; }
   });
   const [collapsed, setCollapsed] = useState({});
   const [saving, setSaving] = useState(false);

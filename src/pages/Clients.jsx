@@ -258,8 +258,8 @@ export default function Clients({ onViewHealth, onViewOnboarding, onViewDetail, 
               {sorted.map((c, i) => (
                 <tr key={c.id} className={`border-b border-[#F2F2F4] last:border-0 hover:bg-[#F9FAFB] transition-colors cursor-pointer group ${activeClientId === c.id ? 'bg-[#FAF5FF]' : ''}`}
                   onClick={(e) => { setActiveClientId(c.id); onOpenFullPanel && onOpenFullPanel(c, clients); }}>
-                  {/* Client name / contact — clicking this opens the panel */}
-                  <td className="px-4 py-3 min-w-[180px]" onClick={(e) => { e.stopPropagation(); setActiveClientId(c.id); onOpenFullPanel && onOpenFullPanel(c, clients); }}>
+                  {/* Client name / contact */}
+                  <td className="px-4 py-3 min-w-[180px]">
                     <InlineCell value={c.name} onSave={save(c.id, 'name')} placeholder="Company name" className="font-semibold text-navy text-sm" />
                     <InlineCell value={c.contactName} onSave={save(c.id, 'contactName')} placeholder="Contact name" className="text-xs text-ew-muted mt-0.5" />
                     <InlineCell value={c.contactEmail} onSave={save(c.id, 'contactEmail')} placeholder="Email" className="text-xs text-ew-muted mt-0.5" />
@@ -271,7 +271,7 @@ export default function Clients({ onViewHealth, onViewOnboarding, onViewDetail, 
                   </td>
 
                   {/* Client Tier */}
-                  <td className="px-4 py-3 min-w-[110px]" onClick={e => e.stopPropagation()}>
+                  <td className="px-4 py-3 min-w-[110px]" onClick={e => { e.stopPropagation(); setActiveClientId(c.id); onOpenFullPanel && onOpenFullPanel(c, clients); }}>
                     <InlineCell
                       value={c.priorityTier}
                       onSave={save(c.id, 'priorityTier')}
@@ -284,7 +284,7 @@ export default function Clients({ onViewHealth, onViewOnboarding, onViewDetail, 
                   </td>
 
                   {/* Status */}
-                  <td className="px-4 py-3" onClick={e => e.stopPropagation()}>
+                  <td className="px-4 py-3" onClick={e => { e.stopPropagation(); setActiveClientId(c.id); onOpenFullPanel && onOpenFullPanel(c, clients); }}>
                     <InlineCell
                       value={c.status}
                       onSave={save(c.id, 'status')}
@@ -318,7 +318,7 @@ export default function Clients({ onViewHealth, onViewOnboarding, onViewDetail, 
                   </td>
 
                   {/* Health */}
-                  <td className="px-4 py-3 min-w-[100px] cursor-pointer" onClick={() => onViewDetail && onViewDetail(c)}>
+                  <td className="px-4 py-3 min-w-[100px] cursor-pointer" onClick={e => { e.stopPropagation(); setActiveClientId(c.id); onOpenFullPanel && onOpenFullPanel(c, clients); }}>
                     <HealthCell client={c} />
                   </td>
 
@@ -346,7 +346,7 @@ export default function Clients({ onViewHealth, onViewOnboarding, onViewDetail, 
                   </td>
 
                   {/* Notes */}
-                  <td className="px-4 py-3 max-w-[180px]" onClick={e => e.stopPropagation()}>
+                  <td className="px-4 py-3 max-w-[180px]" onClick={e => { e.stopPropagation(); setActiveClientId(c.id); onOpenFullPanel && onOpenFullPanel(c, clients); }}>
                     <InlineCell
                       value={c.notes}
                       onSave={save(c.id, 'notes')}

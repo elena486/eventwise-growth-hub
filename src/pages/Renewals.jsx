@@ -105,15 +105,41 @@ export default function Renewals({ onOpenClientPanel }) {
         ))}
       </div>
 
+      {/* Overdue banner */}
+      {(() => {
+        const overdueCount = clients.filter(c => c.renewalDate && differenceInDays(new Date(c.renewalDate), now) < 0).length;
+        return overdueCount > 0 && filter !== 'Overdue' ? (
+          <div className="flex items-center gap-3 mb-4 px-4 py-3 bg-[#FEE2E2] border border-[#FCA5A5] rounded-xl">
+            <span className="w-2.5 h-2.5 rounded-full bg-red-500 animate-pulse flex-shrink-0" />
+            <span className="text-sm font-semibold text-[#B91C1C] flex-1">🚨 {overdueCount} renewal{overdueCount !== 1 ? 's' : ''} {overdueCount !== 1 ? 'are' : 'is'} overdue — action required</span>
+            <button onClick={() => setFilter('Overdue')} className="text-xs font-bold text-[#B91C1C] underline hover:text-[#991B1B] transition-colors whitespace-nowrap">View overdue →</button>
+          </div>
+        ) : null;
+      })()}
+
       {/* Filter pills */}
       <div className="flex items-center gap-1.5 mb-4 flex-wrap">
-        {['All', '30 days', '60 days', 'Overdue'].map(f => (
-          <button key={f} onClick={() => setFilter(f)}
-            className={`px-3.5 py-2 text-xs font-medium rounded-lg transition-colors ${filter === f ? 'bg-[#242450] text-white' : 'bg-white text-[#374151] hover:bg-[#F9FAFB]'}`}
-            style={filter !== f ? { border: '1.5px solid #E5E7EB' } : {}}>
-            {f === '30 days' ? 'Due in 30 days' : f === '60 days' ? 'Due in 60 days' : f}
-          </button>
-        ))}
+        <button onClick={() => setFilter('All')}
+          className={`px-3.5 py-2 text-xs font-medium rounded-lg transition-colors ${filter === 'All' ? 'bg-[#242450] text-white' : 'bg-white text-[#374151] hover:bg-[#F9FAFB]'}`}
+          style={filter !== 'All' ? { border: '1.5px solid #E5E7EB' } : {}}>
+          All
+        </button>
+        <button onClick={() => setFilter('30 days')}
+          className={`px-3.5 py-2 text-xs font-medium rounded-lg transition-colors ${filter === '30 days' ? 'bg-[#A16207] text-white' : 'text-[#A16207]'}`}
+          style={filter !== '30 days' ? { background: '#FEF9C3', border: '1.5px solid #F59E0B' } : {}}>
+          Due in 30 days
+        </button>
+        <button onClick={() => setFilter('60 days')}
+          className={`px-3.5 py-2 text-xs font-medium rounded-lg transition-colors ${filter === '60 days' ? 'bg-[#C2410C] text-white' : 'text-[#C2410C]'}`}
+          style={filter !== '60 days' ? { background: '#FFF7ED', border: '1.5px solid #FB923C' } : {}}>
+          Due in 60 days
+        </button>
+        <button onClick={() => setFilter('Overdue')}
+          className={`px-4 py-2 text-xs font-bold rounded-lg transition-colors flex items-center gap-1.5 ${filter === 'Overdue' ? 'bg-[#B91C1C] text-white' : 'text-[#B91C1C]'}`}
+          style={filter !== 'Overdue' ? { background: '#FEE2E2', border: '1.5px solid #EF4444' } : {}}>
+          {filter !== 'Overdue' && <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />}
+          Overdue
+        </button>
       </div>
 
       {loading ? (

@@ -235,6 +235,7 @@ export default function BugTracker() {
           clients={clients}
           onClose={() => setSelected(null)}
           onUpdate={handleDetailUpdate}
+          onDelete={(id) => { setBugs(prev => prev.filter(b => b.id !== id)); setSelected(null); }}
         />
       )}
 

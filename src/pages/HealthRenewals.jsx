@@ -130,7 +130,7 @@ export default function HealthRenewals({ focusClientId }) {
   const [editingScore, setEditingScore] = useState(null);
   const [flashedScore, setFlashedScore] = useState(null);
   const [filter, setFilter] = useState('All');
-  const [needsAttentionOpen, setNeedsAttentionOpen] = useState(false);
+  const [needsAttentionOpen, setNeedsAttentionOpen] = useState(true);
   const [selectedClient, setSelectedClient] = useState(null);
   const [guideModalOpen, setGuideModalOpen] = useState(false);
   const [guideLink, setGuideLink] = useState(() => localStorage.getItem('healthGuideLink') || '');
@@ -276,18 +276,17 @@ export default function HealthRenewals({ focusClientId }) {
         ))}
       </div>
 
-      {/* Needs attention (collapsible) */}
+      {/* Needs attention (collapsible, open by default) */}
       {atRisk.length > 0 && (
-        <div className="bg-white rounded-xl mb-4 overflow-hidden" style={{ boxShadow: '0 1px 3px rgba(0,0,0,0.06)' }}>
+        <div className="rounded-xl mb-4 overflow-hidden" style={{ background: '#FEF2F2', borderLeft: '4px solid #B91C1C', boxShadow: '0 1px 3px rgba(0,0,0,0.06)' }}>
           <button
-            className="w-full flex items-center justify-between px-5 py-3 hover:bg-[#F9FAFB] transition-colors"
+            className="w-full flex items-center justify-between px-5 py-3.5 hover:bg-red-50/60 transition-colors"
             onClick={() => setNeedsAttentionOpen(o => !o)}
           >
             <div className="flex items-center gap-2">
-              {needsAttentionOpen ? <ChevronDown className="w-4 h-4 text-[#9CA3AF]" /> : <ChevronRight className="w-4 h-4 text-[#9CA3AF]" />}
-              <AlertTriangle className="w-4 h-4 text-[#A16207]" />
-              <span className="text-sm font-semibold text-[#111827]">Needs attention</span>
-              <span className="text-xs font-semibold bg-red-100 text-red-700 px-2 py-0.5 rounded-full">{atRisk.length}</span>
+              {needsAttentionOpen ? <ChevronDown className="w-4 h-4 text-[#B91C1C]" /> : <ChevronRight className="w-4 h-4 text-[#B91C1C]" />}
+              <span className="text-base font-semibold text-[#B91C1C]">⚠️ Needs Attention</span>
+              <span className="text-xs font-bold bg-[#FEE2E2] text-[#B91C1C] border border-[#FCA5A5] px-2 py-0.5 rounded-full">{atRisk.length}</span>
             </div>
           </button>
           {needsAttentionOpen && (
@@ -298,11 +297,15 @@ export default function HealthRenewals({ focusClientId }) {
                 let action = '';
                 if (!hasData) action = 'Complete first health review — click score chips in table';
                 else if (c.healthRating === 'Red') action = 'Schedule urgent review call';
+                const isRed = c.healthRating === 'Red' || !hasData;
                 return (
-                  <div key={c.id} className="flex items-center justify-between p-3 bg-[#F7F7F8] rounded-xl cursor-pointer hover:bg-[#F0F0F8]" onClick={() => setSelectedClient(c)}>
-                    <div>
-                      <p className="text-sm font-medium text-[#111827]">{c.name}</p>
-                      <p className="text-xs text-[#9CA3AF] mt-0.5">{action}</p>
+                  <div key={c.id} className="flex items-center justify-between p-3 bg-white/70 rounded-xl cursor-pointer hover:bg-white transition-colors border border-red-100" onClick={() => setSelectedClient(c)}>
+                    <div className="flex items-center gap-2 min-w-0">
+                      <span className={`w-2.5 h-2.5 rounded-full flex-shrink-0 ${isRed ? 'bg-red-500' : 'bg-amber-400'}`} />
+                      <div>
+                        <p className="text-sm font-semibold text-[#111827]">{c.name}</p>
+                        <p className="text-xs text-[#9CA3AF] mt-0.5">{action}</p>
+                      </div>
                     </div>
                     {hasData && c.healthRating && (
                       <span className={`text-[11px] font-semibold px-2.5 py-1 rounded-lg ${RATING_BADGE[c.healthRating] || ''}`}>{c.healthRating}</span>

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { differenceInDays } from 'date-fns';
-import { ChevronDown, ChevronUp, Zap, X, Sparkles, Mail } from 'lucide-react';
+import { differenceInDays, format } from 'date-fns';
+import { ChevronDown, ChevronUp, Zap, X, Sparkles, Mail, Check } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
 
 function getAlerts(clients, onboardingRecords) {
@@ -13,14 +13,12 @@ function getAlerts(clients, onboardingRecords) {
     const lastTouchedDate = client.lastContacted || null;
     const daysSince = lastTouchedDate ? differenceInDays(now, new Date(lastTouchedDate)) : null;
 
-    // Only one contact alert per client (most severe)
     if (daysSince === null || daysSince >= 60) {
       alerts.push({ client, type: 'overdue', severity: 'red', message: 'Overdue for check-in', detail: daysSince !== null ? `${daysSince} days since last contact` : 'Never contacted' });
     } else if (daysSince >= 30) {
       alerts.push({ client, type: 'no-contact', severity: 'amber', message: 'No recent contact', detail: `${daysSince} days since last contact` });
     }
 
-    // Renewal alerts — only one per client
     if (client.renewalDate) {
       const daysToRenewal = differenceInDays(new Date(client.renewalDate), now);
       if (daysToRenewal >= 0 && daysToRenewal <= 30) {
@@ -30,13 +28,11 @@ function getAlerts(clients, onboardingRecords) {
       }
     }
 
-    // Health alert — only one per client
     if ((client.status === 'Live' || client.status === 'Onboarding') && client.healthRating === 'Red') {
       alerts.push({ client, type: 'health-red', severity: 'red', message: 'At risk — action needed', detail: `Health score: ${client.healthScore || 0}/35` });
     }
   });
 
-  // Onboarding stalled — deduplicated by clientId
   const onboardingClientIds = new Set();
   onboardingRecords.forEach(rec => {
     if (onboardingClientIds.has(rec.clientId)) return;
@@ -52,7 +48,6 @@ function getAlerts(clients, onboardingRecords) {
     }
   });
 
-  // Deduplicate: only one alert per (clientId + type) pair
   const seen = new Set();
   return alerts.filter(a => {
     const key = `${a.client.id}::${a.type}`;
@@ -67,12 +62,19 @@ const SEVERITY_STYLES = {
   amber: { bg: 'bg-amber-50', border: 'border-amber-200', dot: 'bg-amber-400', icon: 'text-amber-500' },
 };
 
-export default function SmartAlertsPanel({ clients, onSuggestAction, onDraftEmail }) {
-  const [open, setOpen] = useState(false); // collapsed by default
+export default function SmartAlertsPanel({ clients, onDraftEmail }) {
+  const [open, setOpen] = useState(false);
   const [onboardingRecords, setOnboardingRecords] = useState([]);
   const [dismissed, setDismissed] = useState(new Set());
-  const [suggestions, setSuggestions] = useState({}); // key: clientId::type => suggestion text
-  const [loadingSuggestion, setLoadingSuggestion] = useState({}); // key: clientId::type
+  const [suggestions, setSuggestions] = useState({});
+  const [loadingSuggestion, setLoadingSuggestion] = useState({});
+
+  // Dismiss confirm state
+  const [confirmDismiss, setConfirmDismiss] = useState(null); // key string
+  // Completed confirm state
+  const [confirmComplete, setConfirmComplete] = useState(null); // { key, alert }
+  const [completedNote, setCompletedNote] = useState('');
+  const [savingComplete, setSavingComplete] = useState(false);
 
   useEffect(() => {
     base44.entities.OnboardingRecord.list().then(setOnboardingRecords).catch(() => {});
@@ -81,8 +83,9 @@ export default function SmartAlertsPanel({ clients, onSuggestAction, onDraftEmai
   const allAlerts = getAlerts(clients, onboardingRecords);
   const alerts = allAlerts.filter(a => !dismissed.has(`${a.client.id}::${a.type}`));
 
-  const dismiss = (alert) => {
-    setDismissed(prev => new Set([...prev, `${alert.client.id}::${alert.type}`]));
+  const dismiss = (key) => {
+    setDismissed(prev => new Set([...prev, key]));
+    setConfirmDismiss(null);
   };
 
   const handleSuggestAction = async (alert) => {
@@ -98,6 +101,22 @@ Give a 2-3 sentence suggested action for the CS team. Be specific, practical, an
     const result = await base44.integrations.Core.InvokeLLM({ prompt });
     setSuggestions(prev => ({ ...prev, [key]: result }));
     setLoadingSuggestion(prev => ({ ...prev, [key]: false }));
+  };
+
+  const handleCompleteConfirm = async () => {
+    if (!confirmComplete) return;
+    setSavingComplete(true);
+    const { key, alert } = confirmComplete;
+    const today = format(new Date(), 'd MMM yyyy');
+    const logLine = `✓ ${alert.message} — actioned on ${today}${completedNote ? `: ${completedNote}` : ''}`;
+    const existing = alert.client.notes || '';
+    await base44.entities.Client.update(alert.client.id, {
+      notes: existing ? `${logLine}\n${existing}` : logLine,
+    });
+    setDismissed(prev => new Set([...prev, key]));
+    setSavingComplete(false);
+    setConfirmComplete(null);
+    setCompletedNote('');
   };
 
   return (
@@ -146,7 +165,7 @@ Give a 2-3 sentence suggested action for the CS team. Be specific, practical, an
                           <p className="text-xs text-gray-500 mt-0.5">{alert.detail}</p>
                         </div>
                       </div>
-                      <div className="flex items-center gap-2 shrink-0">
+                      <div className="flex items-center gap-2 shrink-0 flex-wrap justify-end">
                         <button
                           onClick={() => handleSuggestAction(alert)}
                           disabled={loading}
@@ -156,12 +175,26 @@ Give a 2-3 sentence suggested action for the CS team. Be specific, practical, an
                           {loading ? 'Thinking…' : 'Suggest action'}
                         </button>
                         <button
-                          onClick={() => dismiss(alert)}
-                          className="p-0.5 text-gray-400 hover:text-gray-600 transition-colors rounded"
-                          title="Dismiss"
+                          onClick={() => { setConfirmComplete({ key, alert }); setCompletedNote(''); }}
+                          className="flex items-center gap-1 text-xs font-semibold text-[#15803D] bg-[#DCFCE7] hover:bg-[#BBF7D0] px-2 py-0.5 rounded-full whitespace-nowrap transition-colors"
                         >
-                          <X className="w-3.5 h-3.5" />
+                          <Check className="w-3 h-3" /> Completed
                         </button>
+                        {confirmDismiss === key ? (
+                          <div className="flex items-center gap-1">
+                            <span className="text-[11px] text-gray-600">Dismiss?</span>
+                            <button onClick={() => dismiss(key)} className="text-[11px] font-bold text-red-600 hover:text-red-800 px-1.5 py-0.5 rounded hover:bg-red-50">Yes</button>
+                            <button onClick={() => setConfirmDismiss(null)} className="text-[11px] text-gray-400 hover:text-gray-600 px-1 py-0.5 rounded">No</button>
+                          </div>
+                        ) : (
+                          <button
+                            onClick={() => setConfirmDismiss(key)}
+                            className="p-0.5 text-gray-400 hover:text-gray-600 transition-colors rounded"
+                            title="Dismiss"
+                          >
+                            <X className="w-3.5 h-3.5" />
+                          </button>
+                        )}
                       </div>
                     </div>
                     {suggestion && (
@@ -183,6 +216,38 @@ Give a 2-3 sentence suggested action for the CS team. Be specific, practical, an
               })}
             </div>
           )}
+        </div>
+      )}
+
+      {/* Completed confirm modal */}
+      {confirmComplete && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-[200] p-4" onClick={() => setConfirmComplete(null)}>
+          <div className="bg-white rounded-xl shadow-2xl w-full max-w-sm p-5" onClick={e => e.stopPropagation()}>
+            <p className="text-sm font-bold text-[#111827] mb-1">Mark as completed?</p>
+            <p className="text-xs text-[#9CA3AF] mb-3">
+              This will log "✓ {confirmComplete.alert.message}" on <strong>{confirmComplete.alert.client.name}</strong>'s record and dismiss this alert.
+            </p>
+            <div className="mb-4">
+              <label className="block text-[11px] font-semibold text-[#9CA3AF] uppercase tracking-[0.1em] mb-1">Optional note</label>
+              <input
+                className="w-full text-sm border border-[#EBEBEB] rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#8403C5]/20"
+                placeholder="e.g. Called and confirmed renewal…"
+                value={completedNote}
+                onChange={e => setCompletedNote(e.target.value)}
+                autoFocus
+              />
+            </div>
+            <div className="flex justify-end gap-2">
+              <button onClick={() => setConfirmComplete(null)} className="px-3 py-1.5 text-sm text-[#6B7280] hover:bg-[#F9FAFB] rounded-lg">Cancel</button>
+              <button
+                onClick={handleCompleteConfirm}
+                disabled={savingComplete}
+                className="px-4 py-1.5 text-sm font-semibold bg-[#15803D] text-white rounded-lg hover:bg-[#166534] disabled:opacity-60 transition-colors"
+              >
+                {savingComplete ? 'Saving…' : 'Confirm'}
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>
