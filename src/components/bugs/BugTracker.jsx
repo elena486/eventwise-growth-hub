@@ -176,17 +176,18 @@ export default function BugTracker() {
                     <InlineCell value={bug.title} onSave={save(bug.id, 'title')} placeholder="Bug title" className="font-medium text-[#111827] text-sm" />
                   </td>
                   <td className="px-3 py-3 min-w-[120px]" onClick={e => e.stopPropagation()}>
-                    <InlineCell
-                      value={bug.clientId}
-                      onSave={async (val) => {
-                        const cl = clients.find(c => c.id === val);
-                        await handleUpdate(bug.id, 'clientId', val);
+                    <select
+                      className="text-xs text-[#374151] border border-[#E5E7EB] rounded-lg px-2 py-1 bg-white focus:outline-none focus:ring-1 focus:ring-[#8403C5]/30 max-w-[120px]"
+                      value={bug.clientId || ''}
+                      onChange={async e => {
+                        const cl = clients.find(c => c.id === e.target.value);
+                        await handleUpdate(bug.id, 'clientId', e.target.value);
                         await handleUpdate(bug.id, 'clientName', cl?.name || '');
                       }}
-                      type="select"
-                      options={[{ value: '', label: '—' }, ...clients.map(c => ({ value: c.id, label: c.name }))]}
-                      displayEl={<span className="text-xs text-[#374151]">{bug.clientName || '—'}</span>}
-                    />
+                    >
+                      <option value="">—</option>
+                      {clients.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                    </select>
                   </td>
                   <td className="px-3 py-3" onClick={e => e.stopPropagation()}>
                     <InlineCell value={bug.priority} onSave={save(bug.id, 'priority')} type="select" options={PRIORITIES}
