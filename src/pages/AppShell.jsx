@@ -5,7 +5,7 @@ import Pipeline from './Pipeline';
 import ProposalGeneratorInner from '@/components/proposal/ProposalGeneratorInner';
 import Clients from './Clients';
 import Onboarding from './Onboarding';
-import Health from './Health';
+import HealthRenewals from './HealthRenewals';
 import Renewals from './Renewals';
 import BugTracker from '@/components/bugs/BugTracker';
 import Deals from './Deals';
@@ -75,11 +75,6 @@ export default function AppShell() {
     setTab('health');
   };
 
-  const handleOpenClientPanel = (client) => {
-    setFullPanelClient(client);
-    setFullPanelClients([client]);
-  };
-
   const handleViewOnboarding = (client) => {
     setFocusClientId(client.id);
     setTab('onboarding');
@@ -97,7 +92,7 @@ export default function AppShell() {
   }, [tab]);
 
   useEffect(() => {
-    const keyMap = { '1': 'pipeline', '2': 'proposal', '3': 'deals', '4': 'clients', '5': 'onboarding', '6': 'health', '7': 'sprints', '8': 'requests' };
+    const keyMap = { '1': 'pipeline', '2': 'proposal', '3': 'deals', '4': 'clients', '5': 'onboarding', '6': 'health', '7': 'renewals', '8': 'sprints', '9': 'requests' };
     const handler = (e) => {
       if (['INPUT', 'TEXTAREA'].includes(e.target.tagName)) return;
       if (keyMap[e.key]) setTab(keyMap[e.key]);
@@ -176,8 +171,8 @@ export default function AppShell() {
         {tab === 'proposal' && <ProposalGeneratorInner handoff={proposalHandoff} onHandoffConsumed={() => setProposalHandoff(null)} />}
         {tab === 'clients' && <Clients onViewHealth={handleViewHealth} onViewOnboarding={handleViewOnboarding} onViewDetail={setDetailClient} onOpenFullPanel={(client, allClients) => { setFullPanelClient(client); setFullPanelClients(allClients || []); }} />}
         {tab === 'onboarding' && <Onboarding focusClientId={focusClientId} />}
-        {tab === 'health' && <Health focusClientId={focusClientId} />}
-        {tab === 'renewals' && <Renewals onOpenClientPanel={handleOpenClientPanel} />}
+        {tab === 'health' && <HealthRenewals focusClientId={focusClientId} />}
+        {tab === 'renewals' && <Renewals />}
         {tab === 'deals' && <Deals onRenewalProposal={(data) => { handleProposalHandoff(data); }} onViewClient={(clientId) => { setTab('clients'); }} onNavigate={setTab} />}
         {tab === 'sprints' && <Sprints />}
         {tab === 'marketing' && <Marketing />}

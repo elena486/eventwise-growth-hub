@@ -258,8 +258,8 @@ export default function Clients({ onViewHealth, onViewOnboarding, onViewDetail, 
               {sorted.map((c, i) => (
                 <tr key={c.id} className={`border-b border-[#F2F2F4] last:border-0 hover:bg-[#F9FAFB] transition-colors cursor-pointer group ${activeClientId === c.id ? 'bg-[#FAF5FF]' : ''}`}
                   onClick={(e) => { setActiveClientId(c.id); onOpenFullPanel && onOpenFullPanel(c, clients); }}>
-                  {/* Client name / contact */}
-                  <td className="px-4 py-3 min-w-[180px]" onClick={e => e.stopPropagation()}>
+                  {/* Client name / contact — clicking this opens the panel */}
+                  <td className="px-4 py-3 min-w-[180px]" onClick={(e) => { e.stopPropagation(); setActiveClientId(c.id); onOpenFullPanel && onOpenFullPanel(c, clients); }}>
                     <InlineCell value={c.name} onSave={save(c.id, 'name')} placeholder="Company name" className="font-semibold text-navy text-sm" />
                     <InlineCell value={c.contactName} onSave={save(c.id, 'contactName')} placeholder="Contact name" className="text-xs text-ew-muted mt-0.5" />
                     <InlineCell value={c.contactEmail} onSave={save(c.id, 'contactEmail')} placeholder="Email" className="text-xs text-ew-muted mt-0.5" />

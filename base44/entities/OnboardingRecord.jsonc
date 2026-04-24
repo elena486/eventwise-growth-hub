@@ -18,7 +18,7 @@
     },
     "phaseNotes": {
       "type": "string",
-      "description": "JSON object mapping phase number to notes string"
+      "description": "JSON object of phase number -> notes string"
     },
     "lastUpdated": {
       "type": "string"
