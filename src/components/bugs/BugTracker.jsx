@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
 import { format, differenceInDays, isThisMonth } from 'date-fns';
-import { Plus, Trash2, Check, X, ChevronLeft } from 'lucide-react';
+import { Plus, Trash2, Check, X } from 'lucide-react';
 import ConfirmDialog from '@/components/shared/ConfirmDialog';
 import InlineCell from '@/components/shared/InlineCell';
-import BugDetail from './BugDetail';
+import BugSidePanel from './BugSidePanel';
 
 const PRIORITY_STYLES = {
   'Low': 'bg-[#F3F4F6] text-[#6B7280]',
@@ -97,7 +97,9 @@ export default function BugTracker() {
   // Filtered
   let filtered = [...bugs];
   if (filter === 'Open') filtered = filtered.filter(b => b.status === 'Open' || b.status === 'In Progress' || b.status === 'Waiting on Client');
+  else if (filter === 'In Progress') filtered = filtered.filter(b => b.status === 'In Progress');
   else if (filter === 'Critical') filtered = filtered.filter(b => b.priority === 'Critical');
+  else if (filter === 'Resolved') filtered = filtered.filter(b => b.status === 'Resolved' || b.status === 'Closed');
   if (clientFilter) filtered = filtered.filter(b => b.clientId === clientFilter);
 
   // Sort: open/critical first
@@ -109,28 +111,17 @@ export default function BugTracker() {
 
   const save = (id, field) => (value) => handleUpdate(id, field, value);
 
-  if (selected) {
-    return (
-      <BugDetail
-        bug={selected}
-        clients={clients}
-        onBack={() => setSelected(null)}
-        onUpdate={handleDetailUpdate}
-      />
-    );
-  }
-
   return (
     <div className="flex-1 bg-[#F7F7F8] overflow-y-auto p-8 font-dm">
       {/* Stats */}
       <div className="grid grid-cols-4 gap-4 mb-6">
         {[
-          { label: 'Open bugs', value: open.length, color: '#8403C5' },
-          { label: 'Critical', value: critical.length, color: '#B91C1C' },
-          { label: 'Resolved this month', value: resolvedThisMonth.length, color: '#15803D' },
-          { label: 'Avg days to resolve', value: avgDays !== null ? `${avgDays}d` : '—', color: '#1D4ED8' },
+          { label: 'Open bugs', value: open.length, color: '#8403C5', onClick: () => setFilter('Open') },
+          { label: 'Critical', value: critical.length, color: '#B91C1C', onClick: () => setFilter('Critical') },
+          { label: 'Resolved this month', value: resolvedThisMonth.length, color: '#15803D', onClick: () => {} },
+          { label: 'Avg days to resolve', value: avgDays !== null ? `${avgDays}d` : '—', color: '#1D4ED8', onClick: () => {} },
         ].map(s => (
-          <div key={s.label} className="bg-white rounded-xl p-6" style={{ boxShadow: '0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04)', borderLeft: `4px solid ${s.color}` }}>
+          <div key={s.label} className="bg-white rounded-xl p-6 cursor-pointer hover:shadow-md transition-shadow" onClick={s.onClick} style={{ boxShadow: '0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04)', borderLeft: `4px solid ${s.color}` }}>
             <p className="text-[11px] font-bold text-[#9CA3AF] uppercase tracking-[0.08em] mb-1">{s.label}</p>
             <p className="text-3xl font-bold text-[#111827]">{s.value}</p>
           </div>
@@ -140,7 +131,7 @@ export default function BugTracker() {
       {/* Toolbar */}
       <div className="flex items-center justify-between gap-3 mb-4 flex-wrap">
         <div className="flex items-center gap-1.5 flex-wrap">
-          {['All', 'Open', 'Critical'].map(f => (
+          {['All', 'Open', 'In Progress', 'Critical', 'Resolved'].map(f => (
             <button key={f} onClick={() => setFilter(f)}
               className={`px-3.5 py-2 text-xs font-medium rounded-lg transition-colors ${filter === f ? 'bg-[#242450] text-white' : 'bg-white text-[#374151] hover:bg-[#F9FAFB]'}`}
               style={filter !== f ? { border: '1.5px solid #E5E7EB' } : {}}>
@@ -243,6 +234,15 @@ export default function BugTracker() {
           message="Are you sure you want to delete this bug report? This cannot be undone."
           onConfirm={() => handleDelete(deleteId)}
           onCancel={() => setDeleteId(null)}
+        />
+      )}
+
+      {selected && (
+        <BugSidePanel
+          bug={selected}
+          clients={clients}
+          onClose={() => setSelected(null)}
+          onUpdate={handleDetailUpdate}
         />
       )}
     </div>

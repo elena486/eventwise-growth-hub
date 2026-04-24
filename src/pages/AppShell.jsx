@@ -6,6 +6,7 @@ import ProposalGeneratorInner from '@/components/proposal/ProposalGeneratorInner
 import Clients from './Clients';
 import Onboarding from './Onboarding';
 import HealthRenewals from './HealthRenewals';
+import Renewals from './Renewals';
 import BugTracker from '@/components/bugs/BugTracker';
 import Deals from './Deals';
 import Sprints from './Sprints';
@@ -33,7 +34,8 @@ const GROUPS = [
   { id: 'cs', label: 'Customer Success', tabs: [
     { id: 'clients', label: 'Clients' },
     { id: 'onboarding', label: 'Onboarding' },
-    { id: 'health', label: 'Health & Renewals' },
+    { id: 'health', label: 'Health' },
+    { id: 'renewals', label: 'Renewals' },
     { id: 'bugs', label: 'Bug Tracker' },
   ]},
   { id: 'ops', label: 'Operations', tabs: [
@@ -170,6 +172,7 @@ export default function AppShell() {
         {tab === 'clients' && <Clients onViewHealth={handleViewHealth} onViewOnboarding={handleViewOnboarding} onViewDetail={setDetailClient} onOpenFullPanel={(client, allClients) => { setFullPanelClient(client); setFullPanelClients(allClients || []); }} />}
         {tab === 'onboarding' && <Onboarding focusClientId={focusClientId} />}
         {tab === 'health' && <HealthRenewals focusClientId={focusClientId} />}
+        {tab === 'renewals' && <Renewals />}
         {tab === 'deals' && <Deals onRenewalProposal={(data) => { handleProposalHandoff(data); }} onViewClient={(clientId) => { setTab('clients'); }} onNavigate={setTab} />}
         {tab === 'sprints' && <Sprints />}
         {tab === 'marketing' && <Marketing />}

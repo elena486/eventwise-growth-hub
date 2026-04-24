@@ -47,9 +47,10 @@ export default function ClientDetailPanel({ client, onClose, onUpdated }) {
   const latestNoReply = noReplyEntries[0];
 
   return (
-    <div className="fixed inset-0 bg-black/40 flex items-end sm:items-center justify-center z-50 p-4" onClick={onClose}>
+    <div className="fixed inset-0 z-50 flex" onClick={onClose}>
+      <div className="flex-1 bg-black/20" />
       <div
-        className="bg-white rounded-xl shadow-2xl w-full max-w-md max-h-[85vh] overflow-y-auto"
+        className="bg-white shadow-2xl w-full max-w-md max-h-full overflow-y-auto flex flex-col"
         onClick={e => e.stopPropagation()}
       >
         {/* Header */}

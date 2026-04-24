@@ -96,6 +96,7 @@ export default function Clients({ onViewHealth, onViewOnboarding, onViewDetail, 
   const [aiPanelAlert, setAiPanelAlert] = useState(null);
   const [emailModal, setEmailModal] = useState(null);
   const [activeClientId, setActiveClientId] = useState(null);
+  const [sidePanelClient, setSidePanelClient] = useState(null);
   const [deleteConfirmId, setDeleteConfirmId] = useState(null);
   const aiPanelRef = useRef(null);
 
@@ -187,9 +188,10 @@ export default function Clients({ onViewHealth, onViewOnboarding, onViewDetail, 
   };
 
   return (
-    <div className="flex-1 bg-[#F7F7F8] overflow-y-auto p-8 font-dm">
+    <div className="flex-1 bg-[#F7F7F8] overflow-hidden flex font-dm">
+    <div className="flex-1 overflow-y-auto p-8">
       {/* Smart Alerts */}
-      {!loading && <SmartAlertsPanel clients={clients} onSuggestAction={handleSuggestAction} />}
+      {!loading && <SmartAlertsPanel clients={clients} onSuggestAction={handleSuggestAction} onDraftEmail={(client, suggestion) => handleDraftEmail(client, suggestion, null)} />}
 
       {/* Header */}
       <div className="flex items-start justify-between mb-6">
@@ -252,7 +254,7 @@ export default function Clients({ onViewHealth, onViewOnboarding, onViewDetail, 
             <tbody>
               {sorted.map((c, i) => (
                 <tr key={c.id} className={`border-b border-[#F2F2F4] last:border-0 hover:bg-[#F9FAFB] transition-colors cursor-pointer group ${activeClientId === c.id ? 'bg-[#FAF5FF]' : ''}`}
-                  onClick={() => { setActiveClientId(c.id); onOpenFullPanel && onOpenFullPanel(c, clients); }}>
+                  onClick={() => { setActiveClientId(c.id); setSidePanelClient(c); }}>
                   {/* Client name / contact */}
                   <td className="px-4 py-3 min-w-[180px]" onClick={e => e.stopPropagation()}>
                     <InlineCell value={c.name} onSave={save(c.id, 'name')} placeholder="Company name" className="font-semibold text-navy text-sm" />
@@ -426,8 +428,19 @@ export default function Clients({ onViewHealth, onViewOnboarding, onViewDetail, 
           onTouchpointLogged={() => { setEmailModal(null); load(); }}
         />
       )}
+    </div>
 
-
+    {/* Right-side detail panel */}
+    {sidePanelClient && (
+      <ClientDetailPanel
+        client={sidePanelClient}
+        onClose={() => { setSidePanelClient(null); setActiveClientId(null); }}
+        onUpdated={(updated) => {
+          setSidePanelClient(updated);
+          setClients(prev => prev.map(c => c.id === updated.id ? updated : c));
+        }}
+      />
+    )}
     </div>
   );
 }

@@ -63,10 +63,11 @@ export default function Onboarding({ focusClientId }) {
 
   useEffect(() => { load(); }, [focusClientId]);
 
-  const handleSaveTasks = async (tasks, transcripts) => {
+  const handleSaveTasks = async (tasks, transcripts, phaseNotes) => {
     await base44.entities.OnboardingRecord.update(checklist.record.id, {
       tasks: JSON.stringify(tasks),
       transcripts: transcripts ? JSON.stringify(transcripts) : undefined,
+      phaseNotes: phaseNotes ? JSON.stringify(phaseNotes) : undefined,
       lastUpdated: new Date().toISOString(),
     });
     setChecklist(null);
@@ -131,7 +132,8 @@ export default function Onboarding({ focusClientId }) {
                 const curPhase = getCurrentPhase(tasks);
                 const phaseLabel = ONBOARDING_PHASES.find(p => p.phase === curPhase)?.label || '';
                 return (
-                  <tr key={c.id} className={`border-b border-ew-border last:border-0 hover:bg-navy/[0.02] transition-colors ${i % 2 === 1 ? 'bg-[#FAFBFE]' : 'bg-white'}`}>
+                  <tr key={c.id} className={`border-b border-ew-border last:border-0 hover:bg-navy/[0.02] transition-colors cursor-pointer ${i % 2 === 1 ? 'bg-[#FAFBFE]' : 'bg-white'}`}
+                    onClick={() => setChecklist({ client: c, record: record || { tasks: '[]' } })}>
                     <td className="px-4 py-3">
                       <p className="font-semibold text-navy text-sm">{c.name}</p>
                       <p className="text-xs text-ew-muted">{c.contactName}</p>
