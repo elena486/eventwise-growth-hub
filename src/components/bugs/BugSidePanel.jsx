@@ -63,18 +63,12 @@ export default function BugSidePanel({ bug, clients, onClose, onUpdate, onDelete
     setDeleting(true);
     await base44.entities.Bug.delete(bug.id);
     onDelete && onDelete(bug.id);
-    onClose();
   };
 
   const showResolution = form.status === 'Resolved' || form.status === 'Closed';
 
   return (
-    <div className="fixed inset-0 z-50 flex" onClick={onClose}>
-      <div className="flex-1" />
-      <div
-        className="w-full max-w-lg bg-white border-l border-ew-border flex flex-col h-full shadow-2xl"
-        onClick={e => e.stopPropagation()}
-      >
+    <div className="w-[480px] shrink-0 bg-white border-l border-ew-border flex flex-col overflow-hidden shadow-2xl">
         {/* Header */}
         <div className="flex items-start justify-between px-5 py-4 border-b border-ew-border shrink-0">
           <div className="flex-1 min-w-0 pr-3">
@@ -220,7 +214,6 @@ export default function BugSidePanel({ bug, clients, onClose, onUpdate, onDelete
         <div className="px-5 py-3 border-t border-ew-border shrink-0">
           <p className="text-[11px] text-ew-muted">Changes save automatically</p>
         </div>
-      </div>
     </div>
   );
 }

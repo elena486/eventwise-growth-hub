@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
 import { format, differenceInDays, isThisMonth } from 'date-fns';
 import { Plus, Trash2, Check, X } from 'lucide-react';
-import ConfirmDialog from '@/components/shared/ConfirmDialog';
 import InlineCell from '@/components/shared/InlineCell';
 import BugSidePanel from './BugSidePanel';
 
@@ -52,8 +51,7 @@ export default function BugTracker() {
   useEffect(() => { load(); }, []);
 
   const handleAdd = async () => {
-    const existing = bugs;
-    const nextNum = existing.length > 0 ? Math.max(...existing.map(b => b.bugNumber || 0)) + 1 : 1;
+    const nextNum = bugs.length > 0 ? Math.max(...bugs.map(b => b.bugNumber || 0)) + 1 : 1;
     const newBug = await base44.entities.Bug.create({
       bugNumber: nextNum,
       title: '',
@@ -64,6 +62,7 @@ export default function BugTracker() {
       dateLogged: format(new Date(), 'yyyy-MM-dd'),
     });
     setBugs(prev => [newBug, ...prev]);
+    setSelected(newBug);
   };
 
   const handleUpdate = async (id, field, value) => {
@@ -75,6 +74,7 @@ export default function BugTracker() {
     await base44.entities.Bug.delete(id);
     setBugs(prev => prev.filter(b => b.id !== id));
     setDeleteId(null);
+    if (selected?.id === id) setSelected(null);
   };
 
   const handleDetailUpdate = (updated) => {
@@ -108,143 +108,135 @@ export default function BugTracker() {
   });
 
   return (
-    <div className="flex-1 bg-[#F7F7F8] overflow-y-auto p-8 font-dm">
-      {/* Stats — clickable */}
-      <div className="grid grid-cols-4 gap-4 mb-6">
-        {[
-          { label: 'Open bugs', value: open.length, color: '#8403C5', filterVal: 'Open' },
-          { label: 'Critical', value: critical.length, color: '#B91C1C', filterVal: 'Critical' },
-          { label: 'Resolved this month', value: resolvedThisMonth.length, color: '#15803D', filterVal: 'Resolved' },
-          { label: 'Avg days to resolve', value: avgDays !== null ? `${avgDays}d` : '—', color: '#1D4ED8', filterVal: null },
-        ].map(s => (
-          <div key={s.label}
-            className={`bg-white rounded-xl p-6 ${s.filterVal ? 'cursor-pointer hover:shadow-md transition-all' : ''} ${filter === s.filterVal ? 'ring-2 ring-[#8403C5]/30' : ''}`}
-            style={{ boxShadow: '0 1px 3px rgba(0,0,0,0.06)', borderLeft: `4px solid ${s.color}` }}
-            onClick={() => s.filterVal && setFilter(s.filterVal)}>
-            <p className="text-[11px] font-bold text-[#9CA3AF] uppercase tracking-[0.08em] mb-1">{s.label}</p>
-            <p className="text-3xl font-bold text-[#111827]">{s.value}</p>
-          </div>
-        ))}
-      </div>
-
-      {/* Toolbar */}
-      <div className="flex items-center justify-between gap-3 mb-4 flex-wrap">
-        <div className="flex items-center gap-1.5 flex-wrap">
-          {['All', 'Open', 'Critical', 'In Progress', 'Resolved'].map(f => (
-            <button key={f} onClick={() => setFilter(f)}
-              className={`px-3.5 py-2 text-xs font-medium rounded-lg transition-colors ${filter === f ? 'bg-[#242450] text-white' : 'bg-white text-[#374151] hover:bg-[#F9FAFB]'}`}
-              style={filter !== f ? { border: '1.5px solid #E5E7EB' } : {}}>
-              {f}
-            </button>
+    <div className="flex-1 flex overflow-hidden font-dm">
+      {/* Main content */}
+      <div className="flex-1 bg-[#F7F7F8] overflow-y-auto p-8">
+        {/* Stats */}
+        <div className="grid grid-cols-4 gap-4 mb-6">
+          {[
+            { label: 'Open bugs', value: open.length, color: '#8403C5', filterVal: 'Open' },
+            { label: 'Critical', value: critical.length, color: '#B91C1C', filterVal: 'Critical' },
+            { label: 'Resolved this month', value: resolvedThisMonth.length, color: '#15803D', filterVal: 'Resolved' },
+            { label: 'Avg days to resolve', value: avgDays !== null ? `${avgDays}d` : '—', color: '#1D4ED8', filterVal: null },
+          ].map(s => (
+            <div key={s.label}
+              className={`bg-white rounded-xl p-6 ${s.filterVal ? 'cursor-pointer hover:shadow-md transition-all' : ''} ${filter === s.filterVal ? 'ring-2 ring-[#8403C5]/30' : ''}`}
+              style={{ boxShadow: '0 1px 3px rgba(0,0,0,0.06)', borderLeft: `4px solid ${s.color}` }}
+              onClick={() => s.filterVal && setFilter(s.filterVal)}>
+              <p className="text-[11px] font-bold text-[#9CA3AF] uppercase tracking-[0.08em] mb-1">{s.label}</p>
+              <p className="text-3xl font-bold text-[#111827]">{s.value}</p>
+            </div>
           ))}
-          <span className="w-px h-5 bg-[#EBEBEB] mx-1" />
-          <select
-            value={clientFilter}
-            onChange={e => setClientFilter(e.target.value)}
-            className="px-3 py-2 text-xs font-medium rounded-lg bg-white text-[#374151] hover:bg-[#F9FAFB] focus:outline-none"
-            style={{ border: '1.5px solid #E5E7EB' }}>
-            <option value="">All clients</option>
-            {clients.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-          </select>
         </div>
-        <button onClick={handleAdd}
-          className="flex items-center gap-1.5 px-4 py-2 text-xs font-semibold bg-[#8403C5] text-white rounded-lg hover:bg-[#6e02a3] transition-colors">
-          <Plus className="w-3.5 h-3.5" /> Log Bug
-        </button>
+
+        {/* Toolbar */}
+        <div className="flex items-center justify-between gap-3 mb-4 flex-wrap">
+          <div className="flex items-center gap-1.5 flex-wrap">
+            {['All', 'Open', 'Critical', 'In Progress', 'Resolved'].map(f => (
+              <button key={f} onClick={() => setFilter(f)}
+                className={`px-3.5 py-2 text-xs font-medium rounded-lg transition-colors ${filter === f ? 'bg-[#242450] text-white' : 'bg-white text-[#374151] hover:bg-[#F9FAFB]'}`}
+                style={filter !== f ? { border: '1.5px solid #E5E7EB' } : {}}>
+                {f}
+              </button>
+            ))}
+            <span className="w-px h-5 bg-[#EBEBEB] mx-1" />
+            <select
+              value={clientFilter}
+              onChange={e => setClientFilter(e.target.value)}
+              className="px-3 py-2 text-xs font-medium rounded-lg bg-white text-[#374151] hover:bg-[#F9FAFB] focus:outline-none"
+              style={{ border: '1.5px solid #E5E7EB' }}>
+              <option value="">All clients</option>
+              {clients.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+            </select>
+          </div>
+          <button onClick={handleAdd}
+            className="flex items-center gap-1.5 px-4 py-2 text-xs font-semibold bg-[#8403C5] text-white rounded-lg hover:bg-[#6e02a3] transition-colors">
+            <Plus className="w-3.5 h-3.5" /> Log Bug
+          </button>
+        </div>
+
+        {/* Table */}
+        {loading ? (
+          <div className="flex items-center justify-center h-48"><div className="w-6 h-6 border-2 border-[#8403C5]/20 border-t-[#8403C5] rounded-full animate-spin" /></div>
+        ) : (
+          <div className="bg-white rounded-xl overflow-x-auto" style={{ boxShadow: '0 1px 3px rgba(0,0,0,0.06)' }}>
+            <table className="w-full text-sm min-w-[700px]">
+              <thead>
+                <tr className="border-b border-[#EBEBEB]">
+                  {['#', 'Title', 'Client', 'Priority', 'Status', 'Assigned to', 'Date logged', ''].map(h => (
+                    <th key={h} className="px-3 py-3.5 text-left text-[11px] font-bold text-[#9CA3AF] uppercase tracking-[0.08em]">{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {filtered.map((bug) => (
+                  <tr key={bug.id}
+                    className={`border-b border-[#F2F2F4] last:border-0 hover:bg-[#F9FAFB] transition-colors cursor-pointer group ${selected?.id === bug.id ? 'bg-[#FAF5FF]' : ''}`}
+                    onClick={() => setSelected(bug)}>
+                    <td className="px-3 py-3 text-[#9CA3AF] text-xs w-8">{bug.bugNumber}</td>
+                    <td className="px-3 py-3 min-w-[160px] max-w-[200px]">
+                      <p className="font-medium text-[#111827] text-sm truncate">{bug.title || <span className="text-[#9CA3AF] italic">Untitled</span>}</p>
+                    </td>
+                    <td className="px-3 py-3 min-w-[120px]" onClick={e => e.stopPropagation()}>
+                      <select
+                        className="text-xs text-[#374151] border border-[#E5E7EB] rounded-lg px-2 py-1 bg-white focus:outline-none focus:ring-1 focus:ring-[#8403C5]/30 max-w-[120px]"
+                        value={bug.clientId || ''}
+                        onChange={async e => {
+                          const cl = clients.find(c => c.id === e.target.value);
+                          await handleUpdate(bug.id, 'clientId', e.target.value);
+                          await handleUpdate(bug.id, 'clientName', cl?.name || '');
+                          if (selected?.id === bug.id) setSelected(prev => ({ ...prev, clientId: e.target.value, clientName: cl?.name || '' }));
+                        }}
+                      >
+                        <option value="">—</option>
+                        {clients.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                      </select>
+                    </td>
+                    <td className="px-3 py-3">
+                      {bug.priority ? <span className={`text-[11px] font-semibold px-2 py-0.5 rounded-md ${PRIORITY_STYLES[bug.priority]}`}>{bug.priority}</span> : null}
+                    </td>
+                    <td className="px-3 py-3 min-w-[130px]">
+                      {bug.status ? <span className={`text-[11px] font-semibold px-2 py-0.5 rounded-md ${STATUS_STYLES[bug.status]}`}>{bug.status}</span> : null}
+                    </td>
+                    <td className="px-3 py-3 min-w-[100px]">
+                      {bug.assignedTo ? <span className="text-xs font-medium bg-[#F3F4F6] text-[#374151] px-2 py-0.5 rounded-md">{bug.assignedTo}</span> : <span className="text-xs text-[#9CA3AF]">—</span>}
+                    </td>
+                    <td className="px-3 py-3 text-xs text-[#9CA3AF] whitespace-nowrap">{fmtDate(bug.dateLogged)}</td>
+                    <td className="px-3 py-3 opacity-0 group-hover:opacity-100 transition-opacity" onClick={e => e.stopPropagation()}>
+                      {deleteId === bug.id ? (
+                        <div className="flex items-center gap-1">
+                          <button onClick={() => handleDelete(bug.id)} className="p-1.5 text-white bg-[#EF4444] hover:bg-[#DC2626] rounded-lg"><Check className="w-3 h-3" /></button>
+                          <button onClick={() => setDeleteId(null)} className="p-1.5 text-[#9CA3AF] hover:bg-[#F9FAFB] rounded-lg"><X className="w-3 h-3" /></button>
+                        </div>
+                      ) : (
+                        <button onClick={() => setDeleteId(bug.id)} className="p-1.5 text-[#9CA3AF] hover:text-[#EF4444] hover:bg-[#FEE2E2] rounded-lg transition-colors">
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+                {filtered.length === 0 && (
+                  <tr>
+                    <td colSpan={8} className="px-4 py-16 text-center">
+                      <p className="text-sm text-[#6B7280]">No bugs found.</p>
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
 
-      {/* Table */}
-      {loading ? (
-        <div className="flex items-center justify-center h-48"><div className="w-6 h-6 border-2 border-[#8403C5]/20 border-t-[#8403C5] rounded-full animate-spin" /></div>
-      ) : (
-        <div className="bg-white rounded-xl overflow-x-auto" style={{ boxShadow: '0 1px 3px rgba(0,0,0,0.06)' }}>
-          <table className="w-full text-sm min-w-[900px]">
-            <thead>
-              <tr className="border-b border-[#EBEBEB]">
-                {['#', 'Title', 'Client', 'Priority', 'Status', 'Assigned to', 'Date logged', 'Date resolved', ''].map(h => (
-                  <th key={h} className="px-3 py-3.5 text-left text-[11px] font-bold text-[#9CA3AF] uppercase tracking-[0.08em]">{h}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {filtered.map((bug) => (
-                <tr key={bug.id}
-                  className="border-b border-[#F2F2F4] last:border-0 hover:bg-[#F9FAFB] transition-colors cursor-pointer group"
-                  onClick={() => setSelected(bug)}>
-                  <td className="px-3 py-3 text-[#9CA3AF] text-xs w-8">{bug.bugNumber}</td>
-                  <td className="px-3 py-3 min-w-[180px] max-w-[240px]" onClick={e => e.stopPropagation()}>
-                    <InlineCell value={bug.title} onSave={save(bug.id, 'title')} placeholder="Bug title" className="font-medium text-[#111827] text-sm" />
-                  </td>
-                  <td className="px-3 py-3 min-w-[120px]" onClick={e => e.stopPropagation()}>
-                    <select
-                      className="text-xs text-[#374151] border border-[#E5E7EB] rounded-lg px-2 py-1 bg-white focus:outline-none focus:ring-1 focus:ring-[#8403C5]/30 max-w-[120px]"
-                      value={bug.clientId || ''}
-                      onChange={async e => {
-                        const cl = clients.find(c => c.id === e.target.value);
-                        await handleUpdate(bug.id, 'clientId', e.target.value);
-                        await handleUpdate(bug.id, 'clientName', cl?.name || '');
-                      }}
-                    >
-                      <option value="">—</option>
-                      {clients.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-                    </select>
-                  </td>
-                  <td className="px-3 py-3" onClick={e => e.stopPropagation()}>
-                    <InlineCell value={bug.priority} onSave={save(bug.id, 'priority')} type="select" options={PRIORITIES}
-                      displayEl={bug.priority ? <span className={`text-[11px] font-semibold px-2 py-0.5 rounded-md ${PRIORITY_STYLES[bug.priority]}`}>{bug.priority}</span> : null} />
-                  </td>
-                  <td className="px-3 py-3 min-w-[130px]" onClick={e => e.stopPropagation()}>
-                    <InlineCell value={bug.status} onSave={save(bug.id, 'status')} type="select" options={STATUSES}
-                      displayEl={bug.status ? <span className={`text-[11px] font-semibold px-2 py-0.5 rounded-md ${STATUS_STYLES[bug.status]}`}>{bug.status}</span> : null} />
-                  </td>
-                  <td className="px-3 py-3 min-w-[100px]" onClick={e => e.stopPropagation()}>
-                    <InlineCell value={bug.assignedTo} onSave={save(bug.id, 'assignedTo')} type="select" options={ASSIGNEES}
-                      displayEl={bug.assignedTo ? <span className="text-xs font-medium bg-[#F3F4F6] text-[#374151] px-2 py-0.5 rounded-md">{bug.assignedTo}</span> : <span className="text-xs text-[#9CA3AF]">—</span>} />
-                  </td>
-                  <td className="px-3 py-3 text-xs text-[#9CA3AF] whitespace-nowrap">{fmtDate(bug.dateLogged)}</td>
-                  <td className="px-3 py-3 text-xs text-[#15803D] whitespace-nowrap">{bug.dateResolved ? fmtDate(bug.dateResolved) : '—'}</td>
-                  <td className="px-3 py-3 opacity-0 group-hover:opacity-100 transition-opacity" onClick={e => e.stopPropagation()}>
-                    {deleteId === bug.id ? (
-                      <div className="flex items-center gap-1">
-                        <button onClick={() => handleDelete(bug.id)} className="p-1.5 text-white bg-[#EF4444] hover:bg-[#DC2626] rounded-lg"><Check className="w-3 h-3" /></button>
-                        <button onClick={() => setDeleteId(null)} className="p-1.5 text-[#9CA3AF] hover:bg-[#F9FAFB] rounded-lg"><X className="w-3 h-3" /></button>
-                      </div>
-                    ) : (
-                      <button onClick={() => setDeleteId(bug.id)} className="p-1.5 text-[#9CA3AF] hover:text-[#EF4444] hover:bg-[#FEE2E2] rounded-lg transition-colors">
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </button>
-                    )}
-                  </td>
-                </tr>
-              ))}
-              {filtered.length === 0 && (
-                <tr>
-                  <td colSpan={9} className="px-4 py-16 text-center">
-                    <p className="text-sm text-[#6B7280]">No bugs found.</p>
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
-      )}
-
-      {/* Side panel (replaces full-page BugDetail) */}
+      {/* Side panel — inline, no fixed/portal */}
       {selected && (
         <BugSidePanel
           bug={selected}
           clients={clients}
           onClose={() => setSelected(null)}
           onUpdate={handleDetailUpdate}
-          onDelete={(id) => { setBugs(prev => prev.filter(b => b.id !== id)); setSelected(null); }}
-        />
-      )}
-
-      {deleteId && (
-        <ConfirmDialog
-          message="Are you sure you want to delete this bug report? This cannot be undone."
-          onConfirm={() => handleDelete(deleteId)}
-          onCancel={() => setDeleteId(null)}
+          onDelete={handleDelete}
         />
       )}
     </div>
