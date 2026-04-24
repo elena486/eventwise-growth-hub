@@ -140,7 +140,7 @@ export function buildProposalHTML(proposalData) {
   ` : '';
 
   const subtitle = pd.includeAccounting
-    ? `${pd.planName} Plan + Accounting Service`
+    ? `${pd.planName} Plan + Accounting Service (${pd.accountingServiceLabel})`
     : `${pd.planName} Plan`;
 
   const formattedDate = pd.date ? format(new Date(pd.date + '-01'), 'MMMM yyyy') : '';
