@@ -5,7 +5,7 @@ import Pipeline from './Pipeline';
 import ProposalGeneratorInner from '@/components/proposal/ProposalGeneratorInner';
 import Clients from './Clients';
 import Onboarding from './Onboarding';
-import HealthRenewals from './HealthRenewals';
+import Health from './Health';
 import Renewals from './Renewals';
 import BugTracker from '@/components/bugs/BugTracker';
 import Deals from './Deals';
@@ -73,6 +73,11 @@ export default function AppShell() {
   const handleViewHealth = (client) => {
     setFocusClientId(client.id);
     setTab('health');
+  };
+
+  const handleOpenClientPanel = (client) => {
+    setFullPanelClient(client);
+    setFullPanelClients([client]);
   };
 
   const handleViewOnboarding = (client) => {
@@ -171,8 +176,8 @@ export default function AppShell() {
         {tab === 'proposal' && <ProposalGeneratorInner handoff={proposalHandoff} onHandoffConsumed={() => setProposalHandoff(null)} />}
         {tab === 'clients' && <Clients onViewHealth={handleViewHealth} onViewOnboarding={handleViewOnboarding} onViewDetail={setDetailClient} onOpenFullPanel={(client, allClients) => { setFullPanelClient(client); setFullPanelClients(allClients || []); }} />}
         {tab === 'onboarding' && <Onboarding focusClientId={focusClientId} />}
-        {tab === 'health' && <HealthRenewals focusClientId={focusClientId} />}
-        {tab === 'renewals' && <Renewals />}
+        {tab === 'health' && <Health focusClientId={focusClientId} />}
+        {tab === 'renewals' && <Renewals onOpenClientPanel={handleOpenClientPanel} />}
         {tab === 'deals' && <Deals onRenewalProposal={(data) => { handleProposalHandoff(data); }} onViewClient={(clientId) => { setTab('clients'); }} onNavigate={setTab} />}
         {tab === 'sprints' && <Sprints />}
         {tab === 'marketing' && <Marketing />}

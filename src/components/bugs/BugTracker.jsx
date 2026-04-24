@@ -21,12 +21,9 @@ const STATUS_STYLES = {
 };
 const PRIORITY_ORDER = { Critical: 0, High: 1, Medium: 2, Low: 3 };
 const STATUS_OPEN_ORDER = { Open: 0, 'In Progress': 1, 'Waiting on Client': 2, Resolved: 3, Closed: 4 };
-
-const REPORTERS = ['Chris', 'Martinique', 'George', 'Sreeja', 'Elena'];
-const ASSIGNEES = ['Chris', 'Martinique', 'Sreeja', 'Elena'];
-const CATEGORIES = ['Platform Bug', 'Integration Issue', 'Onboarding Issue', 'Data Issue', 'UI Issue', 'Other'];
 const STATUSES = ['Open', 'In Progress', 'Waiting on Client', 'Resolved', 'Closed'];
 const PRIORITIES = ['Low', 'Medium', 'High', 'Critical'];
+const ASSIGNEES = ['Chris', 'Martinique', 'Sreeja', 'Elena'];
 
 function fmtDate(d) {
   if (!d) return '—';
@@ -85,6 +82,8 @@ export default function BugTracker() {
     setSelected(updated);
   };
 
+  const save = (id, field) => (value) => handleUpdate(id, field, value);
+
   // Stats
   const open = bugs.filter(b => b.status === 'Open' || b.status === 'In Progress' || b.status === 'Waiting on Client');
   const critical = bugs.filter(b => b.priority === 'Critical' && b.status !== 'Resolved' && b.status !== 'Closed');
@@ -94,34 +93,34 @@ export default function BugTracker() {
     ? Math.round(resolvedWithDays.reduce((sum, b) => sum + differenceInDays(new Date(b.dateResolved), new Date(b.dateLogged)), 0) / resolvedWithDays.length)
     : null;
 
-  // Filtered
+  // Filter
   let filtered = [...bugs];
   if (filter === 'Open') filtered = filtered.filter(b => b.status === 'Open' || b.status === 'In Progress' || b.status === 'Waiting on Client');
-  else if (filter === 'In Progress') filtered = filtered.filter(b => b.status === 'In Progress');
   else if (filter === 'Critical') filtered = filtered.filter(b => b.priority === 'Critical');
-  else if (filter === 'Resolved') filtered = filtered.filter(b => b.status === 'Resolved' || b.status === 'Closed');
+  else if (filter === 'In Progress') filtered = filtered.filter(b => b.status === 'In Progress');
+  else if (filter === 'Resolved') filtered = filtered.filter(b => b.status === 'Resolved');
   if (clientFilter) filtered = filtered.filter(b => b.clientId === clientFilter);
 
-  // Sort: open/critical first
   filtered = filtered.sort((a, b) => {
     const sd = STATUS_OPEN_ORDER[a.status] - STATUS_OPEN_ORDER[b.status];
     if (sd !== 0) return sd;
     return (PRIORITY_ORDER[a.priority] ?? 4) - (PRIORITY_ORDER[b.priority] ?? 4);
   });
 
-  const save = (id, field) => (value) => handleUpdate(id, field, value);
-
   return (
     <div className="flex-1 bg-[#F7F7F8] overflow-y-auto p-8 font-dm">
-      {/* Stats */}
+      {/* Stats — clickable */}
       <div className="grid grid-cols-4 gap-4 mb-6">
         {[
-          { label: 'Open bugs', value: open.length, color: '#8403C5', onClick: () => setFilter('Open') },
-          { label: 'Critical', value: critical.length, color: '#B91C1C', onClick: () => setFilter('Critical') },
-          { label: 'Resolved this month', value: resolvedThisMonth.length, color: '#15803D', onClick: () => {} },
-          { label: 'Avg days to resolve', value: avgDays !== null ? `${avgDays}d` : '—', color: '#1D4ED8', onClick: () => {} },
+          { label: 'Open bugs', value: open.length, color: '#8403C5', filterVal: 'Open' },
+          { label: 'Critical', value: critical.length, color: '#B91C1C', filterVal: 'Critical' },
+          { label: 'Resolved this month', value: resolvedThisMonth.length, color: '#15803D', filterVal: 'Resolved' },
+          { label: 'Avg days to resolve', value: avgDays !== null ? `${avgDays}d` : '—', color: '#1D4ED8', filterVal: null },
         ].map(s => (
-          <div key={s.label} className="bg-white rounded-xl p-6 cursor-pointer hover:shadow-md transition-shadow" onClick={s.onClick} style={{ boxShadow: '0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04)', borderLeft: `4px solid ${s.color}` }}>
+          <div key={s.label}
+            className={`bg-white rounded-xl p-6 ${s.filterVal ? 'cursor-pointer hover:shadow-md transition-all' : ''} ${filter === s.filterVal ? 'ring-2 ring-[#8403C5]/30' : ''}`}
+            style={{ boxShadow: '0 1px 3px rgba(0,0,0,0.06)', borderLeft: `4px solid ${s.color}` }}
+            onClick={() => s.filterVal && setFilter(s.filterVal)}>
             <p className="text-[11px] font-bold text-[#9CA3AF] uppercase tracking-[0.08em] mb-1">{s.label}</p>
             <p className="text-3xl font-bold text-[#111827]">{s.value}</p>
           </div>
@@ -131,7 +130,7 @@ export default function BugTracker() {
       {/* Toolbar */}
       <div className="flex items-center justify-between gap-3 mb-4 flex-wrap">
         <div className="flex items-center gap-1.5 flex-wrap">
-          {['All', 'Open', 'In Progress', 'Critical', 'Resolved'].map(f => (
+          {['All', 'Open', 'Critical', 'In Progress', 'Resolved'].map(f => (
             <button key={f} onClick={() => setFilter(f)}
               className={`px-3.5 py-2 text-xs font-medium rounded-lg transition-colors ${filter === f ? 'bg-[#242450] text-white' : 'bg-white text-[#374151] hover:bg-[#F9FAFB]'}`}
               style={filter !== f ? { border: '1.5px solid #E5E7EB' } : {}}>
@@ -158,7 +157,7 @@ export default function BugTracker() {
       {loading ? (
         <div className="flex items-center justify-center h-48"><div className="w-6 h-6 border-2 border-[#8403C5]/20 border-t-[#8403C5] rounded-full animate-spin" /></div>
       ) : (
-        <div className="bg-white rounded-xl overflow-x-auto" style={{ boxShadow: '0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04)' }}>
+        <div className="bg-white rounded-xl overflow-x-auto" style={{ boxShadow: '0 1px 3px rgba(0,0,0,0.06)' }}>
           <table className="w-full text-sm min-w-[900px]">
             <thead>
               <tr className="border-b border-[#EBEBEB]">
@@ -220,7 +219,7 @@ export default function BugTracker() {
               {filtered.length === 0 && (
                 <tr>
                   <td colSpan={9} className="px-4 py-16 text-center">
-                    <p className="text-sm text-[#6B7280]">No bugs logged. Either everything's working or nobody's checked yet.</p>
+                    <p className="text-sm text-[#6B7280]">No bugs found.</p>
                   </td>
                 </tr>
               )}
@@ -229,20 +228,21 @@ export default function BugTracker() {
         </div>
       )}
 
-      {deleteId && (
-        <ConfirmDialog
-          message="Are you sure you want to delete this bug report? This cannot be undone."
-          onConfirm={() => handleDelete(deleteId)}
-          onCancel={() => setDeleteId(null)}
-        />
-      )}
-
+      {/* Side panel (replaces full-page BugDetail) */}
       {selected && (
         <BugSidePanel
           bug={selected}
           clients={clients}
           onClose={() => setSelected(null)}
           onUpdate={handleDetailUpdate}
+        />
+      )}
+
+      {deleteId && (
+        <ConfirmDialog
+          message="Are you sure you want to delete this bug report? This cannot be undone."
+          onConfirm={() => handleDelete(deleteId)}
+          onCancel={() => setDeleteId(null)}
         />
       )}
     </div>

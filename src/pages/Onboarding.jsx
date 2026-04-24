@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
 import { formatDistanceToNow } from 'date-fns';
 import ChecklistView from '@/components/onboarding/ChecklistView';
+import OnboardingSummaryPanel from '@/components/onboarding/OnboardingSummaryPanel';
 import { ONBOARDING_PHASES, OWNER_INITIALS, OWNER_COLORS } from '@/lib/csData';
 import { ClipboardList } from 'lucide-react';
 
@@ -44,7 +45,8 @@ export default function Onboarding({ focusClientId }) {
   const [clients, setClients] = useState([]);
   const [records, setRecords] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [checklist, setChecklist] = useState(null); // { client, record }
+  const [checklist, setChecklist] = useState(null);
+  const [summaryPanel, setSummaryPanel] = useState(null);
 
   const load = async () => {
     const [cls, recs] = await Promise.all([
@@ -71,13 +73,14 @@ export default function Onboarding({ focusClientId }) {
       lastUpdated: new Date().toISOString(),
     });
     setChecklist(null);
+    setSummaryPanel(null);
     load();
   };
 
   const handleGoLive = async () => {
-    if (!window.confirm(`Mark ${checklist.client.name} as Live?`)) return;
     await base44.entities.Client.update(checklist.client.id, { status: 'Live' });
     setChecklist(null);
+    setSummaryPanel(null);
     load();
   };
 
@@ -87,7 +90,6 @@ export default function Onboarding({ focusClientId }) {
     return { client: c, record: rec, tasks };
   });
 
-  const active = joined.filter(j => j.tasks.some(t => t.completed));
   const notStarted = joined.filter(j => !j.tasks.some(t => t.completed));
   const avgPct = joined.length > 0 ? Math.round(joined.reduce((s, j) => s + getProgress(j.tasks), 0) / joined.length) : 0;
 
@@ -132,11 +134,19 @@ export default function Onboarding({ focusClientId }) {
                 const curPhase = getCurrentPhase(tasks);
                 const phaseLabel = ONBOARDING_PHASES.find(p => p.phase === curPhase)?.label || '';
                 return (
-                  <tr key={c.id} className={`border-b border-ew-border last:border-0 hover:bg-navy/[0.02] transition-colors cursor-pointer ${i % 2 === 1 ? 'bg-[#FAFBFE]' : 'bg-white'}`}
-                    onClick={() => setChecklist({ client: c, record: record || { tasks: '[]' } })}>
-                    <td className="px-4 py-3">
-                      <p className="font-semibold text-navy text-sm">{c.name}</p>
-                      <p className="text-xs text-ew-muted">{c.contactName}</p>
+                  <tr
+                    key={c.id}
+                    className={`border-b border-ew-border last:border-0 hover:bg-navy/[0.02] transition-colors cursor-pointer ${i % 2 === 1 ? 'bg-[#FAFBFE]' : 'bg-white'}`}
+                    onClick={() => setSummaryPanel({ client: c, record: record || { tasks: '[]' }, tasks })}
+                  >
+                    <td className="px-4 py-3" onClick={e => e.stopPropagation()}>
+                      <button
+                        className="text-left group"
+                        onClick={() => setSummaryPanel({ client: c, record: record || { tasks: '[]' }, tasks })}
+                      >
+                        <p className="font-semibold text-navy text-sm group-hover:underline">{c.name}</p>
+                        <p className="text-xs text-ew-muted">{c.contactName}</p>
+                      </button>
                     </td>
                     <td className="px-4 py-3">
                       <span className="text-sm text-ew-body">Phase {curPhase} — {phaseLabel}</span>
@@ -158,7 +168,7 @@ export default function Onboarding({ focusClientId }) {
                       </span>
                     </td>
                     <td className="px-4 py-3"><OwnerAvatar owner={c.owner} /></td>
-                    <td className="px-4 py-3">
+                    <td className="px-4 py-3" onClick={e => e.stopPropagation()}>
                       <button
                         onClick={() => setChecklist({ client: c, record: record || { tasks: '[]' } })}
                         className="flex items-center gap-1 text-xs font-medium px-2.5 py-1.5 bg-navy-tint text-navy border border-navy/10 rounded-lg hover:bg-navy hover:text-white transition-colors"
@@ -175,6 +185,19 @@ export default function Onboarding({ focusClientId }) {
             </tbody>
           </table>
         </div>
+      )}
+
+      {summaryPanel && !checklist && (
+        <OnboardingSummaryPanel
+          client={summaryPanel.client}
+          record={summaryPanel.record}
+          tasks={summaryPanel.tasks}
+          onClose={() => setSummaryPanel(null)}
+          onOpenChecklist={() => {
+            setChecklist({ client: summaryPanel.client, record: summaryPanel.record });
+            setSummaryPanel(null);
+          }}
+        />
       )}
 
       {checklist && (
