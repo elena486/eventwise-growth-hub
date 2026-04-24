@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { base44 } from '@/api/base44Client';
 import { format, differenceInDays, isPast } from 'date-fns';
 import {
-  X, Mail, Phone, Check, ChevronDown, ChevronUp, Trash2, AlertTriangle, MessageSquareOff
+  X, Mail, Phone, Check, ChevronDown, ChevronUp, Trash2, AlertTriangle, MessageSquareOff, Plus, ExternalLink
 } from 'lucide-react';
 import { STATUS_STYLES, HEALTH_DOT, OWNER_INITIALS, OWNER_COLORS, ONBOARDING_PHASES, calcHealth, initTasks } from '@/lib/csData';
 
@@ -57,6 +57,21 @@ function ScoreRow({ label, value, onChange }) {
   );
 }
 
+const BUG_PRIORITY_STYLES = {
+  'Low': 'bg-[#F3F4F6] text-[#6B7280]',
+  'Medium': 'bg-[#DBEAFE] text-[#1D4ED8]',
+  'High': 'bg-[#FEF9C3] text-[#A16207]',
+  'Critical': 'bg-[#FEE2E2] text-[#B91C1C]',
+};
+const BUG_STATUS_STYLES = {
+  'Open': 'bg-[#F3E8FF] text-[#7E22CE]',
+  'In Progress': 'bg-[#DBEAFE] text-[#1D4ED8]',
+  'Waiting on Client': 'bg-[#FEF9C3] text-[#A16207]',
+  'Resolved': 'bg-[#DCFCE7] text-[#15803D]',
+  'Closed': 'bg-[#F3F4F6] text-[#6B7280]',
+};
+const BUG_STATUS_ORDER = { Open: 0, 'In Progress': 1, 'Waiting on Client': 2, Resolved: 3, Closed: 4 };
+
 export default function ClientFullPanel({ client: initialClient, onClose, onUpdated, onDelete, onViewOnboarding }) {
   const [client, setClient] = useState(initialClient);
   const [healthRecord, setHealthRecord] = useState(null);
@@ -66,6 +81,9 @@ export default function ClientFullPanel({ client: initialClient, onClose, onUpda
   const [deleteConfirm, setDeleteConfirm] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [notes, setNotes] = useState(initialClient.notes || '');
+  const [activeTab, setActiveTab] = useState('overview');
+  const [bugs, setBugs] = useState([]);
+  const [bugsLoading, setBugsLoading] = useState(false);
   const notesTimer = useRef(null);
   const saveTimer = useRef(null);
 
@@ -77,6 +95,28 @@ export default function ClientFullPanel({ client: initialClient, onClose, onUpda
   useEffect(() => {
     base44.entities.HealthScore.filter({ clientId: initialClient.id }).then(r => setHealthRecord(r[0] || null));
     base44.entities.OnboardingRecord.filter({ clientId: initialClient.id }).then(r => setOnboardingRecord(r[0] || null));
+  }, [initialClient.id]);
+
+  // Load bugs + subscribe to live updates
+  useEffect(() => {
+    setBugsLoading(true);
+    base44.entities.Bug.filter({ clientId: initialClient.id })
+      .then(b => { setBugs(b); setBugsLoading(false); })
+      .catch(() => setBugsLoading(false));
+
+    const unsub = base44.entities.Bug.subscribe((event) => {
+      if (event.type === 'create' && event.data?.clientId === initialClient.id) {
+        setBugs(prev => [event.data, ...prev]);
+      } else if (event.type === 'update' && event.data?.clientId === initialClient.id) {
+        setBugs(prev => prev.map(b => b.id === event.id ? event.data : b));
+      } else if (event.type === 'update' && event.data?.clientId !== initialClient.id) {
+        // Bug was re-assigned away from this client
+        setBugs(prev => prev.filter(b => b.id !== event.id));
+      } else if (event.type === 'delete') {
+        setBugs(prev => prev.filter(b => b.id !== event.id));
+      }
+    });
+    return unsub;
   }, [initialClient.id]);
 
   const autoSave = useCallback((field, value) => {
@@ -217,10 +257,41 @@ export default function ClientFullPanel({ client: initialClient, onClose, onUpda
               </span>
             )}
           </div>
+
+          {/* Tab nav */}
+          <div className="flex items-center gap-0 mt-4 border-b border-[#E5E7EB]">
+            {[
+              { id: 'overview', label: 'Overview' },
+              { id: 'bugs', label: `Bugs${bugs.length > 0 ? ` (${bugs.length})` : ''}` },
+            ].map(tab => (
+              <button
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id)}
+                className={`px-4 py-2 text-sm font-medium transition-colors relative whitespace-nowrap ${
+                  activeTab === tab.id
+                    ? 'text-[#8403C5]'
+                    : 'text-[#6B7280] hover:text-[#374151]'
+                }`}
+              >
+                {tab.label}
+                {activeTab === tab.id && (
+                  <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-[#8403C5] rounded-t-full" />
+                )}
+              </button>
+            ))}
+          </div>
         </div>
 
         {/* Body */}
         <div className="flex-1 overflow-y-auto px-6 py-5 space-y-0">
+        {activeTab === 'bugs' && (
+          <BugsTabContent
+            client={client}
+            bugs={bugs}
+            loading={bugsLoading}
+          />
+        )}
+        {activeTab === 'overview' && (<>
 
           {/* SECTION 1: Contact */}
           <SectionTitle>Contact Details</SectionTitle>
@@ -435,8 +506,89 @@ export default function ClientFullPanel({ client: initialClient, onClose, onUpda
               </button>
             )}
           </div>
+        </>)}
         </div>
       </div>
+    </div>
+  );
+}
+
+function BugsTabContent({ client, bugs, loading }) {
+  const sorted = [...bugs].sort((a, b) => {
+    const so = (BUG_STATUS_ORDER[a.status] ?? 5) - (BUG_STATUS_ORDER[b.status] ?? 5);
+    if (so !== 0) return so;
+    return new Date(b.dateLogged || 0) - new Date(a.dateLogged || 0);
+  });
+
+  const handleLogBug = async () => {
+    const all = await base44.entities.Bug.list('-created_date', 500);
+    const nextNum = all.length > 0 ? Math.max(...all.map(b => b.bugNumber || 0)) + 1 : 1;
+    await base44.entities.Bug.create({
+      bugNumber: nextNum,
+      title: '',
+      priority: 'Medium',
+      status: 'Open',
+      reportedBy: 'Martinique',
+      category: 'Platform Bug',
+      dateLogged: format(new Date(), 'yyyy-MM-dd'),
+      clientId: client.id,
+      clientName: client.name,
+    });
+  };
+
+  if (loading) {
+    return <div className="flex items-center justify-center h-32"><div className="w-5 h-5 border-2 border-[#8403C5]/20 border-t-[#8403C5] rounded-full animate-spin" /></div>;
+  }
+
+  return (
+    <div>
+      <div className="flex items-center justify-between mb-4">
+        <p className="text-[11px] font-bold text-[#9CA3AF] uppercase tracking-[0.08em]">{bugs.length} bug{bugs.length !== 1 ? 's' : ''} logged</p>
+        <button
+          onClick={handleLogBug}
+          className="flex items-center gap-1 text-xs font-semibold text-[#8403C5] bg-[#F3E8FF] hover:bg-[#EDE9FE] px-3 py-1.5 rounded-lg transition-colors"
+        >
+          <Plus className="w-3 h-3" /> Log Bug for this client
+        </button>
+      </div>
+
+      {sorted.length === 0 ? (
+        <div className="text-center py-12 border border-dashed border-[#E5E7EB] rounded-xl">
+          <p className="text-sm text-[#9CA3AF] mb-3">No bugs logged for this client yet.</p>
+          <button
+            onClick={handleLogBug}
+            className="flex items-center gap-1.5 mx-auto text-xs font-semibold text-[#8403C5] bg-[#F3E8FF] hover:bg-[#EDE9FE] px-4 py-2 rounded-lg transition-colors"
+          >
+            <Plus className="w-3.5 h-3.5" /> Log Bug
+          </button>
+        </div>
+      ) : (
+        <div className="space-y-2">
+          {sorted.map(b => (
+            <div key={b.id} className="border border-[#E5E7EB] rounded-xl p-3.5 bg-white hover:border-[#8403C5]/30 transition-colors">
+              <div className="flex items-start justify-between gap-2 mb-1.5">
+                <p className="text-sm font-semibold text-[#111827] leading-tight">{b.title || <span className="text-[#9CA3AF] italic font-normal">Untitled</span>}</p>
+                <a
+                  href="/AppShell?tab=bugs"
+                  className="shrink-0 flex items-center gap-1 text-[11px] font-semibold text-[#8403C5] hover:text-[#6d02a3] whitespace-nowrap transition-colors"
+                  title="View in Bug Tracker"
+                >
+                  <ExternalLink className="w-3 h-3" /> View →
+                </a>
+              </div>
+              <div className="flex items-center gap-1.5 flex-wrap mb-1.5">
+                {b.priority && <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded ${BUG_PRIORITY_STYLES[b.priority]}`}>{b.priority}</span>}
+                {b.status && <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded ${BUG_STATUS_STYLES[b.status]}`}>{b.status}</span>}
+                {b.category && <span className="text-[10px] font-medium text-[#6B7280] bg-[#F3F4F6] px-1.5 py-0.5 rounded">{b.category}</span>}
+                {b.dateLogged && <span className="text-[10px] text-[#9CA3AF]">{b.dateLogged}</span>}
+              </div>
+              {b.description && (
+                <p className="text-xs text-[#6B7280] truncate">{b.description}</p>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
