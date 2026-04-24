@@ -57,6 +57,13 @@ export default function Pipeline({ onProposalHandoff, onViewDeals }) {
     });
   }, []);
 
+  // Listen for undo restore events
+  useEffect(() => {
+    const handler = () => refresh();
+    window.addEventListener('pipeline-refresh', handler);
+    return () => window.removeEventListener('pipeline-refresh', handler);
+  }, []);
+
   // Close month picker on outside click
   useEffect(() => {
     const handler = (e) => {

@@ -111,7 +111,7 @@ function AssetCard({ asset, onEdit, onDelete }) {
 }
 
 function TypeSection({ type, items, onEdit, onDelete }) {
-  const [open, setOpen] = useState(true);
+  const [open, setOpen] = useState(false);
   return (
     <div className="bg-white border border-ew-border rounded-xl overflow-hidden">
       <button

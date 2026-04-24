@@ -3,7 +3,7 @@ import { format } from 'date-fns';
 import StageBadge from './Stagebadge';
 import PlanBadge from './PlanBadge';
 import InlineCell from '@/components/shared/InlineCell';
-import { ChevronUp, ChevronDown, ChevronsUpDown, FileText, Trash2, Check, X, Pencil, Settings2, RotateCcw, AlertTriangle } from 'lucide-react';
+import { ChevronUp, ChevronDown, ChevronsUpDown, FileText, Trash2, Check, X, Pencil, Settings2, RotateCcw, AlertTriangle, Undo2 } from 'lucide-react';
 
 const STAGE_ORDER = ['New Lead', 'Contacted', 'Discovery Call', 'Demo Booked', 'Proposal Sent', 'Negotiation', 'Closed Won', 'Closed Lost', 'On Hold'];
 const PLANS = ['Starter', 'Growth', 'Scale', 'Professional', 'Custom'];
@@ -200,11 +200,47 @@ function ColumnToggle({ visible, onToggle, onReset }) {
   );
 }
 
+// Undo Toast
+function UndoToast({ message, onUndo, onDismiss }) {
+  return (
+    <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[9999] flex items-center gap-3 bg-[#1a1a2e] text-white text-sm font-medium px-5 py-3 rounded-xl shadow-2xl animate-in fade-in slide-in-from-bottom-2">
+      <span>{message}</span>
+      <button onClick={onUndo} className="flex items-center gap-1.5 px-3 py-1 bg-white/15 hover:bg-white/25 rounded-lg text-xs font-semibold transition-colors">
+        <Undo2 className="w-3 h-3" /> Undo
+      </button>
+      <button onClick={onDismiss} className="text-white/50 hover:text-white ml-1"><X className="w-3.5 h-3.5" /></button>
+    </div>
+  );
+}
+
 export default function LeadTable({ leads, onDelete, onProposal, onUpdateField, onMarkLost, newLeadId, showOwnerSections, onRowClick, selectedLeadId, isLostView }) {
   const [sortCol, setSortCol] = useState('stage');
   const [sortDir, setSortDir] = useState('asc');
   const [deletingId, setDeletingId] = useState(null);
   const [visibleCols, setVisibleCols] = useState(() => loadVisibleCols());
+  const [undoToast, setUndoToast] = useState(null); // { lead, timer }
+  const undoRef = useRef(null);
+
+  const handleDelete = async (lead) => {
+    setDeletingId(null);
+    // Delete immediately
+    await onDelete(lead.id);
+    // Show undo toast for 8 seconds
+    clearTimeout(undoRef.current);
+    setUndoToast({ lead });
+    undoRef.current = setTimeout(() => setUndoToast(null), 8000);
+  };
+
+  const handleUndo = async () => {
+    if (!undoToast) return;
+    clearTimeout(undoRef.current);
+    const { lead } = undoToast;
+    setUndoToast(null);
+    const { id, created_date, updated_date, ...rest } = lead;
+    const { base44: b44 } = await import('@/api/base44Client');
+    await b44.entities.Lead.create(rest);
+    window.dispatchEvent(new CustomEvent('pipeline-refresh'));
+  };
 
   const toggleCol = (key) => {
     setVisibleCols(prev => {
@@ -349,7 +385,7 @@ export default function LeadTable({ leads, onDelete, onProposal, onUpdateField, 
             )}
             {deletingId === lead.id ? (
               <div className="flex items-center gap-1">
-                <button onClick={() => { onDelete(lead.id); setDeletingId(null); }} className="p-1.5 text-white bg-red-500 hover:bg-red-600 rounded-lg transition-colors"><Check className="w-3.5 h-3.5" /></button>
+                <button onClick={() => handleDelete(lead)} className="p-1.5 text-white bg-red-500 hover:bg-red-600 rounded-lg transition-colors"><Check className="w-3.5 h-3.5" /></button>
                 <button onClick={() => setDeletingId(null)} className="p-1.5 text-ew-muted hover:text-navy hover:bg-ew-bg rounded-lg transition-colors"><X className="w-3.5 h-3.5" /></button>
               </div>
             ) : (
@@ -377,31 +413,40 @@ export default function LeadTable({ leads, onDelete, onProposal, onUpdateField, 
   };
 
   return (
-    <div className="bg-white border border-ew-border rounded-xl overflow-x-auto">
-      {/* Column toggle toolbar */}
-      <div className="flex justify-end px-4 py-2 border-b border-ew-border">
-        <ColumnToggle visible={visibleCols} onToggle={toggleCol} onReset={resetCols} />
+    <>
+      <div className="bg-white border border-ew-border rounded-xl overflow-x-auto">
+        {/* Column toggle toolbar */}
+        <div className="flex justify-end px-4 py-2 border-b border-ew-border">
+          <ColumnToggle visible={visibleCols} onToggle={toggleCol} onReset={resetCols} />
+        </div>
+        <table className="w-full text-sm">
+          <thead className="bg-ew-footer border-b border-ew-border">
+            <tr>
+              {show('company') && <Th label="Company" col="company" />}
+              {show('owner') && <Th label="Owner" />}
+              {show('plan') && <Th label="Plan" />}
+              {show('deal') && <Th label="Deal value" col="deal" />}
+              {show('stage') && <Th label="Stage" col="stage" />}
+              {show('probability') && <Th label="Prob %" col="probability" />}
+              {show('expectedClose') && <Th label="Expected close" />}
+              {show('nextAction') && <Th label="Next action" />}
+              {show('activity') && <Th label="Last activity" col="activity" />}
+              {show('notes') && <Th label="Notes" />}
+              {show('accounting') && <Th label="Accounting" />}
+              {isLostView && <Th label="Lost reason" />}
+              <th className="px-4 py-3" />
+            </tr>
+          </thead>
+          <tbody>{buildRows()}</tbody>
+        </table>
       </div>
-      <table className="w-full text-sm">
-        <thead className="bg-ew-footer border-b border-ew-border">
-          <tr>
-            {show('company') && <Th label="Company" col="company" />}
-            {show('owner') && <Th label="Owner" />}
-            {show('plan') && <Th label="Plan" />}
-            {show('deal') && <Th label="Deal value" col="deal" />}
-            {show('stage') && <Th label="Stage" col="stage" />}
-            {show('probability') && <Th label="Prob %" col="probability" />}
-            {show('expectedClose') && <Th label="Expected close" />}
-            {show('nextAction') && <Th label="Next action" />}
-            {show('activity') && <Th label="Last activity" col="activity" />}
-            {show('notes') && <Th label="Notes" />}
-            {show('accounting') && <Th label="Accounting" />}
-            {isLostView && <Th label="Lost reason" />}
-            <th className="px-4 py-3" />
-          </tr>
-        </thead>
-        <tbody>{buildRows()}</tbody>
-      </table>
-    </div>
+      {undoToast && (
+        <UndoToast
+          message="Lead deleted"
+          onUndo={handleUndo}
+          onDismiss={() => { clearTimeout(undoRef.current); setUndoToast(null); }}
+        />
+      )}
+    </>
   );
 }

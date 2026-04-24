@@ -257,42 +257,51 @@ export default function Sidebar({ form, setForm, onGenerate, onDownload, hasProp
 
         {/* ── ACCOUNTING ── */}
         <div className="px-5 pt-4 pb-4 space-y-3">
-          <div className="flex items-center justify-between">
-            <SectionHeader label="Accounting service" />
-            <Switch
-              checked={form.includeAccounting}
-              onCheckedChange={v => updateField('includeAccounting', v)}
-              id="accounting-toggle"
-            />
+          <SectionHeader label="Accounting service" />
+
+          <div>
+            <Label className="text-xs font-medium text-ew-body mb-1.5 block">Service type</Label>
+            <Select value={form.accountingServiceType || 'not_included'} onValueChange={v => updateField('accountingServiceType', v)}>
+              <SelectTrigger className="h-9 text-sm">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="not_included">Not included</SelectItem>
+                <SelectItem value="included_in_plan">Included in plan</SelectItem>
+                <SelectItem value="included_in_fee">Included in accounting service fee</SelectItem>
+                <SelectItem value="separate_fee">Separate fee</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
 
-          {form.includeAccounting && (
-            <>
-              <div>
-                <Label className="text-xs font-medium text-ew-body mb-1.5 block">Price / yr</Label>
-                <Input
-                  placeholder="£7,100"
-                  value={form.accountingPrice}
-                  onChange={e => updateField('accountingPrice', e.target.value)}
-                  className="h-9 text-sm"
-                />
-              </div>
-              <div className="space-y-2">
-                {DEFAULT_ACCOUNTING_SERVICES.map((service, i) => (
-                  <div key={i} className="flex items-start gap-2.5">
-                    <Checkbox
-                      checked={form.accountingServices[i]}
-                      onCheckedChange={() => toggleService(i)}
-                      id={`svc-${i}`}
-                      className="mt-0.5"
-                    />
-                    <Label htmlFor={`svc-${i}`} className="text-xs text-ew-body leading-snug cursor-pointer">
-                      {service}
-                    </Label>
-                  </div>
-                ))}
-              </div>
-            </>
+          {(form.accountingServiceType === 'separate_fee' || form.accountingServiceType === 'included_in_fee') && (
+            <div>
+              <Label className="text-xs font-medium text-ew-body mb-1.5 block">Price / yr</Label>
+              <Input
+                placeholder="£7,100"
+                value={form.accountingPrice}
+                onChange={e => updateField('accountingPrice', e.target.value)}
+                className="h-9 text-sm"
+              />
+            </div>
+          )}
+
+          {form.accountingServiceType !== 'not_included' && (
+            <div className="space-y-2">
+              {DEFAULT_ACCOUNTING_SERVICES.map((service, i) => (
+                <div key={i} className="flex items-start gap-2.5">
+                  <Checkbox
+                    checked={form.accountingServices[i]}
+                    onCheckedChange={() => toggleService(i)}
+                    id={`svc-${i}`}
+                    className="mt-0.5"
+                  />
+                  <Label htmlFor={`svc-${i}`} className="text-xs text-ew-body leading-snug cursor-pointer">
+                    {service}
+                  </Label>
+                </div>
+              ))}
+            </div>
           )}
         </div>
 

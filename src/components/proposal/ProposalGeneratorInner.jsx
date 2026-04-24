@@ -54,6 +54,13 @@ function peekRefNumber() {
   return `EW-${year}-${String(stored + 1).padStart(3, '0')}`;
 }
 
+const ACCOUNTING_TYPE_LABELS = {
+  not_included: 'Not included',
+  included_in_plan: 'Included in plan',
+  included_in_fee: 'Included in accounting service fee',
+  separate_fee: 'Separate fee',
+};
+
 const getInitialForm = () => ({
   companyName: '',
   contactName: '',
@@ -62,7 +69,7 @@ const getInitialForm = () => ({
   validUntil: format(addDays(new Date(), 30), 'yyyy-MM-dd'),
   plan: 'starter',
   customPrice: '',
-  includeAccounting: true,
+  accountingServiceType: 'separate_fee',
   accountingPrice: '7100',
   accountingServices: DEFAULT_ACCOUNTING_SERVICES.map(() => true),
   onboarding: 'plus',
@@ -80,6 +87,8 @@ function buildProposalData(form, refNumber) {
     : 0;
   const enabledServices = DEFAULT_ACCOUNTING_SERVICES.filter((_, i) => form.accountingServices[i]);
   const accountingPriceRaw = form.accountingPrice ? parseFloat(form.accountingPrice.replace(/[^0-9.]/g, '')) : 7100;
+  const accountingServiceType = form.accountingServiceType || 'separate_fee';
+  const includeAccounting = accountingServiceType !== 'not_included';
   const onboardingPkg = ONBOARDING_PACKAGES[form.onboarding];
 
   return {
@@ -95,7 +104,9 @@ function buildProposalData(form, refNumber) {
     standardPrice: plan.price,
     discountPercent,
     planFeatures: UPDATED_PLAN_FEATURES[form.plan],
-    includeAccounting: form.includeAccounting,
+    includeAccounting,
+    accountingServiceType,
+    accountingServiceLabel: ACCOUNTING_TYPE_LABELS[accountingServiceType],
     accountingPrice: accountingPriceRaw,
     accountingPriceFormatted: accountingPriceRaw.toLocaleString(),
     accountingServices: enabledServices,
@@ -408,6 +419,13 @@ export default function ProposalGeneratorInner({ handoff, onHandoffConsumed }) {
     }, 1200);
   }, [form, refNumber]);
 
+  const [showSendModal, setShowSendModal] = useState(false);
+  const [sendEmail, setSendEmail] = useState('');
+  const [sendMessage, setSendMessage] = useState('');
+
+  // Sync email from form
+  useEffect(() => { setSendEmail(form.contactEmail || ''); }, [form.contactEmail]);
+
   return (
     <div className="flex flex-1 font-dm overflow-hidden">
       <Sidebar
@@ -418,9 +436,70 @@ export default function ProposalGeneratorInner({ handoff, onHandoffConsumed }) {
         hasProposal={hasGenerated}
         leads={leads}
       />
-      <div ref={containerRef} className="flex-1 bg-ew-bg overflow-y-auto p-8">
-        <ProposalDocument proposalData={proposalData} />
+      <div ref={containerRef} className="flex-1 bg-ew-bg overflow-y-auto">
+        {/* Action bar above preview */}
+        <div className="sticky top-0 z-20 bg-white border-b border-ew-border px-6 py-3 flex items-center justify-between shadow-sm">
+          <span className="text-sm font-semibold text-navy">Proposal Preview</span>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setShowSendModal(true)}
+              className="flex items-center gap-2 px-4 py-2 text-sm font-semibold bg-[#8403C5] text-white rounded-lg hover:bg-[#7002A8] transition-colors shadow-sm"
+            >
+              ✉️ Send to client
+            </button>
+            <button
+              onClick={handleDownload}
+              className="flex items-center gap-2 px-4 py-2 text-sm font-semibold bg-navy text-white rounded-lg hover:bg-navy/90 transition-colors shadow-sm"
+            >
+              ⬇ Download PDF
+            </button>
+          </div>
+        </div>
+        <div className="p-8">
+          <ProposalDocument proposalData={proposalData} />
+        </div>
       </div>
+
+      {/* Send to client modal */}
+      {showSendModal && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4" onClick={() => setShowSendModal(false)}>
+          <div className="bg-white rounded-xl shadow-2xl w-full max-w-md p-6" onClick={e => e.stopPropagation()}>
+            <h3 className="text-base font-bold text-navy mb-4">Send proposal to client</h3>
+            <div className="space-y-3">
+              <div>
+                <label className="block text-xs font-medium text-ew-muted mb-1">Recipient email</label>
+                <input
+                  type="email"
+                  className="w-full border border-ew-border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#8403C5]/20"
+                  value={sendEmail}
+                  onChange={e => setSendEmail(e.target.value)}
+                  placeholder="client@company.com"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-ew-muted mb-1">Optional message</label>
+                <textarea
+                  className="w-full border border-ew-border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#8403C5]/20 resize-none h-24"
+                  value={sendMessage}
+                  onChange={e => setSendMessage(e.target.value)}
+                  placeholder="Hi [Name], please find your proposal attached…"
+                />
+              </div>
+            </div>
+            <p className="text-xs text-ew-muted mt-3 mb-4">This will open the PDF in a new tab — download it and attach to your email client.</p>
+            <div className="flex justify-end gap-2">
+              <button onClick={() => setShowSendModal(false)} className="px-4 py-2 text-sm text-ew-body hover:bg-ew-bg rounded-lg transition-colors">Cancel</button>
+              <button
+                onClick={() => { handleDownload(); setShowSendModal(false); }}
+                disabled={!sendEmail}
+                className="px-4 py-2 text-sm font-semibold bg-[#8403C5] text-white rounded-lg hover:bg-[#7002A8] transition-colors disabled:opacity-40"
+              >
+                Open PDF
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
