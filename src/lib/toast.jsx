@@ -3,10 +3,19 @@ import { X, Check, Trash2, AlertTriangle, Send } from 'lucide-react';
 
 const ToastContext = createContext(null);
 
+const noopToast = {
+  saved: () => {},
+  sent: () => {},
+  submitted: () => {},
+  statusUpdated: () => {},
+  error: () => {},
+  deleted: () => {},
+  custom: () => {},
+};
+
 export function useToast() {
   const ctx = useContext(ToastContext);
-  if (!ctx) throw new Error('useToast must be used within ToastProvider');
-  return ctx;
+  return ctx || noopToast;
 }
 
 export function ToastProvider({ children }) {
