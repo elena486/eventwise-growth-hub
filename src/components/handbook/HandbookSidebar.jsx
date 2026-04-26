@@ -128,8 +128,23 @@ export default function HandbookSidebar({
                 </div>
               </div>
 
+              {/* + Add page button visible on section header hover when expanded */}
+              {!section.expanded && (
+                <div className="group/addrow">
+                  <button
+                    onClick={e => { e.stopPropagation(); onAddPage(section.id); }}
+                    className="w-full flex items-center gap-1.5 pl-7 pr-4 py-0.5 text-[11px] text-[#8403C5] hover:text-purple-300 transition-colors opacity-0 group-hover/addrow:opacity-100"
+                  >
+                    <Plus className="w-3 h-3" /> Add page
+                  </button>
+                </div>
+              )}
+
               {section.expanded && (
                 <div className="pb-1">
+                  {section.pages.length === 0 && (
+                    <p className="pl-8 pr-4 py-1 text-[11px] italic text-[#6B7280]">No pages yet — click + to add one</p>
+                  )}
                   {section.pages.map(page => {
                     const isActive = activePage?.id === page.id;
                     const isDraggingThis = draggingPage?.pageId === page.id;

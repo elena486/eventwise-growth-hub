@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
-import { Plus, Pencil, Eye, Trash2, Globe, BarChart2, Building2, Mail, TrendingUp } from 'lucide-react';
+import { Plus, Pencil, Eye, Trash2, Globe, BarChart2, Building2, Mail, TrendingUp, Download, Send, ChevronDown, ChevronUp, X } from 'lucide-react';
 import ReportForm from './ReportForm';
 import ReportView from './ReportView';
 import ConfirmDialog from '@/components/shared/ConfirmDialog';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+import jsPDF from 'jspdf';
 
 const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
 

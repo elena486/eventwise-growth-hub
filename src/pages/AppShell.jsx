@@ -21,7 +21,8 @@ import { LOGO_BLACK, LOGO_WHITE } from '@/lib/proposalData';
 import ClientDetailPanel from '@/components/clients/ClientDetailPanel';
 import ClientFullPanel from '@/components/clients/ClientFullPanel';
 import { useDarkMode } from '@/hooks/useDarkMode';
-import { Moon, Sun } from 'lucide-react';
+import { Moon, Sun, LogOut, ChevronDown } from 'lucide-react';
+import { useRef } from 'react';
 
 const GROUPS = [
   { id: 'sales', label: 'Sales', tabs: [
@@ -66,8 +67,19 @@ export default function AppShell() {
   const [fullPanelClient, setFullPanelClient] = useState(null);
   const [fullPanelClients, setFullPanelClients] = useState([]);
   const [dark, setDark] = useDarkMode();
+  const [avatarOpen, setAvatarOpen] = useState(false);
+  const avatarRef = useRef(null);
 
   const setTab = (t) => setSearchParams({ tab: t });
+
+  // Close avatar dropdown on outside click
+  useEffect(() => {
+    const handler = (e) => {
+      if (avatarRef.current && !avatarRef.current.contains(e.target)) setAvatarOpen(false);
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, []);
   const activeGroup = getGroupForTab(tab) || GROUPS[0];
 
   const handleViewHealth = (client) => {

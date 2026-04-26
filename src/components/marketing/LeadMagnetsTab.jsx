@@ -113,7 +113,7 @@ export default function LeadMagnetsTab() {
                       {item.link ? <a href={item.link} target="_blank" rel="noreferrer" className="text-[#8403C5] hover:underline text-xs">Open ↗</a> : <span className="text-gray-400 text-xs italic">Link TBC</span>}
                     </td>
                     <td className="px-4 py-2.5">
-                      <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${item.status === 'Active' ? 'bg-green-50 text-green-700' : 'bg-gray-100 text-gray-500'}`}>{item.status || 'Active'}</span>
+                      <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${item.status === 'Active' ? 'bg-[#DCFCE7] text-[#15803D]' : 'bg-[#FEF9C3] text-[#A16207]'}`}>{item.status || 'Active'}</span>
                     </td>
                     <td className="px-4 py-2.5">
                       <div className="flex gap-1">

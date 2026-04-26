@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
 import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
-import { Plus, X, CalendarDays, LayoutGrid } from 'lucide-react';
+import { Plus, X, CalendarDays, LayoutGrid, GripVertical } from 'lucide-react';
 import ContentItemDetail from './ContentItemDetail';
 import ContentCalendar from './ContentCalendar';
 import ConfirmDialog from '@/components/shared/ConfirmDialog';
@@ -139,9 +139,16 @@ export default function ContentKanban({ calendarView = false, onSetCalendarView 
                       {grouped[status].map((item, index) => (
                         <Draggable key={item.id} draggableId={item.id} index={index}>
                           {(prov, snap) => (
-                            <div ref={prov.innerRef} {...prov.draggableProps} {...prov.dragHandleProps}
+                            <div ref={prov.innerRef} {...prov.draggableProps}
                               onClick={() => setSelected(item)}
                               className={`bg-white rounded-xl p-3 mb-2 border cursor-pointer shadow-sm hover:shadow-md transition-shadow ${snap.isDragging ? 'shadow-lg border-[#8403C5]/30' : 'border-gray-200'}`}>
+                              {/* Drag handle + status */}
+                              <div className="flex items-center justify-between mb-2">
+                                <span {...prov.dragHandleProps} onClick={e => e.stopPropagation()} className="text-gray-300 hover:text-gray-500 cursor-grab active:cursor-grabbing">
+                                  <GripVertical className="w-3.5 h-3.5" />
+                                </span>
+                                <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded-full ${STATUS_COLORS[item.status] || 'bg-gray-100 text-gray-500'}`}>{item.status}</span>
+                              </div>
                               {item.assetUrl && (
                                 <div className="mb-2 -mx-1">
                                   {item.assetUrl.match(/\.(mp4|mov)/i)

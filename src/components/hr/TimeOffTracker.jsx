@@ -4,6 +4,7 @@ import { Plus, Pencil, Trash2, Check, X, ChevronDown } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 import TimeOffModal from './TimeOffModal';
 import DeclineModal from './DeclineModal';
+import TimeOffSidePanel from './TimeOffSidePanel';
 
 const MEMBERS = ['All', 'Chris', 'Elena', 'Martinique', 'George', 'Ramesh', 'Sreeja', 'David'];
 const CURRENT_YEAR = new Date().getFullYear();
@@ -48,6 +49,7 @@ export default function TimeOffTracker() {
   const [editRecord, setEditRecord] = useState(null);
   const [deleteConfirm, setDeleteConfirm] = useState(null);
   const [declineRecord, setDeclineRecord] = useState(null);
+  const [sidePanelRecord, setSidePanelRecord] = useState(null);
 
 
   const load = async () => {
@@ -136,7 +138,9 @@ export default function TimeOffTracker() {
           <p className="text-2xl font-bold text-navy">{totalSick}<span className="text-sm font-medium text-ew-muted ml-1">days</span></p>
         </div>
         {personStats.map(p => (
-          <div key={p.name} className="bg-white border border-ew-border rounded-xl p-4">
+          <div key={p.name}
+            onClick={() => setMemberFilter(prev => prev === p.name ? 'All' : p.name)}
+            className={`bg-white border rounded-xl p-4 cursor-pointer hover:shadow-md transition-all ${memberFilter === p.name ? 'border-[#8403C5] ring-2 ring-[#8403C5]/20' : 'border-ew-border'}`}>
             <p className="text-[11px] font-semibold text-ew-muted uppercase tracking-[0.12em] mb-1">{p.name}</p>
             <div className="flex items-center gap-3 text-sm">
               {p.vacation > 0 && <span className="font-medium text-emerald-700">{p.vacation}d vacation</span>}
@@ -198,7 +202,9 @@ export default function TimeOffTracker() {
               {filtered.length === 0 ? (
                 <tr><td colSpan={8} className="px-4 py-12 text-center text-ew-muted text-sm">No records found.</td></tr>
               ) : filtered.map((r, i) => (
-                <tr key={r.id} className={`group border-b border-ew-border hover:bg-navy/[0.02] transition-colors ${i % 2 === 1 ? 'bg-[#FAFBFE]' : 'bg-white'}`}>
+                <tr key={r.id}
+                  onClick={() => setSidePanelRecord(r)}
+                  className={`group border-b border-ew-border hover:bg-navy/[0.02] transition-colors cursor-pointer ${i % 2 === 1 ? 'bg-[#FAFBFE]' : 'bg-white'}`}>
                   <td className="px-4 py-3 font-semibold text-navy whitespace-nowrap">{r.teamMember}</td>
                   <td className="px-4 py-3 whitespace-nowrap">
                     <span className={`text-[11px] font-semibold px-2.5 py-1 rounded-full ${TYPE_STYLES[r.type] || 'bg-gray-100 text-gray-600'}`}>{r.type}</span>
@@ -213,18 +219,8 @@ export default function TimeOffTracker() {
                     <span className="line-clamp-2">{r.notes || '—'}</span>
                     {r.declineReason && <span className="block text-red-500 mt-0.5">Declined: {r.declineReason}</span>}
                   </td>
-                  <td className="px-4 py-3">
+                  <td className="px-4 py-3" onClick={e => e.stopPropagation()}>
                     <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                      {r.status === 'Pending' && (
-                        <>
-                          <button onClick={() => handleApprove(r)} title="Approve"
-                            className="p-1.5 rounded-lg text-emerald-600 hover:bg-emerald-50 transition-colors"><Check className="w-3.5 h-3.5" /></button>
-                          <button onClick={() => setDeclineRecord(r)} title="Decline"
-                            className="p-1.5 rounded-lg text-red-500 hover:bg-red-50 transition-colors"><X className="w-3.5 h-3.5" /></button>
-                        </>
-                      )}
-                      <button onClick={() => { setEditRecord(r); setShowModal(true); }} title="Edit"
-                        className="p-1.5 rounded-lg text-ew-muted hover:text-navy hover:bg-ew-bg transition-colors"><Pencil className="w-3.5 h-3.5" /></button>
                       <button onClick={() => setDeleteConfirm(r)} title="Delete"
                         className="p-1.5 rounded-lg text-ew-muted hover:text-red-500 hover:bg-red-50 transition-colors"><Trash2 className="w-3.5 h-3.5" /></button>
                     </div>
@@ -241,6 +237,21 @@ export default function TimeOffTracker() {
           record={editRecord}
           onClose={() => { setShowModal(false); setEditRecord(null); }}
           onSaved={handleSaved}
+        />
+      )}
+
+      {sidePanelRecord && (
+        <TimeOffSidePanel
+          record={sidePanelRecord}
+          onClose={() => setSidePanelRecord(null)}
+          onUpdated={(updated) => {
+            handleSaved(updated);
+            setSidePanelRecord(updated);
+          }}
+          onDeleted={(id) => {
+            setRecords(prev => prev.filter(x => x.id !== id));
+            setSidePanelRecord(null);
+          }}
         />
       )}
 

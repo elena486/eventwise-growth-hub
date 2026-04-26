@@ -54,7 +54,7 @@ export default function PRCoverageTab() {
           </thead>
           <tbody>
             {items.map(item => (
-              <tr key={item.id} className="border-b border-gray-50 last:border-0 hover:bg-gray-50">
+              <tr key={item.id} className="border-b border-gray-50 last:border-0 hover:bg-gray-50 cursor-pointer" onClick={() => editId !== item.id && startEdit(item)}>
                 {editId === item.id ? (
                   <>
                     <td className="px-3 py-2"><input className={inputCls} value={editData.publication} onChange={e => setEditData(p => ({...p, publication: e.target.value}))} /></td>

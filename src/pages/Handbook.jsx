@@ -182,13 +182,15 @@ export default function Handbook({ onNavigate }) {
   };
 
   const addPage = (sectionId) => {
+    const today = new Date().toISOString().slice(0, 10);
     const newPage = {
       id: `page-${Date.now()}`,
       title: 'New Page',
       type: 'content',
       description: '',
       content: '',
-      updatedAt: new Date().toISOString().slice(0, 10),
+      updatedAt: today,
+      createdAt: today,
     };
     const newHb = {
       ...hb,

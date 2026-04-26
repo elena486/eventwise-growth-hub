@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
-import { Plus, Search, LayoutGrid, List, ExternalLink, GitCompareArrows } from 'lucide-react';
+import { Plus, Search, LayoutGrid, List, ExternalLink, GitCompareArrows, Trash2 } from 'lucide-react';
 import CompetitorCard from '@/components/competitors/CompetitorCard';
 import CompetitorModal from '@/components/competitors/CompetitorModal';
 import CompetitorDetail from '@/components/competitors/CompetitorDetail';
 import ComparePanel from '@/components/competitors/ComparePanel';
+import CompetitorSidePanel from '@/components/competitors/CompetitorSidePanel';
 
 const THREAT_STYLES = {
   High:    'bg-red-50 text-red-600 border-red-200',
@@ -134,18 +135,16 @@ export default function Competitors() {
   };
 
   const selectedCompetitors = competitors.filter(c => selectedIds.includes(c.id));
+  const [bulkDeleteConfirm, setBulkDeleteConfirm] = useState(false);
 
-  if (detailCompetitor) {
-    return (
-      <div className="flex-1 overflow-y-auto">
-        <CompetitorDetail
-          competitor={detailCompetitor}
-          onBack={() => setDetailCompetitor(null)}
-          onEdit={() => openEdit(detailCompetitor)}
-        />
-      </div>
-    );
-  }
+  const needsResearch = (c) => !c.keyFeatures || !c.pricing || !c.targetAudience || !c.mainDifferences;
+
+  const handleBulkDelete = async () => {
+    await Promise.all(selectedIds.map(id => base44.entities.Competitor.delete(id)));
+    setCompetitors(prev => prev.filter(c => !selectedIds.includes(c.id)));
+    setSelectedIds([]);
+    setBulkDeleteConfirm(false);
+  };
 
   return (
     <div className="flex-1 bg-ew-bg overflow-y-auto p-8 font-dm">
@@ -201,9 +200,17 @@ export default function Competitors() {
       </div>
 
       {selectedIds.length > 0 && (
-        <div className="mb-4 flex items-center gap-2 text-sm text-ew-body bg-white border border-ew-border rounded-lg px-4 py-2.5">
+        <div className="mb-4 flex items-center gap-3 text-sm text-ew-body bg-white border border-ew-border rounded-lg px-4 py-2.5">
           <GitCompareArrows className="w-4 h-4 text-[#8403C5]" />
-          <span><strong>{selectedIds.length}</strong> selected for comparison {selectedIds.length < 2 ? '— select at least 2' : selectedIds.length === 4 ? '— max 4 reached' : ''}.</span>
+          <span><strong>{selectedIds.length}</strong> selected {selectedIds.length < 2 ? '— select at least 2 to compare' : selectedIds.length === 4 ? '— max 4 reached' : ''}.</span>
+          {selectedIds.length >= 2 && (
+            <button onClick={() => setShowCompare(true)} className="ml-1 px-3 py-1 text-xs font-semibold text-[#8403C5] bg-[#F3E8FF] rounded-lg hover:bg-[#EDE9FE] transition-colors">
+              Compare ({selectedIds.length})
+            </button>
+          )}
+          <button onClick={() => setBulkDeleteConfirm(true)} className="ml-1 flex items-center gap-1 px-3 py-1 text-xs font-semibold text-red-600 bg-red-50 rounded-lg hover:bg-red-100 transition-colors">
+            <Trash2 className="w-3 h-3" /> Delete selected
+          </button>
         </div>
       )}
 
@@ -259,7 +266,7 @@ export default function Competitors() {
                   <React.Fragment key={c.id}>
                     <tr
                       className={`group border-b border-ew-border hover:bg-navy/[0.02] transition-colors cursor-pointer ${isSelected ? 'bg-purple-50' : i % 2 === 1 ? 'bg-[#FAFBFE]' : 'bg-white'}`}
-                      onClick={() => setExpandedRow(isExpanded ? null : c.id)}
+                      onClick={() => setDetailCompetitor(c)}
                     >
                       {/* Compare checkbox */}
                       <td className="px-3 py-3" onClick={e => { e.stopPropagation(); toggleSelect(c.id); }}>
@@ -273,7 +280,12 @@ export default function Competitors() {
                       </td>
                       {/* Company */}
                       <td className="px-4 py-3 whitespace-nowrap">
-                        <div className="font-bold text-navy">{c.companyName}</div>
+                        <div className="flex items-center gap-1.5">
+                          <span className="font-bold text-navy">{c.companyName}</span>
+                          {needsResearch(c) && (
+                            <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-amber-50 text-amber-700 border border-amber-200 whitespace-nowrap">Needs research</span>
+                          )}
+                        </div>
                         {c.url && (
                           <a href={c.url} target="_blank" rel="noopener noreferrer"
                             onClick={e => e.stopPropagation()}
@@ -371,11 +383,35 @@ export default function Competitors() {
         />
       )}
 
+      {detailCompetitor && (
+        <CompetitorSidePanel
+          competitor={detailCompetitor}
+          onClose={() => setDetailCompetitor(null)}
+          onUpdated={(updated) => {
+            handleSaved(updated);
+            setDetailCompetitor(updated);
+          }}
+        />
+      )}
+
       {showCompare && (
         <ComparePanel
           competitors={selectedCompetitors}
           onClose={() => setShowCompare(false)}
         />
+      )}
+
+      {bulkDeleteConfirm && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4" onClick={() => setBulkDeleteConfirm(false)}>
+          <div className="bg-white rounded-xl shadow-2xl w-full max-w-sm p-6" onClick={e => e.stopPropagation()}>
+            <h3 className="text-base font-bold text-navy mb-2">Delete {selectedIds.length} competitors?</h3>
+            <p className="text-sm text-ew-body mb-5">This will permanently delete all selected competitors. This cannot be undone.</p>
+            <div className="flex justify-end gap-3">
+              <button onClick={() => setBulkDeleteConfirm(false)} className="px-4 py-2 text-sm font-medium text-ew-body hover:bg-ew-bg rounded-lg">Cancel</button>
+              <button onClick={handleBulkDelete} className="px-4 py-2 text-sm font-semibold bg-red-600 text-white rounded-lg hover:bg-red-700">Delete</button>
+            </div>
+          </div>
+        </div>
       )}
 
       {deleteConfirm && (

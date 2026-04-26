@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
-import { ArrowLeft, Pencil, Send } from 'lucide-react';
+import { ArrowLeft, Pencil, Send, Download } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
+import { LOGO_BLACK } from '@/lib/proposalData';
 
 export default function ReportView({ report, onBack, onEdit, onSent }) {
   const [sending, setSending] = useState(false);
@@ -10,6 +11,44 @@ export default function ReportView({ report, onBack, onEdit, onSent }) {
   const li = parse('chrisLinkedInData');
   const cp = parse('companyPageData');
   const nl = parse('newsletterData');
+
+  const handleDownloadPDF = () => {
+    const monthYear = `${report.month} ${report.year}`;
+    const rows = (label, val) => val ? `<tr><td style="padding:4px 12px 4px 0;color:#6B7280;font-size:13px;width:200px">${label}</td><td style="padding:4px 0;font-size:13px;font-weight:600;color:#111827">${val}</td></tr>` : '';
+    const section = (title, rows) => `<div style="margin-bottom:24px;background:#fff;border-radius:12px;border:1px solid #E5E7EB;padding:20px"><h3 style="font-size:15px;font-weight:700;color:#111827;margin:0 0 12px">${title}</h3><table>${rows}</table></div>`;
+    const html = `<!DOCTYPE html><html><head><style>body{font-family:'DM Sans',Arial,sans-serif;background:#F7F7F8;margin:0;padding:0}</style></head><body>
+      <div style="background:#242450;padding:20px 32px;display:flex;align-items:center;gap:16px">
+        <div style="color:#fff;font-size:20px;font-weight:800;letter-spacing:-0.5px">eventwise</div>
+        <div style="color:rgba(255,255,255,0.5);font-size:13px">Monthly Marketing Report</div>
+      </div>
+      <div style="padding:32px">
+        <h1 style="font-size:26px;font-weight:800;color:#242450;margin:0 0 6px">${monthYear} Report</h1>
+        <p style="color:#6B7280;font-size:13px;margin:0 0 24px">Status: ${report.status}</p>
+        ${section('🌐 Website', [
+          rows('Active Users', w.activeUsers), rows('Sessions', w.sessions), rows('New Users', w.newUsers),
+          rows('Engaged Sessions (%)', w.engagedSessions), rows('Top Traffic Source', w.topTrafficSource),
+          rows('GSC Impressions', w.gscImpressions), rows('GSC Clicks', w.gscClicks), rows('GSC Avg Position', w.gscAvgPosition),
+        ].join('') + (w.notes ? `<p style="font-size:13px;color:#374151;border-top:1px solid #F3F4F6;margin-top:12px;padding-top:12px;font-style:italic">${w.notes}</p>` : ''))}
+        ${section('👤 Chris LinkedIn', [
+          rows('Total Impressions', li.totalImpressions), rows('Unique Members Reached', li.uniqueMembersReached),
+          rows('New Followers', li.newFollowers), rows('Engagement', li.engagement), rows('Top Post', li.topPostTitle),
+        ].join('') + (li.notes ? `<p style="font-size:13px;color:#374151;border-top:1px solid #F3F4F6;margin-top:12px;padding-top:12px;font-style:italic">${li.notes}</p>` : ''))}
+        ${section('🏢 Company Page', [
+          rows('Total Impressions', cp.totalImpressions), rows('Unique Visitors', cp.uniqueVisitors),
+          rows('New Followers', cp.newFollowers), rows('Posts Published', cp.postsPublished), rows('Engagement', cp.engagement),
+        ].join('') + (cp.notes ? `<p style="font-size:13px;color:#374151;border-top:1px solid #F3F4F6;margin-top:12px;padding-top:12px;font-style:italic">${cp.notes}</p>` : ''))}
+        ${section('📧 Newsletter', [
+          rows('Subject', nl.subjectLine), rows('Send Date', nl.sendDate), rows('List Size', nl.listSize),
+          rows('Open Rate', nl.openRate ? nl.openRate + '%' : null), rows('Click Rate', nl.clickRate ? nl.clickRate + '%' : null), rows('Unsubscribes', nl.unsubscribes),
+        ].join('') + (nl.notes ? `<p style="font-size:13px;color:#374151;border-top:1px solid #F3F4F6;margin-top:12px;padding-top:12px;font-style:italic">${nl.notes}</p>` : ''))}
+        <p style="text-align:center;color:#9CA3AF;font-size:12px;margin-top:32px;border-top:1px solid #E5E7EB;padding-top:16px">Eventwise Monthly Marketing Report — ${monthYear} — Confidential</p>
+      </div></body></html>`;
+    const blob = new Blob([html], { type: 'text/html' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = `Eventwise-Marketing-Report-${monthYear.replace(' ', '-')}.html`;
+    a.click(); URL.revokeObjectURL(url);
+  };
 
   const handleSend = async () => {
     setSending(true);
@@ -40,6 +79,7 @@ export default function ReportView({ report, onBack, onEdit, onSent }) {
           <span className={`text-xs font-semibold px-2.5 py-1 rounded-full border ${report.status === 'Sent' ? 'bg-green-50 text-green-700 border-green-200' : 'bg-blue-50 text-blue-700 border-blue-200'}`}>{report.status}</span>
         </div>
         <div className="flex gap-2">
+          <button onClick={handleDownloadPDF} className="flex items-center gap-1.5 px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-600 hover:bg-gray-50 bg-white"><Download className="w-4 h-4" /> Download</button>
           <button onClick={onEdit} className="flex items-center gap-1.5 px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-600 hover:bg-gray-50 bg-white"><Pencil className="w-4 h-4" /> Edit</button>
           {report.status === 'Ready' && (
             <button onClick={handleSend} disabled={sending}
