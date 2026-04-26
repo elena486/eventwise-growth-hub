@@ -6,21 +6,11 @@ import { LayoutGrid, CalendarDays } from 'lucide-react';
 
 const TABS = ['Content', 'PR Coverage', 'Lead Magnets'];
 
-function DisabledViewToggle() {
-  return (
-    <div className="flex items-center gap-0 border border-gray-200 rounded-lg overflow-hidden opacity-40 ml-auto mr-4" title="Only available in Content view">
-      <span className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium bg-white text-gray-400 cursor-not-allowed">
-        <LayoutGrid className="w-3.5 h-3.5" /> Board
-      </span>
-      <span className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium border-l border-gray-200 bg-white text-gray-400 cursor-not-allowed">
-        <CalendarDays className="w-3.5 h-3.5" /> Calendar
-      </span>
-    </div>
-  );
-}
-
 export default function ContentHubMain() {
   const [tab, setTab] = useState('Content');
+  const [calendarView, setCalendarView] = useState(false);
+
+  const isContent = tab === 'Content';
 
   return (
     <div className="flex flex-col flex-1 overflow-hidden">
@@ -33,10 +23,28 @@ export default function ContentHubMain() {
             </button>
           ))}
         </div>
-        {tab !== 'Content' && <DisabledViewToggle />}
+
+        {/* View toggle — active for Content, disabled for others */}
+        <div className={`flex items-center gap-0 border rounded-lg overflow-hidden ml-auto ${!isContent ? 'opacity-40' : 'border-gray-200'}`} title={!isContent ? 'Only available in Content view' : ''}>
+          <button
+            disabled={!isContent}
+            onClick={() => setCalendarView(false)}
+            className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium transition-colors ${isContent && !calendarView ? 'bg-[#8403C5] text-white' : 'bg-white text-gray-500 hover:bg-gray-50'} ${!isContent ? 'cursor-not-allowed' : 'cursor-pointer'}`}
+          >
+            <LayoutGrid className="w-3.5 h-3.5" /> Board
+          </button>
+          <button
+            disabled={!isContent}
+            onClick={() => setCalendarView(true)}
+            className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium border-l border-gray-200 transition-colors ${isContent && calendarView ? 'bg-[#8403C5] text-white' : 'bg-white text-gray-500 hover:bg-gray-50'} ${!isContent ? 'cursor-not-allowed' : 'cursor-pointer'}`}
+          >
+            <CalendarDays className="w-3.5 h-3.5" /> Calendar
+          </button>
+        </div>
       </div>
+
       <div className="flex-1 overflow-hidden flex">
-        {tab === 'Content' && <ContentKanban />}
+        {tab === 'Content' && <ContentKanban calendarView={calendarView} onSetCalendarView={setCalendarView} />}
         {tab === 'PR Coverage' && <PRCoverageTab />}
         {tab === 'Lead Magnets' && <LeadMagnetsTab />}
       </div>
