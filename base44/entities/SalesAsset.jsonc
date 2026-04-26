@@ -53,6 +53,10 @@
     },
     "notes": {
       "type": "string"
+    },
+    "emailExamples": {
+      "type": "string",
+      "description": "JSON array of email example objects: [{id, label, subject, body}]"
     }
   },
   "required": [

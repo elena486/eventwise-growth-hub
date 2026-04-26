@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
-import { Plus, LayoutGrid, List, Search, ExternalLink, FileText, Video, Mic, Wrench, BookOpen, Presentation, File, Trash2, Pencil, AlertTriangle, Download, ChevronDown, ChevronRight } from 'lucide-react';
+import { Plus, LayoutGrid, List, Search, ExternalLink, FileText, Video, Mic, Wrench, BookOpen, Presentation, File, Trash2, Pencil, AlertTriangle, Download, ChevronDown, ChevronRight, Mail } from 'lucide-react';
 import { format } from 'date-fns';
 import AssetModal from '@/components/sales/AssetModal';
+import AssetDetailPanel from '@/components/sales/AssetDetailPanel';
 
 export const STATUS_STYLES = {
   'Good to Use':    'bg-emerald-50 text-emerald-700',
@@ -59,13 +60,29 @@ function TypeTag({ type }) {
   );
 }
 
-function AssetCard({ asset, onEdit, onDelete }) {
+function getEmailCount(asset) {
+  try { const p = JSON.parse(asset.emailExamples || '[]'); return Array.isArray(p) ? p.length : 0; } catch { return 0; }
+}
+
+function hasNoLink(asset) {
+  const hasUrl = !!asset.url;
+  const hasFile = asset.fileUrl && !isMondayFile(asset.fileUrl);
+  return !hasUrl && !hasFile;
+}
+
+function AssetCard({ asset, onEdit, onDelete, onClick }) {
   const needsReupload = isMondayFile(asset.fileUrl);
+  const emailCount = getEmailCount(asset);
+  const noLink = hasNoLink(asset);
+
   return (
-    <div className="group bg-white border border-ew-border rounded-xl p-4 flex flex-col gap-2.5 hover:shadow-md transition-shadow">
+    <div
+      className="group bg-white border border-ew-border rounded-xl p-4 flex flex-col gap-2.5 hover:shadow-md transition-shadow cursor-pointer"
+      onClick={onClick}
+    >
       <div className="flex items-start justify-between gap-2">
         <h3 className="text-sm font-semibold text-navy leading-snug flex-1">{asset.title}</h3>
-        <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
+        <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity shrink-0" onClick={e => e.stopPropagation()}>
           <button onClick={() => onEdit(asset)} className="p-1.5 rounded-lg text-ew-muted hover:text-navy hover:bg-ew-bg transition-colors" title="Edit">
             <Pencil className="w-3.5 h-3.5" />
           </button>
@@ -78,13 +95,23 @@ function AssetCard({ asset, onEdit, onDelete }) {
       <div className="flex items-center gap-2 flex-wrap">
         <TypeTag type={asset.type} />
         <span className={`text-[11px] font-semibold px-2 py-0.5 rounded-full ${STATUS_STYLES[asset.status] || 'bg-gray-100 text-gray-500'}`}>{asset.status}</span>
+        {emailCount > 0 && (
+          <span className="inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full bg-[#F3E8FF] text-[#8403C5]">
+            <Mail className="w-2.5 h-2.5" /> {emailCount} email{emailCount !== 1 ? 's' : ''}
+          </span>
+        )}
+        {noLink && (
+          <span className="inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full bg-amber-50 text-amber-700 border border-amber-200">
+            ⚠ No link
+          </span>
+        )}
       </div>
 
       {asset.notes && (
         <p className="text-xs text-ew-body line-clamp-2">{asset.notes}</p>
       )}
 
-      <div className="flex items-center gap-2 mt-auto pt-1 flex-wrap">
+      <div className="flex items-center gap-2 mt-auto pt-1 flex-wrap" onClick={e => e.stopPropagation()}>
         {asset.url && (
           <a href={asset.url} target="_blank" rel="noopener noreferrer"
             className="inline-flex items-center gap-1 text-[11px] font-medium text-navy hover:text-[#8403C5] transition-colors">
@@ -110,7 +137,7 @@ function AssetCard({ asset, onEdit, onDelete }) {
   );
 }
 
-function TypeSection({ type, items, onEdit, onDelete }) {
+function TypeSection({ type, items, onEdit, onDelete, onView }) {
   const [open, setOpen] = useState(false);
   return (
     <div className="bg-white border border-ew-border rounded-xl overflow-hidden">
@@ -125,7 +152,7 @@ function TypeSection({ type, items, onEdit, onDelete }) {
       {open && (
         <div className="px-5 pb-5 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 border-t border-ew-border pt-4">
           {items.map(a => (
-            <AssetCard key={a.id} asset={a} onEdit={onEdit} onDelete={onDelete} />
+            <AssetCard key={a.id} asset={a} onEdit={onEdit} onDelete={onDelete} onClick={() => onView(a)} />
           ))}
         </div>
       )}
@@ -144,6 +171,7 @@ export default function SalesAssets() {
   const [deleteConfirm, setDeleteConfirm] = useState(null);
   const [sortCol, setSortCol] = useState('type');
   const [sortDir, setSortDir] = useState('asc');
+  const [detailAsset, setDetailAsset] = useState(null);
 
   const load = async () => {
     const data = await base44.entities.SalesAsset.list('-created_date');
@@ -271,7 +299,7 @@ export default function SalesAssets() {
       ) : view === 'grid' ? (
         <div className="space-y-3">
           {Object.entries(grouped).map(([type, items]) => (
-            <TypeSection key={type} type={type} items={items} onEdit={openEdit} onDelete={setDeleteConfirm} />
+            <TypeSection key={type} type={type} items={items} onEdit={openEdit} onDelete={setDeleteConfirm} onView={setDetailAsset} />
           ))}
         </div>
       ) : (
@@ -292,7 +320,7 @@ export default function SalesAssets() {
               {sortedForTable.map((asset, i) => {
                 const needsReupload = isMondayFile(asset.fileUrl);
                 return (
-                  <tr key={asset.id} className={`group border-b border-ew-border hover:bg-navy/[0.02] transition-colors ${i % 2 === 1 ? 'bg-[#FAFBFE]' : 'bg-white'}`}>
+                  <tr key={asset.id} onClick={() => setDetailAsset(asset)} className={`group border-b border-ew-border hover:bg-navy/[0.02] transition-colors cursor-pointer ${i % 2 === 1 ? 'bg-[#FAFBFE]' : 'bg-white'}`}>
                     <td className="px-4 py-3 font-medium text-navy max-w-[260px]">
                       <span className="line-clamp-2">{asset.title}</span>
                     </td>
@@ -339,7 +367,16 @@ export default function SalesAssets() {
         <AssetModal
           asset={editAsset}
           onClose={() => { setShowModal(false); setEditAsset(null); }}
-          onSaved={handleSaved}
+          onSaved={(saved) => { handleSaved(saved); if (detailAsset?.id === saved.id) setDetailAsset(saved); }}
+        />
+      )}
+
+      {detailAsset && (
+        <AssetDetailPanel
+          asset={detailAsset}
+          onClose={() => setDetailAsset(null)}
+          onUpdated={(updated) => { handleSaved(updated); setDetailAsset(updated); }}
+          onEdit={() => { openEdit(detailAsset); }}
         />
       )}
 
