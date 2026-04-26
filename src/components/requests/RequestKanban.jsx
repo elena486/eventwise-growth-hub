@@ -2,15 +2,20 @@ import React from 'react';
 import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
 import { format } from 'date-fns';
 import { PRIORITY_STYLES, STATUS_STYLES, STATUSES } from './requestStyles';
+import { useToast } from '@/components/shared/Toast';
 
 export default function RequestKanban({ requests, onStatusChange, onSelect }) {
   const grouped = STATUSES.reduce((acc, s) => { acc[s] = requests.filter(r => r.status === s); return acc; }, {});
+  const toast = useToast();
 
   const onDragEnd = (result) => {
     if (!result.destination) return;
     const newStatus = result.destination.droppableId;
+    const oldStatus = result.source.droppableId;
+    if (newStatus === oldStatus) return;
     const reqId = result.draggableId;
     onStatusChange(reqId, newStatus);
+    toast.statusUpdated(`Moved to ${newStatus}`);
   };
 
   return (

@@ -213,8 +213,8 @@ export default function Competitors() {
         </div>
       ) : filtered.length === 0 ? (
         <div className="bg-white border border-ew-border rounded-xl flex flex-col items-center justify-center py-20">
-          <p className="text-navy font-semibold mb-1">No competitors found</p>
-          <p className="text-ew-muted text-sm">Adjust filters or add a new entry.</p>
+          <div className="text-4xl mb-3">🔍</div>
+          <p className="text-sm text-[#6B7280]">No competitors match this filter.</p>
         </div>
       ) : view === 'grid' ? (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">

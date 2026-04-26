@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
 import { X, Sparkles, Copy, Check, RefreshCw } from 'lucide-react';
 import { differenceInDays } from 'date-fns';
+import { useToast } from '@/lib/toast';
 
 const EMAIL_TYPES = [
   'Quarterly Check-in',
@@ -47,6 +48,7 @@ export default function AIEmailDraftModal({ client, initialEmailType, aiSuggesti
   const [copied, setCopied] = useState(false);
   const [logging, setLogging] = useState(false);
   const [logged, setLogged] = useState(false);
+  const toast = useToast();
 
   const generate = async (type) => {
     setLoading(true);
@@ -75,6 +77,7 @@ export default function AIEmailDraftModal({ client, initialEmailType, aiSuggesti
     await base44.entities.Client.update(client.id, { notes: `[Touchpoint logged ${new Date().toLocaleDateString('en-GB')}] ${client.notes || ''}`.trim() });
     setLogging(false);
     setLogged(true);
+    toast.sent('✓ Touchpoint logged');
     setTimeout(() => { onTouchpointLogged(); onClose(); }, 1000);
   };
 

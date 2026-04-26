@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
 import { format, differenceInDays } from 'date-fns';
 import { Plus, X } from 'lucide-react';
+import SkeletonTable from '@/components/shared/SkeletonTable';
 
 function fmtDate(d) {
   if (!d) return '—';
@@ -143,7 +144,7 @@ export default function Renewals({ onOpenClientPanel }) {
       </div>
 
       {loading ? (
-        <div className="flex items-center justify-center h-48"><div className="w-6 h-6 border-2 border-[#8403C5]/20 border-t-[#8403C5] rounded-full animate-spin" /></div>
+        <SkeletonTable rows={5} cols={7} />
       ) : (
         <div className="bg-white rounded-xl overflow-x-auto" style={{ boxShadow: '0 1px 3px rgba(0,0,0,0.06)' }}>
           <table className="w-full text-sm min-w-[800px]">
@@ -216,7 +217,10 @@ export default function Renewals({ onOpenClientPanel }) {
                 );
               })}
               {sorted.length === 0 && (
-                <tr><td colSpan={8} className="px-4 py-16 text-center text-[#6B7280] text-sm">No renewals found for this filter</td></tr>
+                <tr><td colSpan={8} className="px-4 py-16 text-center">
+                  <div className="text-4xl mb-3 opacity-60">📅</div>
+                  <p className="text-sm text-[#6B7280]">No renewals in this period.</p>
+                </td></tr>
               )}
             </tbody>
           </table>

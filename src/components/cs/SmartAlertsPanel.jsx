@@ -65,6 +65,7 @@ const SEVERITY_STYLES = {
 export default function SmartAlertsPanel({ clients, onDraftEmail }) {
   const [open, setOpen] = useState(false);
   const [onboardingRecords, setOnboardingRecords] = useState([]);
+  const [loadingRecords, setLoadingRecords] = useState(true);
   const [dismissed, setDismissed] = useState(new Set());
   const [suggestions, setSuggestions] = useState({});
   const [loadingSuggestion, setLoadingSuggestion] = useState({});
@@ -77,7 +78,10 @@ export default function SmartAlertsPanel({ clients, onDraftEmail }) {
   const [savingComplete, setSavingComplete] = useState(false);
 
   useEffect(() => {
-    base44.entities.OnboardingRecord.list().then(setOnboardingRecords).catch(() => {});
+    base44.entities.OnboardingRecord.list()
+      .then(setOnboardingRecords)
+      .catch(() => {})
+      .finally(() => setLoadingRecords(false));
   }, []);
 
   const allAlerts = getAlerts(clients, onboardingRecords);
@@ -142,7 +146,12 @@ Give a 2-3 sentence suggested action for the CS team. Be specific, practical, an
 
       {open && (
         <div className="px-5 pb-4">
-          {alerts.length === 0 ? (
+          {loadingRecords && clients.length === 0 ? (
+            <div className="flex items-center gap-2 py-3 text-sm text-[#9CA3AF]">
+              <div className="w-4 h-4 border-2 border-[#8403C5]/20 border-t-[#8403C5] rounded-full animate-spin shrink-0" />
+              Calculating alerts…
+            </div>
+          ) : alerts.length === 0 ? (
             <p className="text-sm text-green-600 font-medium py-2 flex items-center gap-2">
               <span className="w-2 h-2 rounded-full bg-green-500 inline-block" />
               All clients on track.

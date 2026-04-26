@@ -5,6 +5,7 @@ import {
   X, Mail, Phone, Check, ChevronDown, ChevronUp, Trash2, AlertTriangle, MessageSquareOff, Plus, ExternalLink
 } from 'lucide-react';
 import { STATUS_STYLES, HEALTH_DOT, OWNER_INITIALS, OWNER_COLORS, ONBOARDING_PHASES, calcHealth, initTasks } from '@/lib/csData';
+import { useToast } from '@/lib/toast';
 
 const TIER_STYLES = {
   'High': 'bg-[#FEF9C3] text-[#A16207]',
@@ -86,6 +87,7 @@ export default function ClientFullPanel({ client: initialClient, onClose, onUpda
   const [bugsLoading, setBugsLoading] = useState(false);
   const notesTimer = useRef(null);
   const saveTimer = useRef(null);
+  const toast = useToast();
 
   useEffect(() => {
     setClient(initialClient);
@@ -125,9 +127,11 @@ export default function ClientFullPanel({ client: initialClient, onClose, onUpda
     onUpdated(updated);
     clearTimeout(saveTimer.current);
     saveTimer.current = setTimeout(() => {
-      base44.entities.Client.update(updated.id, { [field]: value });
+      base44.entities.Client.update(updated.id, { [field]: value })
+        .then(() => toast.saved())
+        .catch(() => toast.error());
     }, 600);
-  }, [client, onUpdated]);
+  }, [client, onUpdated, toast]);
 
   const handleNotesChange = (val) => {
     setNotes(val);
@@ -554,7 +558,8 @@ function BugsTabContent({ client, bugs, loading }) {
 
       {sorted.length === 0 ? (
         <div className="text-center py-12 border border-dashed border-[#E5E7EB] rounded-xl">
-          <p className="text-sm text-[#9CA3AF] mb-3">No bugs logged for this client yet.</p>
+          <div className="text-4xl mb-2 opacity-60">🐛</div>
+          <p className="text-sm text-[#6B7280] mb-3">No bugs logged for this client yet.</p>
           <button
             onClick={handleLogBug}
             className="flex items-center gap-1.5 mx-auto text-xs font-semibold text-[#8403C5] bg-[#F3E8FF] hover:bg-[#EDE9FE] px-4 py-2 rounded-lg transition-colors"

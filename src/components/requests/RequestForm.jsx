@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { base44 } from '@/api/base44Client';
 import { CheckCircle2 } from 'lucide-react';
+import { useToast } from '@/components/shared/Toast';
 import MultiFileUpload from '@/components/shared/MultiFileUpload';
 import MentionTextarea from '@/components/shared/MentionTextarea';
 
@@ -21,6 +22,7 @@ export default function RequestForm({ onSubmitted }) {
   const [files, setFiles] = useState([]);
   const [submitting, setSubmitting] = useState(false);
   const [done, setDone] = useState(false);
+  const toast = useToast();
 
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
 
@@ -62,6 +64,7 @@ export default function RequestForm({ onSubmitted }) {
 
     setSubmitting(false);
     setDone(true);
+    toast.submitted('Request submitted successfully');
     setTimeout(() => {
       setDone(false);
       setForm(DEFAULT);

@@ -8,6 +8,7 @@ import UserNotRegisteredError from '@/components/UserNotRegisteredError';
 import { Navigate } from 'react-router-dom';
 import AppShell from './pages/AppShell';
 import { LOGO_BLACK } from '@/lib/proposalData';
+import { ToastProvider } from '@/components/shared/Toast';
 // Add page imports here
 
 const AuthenticatedApp = () => {
@@ -50,10 +51,12 @@ function App() {
   return (
     <AuthProvider>
       <QueryClientProvider client={queryClientInstance}>
-        <Router>
-          <AuthenticatedApp />
-        </Router>
-        <Toaster />
+        <ToastProvider>
+          <Router>
+            <AuthenticatedApp />
+          </Router>
+          <Toaster />
+        </ToastProvider>
       </QueryClientProvider>
     </AuthProvider>
   )

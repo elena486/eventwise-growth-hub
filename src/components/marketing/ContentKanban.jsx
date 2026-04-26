@@ -5,6 +5,7 @@ import { Plus, X, CalendarDays, LayoutGrid } from 'lucide-react';
 import ContentItemDetail from './ContentItemDetail';
 import ContentCalendar from './ContentCalendar';
 import ConfirmDialog from '@/components/shared/ConfirmDialog';
+import { useToast } from '@/lib/toast';
 
 const STATUSES = ['Ideas', 'In Progress', 'Ready to Publish', 'Scheduled', 'Published', 'Cancelled'];
 const STATUS_COLORS = {
@@ -32,13 +33,14 @@ function getThisWeek() {
   return { start: mon, end: sun };
 }
 
-export default function ContentKanban() {
+export default function ContentKanban({ calendarView = false, onSetCalendarView }) {
   const [items, setItems] = useState([]);
   const [filter, setFilter] = useState('All');
-  const [calendarView, setCalendarView] = useState(false);
   const [selected, setSelected] = useState(null); // null | 'new' | item
   const [confirmId, setConfirmId] = useState(null);
+  const setCalendarView = onSetCalendarView || (() => {});
 
+  const toast = useToast();
   const load = () => base44.entities.ContentItem.list('-publishDate', 300).then(setItems);
   useEffect(() => { load(); }, []);
 
@@ -64,10 +66,12 @@ export default function ContentKanban() {
 
   const onDragEnd = async (result) => {
     if (!result.destination) return;
+    if (result.source.droppableId === result.destination.droppableId) return;
     const newStatus = result.destination.droppableId;
     const itemId = result.draggableId;
     setItems(prev => prev.map(i => i.id === itemId ? { ...i, status: newStatus } : i));
     await base44.entities.ContentItem.update(itemId, { status: newStatus });
+    toast.statusUpdated(`✓ Moved to ${newStatus}`);
   };
 
   const handleSave = async (data) => {
@@ -94,7 +98,7 @@ export default function ContentKanban() {
   );
 
   if (calendarView) return (
-    <ContentCalendar items={items} onSelectItem={setSelected} onToggle={() => setCalendarView(false)} onAdd={() => setSelected('new')} />
+    <ContentCalendar items={items} onSelectItem={setSelected} onToggle={() => setCalendarView(false)} onAdd={() => setSelected('new')} onBack={() => setCalendarView(false)} />
   );
 
   return (
@@ -110,10 +114,7 @@ export default function ContentKanban() {
           ))}
         </div>
         <div className="ml-auto flex items-center gap-2">
-          <button onClick={() => setCalendarView(true)}
-            className="flex items-center gap-1.5 px-3 py-1.5 border border-gray-200 rounded-lg text-xs text-gray-600 hover:bg-gray-50 bg-white">
-            <CalendarDays className="w-3.5 h-3.5" /> Calendar
-          </button>
+          {/* Calendar button removed — toggle is now in the tab bar above */}
           <button onClick={() => setSelected('new')}
             className="flex items-center gap-1.5 px-3 py-1.5 bg-[#8403C5] text-white rounded-lg text-xs font-semibold hover:bg-[#6d02a3]">
             <Plus className="w-3.5 h-3.5" /> New Content

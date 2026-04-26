@@ -141,7 +141,22 @@ export default function InputView({ campaigns, onRefresh }) {
           </thead>
           <tbody>
             {rows.length === 0 && (
-              <tr><td colSpan={14} className="px-4 py-16 text-center text-sm text-ew-muted italic">No campaigns yet. Click "+ New Campaign" to add one.</td></tr>
+              <tr><td colSpan={14} className="px-4 py-16 text-center">
+                {campaigns.length === 0 ? (
+                  <>
+                    <div className="text-4xl mb-3 opacity-60">📊</div>
+                    <p className="text-sm text-[#6B7280] mb-4">No campaigns yet. Add your first campaign to start tracking.</p>
+                    <button
+                      onClick={() => { setShowForm(true); setEditCampaign(null); }}
+                      className="inline-flex items-center gap-1.5 px-4 py-2 bg-[#8403C5] text-white text-sm font-semibold rounded-lg hover:bg-[#6d02a3] transition-colors"
+                    >
+                      <Plus className="w-3.5 h-3.5" /> New Campaign
+                    </button>
+                  </>
+                ) : (
+                  <p className="text-sm text-[#6B7280]">No campaigns match this filter.</p>
+                )}
+              </td></tr>
             )}
             {rows.map((c, i) => {
               const score = calcPerformanceScore(c);

@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { base44 } from '@/api/base44Client';
 import { format, isPast, differenceInDays, isToday } from 'date-fns';
 import { Plus, AlertTriangle, Sparkles, ExternalLink, Trash2 } from 'lucide-react';
+import SkeletonTable from '@/components/shared/SkeletonTable';
 import ClientModal from '@/components/clients/ClientModal';
 import ClientDetailPanel from '@/components/clients/ClientDetailPanel';
 import InlineCell from '@/components/shared/InlineCell';
@@ -243,7 +244,7 @@ export default function Clients({ onViewHealth, onViewOnboarding, onViewDetail, 
 
       {/* Table */}
       {loading ? (
-        <div className="flex items-center justify-center h-48"><div className="w-6 h-6 border-2 border-[#8403C5]/20 border-t-[#8403C5] rounded-full animate-spin" /></div>
+        <SkeletonTable rows={7} cols={9} />
       ) : (
         <div className="bg-white rounded-xl overflow-x-auto" style={{ boxShadow: '0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04)' }}>
           <table className="w-full text-sm">

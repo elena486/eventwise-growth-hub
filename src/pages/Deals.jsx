@@ -265,9 +265,14 @@ export default function Deals({ onRenewalProposal, onViewClient, onNavigate }) {
                 </React.Fragment>
               ))}
               {displayDeals.length === 0 && (
-                <tr><td colSpan={10} className="px-4 py-12 text-center text-ew-muted text-sm">
-                  {filter === 'Churned' ? 'No churned deals.' : 'No deals yet. Convert a pipeline lead to create your first deal.'}
-                </td></tr>
+                <tr>
+                  <td colSpan={10} className="px-4 py-16 text-center">
+                    <div className="text-4xl mb-3">🤝</div>
+                    <p className="text-sm text-[#6B7280]">
+                      {filter === 'Churned' ? 'No churned deals.' : 'No deals yet. Close your first lead to get started.'}
+                    </p>
+                  </td>
+                </tr>
               )}
             </tbody>
           </table>
