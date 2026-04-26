@@ -3,7 +3,6 @@ import { base44 } from '@/api/base44Client';
 import { format, differenceInDays } from 'date-fns';
 import { calcHealth, HEALTH_DOT } from '@/lib/csData';
 import { AlertTriangle, TrendingUp, TrendingDown, Minus, ChevronDown, ChevronRight, X, BookOpen } from 'lucide-react';
-import SkeletonTable from '@/components/shared/SkeletonTable';
 
 const SCORE_CHIP = (v) => {
   if (!v) return 'bg-[#F3F4F6] text-[#9CA3AF]';
@@ -320,7 +319,17 @@ export default function HealthRenewals({ focusClientId }) {
       )}
 
       {loading ? (
-        <SkeletonTable rows={6} cols={6} />
+        <div className="bg-white rounded-xl overflow-hidden space-y-0" style={{ boxShadow: '0 1px 3px rgba(0,0,0,0.06)' }}>
+          {[...Array(7)].map((_, i) => (
+            <div key={i} className="px-4 py-4 flex gap-6 animate-pulse border-b border-[#F2F2F4] last:border-0">
+              <div className="h-4 bg-gray-200 rounded w-32" />
+              <div className="h-4 bg-gray-200 rounded flex-1" />
+              <div className="h-4 bg-gray-200 rounded flex-1" />
+              <div className="h-4 bg-gray-200 rounded flex-1" />
+              <div className="h-4 bg-gray-200 rounded flex-1" />
+            </div>
+          ))}
+        </div>
       ) : (
         <div className="bg-white rounded-xl overflow-x-auto" style={{ boxShadow: '0 1px 3px rgba(0,0,0,0.06)' }}>
           <table className="w-full text-sm">
@@ -411,12 +420,21 @@ export default function HealthRenewals({ focusClientId }) {
                 );
               })}
               {filteredCls.length === 0 && (
-                <tr><td colSpan={6} className="px-4 py-16 text-center">
-                  {filter === 'Red'
-                    ? <><div className="text-4xl mb-3 opacity-60">✅</div><p className="text-sm text-[#6B7280]">No clients in the red. Keep it that way.</p></>
-                    : <p className="text-sm text-[#6B7280]">No clients matching this filter.</p>
-                  }
-                </td></tr>
+                <tr>
+                  <td colSpan={6} className="px-4 py-16 text-center">
+                    {filter === 'Red' ? (
+                      <>
+                        <div className="text-3xl mb-2">✅</div>
+                        <p className="text-sm text-[#6B7280]">No clients in the red. Keep it that way.</p>
+                      </>
+                    ) : (
+                      <>
+                        <div className="text-3xl mb-2">📊</div>
+                        <p className="text-sm text-[#6B7280]">No clients matching this filter.</p>
+                      </>
+                    )}
+                  </td>
+                </tr>
               )}
             </tbody>
           </table>
