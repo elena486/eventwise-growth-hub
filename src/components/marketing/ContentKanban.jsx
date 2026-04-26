@@ -5,7 +5,7 @@ import { Plus, X, CalendarDays, LayoutGrid } from 'lucide-react';
 import ContentItemDetail from './ContentItemDetail';
 import ContentCalendar from './ContentCalendar';
 import ConfirmDialog from '@/components/shared/ConfirmDialog';
-import { useToast } from '@/lib/toast';
+import { useToast } from '@/components/shared/Toast';
 
 const STATUSES = ['Ideas', 'In Progress', 'Ready to Publish', 'Scheduled', 'Published', 'Cancelled'];
 const STATUS_COLORS = {
