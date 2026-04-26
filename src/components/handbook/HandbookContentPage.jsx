@@ -36,16 +36,17 @@ export default function HandbookContentPage({ section, page, onUpdate, onDelete 
     setEditing(true);
   };
 
-  // Keyboard shortcut: press E to edit
+  // Keyboard shortcut: E to edit
   useEffect(() => {
     const handler = (e) => {
       if (editing) return;
-      if (['INPUT', 'TEXTAREA'].includes(e.target.tagName)) return;
-      if (e.key === 'e' || e.key === 'E') { e.preventDefault(); if (canEdit) startEdit(); }
+      if (!canEdit) return;
+      if (['INPUT', 'TEXTAREA', 'SELECT'].includes(e.target.tagName)) return;
+      if (e.key === 'e' || e.key === 'E') startEdit();
     };
     window.addEventListener('keydown', handler);
     return () => window.removeEventListener('keydown', handler);
-  }, [editing, canEdit]);
+  }, [editing, canEdit, page]);
 
   const cancelEdit = () => setEditing(false);
 
@@ -119,9 +120,8 @@ export default function HandbookContentPage({ section, page, onUpdate, onDelete 
               ) : (
                 <>
                   <button onClick={startEdit} title="Edit (E)"
-                    className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-[#374151] border border-ew-border rounded-lg hover:bg-ew-bg transition-colors group/editbtn">
-                    <Pencil className="w-3 h-3" /> Edit
-                    <span className="ml-1 text-[10px] text-[#9CA3AF] group-hover/editbtn:text-[#8403C5] font-mono">(E)</span>
+                    className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-[#374151] border border-ew-border rounded-lg hover:bg-ew-bg transition-colors">
+                    <Pencil className="w-3 h-3" /> Edit <span className="text-[10px] text-gray-400 ml-0.5">(E)</span>
                   </button>
                   <button onClick={() => setConfirmDelete(true)}
                     className="p-1.5 text-ew-muted hover:text-red-500 rounded-lg hover:bg-red-50 transition-colors">

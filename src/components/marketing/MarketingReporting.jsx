@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
-import { Plus, Pencil, Eye, Trash2, Globe, BarChart2, Building2, Mail, TrendingUp, Download, Send, ChevronDown, ChevronUp, X } from 'lucide-react';
+import { Plus, Pencil, Eye, Trash2, Globe, BarChart2, Building2, Mail, TrendingUp, Download, Send } from 'lucide-react';
 import ReportForm from './ReportForm';
 import ReportView from './ReportView';
 import ConfirmDialog from '@/components/shared/ConfirmDialog';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
-import jsPDF from 'jspdf';
+import { generateReportPDF } from './reportPdfUtils';
 
 const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
 
@@ -30,6 +30,45 @@ function MoMChip({ current, prev, suffix = '' }) {
   if (!pct) return null;
   const up = diff >= 0;
   return <span className={`text-xs font-semibold ${up ? 'text-green-600' : 'text-red-500'}`}>{up ? '↑' : '↓'} {Math.abs(pct)}% MoM</span>;
+}
+
+function StatCards({ statCards, onViewReport }) {
+  const [expanded, setExpanded] = useState(null);
+  return (
+    <div className="grid grid-cols-4 gap-4 mb-6">
+      {statCards.map((card, i) => (
+        <div key={i}
+          className="bg-white rounded-xl p-5 border border-gray-200 cursor-pointer hover:shadow-md transition-all relative"
+          onClick={() => setExpanded(expanded === i ? null : i)}
+        >
+          <div className="flex items-start justify-between mb-3">
+            <p className="text-sm text-gray-500">{card.label}</p>
+            <div className="w-8 h-8 rounded-full bg-purple-50 flex items-center justify-center">{card.icon}</div>
+          </div>
+          <p className="text-3xl font-bold text-gray-900 mb-1">{card.value}</p>
+          <p className="text-xs text-gray-400 mb-1">{card.sub}</p>
+          {card.curr && card.prev ? <MoMChip current={card.curr} prev={card.prev} /> : <span className="text-xs text-gray-400">— No prior data</span>}
+
+          {expanded === i && (
+            <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-xl shadow-xl z-20 p-4">
+              <div className="space-y-1.5 text-sm">
+                <div className="flex justify-between"><span className="text-gray-500">This month</span><span className="font-bold text-gray-900">{card.value}</span></div>
+                <div className="flex justify-between"><span className="text-gray-500">Last month</span><span className="font-medium text-gray-600">{card.prev ? String(card.prev) : '—'}</span></div>
+                <div className="flex justify-between items-center pt-1 border-t border-gray-100">
+                  <span className="text-gray-500">MoM change</span>
+                  {card.curr && card.prev ? <MoMChip current={card.curr} prev={card.prev} /> : <span className="text-xs text-gray-400">—</span>}
+                </div>
+              </div>
+              <button onClick={e => { e.stopPropagation(); onViewReport(); }}
+                className="mt-3 w-full text-xs font-semibold text-[#8403C5] hover:underline text-left">
+                View full report →
+              </button>
+            </div>
+          )}
+        </div>
+      ))}
+    </div>
+  );
 }
 
 export default function MarketingReporting() {
@@ -61,6 +100,17 @@ export default function MarketingReporting() {
 
   const handleDelete = async (id) => {
     await base44.entities.MarketingReport.delete(id);
+    load();
+  };
+
+  const handleSendToChris = async (r) => {
+    const w = getWebsite(r), li = getLinkedIn(r), cp = getCompany(r), nl = getNewsletter(r);
+    await base44.integrations.Core.SendEmail({
+      to: 'chris@eventwise.com',
+      subject: `Marketing Report — ${r.month} ${r.year}`,
+      body: `Hi Chris,\n\nThe ${r.month} ${r.year} marketing report is ready.\n\nKey metrics:\n- Website Sessions: ${w.sessions || '—'}\n- Chris LI Impressions: ${li.totalImpressions || '—'}\n- Company Impressions: ${cp.totalImpressions || '—'}\n- Newsletter Open Rate: ${nl.openRate ? nl.openRate + '%' : '—'}\n\nBest,\nElena`,
+    });
+    await base44.entities.MarketingReport.update(r.id, { status: 'Sent', sentAt: new Date().toISOString() });
     load();
   };
 
@@ -102,19 +152,7 @@ export default function MarketingReporting() {
 
             {/* Stat cards */}
             {latest && (
-              <div className="grid grid-cols-4 gap-4 mb-6">
-                {statCards.map((card, i) => (
-                  <div key={i} className="bg-white rounded-xl p-5 border border-gray-200">
-                    <div className="flex items-start justify-between mb-3">
-                      <p className="text-sm text-gray-500">{card.label}</p>
-                      <div className="w-8 h-8 rounded-full bg-purple-50 flex items-center justify-center">{card.icon}</div>
-                    </div>
-                    <p className="text-3xl font-bold text-gray-900 mb-1">{card.value}</p>
-                    <p className="text-xs text-gray-400 mb-1">{card.sub}</p>
-                    {card.curr && card.prev ? <MoMChip current={card.curr} prev={card.prev} /> : <span className="text-xs text-gray-400">— No prior data</span>}
-                  </div>
-                ))}
-              </div>
+              <StatCards statCards={statCards} onViewReport={() => { setViewReport(latest); setView('view'); }} />
             )}
 
             {/* All reports table */}
@@ -138,7 +176,14 @@ export default function MarketingReporting() {
                         <span className={`text-xs font-semibold px-2.5 py-1 rounded-full border ${STATUS_STYLES[r.status] || STATUS_STYLES.Draft}`}>{r.status || 'Draft'}</span>
                       </td>
                       <td className="px-5 py-3 text-right">
-                        <div className="flex items-center gap-3 justify-end">
+                        <div className="flex items-center gap-2 justify-end">
+                          {r.status === 'Ready' && (
+                            <button onClick={() => handleSendToChris(r)} title="Send to Chris"
+                              className="flex items-center gap-1 px-2 py-1 text-xs font-semibold bg-[#8403C5] text-white rounded-lg hover:bg-[#6d02a3] transition-colors">
+                              <Send className="w-3 h-3" /> Send
+                            </button>
+                          )}
+                          <button onClick={() => generateReportPDF(r)} title="Download PDF" className="text-gray-400 hover:text-gray-700"><Download className="w-4 h-4" /></button>
                           <button onClick={() => { setEditReport(r); setView('form'); }} className="text-gray-400 hover:text-gray-700"><Pencil className="w-4 h-4" /></button>
                           <button onClick={() => { setViewReport(r); setView('view'); }} className="text-gray-400 hover:text-gray-700"><Eye className="w-4 h-4" /></button>
                           <button onClick={() => setConfirmId(r.id)} className="text-gray-400 hover:text-red-500"><Trash2 className="w-4 h-4 text-red-400" /></button>

@@ -121,6 +121,7 @@ export default function HandbookSidebar({
                     </>
                   ) : (
                     <>
+                      <button onClick={e => { e.stopPropagation(); onAddPage(section.id); }} className="p-0.5 text-[#8403C5] hover:text-purple-300" title="Add page"><Plus className="w-3 h-3" /></button>
                       <button onClick={e => startRenameSection(section.id, section.label, e)} className="p-0.5 text-white/30 hover:text-white/80" title="Rename section"><Pencil className="w-3 h-3" /></button>
                       <button onClick={e => { e.stopPropagation(); setDeleteSectionConfirm({ sectionId: section.id, label: section.label }); }} className="p-0.5 text-white/30 hover:text-red-400" title="Delete section"><Trash2 className="w-3 h-3" /></button>
                     </>
@@ -128,22 +129,18 @@ export default function HandbookSidebar({
                 </div>
               </div>
 
-              {/* + Add page button visible on section header hover when expanded */}
-              {!section.expanded && (
-                <div className="group/addrow">
-                  <button
-                    onClick={e => { e.stopPropagation(); onAddPage(section.id); }}
-                    className="w-full flex items-center gap-1.5 pl-7 pr-4 py-0.5 text-[11px] text-[#8403C5] hover:text-purple-300 transition-colors opacity-0 group-hover/addrow:opacity-100"
-                  >
-                    <Plus className="w-3 h-3" /> Add page
-                  </button>
-                </div>
-              )}
+              {/* Add page button on section header — always visible on hover */}
+              {/* (handled below per section) */}
 
               {section.expanded && (
                 <div className="pb-1">
                   {section.pages.length === 0 && (
-                    <p className="pl-8 pr-4 py-1 text-[11px] italic text-[#6B7280]">No pages yet — click + to add one</p>
+                    <div className="pl-8 pr-4 py-1.5">
+                      <p className="text-[11px] text-white/30 italic">No pages yet — click + to add one</p>
+                      <button onClick={() => onAddPage(section.id)} className="flex items-center gap-1 mt-1 text-[11px] text-[#8403C5] hover:text-purple-300 transition-colors">
+                        <Plus className="w-3 h-3" /> Add page
+                      </button>
+                    </div>
                   )}
                   {section.pages.map(page => {
                     const isActive = activePage?.id === page.id;

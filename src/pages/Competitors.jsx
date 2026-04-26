@@ -232,6 +232,7 @@ export default function Competitors() {
               onClick={() => setDetailCompetitor(c)}
               onEdit={() => openEdit(c)}
               onDelete={() => setDeleteConfirm(c)}
+              needsResearch={needsResearch(c)}
             />
           ))}
         </div>

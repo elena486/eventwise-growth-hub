@@ -22,7 +22,7 @@ import ClientDetailPanel from '@/components/clients/ClientDetailPanel';
 import ClientFullPanel from '@/components/clients/ClientFullPanel';
 import { useDarkMode } from '@/hooks/useDarkMode';
 import { Moon, Sun, LogOut, ChevronDown } from 'lucide-react';
-import { useRef } from 'react';
+import { useState as useLocalState, useRef, useEffect as useLocalEffect } from 'react';
 
 const GROUPS = [
   { id: 'sales', label: 'Sales', tabs: [
@@ -145,17 +145,52 @@ export default function AppShell() {
 
         {/* Right: user + utilities */}
         <div className="flex items-center gap-2 shrink-0 ml-4">
-          {user && (
-            <>
-              <div className="w-7 h-7 rounded-full bg-white/20 text-white text-[11px] font-semibold flex items-center justify-center shrink-0">
-                {(user.full_name || user.email || '?').split(' ').map(w => w[0]).slice(0, 2).join('').toUpperCase()}
-              </div>
-              <span className="text-[13px] text-white/60 font-medium hidden sm:block">{user.full_name || user.email}</span>
-            </>
-          )}
-          <button onClick={() => setDark(d => !d)} className="p-2 text-white/50 hover:text-white rounded-lg hover:bg-white/10 transition-colors" title="Toggle dark mode">
+          <button
+            onClick={() => setDark(d => !d)}
+            className="p-2 text-white/50 hover:text-white rounded-lg hover:bg-white/10 transition-colors"
+            title={dark ? 'Switch to light mode' : 'Switch to dark mode'}
+          >
             {dark ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
           </button>
+          {user && (
+            <div className="relative" ref={avatarRef}>
+              <button
+                onClick={() => setAvatarOpen(o => !o)}
+                className="flex items-center gap-1.5 px-2 py-1 rounded-lg hover:bg-white/10 transition-colors"
+              >
+                <div className="w-7 h-7 rounded-full bg-white/20 text-white text-[11px] font-semibold flex items-center justify-center shrink-0">
+                  {(user.full_name || user.email || '?').split(' ').map(w => w[0]).slice(0, 2).join('').toUpperCase()}
+                </div>
+                <ChevronDown className="w-3 h-3 text-white/40" />
+              </button>
+              {avatarOpen && (
+                <div className="absolute right-0 top-full mt-2 w-56 bg-white rounded-xl shadow-2xl border border-[#EBEBEB] overflow-hidden z-50">
+                  <div className="px-4 py-3 border-b border-[#EBEBEB]">
+                    <p className="text-sm font-semibold text-[#111827]">{user.full_name || '—'}</p>
+                    <p className="text-xs text-[#9CA3AF] mt-0.5 truncate">{user.email}</p>
+                  </div>
+                  <button
+                    onClick={() => { setDark(d => !d); }}
+                    className="w-full flex items-center justify-between px-4 py-2.5 text-sm text-[#374151] hover:bg-[#F9FAFB] transition-colors"
+                  >
+                    <span className="flex items-center gap-2">
+                      {dark ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
+                      {dark ? 'Light mode' : 'Dark mode'}
+                    </span>
+                    <span className={`w-8 h-4 rounded-full transition-colors ${dark ? 'bg-[#8403C5]' : 'bg-gray-200'} relative inline-block`}>
+                      <span className={`absolute top-0.5 w-3 h-3 bg-white rounded-full shadow transition-transform ${dark ? 'translate-x-4' : 'translate-x-0.5'}`} />
+                    </span>
+                  </button>
+                  <button
+                    onClick={() => { setAvatarOpen(false); import('@/api/base44Client').then(m => m.base44.auth.logout()); }}
+                    className="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-red-500 hover:bg-red-50 transition-colors border-t border-[#EBEBEB]"
+                  >
+                    <LogOut className="w-4 h-4" /> Sign out
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
         </div>
       </nav>
 
