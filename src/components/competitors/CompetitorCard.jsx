@@ -18,7 +18,7 @@ const CAT_STYLES = {
   'Other':                    'bg-gray-100 text-gray-600',
 };
 
-export default function CompetitorCard({ competitor, onClick, onEdit, onDelete }) {
+export default function CompetitorCard({ competitor, onClick, onEdit, onDelete, needsResearch: needsResearchProp }) {
   const trustpilotMatch = competitor.customerSatisfaction?.match(/(\d+\.?\d*)\s+on\s+Trustpilot/i);
   const trustScore = trustpilotMatch ? trustpilotMatch[1] : null;
 
@@ -44,7 +44,7 @@ export default function CompetitorCard({ competitor, onClick, onEdit, onDelete }
             </a>
           )}
         </div>
-        {competitor.needsResearch && (
+        {(competitor.needsResearch || needsResearchProp) && (
           <span className="inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full bg-amber-50 text-amber-700 border border-amber-200 shrink-0">
             <AlertTriangle className="w-2.5 h-2.5" /> Needs research
           </span>
