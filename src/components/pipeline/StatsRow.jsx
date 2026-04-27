@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
 import TotalLeadsCard from './TotalLeadsCard';
-import { ChevronUp, ChevronDown } from 'lucide-react';
 
 // Format value: full or abbreviated depending on compact mode
 function fmt(n, compact = false) {
@@ -10,8 +9,6 @@ function fmt(n, compact = false) {
   if (v >= 1000) return '£' + (v / 1000).toFixed(1).replace(/\.0$/, '') + 'K';
   return '£' + v;
 }
-
-const STATS_COLLAPSED_KEY = 'pipeline_stats_collapsed_v1';
 
 function useClickOutside(ref, onClose) {
   useEffect(() => {
@@ -47,19 +44,7 @@ function ExpandableCard({ title, value, sub, children, accentColor = 'text-navy'
   );
 }
 
-export default function StatsRow({ leads, stageFilter, onStageFilter, panelOpen = false }) {
-  const [collapsed, setCollapsed] = useState(() => {
-    try { return localStorage.getItem(STATS_COLLAPSED_KEY) === 'true'; } catch { return false; }
-  });
-
-  const toggleCollapsed = () => {
-    setCollapsed(v => {
-      const next = !v;
-      try { localStorage.setItem(STATS_COLLAPSED_KEY, String(next)); } catch {}
-      return next;
-    });
-  };
-
+export default function StatsRow({ leads, stageFilter, onStageFilter, panelOpen = false, collapsed = false }) {
   // Use compact (abbreviated) formatting when panel is open
   const compact = panelOpen;
 
@@ -109,40 +94,12 @@ export default function StatsRow({ leads, stageFilter, onStageFilter, panelOpen 
   const highest = leadsWithValue.length > 0 ? leadsWithValue.reduce((a, b) => (a.dealValueMonthly > b.dealValueMonthly ? a : b)) : null;
   const lowest = leadsWithValue.length > 0 ? leadsWithValue.reduce((a, b) => (a.dealValueMonthly < b.dealValueMonthly ? a : b)) : null;
 
+  if (collapsed) return null;
+
   return (
     <div className="mb-6">
-      {/* Toggle control */}
-      <div className="flex justify-end mb-2">
-        <button
-          onClick={toggleCollapsed}
-          className="flex items-center gap-1.5 text-xs text-ew-muted hover:text-navy transition-colors font-medium"
-        >
-          {collapsed ? (
-            <><ChevronDown className="w-3.5 h-3.5" /> Show stats</>
-          ) : (
-            <><ChevronUp className="w-3.5 h-3.5" /> Hide stats</>
-          )}
-        </button>
-      </div>
-
-      {collapsed ? (
-        /* Compact summary bar */
-        <button
-          onClick={toggleCollapsed}
-          className="w-full flex items-center gap-3 bg-white border border-ew-border rounded-xl px-5 py-3 text-sm text-ew-body hover:border-[#8403C5]/30 hover:shadow-sm transition-all"
-        >
-          <span className="font-semibold text-navy">{activeLeads.length} leads</span>
-          <span className="w-px h-4 bg-ew-border shrink-0" />
-          <span className="whitespace-nowrap"><span className="font-semibold text-navy">{fmt(pipeline, true)}</span><span className="text-ew-muted">/mo</span></span>
-          <span className="w-px h-4 bg-ew-border shrink-0" />
-          <span className="whitespace-nowrap"><span className="text-ew-muted">Weighted: </span><span className="font-semibold text-[#8403C5]">{fmt(weighted, true)}</span></span>
-          <span className="w-px h-4 bg-ew-border shrink-0" />
-          <span className="whitespace-nowrap"><span className="text-ew-muted">Proposals: </span><span className="font-semibold text-navy">{proposalsSentStage}</span></span>
-          <ChevronDown className="w-3.5 h-3.5 text-ew-muted ml-auto shrink-0" />
-        </button>
-      ) : (
-        /* Full stats — equal-width cards via flex with equal flex-basis */
-        <div className="flex gap-3 items-stretch">
+      {/* Full stats — equal-width cards via flex with equal flex-basis */}
+      <div className="flex gap-3 items-stretch">
           <div style={{ flex: '1 1 0', minWidth: 140 }}>
             <TotalLeadsCard leads={activeLeads} stageFilter={stageFilter} onStageFilter={onStageFilter} compact={compact} />
           </div>
@@ -226,7 +183,6 @@ export default function StatsRow({ leads, stageFilter, onStageFilter, panelOpen 
             )}
           </ExpandableCard>
         </div>
-      )}
     </div>
   );
 }

@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { base44 } from '@/api/base44Client';
-import { Plus, SlidersHorizontal, ChevronDown } from 'lucide-react';
+import { Plus, SlidersHorizontal, ChevronDown, BarChart2 } from 'lucide-react';
+
+const STATS_COLLAPSED_KEY = 'pipeline_stats_collapsed_v1';
 import { Button } from '@/components/ui/button';
 
 import StatsRow from '@/components/pipeline/StatsRow';
@@ -48,7 +50,18 @@ export default function Pipeline({ onProposalHandoff, onViewDeals }) {
   const [selectedLead, setSelectedLead] = useState(null);
   const [showConverted, setShowConverted] = useState(false);
   const [showMonthPicker, setShowMonthPicker] = useState(false);
+  const [statsCollapsed, setStatsCollapsed] = useState(() => {
+    try { return localStorage.getItem(STATS_COLLAPSED_KEY) === 'true'; } catch { return false; }
+  });
   const monthPickerRef = useRef(null);
+
+  const toggleStats = () => {
+    setStatsCollapsed(v => {
+      const next = !v;
+      try { localStorage.setItem(STATS_COLLAPSED_KEY, String(next)); } catch {}
+      return next;
+    });
+  };
 
   useEffect(() => {
     base44.entities.Lead.list('-created_date').then(data => {
@@ -253,12 +266,22 @@ export default function Pipeline({ onProposalHandoff, onViewDeals }) {
             {(probFilter > 0 || monthFilter) && (
               <button onClick={() => { setProbFilter(0); setMonthFilter(''); }} className="text-xs text-ew-muted hover:text-navy underline">Clear filters</button>
             )}
+            <span className="w-px h-4 bg-ew-border mx-1" />
+            <button
+              onClick={toggleStats}
+              className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg transition-colors border ${
+                statsCollapsed ? 'bg-white border-ew-border text-ew-muted hover:bg-ew-bg' : 'bg-[#8403C5] text-white border-[#8403C5]'
+              }`}
+            >
+              <BarChart2 className="w-3 h-3" />
+              {statsCollapsed ? 'Show stats' : 'Hide stats'}
+            </button>
           </div>
         )}
 
         {/* Stats (only for non-lost view) */}
         {!isLostView && (
-          <StatsRow leads={filteredStatsLeads} stageFilter={stageFilter} onStageFilter={setStageFilter} panelOpen={!!selectedLead} />
+          <StatsRow leads={filteredStatsLeads} stageFilter={stageFilter} onStageFilter={setStageFilter} panelOpen={!!selectedLead} collapsed={statsCollapsed} />
         )}
 
         {/* Stage filter indicator */}
