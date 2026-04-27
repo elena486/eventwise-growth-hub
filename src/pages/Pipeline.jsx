@@ -216,7 +216,7 @@ export default function Pipeline({ onProposalHandoff, onViewDeals }) {
                 }`}
               >
                 <BarChart2 className="w-3.5 h-3.5" />
-                {statsCollapsed ? 'Show filters' : 'Hide filters'}
+                {statsCollapsed ? 'Show filters & stats' : 'Hide filters & stats'}
               </button>
               {!statsCollapsed && (
                 <>
