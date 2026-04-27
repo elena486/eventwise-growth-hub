@@ -3,9 +3,109 @@ import { base44 } from '@/api/base44Client';
 import { format } from 'date-fns';
 import MentionTextarea, { sendMentionNotifications } from '@/components/shared/MentionTextarea';
 import {
-  X, Mail, ExternalLink, Phone, Linkedin, Plus, Pencil, Trash2,
-  Check, Upload, Link, ChevronDown, ChevronUp, AlertTriangle
+  X, Mail, ExternalLink, Phone, Plus, Pencil, Trash2,
+  Check, ChevronDown, ChevronUp, AlertTriangle, Star
 } from 'lucide-react';
+
+// ─── Multi-contact editor ─────────────────────────────────────────────────────
+
+function ContactsSection({ contacts, onChange }) {
+  const [deleteConfirm, setDeleteConfirm] = useState(null); // contact id to delete
+
+  const addContact = () => {
+    if (contacts.length >= 5) return;
+    const newContact = { id: Date.now(), firstName: '', lastName: '', jobTitle: '', email: '', phone: '', primary: contacts.length === 0 };
+    onChange([...contacts, newContact]);
+  };
+
+  const updateContact = (id, field, value) => {
+    onChange(contacts.map(c => c.id === id ? { ...c, [field]: value } : c));
+  };
+
+  const setPrimary = (id) => {
+    onChange(contacts.map(c => ({ ...c, primary: c.id === id })));
+  };
+
+  const deleteContact = (id) => {
+    const remaining = contacts.filter(c => c.id !== id);
+    // if deleted was primary, make first remaining primary
+    if (contacts.find(c => c.id === id)?.primary && remaining.length > 0) {
+      remaining[0] = { ...remaining[0], primary: true };
+    }
+    onChange(remaining);
+    setDeleteConfirm(null);
+  };
+
+  const ic2 = 'w-full text-sm border border-ew-border rounded-lg px-2.5 py-1.5 focus:outline-none focus:ring-2 focus:ring-[#8403C5]/20 bg-white';
+
+  return (
+    <div>
+      <div className="space-y-3">
+        {contacts.map((contact, idx) => (
+          <div key={contact.id} className={`border rounded-xl p-4 ${contact.primary ? 'border-[#8403C5]/30 bg-[#FAFBFE]' : 'border-ew-border bg-white'}`}>
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setPrimary(contact.id)}
+                  title={contact.primary ? 'Primary contact' : 'Set as primary'}
+                  className={`transition-colors ${contact.primary ? 'text-amber-400' : 'text-gray-300 hover:text-amber-400'}`}
+                >
+                  <Star className={`w-4 h-4 ${contact.primary ? 'fill-amber-400' : ''}`} />
+                </button>
+                <span className="text-[11px] font-semibold text-ew-muted uppercase tracking-wide">
+                  {contact.primary ? 'Primary contact' : `Contact ${idx + 1}`}
+                </span>
+              </div>
+              <button
+                onClick={() => {
+                  if (contact.primary) setDeleteConfirm(contact.id);
+                  else deleteContact(contact.id);
+                }}
+                className="text-ew-muted hover:text-red-500 transition-colors"
+                title="Remove contact"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              <input className={ic2} placeholder="First name" value={contact.firstName || ''} onChange={e => updateContact(contact.id, 'firstName', e.target.value)} />
+              <input className={ic2} placeholder="Last name" value={contact.lastName || ''} onChange={e => updateContact(contact.id, 'lastName', e.target.value)} />
+              <input className={ic2 + ' col-span-2'} placeholder="Job title" value={contact.jobTitle || ''} onChange={e => updateContact(contact.id, 'jobTitle', e.target.value)} />
+              <div className="relative">
+                <input className={ic2 + ' pr-7'} type="email" placeholder="Email" value={contact.email || ''} onChange={e => updateContact(contact.id, 'email', e.target.value)} />
+                {contact.email && <a href={`mailto:${contact.email}`} className="absolute right-2 top-2 text-ew-muted hover:text-[#8403C5]"><Mail className="w-3.5 h-3.5" /></a>}
+              </div>
+              <input className={ic2} placeholder="Phone" value={contact.phone || ''} onChange={e => updateContact(contact.id, 'phone', e.target.value)} />
+            </div>
+          </div>
+        ))}
+      </div>
+
+      <button
+        onClick={addContact}
+        disabled={contacts.length >= 5}
+        title={contacts.length >= 5 ? 'Maximum 5 contacts per lead' : undefined}
+        className="mt-3 flex items-center gap-1.5 text-xs font-semibold text-[#8403C5] hover:underline disabled:opacity-40 disabled:cursor-not-allowed disabled:no-underline transition-colors"
+      >
+        <Plus className="w-3 h-3" /> Add contact
+        {contacts.length >= 5 && <span className="text-ew-muted font-normal">(max 5)</span>}
+      </button>
+
+      {deleteConfirm && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-[200] p-4" onClick={() => setDeleteConfirm(null)}>
+          <div className="bg-white rounded-xl shadow-2xl w-full max-w-xs p-5" onClick={e => e.stopPropagation()}>
+            <p className="text-sm font-semibold text-navy mb-2">Delete primary contact?</p>
+            <p className="text-sm text-ew-body mb-4">This is the primary contact. Are you sure you want to delete them?</p>
+            <div className="flex gap-2 justify-end">
+              <button onClick={() => setDeleteConfirm(null)} className="px-3 py-1.5 text-sm text-ew-body hover:bg-ew-bg rounded-lg">Cancel</button>
+              <button onClick={() => deleteContact(deleteConfirm)} className="px-3 py-1.5 text-sm font-semibold bg-red-600 text-white rounded-lg">Delete</button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
 import MultiFileUpload from '@/components/shared/MultiFileUpload';
 import TranscriptSection from '@/components/shared/TranscriptSection';
 import StageBadge from './Stagebadge';
@@ -261,6 +361,17 @@ export default function LeadDetailPanel({ lead, onClose, onUpdate, onDelete, onC
   const logEntries = (() => { try { return JSON.parse(data.activityLog || '[]'); } catch { return []; } })();
   const extLinks = (() => { try { return JSON.parse(data.externalLinks || '[]'); } catch { return []; } })();
   const leadFiles = (() => { try { const p = JSON.parse(data.fileUrl || '[]'); return Array.isArray(p) ? p : []; } catch { return data.fileUrl ? [{ name: data.fileName || data.fileUrl, url: data.fileUrl }] : []; } })();
+  const contacts = (() => { try { const p = JSON.parse(data.contacts || '[]'); return Array.isArray(p) ? p : []; } catch { return []; } })();
+  // Derive primary contact for header display
+  const primaryContact = contacts.find(c => c.primary) || contacts[0];
+  const primaryDisplayName = primaryContact ? [primaryContact.firstName, primaryContact.lastName].filter(Boolean).join(' ') : (data.contactName || '');
+
+  const saveContacts = (newContacts) => {
+    // Also sync contactName to the primary contact's name for backward compat
+    const primary = newContacts.find(c => c.primary) || newContacts[0];
+    const newContactName = primary ? [primary.firstName, primary.lastName].filter(Boolean).join(' ') : '';
+    autoSave({ contacts: JSON.stringify(newContacts), contactName: newContactName });
+  };
 
   const autoSave = useCallback((updates) => {
     const merged = { ...data, ...updates };
@@ -323,12 +434,9 @@ export default function LeadDetailPanel({ lead, onClose, onUpdate, onDelete, onC
               onChange={f('companyName')}
               placeholder="Company name"
             />
-            <input
-              className="text-sm text-ew-muted bg-transparent border-none outline-none w-full hover:bg-ew-bg focus:bg-ew-bg rounded px-1 -ml-1 mt-0.5 transition-colors"
-              value={data.contactName || ''}
-              onChange={f('contactName')}
-              placeholder="Contact name"
-            />
+            <p className="text-sm text-ew-muted px-1 -ml-1 mt-0.5 truncate">
+              {primaryDisplayName || <span className="italic text-ew-muted-light">No contact</span>}
+            </p>
           </div>
           <button onClick={onClose} className="p-1.5 text-ew-muted hover:text-navy hover:bg-ew-bg rounded-lg shrink-0 transition-colors">
             <X className="w-5 h-5" />
@@ -370,30 +478,16 @@ export default function LeadDetailPanel({ lead, onClose, onUpdate, onDelete, onC
           </div>
         )}
 
-        {/* ── SECTION A: Contact & Company ── */}
+        {/* ── SECTION A: Contacts ── */}
         <div>
-          <SectionTitle>Contact & Company</SectionTitle>
+          <SectionTitle>Contacts</SectionTitle>
+          <ContactsSection contacts={contacts} onChange={saveContacts} />
+        </div>
+
+        {/* ── SECTION A2: Company ── */}
+        <div>
+          <SectionTitle>Company</SectionTitle>
           <div className="grid grid-cols-2 gap-3">
-            <FieldRow label="First name">
-              <input className={ic} value={data.firstName || ''} onChange={f('firstName')} placeholder="First name" />
-            </FieldRow>
-            <FieldRow label="Last name">
-              <input className={ic} value={data.lastName || ''} onChange={f('lastName')} placeholder="Last name" />
-            </FieldRow>
-            <FieldRow label="Job title">
-              <input className={ic} value={data.jobTitle || ''} onChange={f('jobTitle')} placeholder="e.g. Finance Director" />
-            </FieldRow>
-            <FieldRow label="Email">
-              <div className="relative">
-                <input className={ic + ' pr-8'} value={data.email || ''} onChange={f('email')} placeholder="name@company.com" />
-                {data.email && (
-                  <a href={`mailto:${data.email}`} className="absolute right-2.5 top-2.5 text-ew-muted hover:text-[#8403C5]"><Mail className="w-4 h-4" /></a>
-                )}
-              </div>
-            </FieldRow>
-            <FieldRow label="Phone">
-              <input className={ic} value={data.phone || ''} onChange={f('phone')} placeholder="+44 …" />
-            </FieldRow>
             <FieldRow label="LinkedIn URL">
               <div className="relative">
                 <input className={ic + ' pr-8'} value={data.linkedInUrl || ''} onChange={f('linkedInUrl')} placeholder="https://linkedin.com/in/…" />

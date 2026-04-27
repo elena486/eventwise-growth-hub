@@ -10,6 +10,10 @@
       "type": "string",
       "description": "Contact name"
     },
+    "contacts": {
+      "type": "string",
+      "description": "JSON array of contact objects [{id, firstName, lastName, jobTitle, email, phone, primary}]"
+    },
     "firstName": {
       "type": "string"
     },

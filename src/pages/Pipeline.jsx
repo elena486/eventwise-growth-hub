@@ -258,7 +258,7 @@ export default function Pipeline({ onProposalHandoff, onViewDeals }) {
 
         {/* Stats (only for non-lost view) */}
         {!isLostView && (
-          <StatsRow leads={filteredStatsLeads} stageFilter={stageFilter} onStageFilter={setStageFilter} />
+          <StatsRow leads={filteredStatsLeads} stageFilter={stageFilter} onStageFilter={setStageFilter} panelOpen={!!selectedLead} />
         )}
 
         {/* Stage filter indicator */}

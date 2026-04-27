@@ -85,6 +85,46 @@ const OWNER_COLORS = {
   George: 'bg-amber-100 text-amber-700',
 };
 
+// Contact cell — shows primary contact name + extra contacts badge with tooltip
+function ContactCell({ lead, onSave }) {
+  const [tooltipVisible, setTooltipVisible] = useState(false);
+  const tooltipRef = useRef(null);
+
+  // Parse multi-contacts if present
+  let contacts = [];
+  try {
+    const parsed = JSON.parse(lead.contacts || '[]');
+    if (Array.isArray(parsed) && parsed.length > 0) contacts = parsed;
+  } catch {}
+
+  const primary = contacts.find(c => c.primary) || contacts[0];
+  const primaryName = primary ? [primary.firstName, primary.lastName].filter(Boolean).join(' ') : lead.contactName;
+  const extra = contacts.filter(c => c !== primary);
+
+  return (
+    <div className="flex items-center gap-1 mt-0.5 relative">
+      <InlineCell value={primaryName || lead.contactName} onSave={onSave} placeholder="Contact name" className="text-xs text-ew-muted" />
+      {extra.length > 0 && (
+        <div className="relative" ref={tooltipRef}
+          onMouseEnter={() => setTooltipVisible(true)}
+          onMouseLeave={() => setTooltipVisible(false)}>
+          <span className="text-[10px] font-semibold bg-[#F3E8FF] text-[#8403C5] px-1.5 py-0.5 rounded-full cursor-default">+{extra.length}</span>
+          {tooltipVisible && (
+            <div className="absolute left-0 top-full mt-1 bg-[#1a1f3c] text-white rounded-xl p-3 shadow-xl text-xs z-50 min-w-[160px]">
+              {extra.map((c, i) => (
+                <div key={i} className="py-0.5">
+                  <span className="font-semibold">{[c.firstName, c.lastName].filter(Boolean).join(' ') || '—'}</span>
+                  {c.jobTitle && <span className="text-white/60 ml-1">· {c.jobTitle}</span>}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function MonthCell({ value, onSave }) {
   const [editing, setEditing] = useState(false);
   if (editing) {
@@ -304,7 +344,7 @@ export default function LeadTable({ leads, onDelete, onProposal, onUpdateField, 
         {show('company') && (
           <td className="px-4 py-3 min-w-[160px]" onClick={e => e.stopPropagation()}>
             <InlineCell value={lead.companyName} onSave={save(lead.id, 'companyName')} placeholder="Company name" autoEdit={isNew} className="font-semibold text-navy text-sm" />
-            <InlineCell value={lead.contactName} onSave={save(lead.id, 'contactName')} placeholder="Contact name" className="text-xs text-ew-muted mt-0.5" />
+            <ContactCell lead={lead} onSave={save(lead.id, 'contactName')} />
           </td>
         )}
         {show('owner') && (
