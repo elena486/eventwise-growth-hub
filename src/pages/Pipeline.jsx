@@ -197,91 +197,98 @@ export default function Pipeline({ onProposalHandoff, onViewDeals }) {
             <h1 className="text-2xl font-bold text-navy">{isLostView ? 'Lost Leads' : 'Warm Leads'}</h1>
             <p className="text-ew-muted text-sm mt-0.5">{isLostView ? 'All closed lost leads' : 'Your active pipeline — updated as you go'}</p>
           </div>
-          {!isLostView && (
-            <Button onClick={handleAddLead} className="h-9 bg-navy hover:bg-navy/90 text-white font-semibold text-sm">
-              <Plus className="w-4 h-4 mr-1.5" />Add Lead
-            </Button>
-          )}
-        </div>
-
-        {/* Owner + filter bar */}
-        <div className="flex items-center gap-1.5 mb-4 flex-wrap">
-          {OWNER_FILTERS.map(f => (
-            <button
-              key={f}
-              onClick={() => { setOwnerFilter(f); setStageFilter(null); }}
-              className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors border ${
-                ownerFilter === f
-                  ? f === 'Lost Leads' ? 'bg-red-600 text-white border-red-600' : 'bg-navy text-white border-navy'
-                  : 'bg-white border-ew-border text-ew-body hover:bg-ew-bg'
-              }`}
-            >
-              {f}
-            </button>
-          ))}
-        </div>
-
-        {/* Probability + Month filters (only for non-lost) */}
-        {!isLostView && (
-          <div className="flex items-center gap-2 mb-5 flex-wrap">
-            <SlidersHorizontal className="w-3.5 h-3.5 text-ew-muted" />
-            <span className="text-xs text-ew-muted font-medium">Probability:</span>
-            {PROB_OPTIONS.map(opt => (
+          <div className="flex items-center gap-2">
+            {!isLostView && (
               <button
-                key={opt.value}
-                onClick={() => setProbFilter(opt.value)}
-                className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-colors border ${
-                  probFilter === opt.value ? 'bg-[#8403C5] text-white border-[#8403C5]' : 'bg-white border-ew-border text-ew-body hover:bg-ew-bg'
-                }`}
-              >
-                {opt.label}
-              </button>
-            ))}
-            <span className="w-px h-4 bg-ew-border mx-1" />
-            <span className="text-xs text-ew-muted font-medium">Expected close:</span>
-            <div className="relative" ref={monthPickerRef}>
-              <button
-                onClick={() => setShowMonthPicker(v => !v)}
+                onClick={toggleStats}
                 className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg transition-colors border ${
-                  monthFilter ? 'bg-[#8403C5] text-white border-[#8403C5]' : 'bg-white border-ew-border text-ew-body hover:bg-ew-bg'
+                  statsCollapsed ? 'bg-white border-ew-border text-ew-muted hover:bg-ew-bg' : 'bg-[#8403C5] text-white border-[#8403C5]'
                 }`}
               >
-                {selectedMonthLabel}
-                <ChevronDown className="w-3 h-3" />
+                <BarChart2 className="w-3 h-3" />
+                {statsCollapsed ? 'Show filters' : 'Hide filters'}
               </button>
-              {showMonthPicker && (
-                <div className="absolute top-full left-0 mt-1 bg-white border border-ew-border rounded-xl shadow-lg z-20 py-1 max-h-48 overflow-y-auto min-w-[140px]">
-                  {getMonthOptions().map(opt => (
-                    <button
-                      key={opt.value}
-                      onClick={() => { setMonthFilter(opt.value); setShowMonthPicker(false); }}
-                      className={`w-full text-left px-3 py-1.5 text-sm hover:bg-ew-bg transition-colors ${monthFilter === opt.value ? 'text-[#8403C5] font-semibold' : 'text-ew-body'}`}
-                    >
-                      {opt.label}
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
-            {(probFilter > 0 || monthFilter) && (
-              <button onClick={() => { setProbFilter(0); setMonthFilter(''); }} className="text-xs text-ew-muted hover:text-navy underline">Clear filters</button>
             )}
-            <span className="w-px h-4 bg-ew-border mx-1" />
-            <button
-              onClick={toggleStats}
-              className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg transition-colors border ${
-                statsCollapsed ? 'bg-white border-ew-border text-ew-muted hover:bg-ew-bg' : 'bg-[#8403C5] text-white border-[#8403C5]'
-              }`}
-            >
-              <BarChart2 className="w-3 h-3" />
-              {statsCollapsed ? 'Show stats' : 'Hide stats'}
-            </button>
+            {!isLostView && (
+              <Button onClick={handleAddLead} className="h-9 bg-navy hover:bg-navy/90 text-white font-semibold text-sm">
+                <Plus className="w-4 h-4 mr-1.5" />Add Lead
+              </Button>
+            )}
           </div>
-        )}
+        </div>
 
-        {/* Stats (only for non-lost view) */}
-        {!isLostView && (
-          <StatsRow leads={filteredStatsLeads} stageFilter={stageFilter} onStageFilter={setStageFilter} panelOpen={!!selectedLead} collapsed={statsCollapsed} />
+        {!statsCollapsed && (
+          <>
+            {/* Owner + filter bar */}
+            <div className="flex items-center gap-1.5 mb-4 flex-wrap">
+              {OWNER_FILTERS.map(f => (
+                <button
+                  key={f}
+                  onClick={() => { setOwnerFilter(f); setStageFilter(null); }}
+                  className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors border ${
+                    ownerFilter === f
+                      ? f === 'Lost Leads' ? 'bg-red-600 text-white border-red-600' : 'bg-navy text-white border-navy'
+                      : 'bg-white border-ew-border text-ew-body hover:bg-ew-bg'
+                  }`}
+                >
+                  {f}
+                </button>
+              ))}
+            </div>
+
+            {/* Probability + Month filters (only for non-lost) */}
+            {!isLostView && (
+              <div className="flex items-center gap-2 mb-5 flex-wrap">
+                <SlidersHorizontal className="w-3.5 h-3.5 text-ew-muted" />
+                <span className="text-xs text-ew-muted font-medium">Probability:</span>
+                {PROB_OPTIONS.map(opt => (
+                  <button
+                    key={opt.value}
+                    onClick={() => setProbFilter(opt.value)}
+                    className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-colors border ${
+                      probFilter === opt.value ? 'bg-[#8403C5] text-white border-[#8403C5]' : 'bg-white border-ew-border text-ew-body hover:bg-ew-bg'
+                    }`}
+                  >
+                    {opt.label}
+                  </button>
+                ))}
+                <span className="w-px h-4 bg-ew-border mx-1" />
+                <span className="text-xs text-ew-muted font-medium">Expected close:</span>
+                <div className="relative" ref={monthPickerRef}>
+                  <button
+                    onClick={() => setShowMonthPicker(v => !v)}
+                    className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg transition-colors border ${
+                      monthFilter ? 'bg-[#8403C5] text-white border-[#8403C5]' : 'bg-white border-ew-border text-ew-body hover:bg-ew-bg'
+                    }`}
+                  >
+                    {selectedMonthLabel}
+                    <ChevronDown className="w-3 h-3" />
+                  </button>
+                  {showMonthPicker && (
+                    <div className="absolute top-full left-0 mt-1 bg-white border border-ew-border rounded-xl shadow-lg z-20 py-1 max-h-48 overflow-y-auto min-w-[140px]">
+                      {getMonthOptions().map(opt => (
+                        <button
+                          key={opt.value}
+                          onClick={() => { setMonthFilter(opt.value); setShowMonthPicker(false); }}
+                          className={`w-full text-left px-3 py-1.5 text-sm hover:bg-ew-bg transition-colors ${monthFilter === opt.value ? 'text-[#8403C5] font-semibold' : 'text-ew-body'}`}
+                        >
+                          {opt.label}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+                {(probFilter > 0 || monthFilter) && (
+                  <button onClick={() => { setProbFilter(0); setMonthFilter(''); }} className="text-xs text-ew-muted hover:text-navy underline">Clear filters</button>
+                )}
+              </div>
+            )}
+
+            {/* Stats (only for non-lost view) */}
+            {!isLostView && (
+              <StatsRow leads={filteredStatsLeads} stageFilter={stageFilter} onStageFilter={setStageFilter} panelOpen={!!selectedLead} collapsed={false} />
+            )}
+          </>
         )}
 
         {/* Stage filter indicator */}
