@@ -434,9 +434,9 @@ export default function LeadDetailPanel({ lead, onClose, onUpdate, onDelete, onC
               onChange={f('companyName')}
               placeholder="Company name"
             />
-            <p className="text-sm text-ew-muted px-1 -ml-1 mt-0.5 truncate">
-              {primaryDisplayName || <span className="italic text-ew-muted-light">No contact</span>}
-            </p>
+            {primaryDisplayName && (
+              <p className="text-sm text-ew-muted px-1 -ml-1 mt-0.5">{primaryDisplayName}</p>
+            )}
           </div>
           <button onClick={onClose} className="p-1.5 text-ew-muted hover:text-navy hover:bg-ew-bg rounded-lg shrink-0 transition-colors">
             <X className="w-5 h-5" />
@@ -484,9 +484,9 @@ export default function LeadDetailPanel({ lead, onClose, onUpdate, onDelete, onC
           <ContactsSection contacts={contacts} onChange={saveContacts} />
         </div>
 
-        {/* ── SECTION A2: Company ── */}
+        {/* ── Company Info ── */}
         <div>
-          <SectionTitle>Company</SectionTitle>
+          <SectionTitle>Company Info</SectionTitle>
           <div className="grid grid-cols-2 gap-3">
             <FieldRow label="LinkedIn URL">
               <div className="relative">

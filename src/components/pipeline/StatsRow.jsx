@@ -27,14 +27,14 @@ function ExpandableCard({ title, value, sub, children, accentColor = 'text-navy'
   useClickOutside(ref, () => setOpen(false));
 
   return (
-    <div ref={ref} className="relative flex-1 min-w-[140px]">
+    <div ref={ref} className="relative" style={{ flex: '1 1 0', minWidth: 140 }}>
       <div
         onClick={() => setOpen(v => !v)}
         className={`bg-white border border-ew-border rounded-xl p-4 flex flex-col justify-between cursor-pointer select-none transition-shadow hover:shadow-md h-full ${open ? 'ring-2 ring-[#8403C5]/20' : ''}`}
       >
-        <p className="text-[10px] font-semibold text-ew-muted uppercase tracking-[0.12em] mb-1 whitespace-nowrap overflow-hidden text-ellipsis">{title}</p>
-        <div>
-          <p className={`font-bold ${accentColor} ${compact ? 'text-xl' : 'text-2xl'}`}>{value}</p>
+        <p className="text-[10px] font-semibold text-ew-muted uppercase tracking-[0.08em] mb-1 whitespace-nowrap overflow-hidden text-ellipsis">{title}</p>
+        <div className="min-w-0">
+          <p className={`font-bold ${accentColor} ${compact ? 'text-lg' : 'text-2xl'} whitespace-nowrap`}>{value}</p>
           {sub && <p className="text-xs text-ew-muted mt-0.5 whitespace-nowrap">{sub}</p>}
         </div>
       </div>
@@ -60,7 +60,7 @@ export default function StatsRow({ leads, stageFilter, onStageFilter, panelOpen 
     });
   };
 
-  // Use compact formatting when panel is open or viewport < 1200px
+  // Use compact (abbreviated) formatting when panel is open
   const compact = panelOpen;
 
   const activeLeads = leads.filter(l => !l.converted);
@@ -126,29 +126,31 @@ export default function StatsRow({ leads, stageFilter, onStageFilter, panelOpen 
       </div>
 
       {collapsed ? (
-        /* Compact bar */
+        /* Compact summary bar */
         <button
           onClick={toggleCollapsed}
-          className="w-full flex items-center gap-4 bg-white border border-ew-border rounded-xl px-5 py-3 text-sm text-ew-body hover:border-[#8403C5]/30 hover:shadow-sm transition-all"
+          className="w-full flex items-center gap-3 bg-white border border-ew-border rounded-xl px-5 py-3 text-sm text-ew-body hover:border-[#8403C5]/30 hover:shadow-sm transition-all"
         >
           <span className="font-semibold text-navy">{activeLeads.length} leads</span>
-          <span className="w-px h-4 bg-ew-border" />
-          <span><span className="font-semibold text-navy">{fmt(pipeline)}</span><span className="text-ew-muted">/mo</span></span>
-          <span className="w-px h-4 bg-ew-border" />
-          <span className="text-ew-muted">Weighted: </span><span className="font-semibold text-[#8403C5]">{fmt(weighted)}</span>
-          <span className="w-px h-4 bg-ew-border" />
-          <span className="text-ew-muted">Proposals: </span><span className="font-semibold text-navy">{proposalsSentStage}</span>
-          <ChevronDown className="w-3.5 h-3.5 text-ew-muted ml-auto" />
+          <span className="w-px h-4 bg-ew-border shrink-0" />
+          <span className="whitespace-nowrap"><span className="font-semibold text-navy">{fmt(pipeline, true)}</span><span className="text-ew-muted">/mo</span></span>
+          <span className="w-px h-4 bg-ew-border shrink-0" />
+          <span className="whitespace-nowrap"><span className="text-ew-muted">Weighted: </span><span className="font-semibold text-[#8403C5]">{fmt(weighted, true)}</span></span>
+          <span className="w-px h-4 bg-ew-border shrink-0" />
+          <span className="whitespace-nowrap"><span className="text-ew-muted">Proposals: </span><span className="font-semibold text-navy">{proposalsSentStage}</span></span>
+          <ChevronDown className="w-3.5 h-3.5 text-ew-muted ml-auto shrink-0" />
         </button>
       ) : (
-        /* Full stats */
+        /* Full stats — equal-width cards via flex with equal flex-basis */
         <div className="flex gap-3 items-stretch">
-          <TotalLeadsCard leads={activeLeads} stageFilter={stageFilter} onStageFilter={onStageFilter} compact={compact} />
+          <div style={{ flex: '1 1 0', minWidth: 140 }}>
+            <TotalLeadsCard leads={activeLeads} stageFilter={stageFilter} onStageFilter={onStageFilter} compact={compact} />
+          </div>
 
           {/* Pipeline Value */}
           <ExpandableCard
             title="Pipeline value"
-            value={<>{fmt(pipeline, compact)}<span className="text-sm font-medium text-ew-muted">/mo</span></>}
+            value={<>{fmt(pipeline, compact)}<span className={`font-medium text-ew-muted ${compact ? 'text-xs' : 'text-sm'}`}>/mo</span></>}
             sub={`${fmt(pipeline * 12, compact)}/yr`}
             compact={compact}
           >
@@ -165,7 +167,7 @@ export default function StatsRow({ leads, stageFilter, onStageFilter, panelOpen 
           {/* Weighted Pipeline */}
           <ExpandableCard
             title="Weighted pipeline"
-            value={<><span className="text-[#8403C5]">{fmt(weighted, compact)}</span><span className="text-sm font-medium text-ew-muted">/mo</span></>}
+            value={<><span className="text-[#8403C5]">{fmt(weighted, compact)}</span><span className={`font-medium text-ew-muted ${compact ? 'text-xs' : 'text-sm'}`}>/mo</span></>}
             sub="Prob-adjusted value"
             accentColor="text-[#8403C5]"
             compact={compact}
@@ -205,7 +207,7 @@ export default function StatsRow({ leads, stageFilter, onStageFilter, panelOpen 
           {/* Avg Deal Value */}
           <ExpandableCard
             title="Avg deal value"
-            value={<>{fmt(avg, compact)}<span className="text-sm font-medium text-ew-muted">/mo</span></>}
+            value={<>{fmt(avg, compact)}<span className={`font-medium text-ew-muted ${compact ? 'text-xs' : 'text-sm'}`}>/mo</span></>}
             sub={`${fmt(avg * 12, compact)}/yr`}
             compact={compact}
           >
