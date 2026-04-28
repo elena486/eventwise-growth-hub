@@ -37,11 +37,16 @@
       "type": "string",
       "format": "date"
     },
+    "timePublished": {
+      "type": "string",
+      "description": "HH:MM time published"
+    },
     "publishedUrl": {
       "type": "string"
     },
     "performance": {
-      "type": "string"
+      "type": "string",
+      "description": "Legacy free-text performance notes"
     },
     "notes": {
       "type": "string"
@@ -61,6 +66,36 @@
     "assetName": {
       "type": "string",
       "description": "Original asset file name"
+    },
+    "impressions": {
+      "type": "number",
+      "description": "Total impressions"
+    },
+    "reactions": {
+      "type": "number",
+      "description": "Likes and other reactions"
+    },
+    "comments": {
+      "type": "number"
+    },
+    "reposts": {
+      "type": "number"
+    },
+    "linkClicks": {
+      "type": "number",
+      "description": "Link clicks (if post included a link)"
+    },
+    "profileVisits": {
+      "type": "number",
+      "description": "Profile visits generated"
+    },
+    "reach": {
+      "type": "number",
+      "description": "Unique accounts reached"
+    },
+    "topicAngle": {
+      "type": "string",
+      "description": "Short label for the post hook/theme, e.g. Festival finance crisis"
     }
   },
   "required": [

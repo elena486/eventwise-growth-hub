@@ -33,12 +33,16 @@ function getThisWeek() {
   return { start: mon, end: sun };
 }
 
-export default function ContentKanban({ calendarView = false, onSetCalendarView }) {
+export default function ContentKanban({ calendarView = false, onSetCalendarView, initialSelected = null, onClearSelected }) {
   const [items, setItems] = useState([]);
   const [filter, setFilter] = useState('All');
-  const [selected, setSelected] = useState(null); // null | 'new' | item
+  const [selected, setSelected] = useState(initialSelected); // null | 'new' | item
   const [confirmId, setConfirmId] = useState(null);
   const setCalendarView = onSetCalendarView || (() => {});
+
+  React.useEffect(() => {
+    if (initialSelected) { setSelected(initialSelected); onClearSelected && onClearSelected(); }
+  }, [initialSelected]);
 
   const toast = useToast();
   const load = () => base44.entities.ContentItem.list('-publishDate', 300).then(setItems);

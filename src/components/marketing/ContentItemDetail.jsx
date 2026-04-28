@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { ArrowLeft, Trash2, Upload, X } from 'lucide-react';
+import React, { useState, useRef } from 'react';
+import { ArrowLeft, Trash2, Upload, X, BarChart2 } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
 
 const STATUSES = ['Ideas', 'In Progress', 'Ready to Publish', 'Scheduled', 'Published', 'Cancelled'];
@@ -7,6 +7,72 @@ const FORMATS = ['Written', 'Video', 'Carousel', 'Poll'];
 const PAGES = ['Eventwise Page', 'Personal Chris'];
 
 const inputCls = "w-full border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-[#8403C5]";
+
+function numVal(v) { return v === '' || v == null ? '' : Number(v); }
+
+function PerformanceSection({ form, f }) {
+  const imp = parseFloat(form.impressions) || 0;
+  const reach = parseFloat(form.reach) || 0;
+  const eng = (parseFloat(form.reactions) || 0) + (parseFloat(form.comments) || 0) + (parseFloat(form.reposts) || 0);
+  const engRate = imp > 0 ? ((eng / imp) * 100).toFixed(1) : null;
+  const engRateReach = reach > 0 ? ((eng / reach) * 100).toFixed(1) : null;
+
+  return (
+    <div className="border border-[#8403C5]/20 rounded-xl p-4 bg-[#FAFBFE] space-y-3">
+      <p className="text-xs font-bold text-[#8403C5] uppercase tracking-wide flex items-center gap-1.5"><BarChart2 className="w-3.5 h-3.5" /> Performance Data</p>
+      <div className="grid grid-cols-2 gap-3">
+        <div>
+          <label className="block text-xs text-gray-500 mb-1">Topic / Angle</label>
+          <input className={inputCls} value={form.topicAngle || ''} onChange={e => f('topicAngle', e.target.value)} placeholder="e.g. Festival finance crisis" />
+        </div>
+        <div>
+          <label className="block text-xs text-gray-500 mb-1">Impressions</label>
+          <input type="number" className={inputCls} value={form.impressions ?? ''} onChange={e => f('impressions', numVal(e.target.value))} placeholder="0" />
+        </div>
+        <div>
+          <label className="block text-xs text-gray-500 mb-1">Reactions (likes + other)</label>
+          <input type="number" className={inputCls} value={form.reactions ?? ''} onChange={e => f('reactions', numVal(e.target.value))} placeholder="0" />
+        </div>
+        <div>
+          <label className="block text-xs text-gray-500 mb-1">Comments</label>
+          <input type="number" className={inputCls} value={form.comments ?? ''} onChange={e => f('comments', numVal(e.target.value))} placeholder="0" />
+        </div>
+        <div>
+          <label className="block text-xs text-gray-500 mb-1">Reposts</label>
+          <input type="number" className={inputCls} value={form.reposts ?? ''} onChange={e => f('reposts', numVal(e.target.value))} placeholder="0" />
+        </div>
+        <div>
+          <label className="block text-xs text-gray-500 mb-1">Reach (unique accounts)</label>
+          <input type="number" className={inputCls} value={form.reach ?? ''} onChange={e => f('reach', numVal(e.target.value))} placeholder="0" />
+        </div>
+        <div>
+          <label className="block text-xs text-gray-500 mb-1">Link clicks (if link in post)</label>
+          <input type="number" className={inputCls} value={form.linkClicks ?? ''} onChange={e => f('linkClicks', numVal(e.target.value))} placeholder="0" />
+        </div>
+        <div>
+          <label className="block text-xs text-gray-500 mb-1">Profile visits generated</label>
+          <input type="number" className={inputCls} value={form.profileVisits ?? ''} onChange={e => f('profileVisits', numVal(e.target.value))} placeholder="0" />
+        </div>
+      </div>
+      {(engRate || engRateReach) && (
+        <div className="flex gap-4 pt-1 border-t border-[#8403C5]/10">
+          {engRate && (
+            <div className="bg-white rounded-lg px-3 py-2 border border-gray-200">
+              <p className="text-[10px] text-gray-400 uppercase tracking-wide">Engagement rate</p>
+              <p className="text-lg font-bold text-[#8403C5]">{engRate}%</p>
+            </div>
+          )}
+          {engRateReach && (
+            <div className="bg-white rounded-lg px-3 py-2 border border-gray-200">
+              <p className="text-[10px] text-gray-400 uppercase tracking-wide">Eng. per reach</p>
+              <p className="text-lg font-bold text-[#8403C5]">{engRateReach}%</p>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
 
 const isVideo = (url) => url && (url.includes('.mp4') || url.includes('.mov') || url.match(/video/i));
 
@@ -30,11 +96,26 @@ export default function ContentItemDetail({ item, onSave, onBack, onDelete }) {
     title: '', status: 'Ideas', format: 'Written', platform: 'LinkedIn',
     pagePostedOn: '', publishDate: '', timePublished: '', publishedUrl: '',
     performance: '', notes: '', assetUrl: '', assetName: '',
+    impressions: '', reactions: '', comments: '', reposts: '',
+    linkClicks: '', profileVisits: '', reach: '', topicAngle: '',
   });
   const [uploading, setUploading] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [perfPrompt, setPerfPrompt] = useState(false); // show "add performance?" banner
+  const prevStatus = React.useRef(form.status);
 
-  const f = (k, v) => setForm(p => ({ ...p, [k]: v }));
+  const f = (k, v) => {
+    setForm(p => {
+      const next = { ...p, [k]: v };
+      // Show performance prompt when status changes to Published for the first time
+      if (k === 'status' && v === 'Published' && prevStatus.current !== 'Published') {
+        const hasPerf = p.impressions || p.reactions || p.reach;
+        if (!hasPerf) setPerfPrompt(true);
+      }
+      if (k === 'status') prevStatus.current = v;
+      return next;
+    });
+  };
 
   const togglePage = (page) => {
     const current = (form.pagePostedOn || '').split(',').map(s => s.trim()).filter(Boolean);
@@ -120,10 +201,30 @@ export default function ContentItemDetail({ item, onSave, onBack, onDelete }) {
           <label className="block text-xs text-gray-500 mb-1">Published URL</label>
           <input type="url" className={inputCls} value={form.publishedUrl || ''} onChange={e => f('publishedUrl', e.target.value)} placeholder="https://..." />
         </div>
-        <div>
-          <label className="block text-xs text-gray-500 mb-1">Performance</label>
-          <input type="text" className={inputCls} value={form.performance || ''} onChange={e => f('performance', e.target.value)} placeholder="Impressions, engagement notes..." />
-        </div>
+        {/* Performance prompt banner */}
+        {perfPrompt && (
+          <div className="flex items-center justify-between bg-green-50 border border-green-200 rounded-xl px-4 py-3 gap-3">
+            <p className="text-sm text-green-800 font-medium">Add performance data for this post?</p>
+            <div className="flex gap-2 shrink-0">
+              <button onClick={() => setPerfPrompt(false)} className="text-xs text-green-600 hover:underline">Skip for now</button>
+              <button onClick={() => setPerfPrompt(false)} className="px-3 py-1.5 bg-green-600 text-white rounded-lg text-xs font-semibold hover:bg-green-700 transition-colors">Add now ↓</button>
+            </div>
+          </div>
+        )}
+
+        {/* Structured performance section — always visible for Published, otherwise collapsible */}
+        {form.status === 'Published' ? (
+          <PerformanceSection form={form} f={f} />
+        ) : (
+          <details className="group">
+            <summary className="cursor-pointer text-xs font-medium text-ew-muted hover:text-navy list-none flex items-center gap-1.5">
+              <BarChart2 className="w-3.5 h-3.5" /> Performance data (optional)
+            </summary>
+            <div className="mt-3">
+              <PerformanceSection form={form} f={f} />
+            </div>
+          </details>
+        )}
         <div>
           <label className="block text-xs text-gray-500 mb-1">Notes</label>
           <textarea rows={4} className={inputCls} value={form.notes || ''} onChange={e => f('notes', e.target.value)} placeholder="Copy drafts, ideas, briefing notes..." />

@@ -1,10 +1,12 @@
-import React, { useState } from 'react';
-import { X, Upload, FileText, Download } from 'lucide-react';
+import React, { useState, useRef } from 'react';
+import { X, Upload, FileText, Download, BarChart2 } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
 
 const STATUSES = ['Ideas', 'In Progress', 'Ready to Publish', 'Scheduled', 'Published', 'Cancelled'];
 const FORMATS = ['Written', 'Video', 'Carousel', 'Poll'];
 const PAGES = ['Eventwise Page', 'Personal Chris'];
+
+function numVal(v) { return v === '' || v == null ? '' : Number(v); }
 
 export default function ContentItemModal({ item, onSave, onClose }) {
   const [form, setForm] = useState({
@@ -14,15 +16,36 @@ export default function ContentItemModal({ item, onSave, onClose }) {
     platform: 'LinkedIn',
     pagePostedOn: item?.pagePostedOn || '',
     publishDate: item?.publishDate || '',
+    timePublished: item?.timePublished || '',
     publishedUrl: item?.publishedUrl || '',
     performance: item?.performance || '',
     notes: item?.notes || '',
     fileUrl: item?.fileUrl || '',
     fileName: item?.fileName || '',
+    impressions: item?.impressions ?? '',
+    reactions: item?.reactions ?? '',
+    comments: item?.comments ?? '',
+    reposts: item?.reposts ?? '',
+    linkClicks: item?.linkClicks ?? '',
+    profileVisits: item?.profileVisits ?? '',
+    reach: item?.reach ?? '',
+    topicAngle: item?.topicAngle || '',
   });
   const [uploadingFile, setUploadingFile] = useState(false);
+  const [perfPrompt, setPerfPrompt] = useState(false);
+  const prevStatus = useRef(form.status);
 
-  const set = (k, v) => setForm(prev => ({ ...prev, [k]: v }));
+  const set = (k, v) => {
+    setForm(prev => {
+      const next = { ...prev, [k]: v };
+      if (k === 'status' && v === 'Published' && prevStatus.current !== 'Published') {
+        const hasPerf = prev.impressions || prev.reactions || prev.reach;
+        if (!hasPerf) setPerfPrompt(true);
+      }
+      if (k === 'status') prevStatus.current = v;
+      return next;
+    });
+  };
 
   const togglePage = (page) => {
     const pages = form.pagePostedOn ? form.pagePostedOn.split(', ').filter(Boolean) : [];
@@ -98,9 +121,54 @@ export default function ContentItemModal({ item, onSave, onClose }) {
             <label className="text-xs font-semibold text-ew-muted uppercase tracking-wide block mb-1">Published URL</label>
             <input className="w-full border border-ew-border rounded-lg px-3 py-2 text-sm text-navy focus:outline-none" value={form.publishedUrl} onChange={e => set('publishedUrl', e.target.value)} placeholder="https://…" />
           </div>
-          <div>
-            <label className="text-xs font-semibold text-ew-muted uppercase tracking-wide block mb-1">Performance</label>
-            <input className="w-full border border-ew-border rounded-lg px-3 py-2 text-sm text-navy focus:outline-none" value={form.performance} onChange={e => set('performance', e.target.value)} placeholder="Impressions, engagement notes…" />
+          {/* Performance prompt */}
+          {perfPrompt && (
+            <div className="flex items-center justify-between bg-green-50 border border-green-200 rounded-xl px-4 py-3 gap-3">
+              <p className="text-sm text-green-800 font-medium">Add performance data for this post?</p>
+              <div className="flex gap-2 shrink-0">
+                <button onClick={() => setPerfPrompt(false)} className="text-xs text-green-600 hover:underline">Skip for now</button>
+                <button onClick={() => setPerfPrompt(false)} className="px-3 py-1.5 bg-green-600 text-white rounded-lg text-xs font-semibold hover:bg-green-700">Add now ↓</button>
+              </div>
+            </div>
+          )}
+          {/* Structured performance */}
+          <div className="border border-[#8403C5]/20 rounded-xl p-4 bg-[#FAFBFE] space-y-3">
+            <p className="text-xs font-bold text-[#8403C5] uppercase tracking-wide flex items-center gap-1.5"><BarChart2 className="w-3.5 h-3.5" /> Performance Data</p>
+            <div>
+              <label className="text-xs font-semibold text-ew-muted uppercase tracking-wide block mb-1">Topic / Angle</label>
+              <input className="w-full border border-ew-border rounded-lg px-3 py-2 text-sm text-navy focus:outline-none" value={form.topicAngle} onChange={e => set('topicAngle', e.target.value)} placeholder="e.g. Festival finance crisis" />
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              {[
+                { key: 'impressions', label: 'Impressions' },
+                { key: 'reactions', label: 'Reactions (likes + other)' },
+                { key: 'comments', label: 'Comments' },
+                { key: 'reposts', label: 'Reposts' },
+                { key: 'reach', label: 'Reach (unique accounts)' },
+                { key: 'linkClicks', label: 'Link clicks (if link in post)' },
+                { key: 'profileVisits', label: 'Profile visits generated' },
+              ].map(({ key, label }) => (
+                <div key={key}>
+                  <label className="text-xs font-semibold text-ew-muted uppercase tracking-wide block mb-1">{label}</label>
+                  <input type="number" className="w-full border border-ew-border rounded-lg px-3 py-2 text-sm text-navy focus:outline-none" value={form[key] ?? ''} onChange={e => set(key, numVal(e.target.value))} placeholder="0" />
+                </div>
+              ))}
+            </div>
+            {/* Auto-calculated */}
+            {(() => {
+              const imp = parseFloat(form.impressions) || 0;
+              const reach = parseFloat(form.reach) || 0;
+              const eng = (parseFloat(form.reactions) || 0) + (parseFloat(form.comments) || 0) + (parseFloat(form.reposts) || 0);
+              const er = imp > 0 ? ((eng / imp) * 100).toFixed(1) : null;
+              const err = reach > 0 ? ((eng / reach) * 100).toFixed(1) : null;
+              if (!er && !err) return null;
+              return (
+                <div className="flex gap-3 pt-1 border-t border-[#8403C5]/10">
+                  {er && <div className="bg-white rounded-lg px-3 py-2 border border-ew-border"><p className="text-[10px] text-ew-muted uppercase">Engagement rate</p><p className="text-base font-bold text-[#8403C5]">{er}%</p></div>}
+                  {err && <div className="bg-white rounded-lg px-3 py-2 border border-ew-border"><p className="text-[10px] text-ew-muted uppercase">Eng. per reach</p><p className="text-base font-bold text-[#8403C5]">{err}%</p></div>}
+                </div>
+              );
+            })()}
           </div>
           <div>
             <label className="text-xs font-semibold text-ew-muted uppercase tracking-wide block mb-1">Notes / Draft</label>
