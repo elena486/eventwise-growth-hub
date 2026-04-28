@@ -9,6 +9,7 @@ import { format } from 'date-fns';
 
 const FILTER_PRESETS = [
   { label: 'This week', weeks: null },
+  { label: 'Last week', weeks: null },
   { label: '4w', weeks: 4 },
   { label: '8w', weeks: 8 },
   { label: '12w', weeks: 12 },
@@ -223,12 +224,16 @@ export default function Sprints() {
   useEffect(() => { load(); }, [load]);
 
   const today = currentWeekStart();
+  const lastWeek = subWeeks(today, 1);
   let effectiveFrom = dateFrom;
   let effectiveTo = dateTo;
   if (!dateFrom && !dateTo) {
     if (preset === 'This week') {
       effectiveFrom = today;
       effectiveTo = today;
+    } else if (preset === 'Last week') {
+      effectiveFrom = lastWeek;
+      effectiveTo = lastWeek;
     } else {
       const weeks = parseInt(preset);
       effectiveFrom = subWeeks(today, weeks);
@@ -282,7 +287,7 @@ export default function Sprints() {
   const pendingUpdates = notSubmittedThisWeek.length;
 
   // Prev period comparison (for trend indicators)
-  const periodLen = preset === 'This week' ? 1 : parseInt(preset || '4');
+  const periodLen = (preset === 'This week' || preset === 'Last week') ? 1 : parseInt(preset || '4');
   const prevFrom = subWeeks(effectiveFrom, periodLen);
   const prevSubs = submissions.filter(s => s.weekStart >= prevFrom && s.weekStart < effectiveFrom);
   let prevOnTrack = 0, prevAtRisk = 0, prevOffTrack = 0;
@@ -305,10 +310,17 @@ export default function Sprints() {
     return <span className="text-red-500 text-[10px]">↓ {Math.abs(diff)} from last period</span>;
   }
 
+  // Last day of last week = day before this week's Monday
+  const lastWeekEnd = new Date(lastWeek + 'T00:00:00');
+  lastWeekEnd.setDate(lastWeekEnd.getDate() + 6);
+  const lastWeekEndStr = lastWeekEnd.toISOString().split('T')[0];
+
   const displayRange = dateFrom && dateTo
     ? `${format(new Date(dateFrom), 'd MMM yyyy')} – ${format(new Date(dateTo), 'd MMM yyyy')}`
     : preset === 'This week'
     ? `${format(new Date(today), 'd MMM yyyy')} (This week)`
+    : preset === 'Last week'
+    ? `${format(new Date(lastWeek), 'd MMM')} – ${format(new Date(lastWeekEndStr), 'd MMM yyyy')} (Last week)`
     : `${format(new Date(effectiveFrom), 'd MMM yyyy')} – ${format(new Date(effectiveTo), 'd MMM yyyy')} (${preset || 'custom'})`;
 
   const exportCSV = () => {
