@@ -282,7 +282,7 @@ export default function Sprints() {
   const pendingUpdates = notSubmittedThisWeek.length;
 
   // Prev period comparison (for trend indicators)
-  const periodLen = parseInt(preset || '4');
+  const periodLen = preset === 'This week' ? 1 : parseInt(preset || '4');
   const prevFrom = subWeeks(effectiveFrom, periodLen);
   const prevSubs = submissions.filter(s => s.weekStart >= prevFrom && s.weekStart < effectiveFrom);
   let prevOnTrack = 0, prevAtRisk = 0, prevOffTrack = 0;
