@@ -8,6 +8,7 @@ import SprintAnalytics from '@/components/sprints/SprintAnalytics';
 import { format } from 'date-fns';
 
 const FILTER_PRESETS = [
+  { label: 'This week', weeks: null },
   { label: '4w', weeks: 4 },
   { label: '8w', weeks: 8 },
   { label: '12w', weeks: 12 },
@@ -207,7 +208,7 @@ export default function Sprints() {
   const [selectedMember, setSelectedMember] = useState(null);
   const [memberFilter, setMemberFilter] = useState('all');
   const [ragFilter, setRagFilter] = useState('all');
-  const [preset, setPreset] = useState('4w');
+  const [preset, setPreset] = useState('This week');
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
   const [customFrom, setCustomFrom] = useState('');
@@ -225,9 +226,14 @@ export default function Sprints() {
   let effectiveFrom = dateFrom;
   let effectiveTo = dateTo;
   if (!dateFrom && !dateTo) {
-    const weeks = parseInt(preset);
-    effectiveFrom = subWeeks(today, weeks);
-    effectiveTo = today;
+    if (preset === 'This week') {
+      effectiveFrom = today;
+      effectiveTo = today;
+    } else {
+      const weeks = parseInt(preset);
+      effectiveFrom = subWeeks(today, weeks);
+      effectiveTo = today;
+    }
   }
 
   const applyPreset = (p) => { setPreset(p); setDateFrom(''); setDateTo(''); };
@@ -301,6 +307,8 @@ export default function Sprints() {
 
   const displayRange = dateFrom && dateTo
     ? `${format(new Date(dateFrom), 'd MMM yyyy')} – ${format(new Date(dateTo), 'd MMM yyyy')}`
+    : preset === 'This week'
+    ? `${format(new Date(today), 'd MMM yyyy')} (This week)`
     : `${format(new Date(effectiveFrom), 'd MMM yyyy')} – ${format(new Date(effectiveTo), 'd MMM yyyy')} (${preset || 'custom'})`;
 
   const exportCSV = () => {
