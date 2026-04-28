@@ -22,7 +22,9 @@
         "Written",
         "Video",
         "Carousel",
-        "Poll"
+        "Poll",
+        "Single Image",
+        "Repost"
       ]
     },
     "platform": {

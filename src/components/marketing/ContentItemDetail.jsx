@@ -3,7 +3,7 @@ import { ArrowLeft, Trash2, Upload, X, BarChart2 } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
 
 const STATUSES = ['Ideas', 'In Progress', 'Ready to Publish', 'Scheduled', 'Published', 'Cancelled'];
-const FORMATS = ['Written', 'Video', 'Carousel', 'Poll'];
+const FORMATS = ['Written', 'Video', 'Carousel', 'Poll', 'Single Image', 'Repost'];
 const PAGES = ['Eventwise Page', 'Personal Chris'];
 
 const inputCls = "w-full border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-[#8403C5]";

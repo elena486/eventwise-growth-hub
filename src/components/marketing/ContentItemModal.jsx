@@ -3,7 +3,7 @@ import { X, Upload, FileText, Download, BarChart2 } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
 
 const STATUSES = ['Ideas', 'In Progress', 'Ready to Publish', 'Scheduled', 'Published', 'Cancelled'];
-const FORMATS = ['Written', 'Video', 'Carousel', 'Poll'];
+const FORMATS = ['Written', 'Video', 'Carousel', 'Poll', 'Single Image', 'Repost'];
 const PAGES = ['Eventwise Page', 'Personal Chris'];
 
 function numVal(v) { return v === '' || v == null ? '' : Number(v); }
