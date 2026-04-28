@@ -3,7 +3,8 @@ import { base44 } from '@/api/base44Client';
 import { MEMBERS, ragColor, RAG_STYLES, formatKpiValue, currentWeekStart, getWeekNumber, subWeeks } from '@/lib/sprintConfig';
 import SprintSubmitModal from '@/components/sprints/SprintSubmitModal';
 import SprintMemberDetail from '@/components/sprints/SprintMemberDetail';
-import { Users, CheckCircle2, AlertTriangle, XCircle, Clock, Download, ChevronRight, Bell } from 'lucide-react';
+import { Users, CheckCircle2, AlertTriangle, XCircle, Clock, Download, ChevronRight, BarChart2, LayoutDashboard } from 'lucide-react';
+import SprintAnalytics from '@/components/sprints/SprintAnalytics';
 import { format } from 'date-fns';
 
 const FILTER_PRESETS = [
@@ -212,6 +213,7 @@ export default function Sprints() {
   const [customFrom, setCustomFrom] = useState('');
   const [customTo, setCustomTo] = useState('');
   const [pendingHover, setPendingHover] = useState(false);
+  const [analyticsView, setAnalyticsView] = useState(false);
 
   const load = useCallback(() => {
     base44.entities.SprintSubmission.list('-created_date', 500).then(setSubmissions);
@@ -371,6 +373,21 @@ export default function Sprints() {
           📅 Current month →
         </button>
         <div className="ml-auto flex items-center gap-2">
+          {/* View toggle */}
+          <div className="flex items-center border border-gray-600 rounded-lg overflow-hidden">
+            <button
+              onClick={() => setAnalyticsView(false)}
+              className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium transition-colors ${!analyticsView ? 'bg-white/20 text-white' : 'text-gray-400 hover:text-white'}`}
+            >
+              <LayoutDashboard className="w-3.5 h-3.5" /> Dashboard
+            </button>
+            <button
+              onClick={() => setAnalyticsView(true)}
+              className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium border-l border-gray-600 transition-colors ${analyticsView ? 'bg-white/20 text-white' : 'text-gray-400 hover:text-white'}`}
+            >
+              <BarChart2 className="w-3.5 h-3.5" /> Analytics
+            </button>
+          </div>
           <button onClick={exportCSV} className="flex items-center gap-1.5 text-xs text-gray-300 hover:text-white border border-gray-600 rounded-lg px-3 py-1.5 transition-colors">
             <Download className="w-3.5 h-3.5" /> Export CSV
           </button>
@@ -381,7 +398,17 @@ export default function Sprints() {
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto p-6">
+      {analyticsView && (
+        <SprintAnalytics
+          submissions={filteredSubs}
+          effectiveFrom={effectiveFrom}
+          effectiveTo={effectiveTo}
+          preset={preset}
+          allSubmissions={submissions}
+        />
+      )}
+
+      <div className={`flex-1 overflow-y-auto p-6 ${analyticsView ? 'hidden' : ''}`}>
         {/* Page heading */}
         <div className="flex items-start justify-between mb-4">
           <div>
