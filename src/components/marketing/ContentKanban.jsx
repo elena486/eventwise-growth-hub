@@ -78,9 +78,15 @@ export default function ContentKanban({ calendarView = false, onSetCalendarView,
     toast.statusUpdated(`✓ Moved to ${newStatus}`);
   };
 
+  const NUM_FIELDS = ['impressions', 'reactions', 'comments', 'reposts', 'linkClicks', 'profileVisits', 'reach'];
   const handleSave = async (data) => {
-    if (data.id) await base44.entities.ContentItem.update(data.id, data);
-    else await base44.entities.ContentItem.create(data);
+    const cleaned = { ...data };
+    NUM_FIELDS.forEach(f => {
+      if (cleaned[f] === '' || cleaned[f] == null) delete cleaned[f];
+      else cleaned[f] = Number(cleaned[f]);
+    });
+    if (cleaned.id) await base44.entities.ContentItem.update(cleaned.id, cleaned);
+    else await base44.entities.ContentItem.create(cleaned);
     setSelected(null);
     load();
   };
