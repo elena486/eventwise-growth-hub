@@ -1,17 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
 import { format, differenceInDays } from 'date-fns';
-import { calcHealth, HEALTH_DOT } from '@/lib/csData';
-import { AlertTriangle, TrendingUp, TrendingDown, Minus, ChevronDown, ChevronRight, X, BookOpen } from 'lucide-react';
+import { calcHealth } from '@/lib/csData';
+import { TrendingUp, TrendingDown, Minus, ChevronDown, ChevronRight, X, ExternalLink } from 'lucide-react';
+import HealthScoreChip from '@/components/health/HealthScoreChip';
 
-const SCORE_CHIP = (v) => {
-  if (!v) return 'bg-[#F3F4F6] text-[#9CA3AF]';
-  if (v <= 2) return 'bg-[#FEE2E2] text-[#B91C1C]';
-  if (v === 3) return 'bg-[#FEF9C3] text-[#A16207]';
-  return 'bg-[#DCFCE7] text-[#15803D]';
+const RATING_BADGE = {
+  Green: 'bg-[#DCFCE7] text-[#15803D]',
+  Yellow: 'bg-[#FEF9C3] text-[#A16207]',
+  Red: 'bg-[#FEE2E2] text-[#B91C1C]',
 };
-
-const RATING_BADGE = { Green: 'bg-[#DCFCE7] text-[#15803D]', Yellow: 'bg-[#FEF9C3] text-[#A16207]', Red: 'bg-[#FEE2E2] text-[#B91C1C]' };
 
 const SUB_FIELDS = [
   { key: 'emails', label: 'Emails' },
@@ -60,28 +58,17 @@ function HealthSidePanel({ client, latest, prev, onClose, onUpdateSubScore, onSa
         <div className="flex-1 overflow-y-auto px-5 py-4 space-y-5">
           {/* Sub-scores */}
           <div>
-            <p className="text-[11px] font-bold text-[#9CA3AF] uppercase tracking-[0.1em] mb-3">Sub-scores (click to edit)</p>
-            <div className="grid grid-cols-7 gap-1.5">
-              {SUB_FIELDS.map(({ key, label }) => {
-                const v = latest?.[key];
-                return (
-                  <div key={key} className="flex flex-col items-center gap-1">
-                    <span
-                      title={`Click to edit ${label}`}
-                      className={`text-xs font-bold w-9 h-9 flex items-center justify-center rounded-lg cursor-pointer hover:ring-2 hover:ring-[#8403C5]/30 transition-all ${SCORE_CHIP(v)}`}
-                      onClick={() => {
-                        const val = window.prompt(`Score for ${label} (1–5):`, v || '');
-                        if (val && parseInt(val) >= 1 && parseInt(val) <= 5) {
-                          onUpdateSubScore(client.id, key, parseInt(val));
-                        }
-                      }}
-                    >
-                      {v || '—'}
-                    </span>
-                    <span className="text-[9px] text-[#9CA3AF] text-center leading-tight">{label}</span>
-                  </div>
-                );
-              })}
+            <p className="text-[11px] font-bold text-[#9CA3AF] uppercase tracking-[0.1em] mb-3">Sub-scores (click chip to edit)</p>
+            <div className="flex items-start gap-2 flex-wrap">
+              {SUB_FIELDS.map(({ key, label }) => (
+                <HealthScoreChip
+                  key={key}
+                  scoreKey={key}
+                  label={label}
+                  value={latest?.[key] || 0}
+                  onSave={(v) => onUpdateSubScore(client.id, key, v)}
+                />
+              ))}
             </div>
           </div>
 
@@ -123,18 +110,102 @@ function HealthSidePanel({ client, latest, prev, onClose, onUpdateSubScore, onSa
   );
 }
 
-export default function HealthRenewals({ focusClientId }) {
+// ── Scoring Guide Modal ────────────────────────────────────────────────────────
+function ScoringGuideModal({ onClose, guideLink, onSaveLink }) {
+  const [draft, setDraft] = useState(guideLink);
+
+  return (
+    <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-[200] p-4" onClick={onClose}>
+      <div className="bg-white rounded-xl shadow-2xl w-full max-w-lg p-6" onClick={e => e.stopPropagation()}>
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-base font-bold text-[#111827]">📊 How Health Scores Work</h3>
+          <button onClick={onClose} className="p-1.5 text-[#9CA3AF] hover:text-[#374151] rounded-lg hover:bg-[#F7F7F8]"><X className="w-4 h-4" /></button>
+        </div>
+
+        {/* Score bands */}
+        <div className="flex gap-3 mb-5">
+          <div className="flex-1 bg-[#DCFCE7] rounded-xl p-3 text-center">
+            <p className="text-xs font-bold text-[#15803D] uppercase tracking-wide mb-1">Green</p>
+            <p className="text-xl font-bold text-[#15803D]">28–35</p>
+          </div>
+          <div className="flex-1 bg-[#FEF9C3] rounded-xl p-3 text-center">
+            <p className="text-xs font-bold text-[#A16207] uppercase tracking-wide mb-1">Yellow</p>
+            <p className="text-xl font-bold text-[#A16207]">18–27</p>
+          </div>
+          <div className="flex-1 bg-[#FEE2E2] rounded-xl p-3 text-center">
+            <p className="text-xs font-bold text-[#B91C1C] uppercase tracking-wide mb-1">Red</p>
+            <p className="text-xl font-bold text-[#B91C1C]">0–17</p>
+          </div>
+        </div>
+
+        {/* Sub-score explanation */}
+        <div className="bg-[#F9FAFB] rounded-xl p-4 mb-5 space-y-2 text-sm text-[#374151]">
+          <p className="text-[11px] font-bold text-[#9CA3AF] uppercase tracking-wide mb-2">7 sub-scores, each rated 1–5</p>
+          {[
+            ['Emails', 'Communication quality & responsiveness'],
+            ['Meetings', 'Engagement and decision-making in calls'],
+            ['Goals', 'Clarity and alignment on objectives'],
+            ['Adoption', 'How well they use the platform'],
+            ['Knowledge', 'Understanding of platform features'],
+            ['CX', 'Overall relationship quality'],
+            ['Issues', 'How quickly blockers get resolved'],
+          ].map(([k, v]) => (
+            <div key={k} className="flex items-start gap-2">
+              <span className="w-20 text-xs font-semibold text-[#374151] shrink-0">{k}</span>
+              <span className="text-xs text-[#6B7280]">{v}</span>
+            </div>
+          ))}
+        </div>
+
+        {/* Quadrant explanation */}
+        <div className="bg-[#F3E8FF] rounded-xl p-4 mb-5 text-sm">
+          <p className="text-[11px] font-bold text-[#7E22CE] uppercase tracking-wide mb-2">Quadrant</p>
+          <p className="text-xs text-[#374151]">The quadrant is calculated from the score + usage pattern: <strong>Star</strong> (high score, high adoption), <strong>Sleeper</strong> (low score, high adoption), <strong>At Risk</strong> (low score, low adoption), <strong>Stable</strong> (mid range).</p>
+        </div>
+
+        {/* Guide link */}
+        <div>
+          <p className="text-[11px] font-semibold text-[#9CA3AF] uppercase tracking-wide mb-2">Scoring guide link (Google Doc)</p>
+          <div className="flex gap-2">
+            <input
+              type="url"
+              className="flex-1 border border-[#E5E7EB] rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#8403C5]/20"
+              placeholder="https://docs.google.com/…"
+              value={draft}
+              onChange={e => setDraft(e.target.value)}
+            />
+            {draft && (
+              <a href={draft} target="_blank" rel="noopener noreferrer"
+                className="flex items-center gap-1 px-3 py-2 text-xs font-semibold text-[#8403C5] bg-[#F3E8FF] rounded-lg hover:bg-[#EDE9FE] whitespace-nowrap">
+                <ExternalLink className="w-3.5 h-3.5" /> Open
+              </a>
+            )}
+          </div>
+        </div>
+
+        <div className="flex justify-end gap-2 mt-5">
+          <button onClick={onClose} className="px-4 py-2 text-sm text-[#374151] hover:bg-[#F9FAFB] rounded-lg">Cancel</button>
+          <button
+            onClick={() => { onSaveLink(draft.trim()); onClose(); }}
+            className="px-4 py-2 text-sm font-semibold bg-[#8403C5] text-white rounded-lg hover:bg-[#6d02a3] transition-colors"
+          >
+            Save
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+export default function HealthRenewals({ focusClientId, onOpenClientPanel }) {
   const [clients, setClients] = useState([]);
   const [healthScores, setHealthScores] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [editingScore, setEditingScore] = useState(null);
-  const [flashedScore, setFlashedScore] = useState(null);
   const [filter, setFilter] = useState('All');
   const [needsAttentionOpen, setNeedsAttentionOpen] = useState(true);
   const [selectedClient, setSelectedClient] = useState(null);
   const [guideModalOpen, setGuideModalOpen] = useState(false);
   const [guideLink, setGuideLink] = useState(() => localStorage.getItem('healthGuideLink') || '');
-  const [guideLinkDraft, setGuideLinkDraft] = useState('');
 
   const load = async () => {
     const [cls, hs] = await Promise.all([
@@ -160,7 +231,9 @@ export default function HealthRenewals({ focusClientId }) {
     const client = clients.find(c => c.id === clientId);
 
     const baseScores = { emails: 0, meetings: 0, goals: 0, adoption: 0, knowledge: 0, cx: 0, issues: 0 };
-    const existing = latest ? { emails: latest.emails || 0, meetings: latest.meetings || 0, goals: latest.goals || 0, adoption: latest.adoption || 0, knowledge: latest.knowledge || 0, cx: latest.cx || 0, issues: latest.issues || 0 } : baseScores;
+    const existing = latest
+      ? { emails: latest.emails || 0, meetings: latest.meetings || 0, goals: latest.goals || 0, adoption: latest.adoption || 0, knowledge: latest.knowledge || 0, cx: latest.cx || 0, issues: latest.issues || 0 }
+      : baseScores;
     const updatedScores = { ...existing, [scoreKey]: intVal };
     const { total, rating, quadrant } = calcHealth(updatedScores);
 
@@ -180,11 +253,7 @@ export default function HealthRenewals({ focusClientId }) {
     }
 
     setClients(prev => prev.map(c => c.id === clientId ? { ...c, healthScore: total, healthRating: rating, healthQuadrant: quadrant } : c));
-    setEditingScore(null);
-    setFlashedScore({ clientId, field: scoreKey });
-    setTimeout(() => setFlashedScore(null), 500);
 
-    // update selected client panel if open
     if (selectedClient?.id === clientId) {
       setSelectedClient(prev => prev ? { ...prev, healthScore: total, healthRating: rating, healthQuadrant: quadrant } : prev);
     }
@@ -198,16 +267,27 @@ export default function HealthRenewals({ focusClientId }) {
     }
   };
 
+  const handleSaveGuideLink = (link) => {
+    setGuideLink(link);
+    localStorage.setItem('healthGuideLink', link);
+  };
+
   const liveClients = clients.filter(c => c.status === 'Live');
   const greenCount = liveClients.filter(c => c.healthRating === 'Green').length;
   const yellowCount = liveClients.filter(c => c.healthRating === 'Yellow').length;
   const redCount = liveClients.filter(c => c.healthRating === 'Red').length;
   const noDataCount = liveClients.filter(c => !c.healthScore || c.healthScore === 0).length;
-  const avgScore = liveClients.length > 0 ? Math.round(liveClients.reduce((s, c) => s + (c.healthScore || 0), 0) / liveClients.length) : 0;
+  const avgScore = liveClients.length > 0
+    ? Math.round(liveClients.reduce((s, c) => s + (c.healthScore || 0), 0) / liveClients.length) : 0;
 
-  // Sort: Red first, then by score ascending
+  // Sort: Red first → Yellow → Green → No Data at bottom
   let allCls = [...clients.filter(c => c.status === 'Live'), ...clients.filter(c => c.status === 'Onboarding')];
   allCls.sort((a, b) => {
+    const hasA = a.healthScore && a.healthScore > 0;
+    const hasB = b.healthScore && b.healthScore > 0;
+    if (!hasA && hasB) return 1;
+    if (hasA && !hasB) return -1;
+    if (!hasA && !hasB) return 0;
     const ratingOrder = { Red: 0, Yellow: 1, Green: 2 };
     const ra = ratingOrder[a.healthRating] ?? 3;
     const rb = ratingOrder[b.healthRating] ?? 3;
@@ -215,7 +295,6 @@ export default function HealthRenewals({ focusClientId }) {
     return (a.healthScore || 0) - (b.healthScore || 0);
   });
 
-  // Apply filter
   const filteredCls = allCls.filter(c => {
     if (filter === 'All') return true;
     if (filter === 'Green') return c.healthRating === 'Green';
@@ -235,15 +314,17 @@ export default function HealthRenewals({ focusClientId }) {
           <p className="text-[#9CA3AF] text-sm mt-0.5">Live client health scores — click any score chip to edit</p>
         </div>
         <div className="flex items-center gap-2">
-          {guideLink ? (
+          {guideLink && (
             <a href={guideLink} target="_blank" rel="noopener noreferrer"
               className="flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold text-[#8403C5] bg-[#F3E8FF] hover:bg-[#EDE9FE] rounded-lg transition-colors border border-[#8403C5]/20">
-              📄 How health scores are calculated →
+              📄 Open scoring guide →
             </a>
-          ) : null}
-          <button onClick={() => { setGuideLinkDraft(guideLink); setGuideModalOpen(true); }}
-            className="flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold text-[#374151] bg-white hover:bg-[#F9FAFB] rounded-lg transition-colors border border-[#E5E7EB]">
-            <BookOpen className="w-3.5 h-3.5" /> Scoring Guide
+          )}
+          <button
+            onClick={() => setGuideModalOpen(true)}
+            className="flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold text-[#374151] bg-white hover:bg-[#F9FAFB] rounded-lg transition-colors border border-[#E5E7EB]"
+          >
+            📊 How scores work
           </button>
         </div>
       </div>
@@ -276,7 +357,7 @@ export default function HealthRenewals({ focusClientId }) {
         ))}
       </div>
 
-      {/* Needs attention (collapsible, open by default) */}
+      {/* Needs attention */}
       {atRisk.length > 0 && (
         <div className="rounded-xl mb-4 overflow-hidden" style={{ background: '#FEF2F2', borderLeft: '4px solid #B91C1C', boxShadow: '0 1px 3px rgba(0,0,0,0.06)' }}>
           <button
@@ -294,14 +375,12 @@ export default function HealthRenewals({ focusClientId }) {
               {atRisk.map(c => {
                 const latest = getLatestScore(c.id);
                 const hasData = latest && latest.totalScore > 0;
-                let action = '';
-                if (!hasData) action = 'Complete first health review — click score chips in table';
-                else if (c.healthRating === 'Red') action = 'Schedule urgent review call';
-                const isRed = c.healthRating === 'Red' || !hasData;
+                const action = !hasData ? 'No scores yet — click chips to add' : 'Schedule urgent review call';
                 return (
-                  <div key={c.id} className="flex items-center justify-between p-3 bg-white/70 rounded-xl cursor-pointer hover:bg-white transition-colors border border-red-100" onClick={() => setSelectedClient(c)}>
+                  <div key={c.id} className="flex items-center justify-between p-3 bg-white/70 rounded-xl cursor-pointer hover:bg-white transition-colors border border-red-100"
+                    onClick={() => setSelectedClient(c)}>
                     <div className="flex items-center gap-2 min-w-0">
-                      <span className={`w-2.5 h-2.5 rounded-full flex-shrink-0 ${isRed ? 'bg-red-500' : 'bg-amber-400'}`} />
+                      <span className="w-2.5 h-2.5 rounded-full flex-shrink-0 bg-red-500" />
                       <div>
                         <p className="text-sm font-semibold text-[#111827]">{c.name}</p>
                         <p className="text-xs text-[#9CA3AF] mt-0.5">{action}</p>
@@ -319,12 +398,10 @@ export default function HealthRenewals({ focusClientId }) {
       )}
 
       {loading ? (
-        <div className="bg-white rounded-xl overflow-hidden space-y-0" style={{ boxShadow: '0 1px 3px rgba(0,0,0,0.06)' }}>
+        <div className="bg-white rounded-xl overflow-hidden" style={{ boxShadow: '0 1px 3px rgba(0,0,0,0.06)' }}>
           {[...Array(7)].map((_, i) => (
             <div key={i} className="px-4 py-4 flex gap-6 animate-pulse border-b border-[#F2F2F4] last:border-0">
               <div className="h-4 bg-gray-200 rounded w-32" />
-              <div className="h-4 bg-gray-200 rounded flex-1" />
-              <div className="h-4 bg-gray-200 rounded flex-1" />
               <div className="h-4 bg-gray-200 rounded flex-1" />
               <div className="h-4 bg-gray-200 rounded flex-1" />
             </div>
@@ -338,20 +415,32 @@ export default function HealthRenewals({ focusClientId }) {
                 <th className="px-4 py-3.5 text-left text-[11px] font-bold text-[#9CA3AF] uppercase tracking-[0.08em]">Client</th>
                 <th className="px-4 py-3.5 text-left text-[11px] font-bold text-[#9CA3AF] uppercase tracking-[0.08em]">Tier</th>
                 <th className="px-4 py-3.5 text-left text-[11px] font-bold text-[#9CA3AF] uppercase tracking-[0.08em]">Score</th>
-                <th className="px-4 py-3.5 text-left text-[11px] font-bold text-[#9CA3AF] uppercase tracking-[0.08em]">Quadrant</th>
-                <th className="px-4 py-3.5 text-left text-[11px] font-bold text-[#9CA3AF] uppercase tracking-[0.08em] min-w-[360px]">Sub-scores (click to edit)</th>
+                <th className="px-4 py-3.5 text-left text-[11px] font-bold text-[#9CA3AF] uppercase tracking-[0.08em] min-w-[340px]">Sub-scores (click chip to edit)</th>
                 <th className="px-4 py-3.5 text-left text-[11px] font-bold text-[#9CA3AF] uppercase tracking-[0.08em]">Trend</th>
+                <th className="px-4 py-3.5 text-left text-[11px] font-bold text-[#9CA3AF] uppercase tracking-[0.08em]">Renewal</th>
               </tr>
             </thead>
             <tbody>
               {filteredCls.map((c) => {
                 const latest = getLatestScore(c.id);
                 const prev = getPrevScore(c.id);
-                const trend = prev && latest ? (latest.totalScore > prev.totalScore ? 'up' : latest.totalScore < prev.totalScore ? 'down' : 'flat') : 'flat';
+                const trend = prev && latest
+                  ? (latest.totalScore > prev.totalScore ? 'up' : latest.totalScore < prev.totalScore ? 'down' : 'flat')
+                  : 'flat';
                 const hasData = latest && latest.totalScore > 0;
+                const renewalDate = c.renewalDate ? new Date(c.renewalDate) : null;
+                const renewalDiff = renewalDate ? differenceInDays(renewalDate, new Date()) : null;
+                const renewalCls = renewalDiff !== null && renewalDiff <= 30
+                  ? 'text-red-600 font-semibold'
+                  : renewalDiff !== null && renewalDiff <= 60
+                  ? 'text-amber-600 font-semibold'
+                  : 'text-[#6B7280]';
+
                 return (
-                  <tr key={c.id} className="border-b border-[#F2F2F4] last:border-0 hover:bg-[#F9FAFB] transition-colors cursor-pointer"
-                    onClick={() => setSelectedClient(c)}>
+                  <tr key={c.id}
+                    className={`border-b border-[#F2F2F4] last:border-0 hover:bg-[#F9FAFB] transition-colors cursor-pointer ${selectedClient?.id === c.id ? 'bg-[#FAF5FF]' : ''}`}
+                    onClick={() => setSelectedClient(selectedClient?.id === c.id ? null : c)}
+                  >
                     <td className="px-4 py-3">
                       <p className="font-medium text-[#111827] text-sm">{c.name}</p>
                       <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded-md ${c.status === 'Live' ? 'bg-[#DCFCE7] text-[#15803D]' : 'bg-[#DBEAFE] text-[#1D4ED8]'}`}>{c.status}</span>
@@ -364,51 +453,29 @@ export default function HealthRenewals({ focusClientId }) {
                     <td className="px-4 py-3">
                       {hasData ? (
                         <div className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-lg ${RATING_BADGE[c.healthRating] || 'bg-[#F3F4F6] text-[#6B7280]'}`}>
-                          <span className="font-bold text-sm">{c.healthScore}</span>
+                          <span className="font-bold text-[18px] leading-none">{c.healthScore}</span>
                           <span className="text-xs opacity-70">/35</span>
                         </div>
                       ) : (
-                        <span className="text-[#B91C1C] text-xs flex items-center gap-1"><AlertTriangle className="w-3 h-3" />No data</span>
+                        <button
+                          onClick={(e) => { e.stopPropagation(); setSelectedClient(c); }}
+                          className="text-[#9CA3AF] text-xs hover:text-[#8403C5] transition-colors whitespace-nowrap"
+                        >
+                          Add scores →
+                        </button>
                       )}
-                    </td>
-                    <td className="px-4 py-3">
-                      {c.healthQuadrant
-                        ? <span className="text-[11px] font-medium px-2 py-1 bg-[#F7F7F8] text-[#374151] rounded-lg whitespace-nowrap">{c.healthQuadrant}</span>
-                        : <span className="text-[#9CA3AF] text-sm">—</span>}
                     </td>
                     <td className="px-4 py-3" onClick={e => e.stopPropagation()}>
                       <div className="flex items-center gap-1.5">
-                        {SUB_FIELDS.map(({ key, label }) => {
-                          const v = latest?.[key];
-                          const isEditingThis = editingScore?.clientId === c.id && editingScore?.field === key;
-                          const isFlashed = flashedScore?.clientId === c.id && flashedScore?.field === key;
-                          return (
-                            <div key={key} className="flex flex-col items-center gap-0.5">
-                              {isEditingThis ? (
-                                <input
-                                  type="number" min="1" max="5"
-                                  defaultValue={v || ''}
-                                  autoFocus
-                                  className="w-8 h-7 text-center text-xs font-bold border-2 border-[#8403C5] rounded-lg focus:outline-none bg-white"
-                                  onBlur={(e) => { const val = parseInt(e.target.value); if (val >= 1 && val <= 5) handleUpdateSubScore(c.id, key, val); else setEditingScore(null); }}
-                                  onKeyDown={(e) => {
-                                    if (e.key === 'Enter') { const val = parseInt(e.target.value); if (val >= 1 && val <= 5) handleUpdateSubScore(c.id, key, val); else setEditingScore(null); }
-                                    if (e.key === 'Escape') setEditingScore(null);
-                                  }}
-                                />
-                              ) : (
-                                <span
-                                  title={`Click to edit ${label}`}
-                                  className={`text-xs font-bold w-7 h-7 flex items-center justify-center rounded-lg cursor-pointer hover:ring-2 hover:ring-[#8403C5]/30 transition-all ${SCORE_CHIP(v)} ${isFlashed ? 'ring-2 ring-[#15803D]/40' : ''}`}
-                                  onClick={() => setEditingScore({ clientId: c.id, field: key })}
-                                >
-                                  {v || '—'}
-                                </span>
-                              )}
-                              <span className="text-[9px] text-[#9CA3AF] leading-none">{label}</span>
-                            </div>
-                          );
-                        })}
+                        {SUB_FIELDS.map(({ key, label }) => (
+                          <HealthScoreChip
+                            key={key}
+                            scoreKey={key}
+                            label={label}
+                            value={latest?.[key] || 0}
+                            onSave={(v) => handleUpdateSubScore(c.id, key, v)}
+                          />
+                        ))}
                       </div>
                     </td>
                     <td className="px-4 py-3">
@@ -416,23 +483,21 @@ export default function HealthRenewals({ focusClientId }) {
                       {trend === 'down' && <TrendingDown className="w-4 h-4 text-[#B91C1C]" />}
                       {trend === 'flat' && <Minus className="w-4 h-4 text-[#9CA3AF]" />}
                     </td>
+                    <td className="px-4 py-3">
+                      {c.renewalDate ? (
+                        <span className={`text-xs ${renewalCls}`}>
+                          {fmtDate(c.renewalDate)}
+                          {renewalDiff !== null && renewalDiff <= 60 && renewalDiff > 0 ? ` (${renewalDiff}d)` : renewalDiff !== null && renewalDiff <= 0 ? ' ⚠' : ''}
+                        </span>
+                      ) : <span className="text-[#9CA3AF] text-xs">—</span>}
+                    </td>
                   </tr>
                 );
               })}
               {filteredCls.length === 0 && (
                 <tr>
                   <td colSpan={6} className="px-4 py-16 text-center">
-                    {filter === 'Red' ? (
-                      <>
-                        <div className="text-3xl mb-2">✅</div>
-                        <p className="text-sm text-[#6B7280]">No clients in the red. Keep it that way.</p>
-                      </>
-                    ) : (
-                      <>
-                        <div className="text-3xl mb-2">📊</div>
-                        <p className="text-sm text-[#6B7280]">No clients matching this filter.</p>
-                      </>
-                    )}
+                    <p className="text-sm text-[#6B7280]">No clients matching this filter.</p>
                   </td>
                 </tr>
               )}
@@ -455,26 +520,11 @@ export default function HealthRenewals({ focusClientId }) {
 
       {/* Scoring guide modal */}
       {guideModalOpen && (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4" onClick={() => setGuideModalOpen(false)}>
-          <div className="bg-white rounded-xl shadow-2xl w-full max-w-md p-6" onClick={e => e.stopPropagation()}>
-            <h3 className="text-base font-bold text-[#111827] mb-1">Process & Scoring Guide</h3>
-            <p className="text-sm text-[#9CA3AF] mb-4">Paste the Google Doc link to the health scoring guide below.</p>
-            <input
-              type="url"
-              className="w-full border border-[#EBEBEB] rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#8403C5]/20 mb-4"
-              placeholder="https://docs.google.com/…"
-              value={guideLinkDraft}
-              onChange={e => setGuideLinkDraft(e.target.value)}
-            />
-            <div className="flex justify-end gap-2">
-              <button onClick={() => setGuideModalOpen(false)} className="px-4 py-2 text-sm text-[#374151] hover:bg-[#F9FAFB] rounded-lg">Cancel</button>
-              <button onClick={() => { const link = guideLinkDraft.trim(); setGuideLink(link); localStorage.setItem('healthGuideLink', link); setGuideModalOpen(false); }}
-                className="px-4 py-2 text-sm font-semibold bg-[#8403C5] text-white rounded-lg hover:bg-[#6d02a3] transition-colors">
-                Save
-              </button>
-            </div>
-          </div>
-        </div>
+        <ScoringGuideModal
+          onClose={() => setGuideModalOpen(false)}
+          guideLink={guideLink}
+          onSaveLink={handleSaveGuideLink}
+        />
       )}
     </div>
   );

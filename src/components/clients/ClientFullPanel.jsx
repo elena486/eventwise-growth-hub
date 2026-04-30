@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import ReactDOM from 'react-dom';
+import HealthScoreChip from '@/components/health/HealthScoreChip';
 import { base44 } from '@/api/base44Client';
 import { format, differenceInDays } from 'date-fns';
 import {
@@ -8,7 +9,6 @@ import {
 import { STATUS_STYLES, HEALTH_DOT, OWNER_INITIALS, OWNER_COLORS, ONBOARDING_PHASES, calcHealth, initTasks } from '@/lib/csData';
 import { useToast } from '@/lib/toast';
 import TranscriptSection from '@/components/shared/TranscriptSection';
-import ScoreTooltip from '@/components/health/ScoreTooltip';
 import {
   LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, ReferenceLine
 } from 'recharts';
@@ -84,24 +84,7 @@ function ScoreDot({ score }) {
   return <span className={`inline-block w-2 h-2 rounded-full ${cls} shrink-0`} />;
 }
 
-function ScoreRow({ label, scoreKey, value, onChange }) {
-  return (
-    <div className="flex items-center justify-between py-1.5 border-b border-[#F3F4F6] last:border-0">
-      <div className="flex items-center gap-2">
-        <ScoreDot score={value} />
-        <ScoreTooltip scoreKey={scoreKey}>
-          <span className="text-sm text-[#374151] cursor-help">{label}</span>
-        </ScoreTooltip>
-      </div>
-      <div className="flex items-center gap-1.5">
-        <input type="number" min="0" max="5" step="1" value={value ?? ''}
-          onChange={e => onChange(Math.min(5, Math.max(0, Number(e.target.value))))}
-          className="w-12 text-center text-sm font-semibold border border-[#E5E7EB] rounded-md px-1 py-0.5 focus:outline-none focus:ring-1 focus:ring-[#8403C5]/30" />
-        <span className="text-xs text-[#9CA3AF]">/5</span>
-      </div>
-    </div>
-  );
-}
+
 
 // ─── Health Trend Chart ────────────────────────────────────────────────────────
 
@@ -590,24 +573,30 @@ export default function ClientFullPanel({ client: initialClient, onClose, onUpda
           {/* HEALTH TAB */}
           {activeTab === 'health' && (
             <>
-              <SectionTitle>Health Scores</SectionTitle>
+              <div className="flex items-center justify-between mb-1">
+                <SectionTitle>Health Scores</SectionTitle>
+              </div>
               {!healthRecord ? (
-                <p className="text-sm text-[#9CA3AF] italic">No health data yet.</p>
+                <p className="text-sm text-[#9CA3AF] italic">No health data yet — click a chip below to add the first score.</p>
               ) : (
-                <div>
-                  <div className="bg-[#F9FAFB] border border-[#E5E7EB] rounded-xl p-4 mb-3">
-                    {SUB_SCORE_KEYS.map(({ key, label }) => (
-                      <ScoreRow key={key} label={label} scoreKey={key} value={scores[key]} onChange={v => handleScoreChange(key, v)} />
-                    ))}
-                  </div>
-                  <div className="flex items-center gap-3 mb-2">
-                    <span className="text-2xl font-bold text-[#111827]">{total}<span className="text-base font-normal text-[#9CA3AF]">/35</span></span>
-                    <span className={`text-sm font-semibold px-3 py-1 rounded-full ${ratingCls}`}>{rating}</span>
-                    <span className="text-xs text-[#9CA3AF]">{rating === 'Green' ? '28–35' : rating === 'Yellow' ? '18–27' : '0–17'}</span>
-                  </div>
-                  <HealthTrendChart allHealthScores={allHealthScores} />
+                <div className="flex items-center gap-3 mb-4">
+                  <span className="text-2xl font-bold text-[#111827]">{total}<span className="text-base font-normal text-[#9CA3AF]">/35</span></span>
+                  <span className={`text-sm font-semibold px-3 py-1 rounded-full ${ratingCls}`}>{rating}</span>
+                  <span className="text-xs text-[#9CA3AF]">{rating === 'Green' ? '28–35' : rating === 'Yellow' ? '18–27' : '0–17'}</span>
                 </div>
               )}
+              <div className="flex items-center gap-2 flex-wrap mb-4">
+                {SUB_SCORE_KEYS.map(({ key, label }) => (
+                  <HealthScoreChip
+                    key={key}
+                    scoreKey={key}
+                    label={label}
+                    value={scores[key] || 0}
+                    onSave={v => handleScoreChange(key, v)}
+                  />
+                ))}
+              </div>
+              {healthRecord && <HealthTrendChart allHealthScores={allHealthScores} />}
             </>
           )}
 
