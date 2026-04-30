@@ -207,8 +207,13 @@ export default function Health({ focusClientId }) {
   const redCount = liveClients.filter(c => c.healthRating === 'Red').length;
   const avgScore = liveClients.length > 0 ? Math.round(liveClients.reduce((s, c) => s + (c.healthScore || 0), 0) / liveClients.length) : 0;
 
-  // Sort: Red first, then by score ascending
+  // Sort: Red first, then Yellow, then Green, then No Data at bottom
   let allCls = [...clients].sort((a, b) => {
+    const hasA = a.healthScore && a.healthScore > 0;
+    const hasB = b.healthScore && b.healthScore > 0;
+    if (!hasA && hasB) return 1;
+    if (hasA && !hasB) return -1;
+    if (!hasA && !hasB) return 0;
     const ratingOrder = { Red: 0, Yellow: 1, Green: 2 };
     const ra = ratingOrder[a.healthRating] ?? 3;
     const rb = ratingOrder[b.healthRating] ?? 3;
@@ -315,7 +320,7 @@ export default function Health({ focusClientId }) {
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-[#EBEBEB]">
-                  {['Client', 'Tier', 'Score', 'Quadrant', 'Sub-scores (click to edit)', 'Trend'].map(h => (
+                  {['Client', 'Tier', 'Score', 'Sub-scores (click to edit)', 'Trend', 'Renewal'].map(h => (
                     <th key={h} className="px-4 py-3.5 text-left text-[11px] font-bold text-[#9CA3AF] uppercase tracking-[0.08em]">{h}</th>
                   ))}
                 </tr>
@@ -343,16 +348,18 @@ export default function Health({ focusClientId }) {
                       </td>
                       <td className="px-4 py-3">
                         {hasData ? (
-                          <div className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-lg ${RATING_BADGE[c.healthRating] || 'bg-[#F3F4F6] text-[#6B7280]'}`}>
-                            <span className="font-bold text-sm">{c.healthScore}</span>
-                            <span className="text-xs opacity-70">/35</span>
+                          <div className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl ${RATING_BADGE[c.healthRating] || 'bg-[#F3F4F6] text-[#6B7280]'}`}>
+                            <span className="font-bold text-[18px] leading-none">{c.healthScore}</span>
+                            <span className="text-xs opacity-60 font-medium">/35</span>
                           </div>
                         ) : (
-                          <span className="text-[#B91C1C] text-xs flex items-center gap-1"><AlertTriangle className="w-3 h-3" />No data</span>
+                          <button
+                            onClick={(e) => { e.stopPropagation(); setSelectedClient(c); }}
+                            className="text-[#9CA3AF] text-xs hover:text-[#8403C5] transition-colors whitespace-nowrap"
+                          >
+                            Add scores →
+                          </button>
                         )}
-                      </td>
-                      <td className="px-4 py-3">
-                        {c.healthQuadrant ? <span className="text-[11px] font-medium px-2 py-1 bg-[#F7F7F8] text-[#374151] rounded-lg whitespace-nowrap">{c.healthQuadrant}</span> : <span className="text-[#9CA3AF] text-sm">—</span>}
                       </td>
                       <td className="px-4 py-3" onClick={e => e.stopPropagation()}>
                         <div className="flex items-center gap-1.5">
@@ -385,9 +392,34 @@ export default function Health({ focusClientId }) {
                         </div>
                       </td>
                       <td className="px-4 py-3">
-                        {trend === 'up' && <TrendingUp className="w-4 h-4 text-[#15803D]" />}
-                        {trend === 'down' && <TrendingDown className="w-4 h-4 text-[#B91C1C]" />}
-                        {trend === 'flat' && <Minus className="w-4 h-4 text-[#9CA3AF]" />}
+                        {!prev ? (
+                          <div className="relative group inline-flex">
+                            <Minus className="w-4 h-4 text-[#9CA3AF]" />
+                            <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 z-50 pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity" style={{ width: 200 }}>
+                              <div className="rounded-lg shadow-xl px-3 py-2 text-[11px]" style={{ background: '#1E2035', color: '#fff' }}>
+                                Trend appears after 2+ health reviews
+                              </div>
+                              <div className="flex justify-center">
+                                <div style={{ width: 0, height: 0, borderLeft: '5px solid transparent', borderRight: '5px solid transparent', borderTop: '5px solid #1E2035' }} />
+                              </div>
+                            </div>
+                          </div>
+                        ) : trend === 'up' ? (
+                          <TrendingUp className="w-4 h-4 text-[#15803D]" />
+                        ) : trend === 'down' ? (
+                          <TrendingDown className="w-4 h-4 text-[#B91C1C]" />
+                        ) : (
+                          <Minus className="w-4 h-4 text-[#9CA3AF]" />
+                        )}
+                      </td>
+                      <td className="px-4 py-3">
+                        {c.renewalDate ? (
+                          (() => {
+                            const diff = differenceInDays(new Date(c.renewalDate), new Date());
+                            const cls = diff <= 30 ? 'text-red-600 font-semibold' : diff <= 60 ? 'text-amber-600 font-semibold' : 'text-[#6B7280]';
+                            return <span className={`text-xs ${cls}`}>{fmtDate(c.renewalDate)}{diff <= 60 && diff > 0 ? ` (${diff}d)` : diff <= 0 ? ' ⚠' : ''}</span>;
+                          })()
+                        ) : <span className="text-[#9CA3AF] text-xs">—</span>}
                       </td>
                     </tr>
                   );

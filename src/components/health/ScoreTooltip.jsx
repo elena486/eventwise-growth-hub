@@ -1,85 +1,78 @@
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 
 const SCORE_TOOLTIPS = {
   emails: {
-    name: 'Emails',
-    desc: 'Communication quality',
+    name: 'Emails — Communication quality',
     levels: [
-      { score: 1, text: 'Slow replies, unclear comms, you are chasing constantly' },
-      { score: 3, text: 'Generally responsive but occasional delays or unclear asks' },
-      { score: 5, text: 'Fast, clear, proactive communication — no chasing needed' },
+      { score: 1, stars: '★☆☆☆☆', text: 'Slow replies, chasing constantly, unclear comms' },
+      { score: 3, stars: '★★★☆☆', text: 'Generally responsive, occasional delays' },
+      { score: 5, stars: '★★★★★', text: 'Fast, clear, proactive — no chasing needed' },
     ],
   },
   meetings: {
-    name: 'Meetings',
-    desc: 'Engagement in calls',
+    name: 'Meetings — Engagement in calls',
     levels: [
-      { score: 1, text: 'Missed meetings, passive attendees, no decisions made' },
-      { score: 3, text: 'Attends meetings, some engagement, occasional decisions' },
-      { score: 5, text: 'Fully engaged, decisions made every meeting, actions followed up' },
+      { score: 1, stars: '★☆☆☆☆', text: 'Missed meetings, passive, no decisions made' },
+      { score: 3, stars: '★★★☆☆', text: 'Attends, some engagement, occasional decisions' },
+      { score: 5, stars: '★★★★★', text: 'Fully engaged, decisions made, actions followed up' },
     ],
   },
   goals: {
-    name: 'Goals',
-    desc: 'Alignment on objectives',
+    name: 'Goals — Alignment on objectives',
     levels: [
-      { score: 1, text: 'No clear direction, shifting priorities, misaligned expectations' },
-      { score: 3, text: 'Some clarity on goals but still occasional confusion' },
-      { score: 5, text: 'Crystal clear goals, aligned on success metrics, easy to execute' },
+      { score: 1, stars: '★☆☆☆☆', text: 'No clear direction, shifting priorities, misaligned' },
+      { score: 3, stars: '★★★☆☆', text: 'Some clarity but occasional confusion' },
+      { score: 5, stars: '★★★★★', text: 'Crystal clear goals, aligned on success metrics' },
     ],
   },
   adoption: {
-    name: 'Adoption',
-    desc: 'Platform usage',
+    name: 'Adoption — Platform usage',
     levels: [
-      { score: 1, text: 'Not using the platform, relying on manual processes or you to do everything' },
-      { score: 3, text: 'Using some features but not getting full value, some dependency on team' },
-      { score: 5, text: 'Fully self-sufficient, using platform properly across all relevant features' },
+      { score: 1, stars: '★☆☆☆☆', text: 'Not using the platform, fully dependent on team' },
+      { score: 3, stars: '★★★☆☆', text: 'Using some features, not getting full value' },
+      { score: 5, stars: '★★★★★', text: 'Fully self-sufficient, using all relevant features' },
     ],
   },
   knowledge: {
-    name: 'Knowledge',
-    desc: 'Understanding of the platform',
+    name: 'Knowledge — Understanding of platform',
     levels: [
-      { score: 1, text: 'Repeated basic questions, confused about core features, misusing the platform' },
-      { score: 3, text: 'Understands the basics, occasional questions on advanced features' },
-      { score: 5, text: 'Confident and capable — rarely needs support, trains their own team' },
+      { score: 1, stars: '★☆☆☆☆', text: 'Repeated basic questions, confused, misusing platform' },
+      { score: 3, stars: '★★★☆☆', text: 'Understands basics, occasional questions' },
+      { score: 5, stars: '★★★★★', text: 'Confident, rarely needs support, trains own team' },
     ],
   },
   cx: {
-    name: 'CX',
-    desc: 'Overall relationship quality',
+    name: 'CX — Relationship quality',
     levels: [
-      { score: 1, text: 'Frustrated, cold tone, active complaints, relationship at risk' },
-      { score: 3, text: 'Neutral relationship, professional but not enthusiastic' },
-      { score: 5, text: 'Strong positive relationship, advocates for the platform internally' },
+      { score: 1, stars: '★☆☆☆☆', text: 'Frustrated, cold tone, active complaints, at risk' },
+      { score: 3, stars: '★★★☆☆', text: 'Neutral, professional but not enthusiastic' },
+      { score: 5, stars: '★★★★★', text: 'Strong positive relationship, internal advocate' },
     ],
   },
   issues: {
-    name: 'Issues',
-    desc: 'Problem resolution',
+    name: 'Issues — Problem resolution',
     levels: [
-      { score: 1, text: 'Active unresolved blockers, recurring problems, complaints not addressed' },
-      { score: 3, text: 'Some issues present but being worked through' },
-      { score: 5, text: 'No active blockers, issues resolved quickly, client feels progress' },
+      { score: 1, stars: '★☆☆☆☆', text: 'Active unresolved blockers, recurring complaints' },
+      { score: 3, stars: '★★★☆☆', text: 'Some issues present but being worked through' },
+      { score: 5, stars: '★★★★★', text: 'No blockers, issues resolved quickly' },
     ],
   },
 };
 
 export default function ScoreTooltip({ scoreKey, children }) {
   const [visible, setVisible] = useState(false);
-  const [hoverTimer, setHoverTimer] = useState(null);
+  const timerRef = useRef(null);
   const info = SCORE_TOOLTIPS[scoreKey];
 
   if (!info) return children;
 
   const show = () => {
-    const t = setTimeout(() => setVisible(true), 200);
-    setHoverTimer(t);
+    clearTimeout(timerRef.current);
+    timerRef.current = setTimeout(() => setVisible(true), 300);
   };
 
   const hide = () => {
-    clearTimeout(hoverTimer);
+    clearTimeout(timerRef.current);
     setVisible(false);
   };
 
@@ -87,21 +80,23 @@ export default function ScoreTooltip({ scoreKey, children }) {
     <div className="relative inline-flex" onMouseEnter={show} onMouseLeave={hide}>
       {children}
       {visible && (
-        <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 z-50 pointer-events-none"
-          style={{ width: 260 }}>
-          <div className="rounded-xl shadow-xl p-3" style={{ background: '#1E2035', color: '#fff' }}>
-            <p className="text-[12px] font-bold mb-0.5">{info.name}</p>
-            <p className="text-[11px] opacity-60 mb-2">{info.desc}</p>
+        <div
+          className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 z-[9999] pointer-events-none"
+          style={{ width: 260 }}
+        >
+          <div className="rounded-xl shadow-2xl p-3" style={{ background: '#1E2035', color: '#fff' }}>
+            <p className="text-[12px] font-bold mb-2 leading-snug">{info.name}</p>
             <div className="space-y-1.5">
               {info.levels.map(l => (
                 <div key={l.score} className="flex gap-2 items-start">
-                  <span className="text-[11px] font-bold w-4 shrink-0" style={{ color: l.score === 5 ? '#86EFAC' : l.score === 3 ? '#FDE68A' : '#FCA5A5' }}>{l.score}</span>
-                  <span className="text-[11px] opacity-80 leading-snug">{l.text}</span>
+                  <span className="text-[11px] shrink-0 leading-snug" style={{ color: l.score === 5 ? '#86EFAC' : l.score === 3 ? '#FDE68A' : '#FCA5A5' }}>
+                    {l.stars}
+                  </span>
+                  <span className="text-[11px] opacity-85 leading-snug">{l.text}</span>
                 </div>
               ))}
             </div>
           </div>
-          {/* Arrow */}
           <div className="flex justify-center">
             <div style={{ width: 0, height: 0, borderLeft: '6px solid transparent', borderRight: '6px solid transparent', borderTop: '6px solid #1E2035' }} />
           </div>

@@ -190,11 +190,17 @@ function NewBugForm({ client, onClose, onCreated }) {
   };
 
   return (
-    <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-[300] p-4" onClick={e => { e.stopPropagation(); onClose(); }}>
-      <div className="bg-white rounded-xl shadow-2xl w-full max-w-md p-6" onClick={e => e.stopPropagation()}>
+    <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-[300] p-4"
+      onClick={e => { e.stopPropagation(); onClose(); }}
+      onMouseDown={e => e.stopPropagation()}
+    >
+      <div className="bg-white rounded-xl shadow-2xl w-full max-w-md p-6"
+        onClick={e => e.stopPropagation()}
+        onMouseDown={e => e.stopPropagation()}
+      >
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-base font-bold text-[#111827]">Log Bug — {client.name}</h3>
-          <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-[#F7F7F8] text-[#9CA3AF]"><X className="w-4 h-4" /></button>
+          <button onClick={e => { e.stopPropagation(); onClose(); }} className="p-1.5 rounded-lg hover:bg-[#F7F7F8] text-[#9CA3AF]"><X className="w-4 h-4" /></button>
         </div>
         <div className="space-y-3">
           <div>
@@ -234,7 +240,7 @@ function NewBugForm({ client, onClose, onCreated }) {
           </div>
         </div>
         <div className="flex gap-2 justify-end mt-5">
-          <button onClick={onClose} className="px-4 py-2 text-sm font-medium text-[#6B7280] hover:bg-[#F7F7F8] rounded-lg">Cancel</button>
+          <button onClick={e => { e.stopPropagation(); onClose(); }} className="px-4 py-2 text-sm font-medium text-[#6B7280] hover:bg-[#F7F7F8] rounded-lg">Cancel</button>
           <button onClick={handleSave} disabled={saving || !form.title.trim()}
             className="px-4 py-2 text-sm font-semibold bg-[#8403C5] text-white rounded-lg hover:bg-[#7002A8] disabled:opacity-50 transition-colors">
             {saving ? 'Saving…' : 'Log Bug'}
@@ -407,7 +413,7 @@ export default function ClientFullPanel({ client: initialClient, onClose, onUpda
 
   return (
     <div className="fixed inset-0 z-40 flex pointer-events-none">
-      <div className="flex-1 pointer-events-auto" onClick={onClose} />
+      <div className="flex-1 pointer-events-auto" onClick={onClose} onMouseDown={e => { if (e.target === e.currentTarget) e.stopPropagation(); }} />
       <div className="w-[58%] h-full bg-white border-l border-[#E5E7EB] shadow-2xl flex flex-col pointer-events-auto overflow-hidden">
 
         {/* Fixed Header */}
