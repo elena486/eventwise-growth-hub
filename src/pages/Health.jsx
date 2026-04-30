@@ -3,6 +3,7 @@ import { base44 } from '@/api/base44Client';
 import { format, differenceInDays } from 'date-fns';
 import { calcHealth, HEALTH_DOT } from '@/lib/csData';
 import { AlertTriangle, TrendingUp, TrendingDown, Minus, X, ChevronDown, ChevronRight, ExternalLink } from 'lucide-react';
+import ScoreTooltip from '@/components/health/ScoreTooltip';
 
 const SCORE_CHIP = (v) => {
   if (!v) return 'bg-[#F3F4F6] text-[#9CA3AF]';
@@ -368,12 +369,14 @@ export default function Health({ focusClientId }) {
                                     onKeyDown={(e) => { if (e.key === 'Enter') { const val = parseInt(e.target.value); if (val >= 1 && val <= 5) handleUpdateSubScore(c.id, key, val); else setEditingScore(null); } if (e.key === 'Escape') setEditingScore(null); }}
                                   />
                                 ) : (
-                                  <span title={`Click to edit ${label}`}
-                                    className={`text-xs font-bold w-7 h-7 flex items-center justify-center rounded-lg cursor-pointer hover:ring-2 hover:ring-[#8403C5]/30 transition-all ${SCORE_CHIP(v)} ${isFlashed ? 'ring-2 ring-[#15803D]/40' : ''}`}
-                                    onClick={() => setEditingScore({ clientId: c.id, field: key })}
-                                  >
-                                    {v || '—'}
-                                  </span>
+                                  <ScoreTooltip scoreKey={key}>
+                                     <span title={`Click to edit ${label}`}
+                                       className={`text-xs font-bold w-7 h-7 flex items-center justify-center rounded-lg cursor-pointer hover:ring-2 hover:ring-[#8403C5]/30 transition-all ${SCORE_CHIP(v)} ${isFlashed ? 'ring-2 ring-[#15803D]/40' : ''}`}
+                                       onClick={() => setEditingScore({ clientId: c.id, field: key })}
+                                     >
+                                       {v || '—'}
+                                     </span>
+                                   </ScoreTooltip>
                                 )}
                                 <span className="text-[9px] text-[#9CA3AF] leading-none">{label}</span>
                               </div>
