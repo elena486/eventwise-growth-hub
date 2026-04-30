@@ -191,8 +191,8 @@ function NewBugForm({ client, onClose, onCreated }) {
 
   return (
     <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-[300] p-4"
-      onClick={e => { e.stopPropagation(); onClose(); }}
-      onMouseDown={e => e.stopPropagation()}
+    onClick={e => { e.stopPropagation(); onClose(); }}
+    onMouseDown={e => { e.stopPropagation(); e.preventDefault(); }}
     >
       <div className="bg-white rounded-xl shadow-2xl w-full max-w-md p-6"
         onClick={e => e.stopPropagation()}
@@ -413,7 +413,7 @@ export default function ClientFullPanel({ client: initialClient, onClose, onUpda
 
   return (
     <div className="fixed inset-0 z-40 flex pointer-events-none">
-      <div className="flex-1 pointer-events-auto" onClick={onClose} onMouseDown={e => { if (e.target === e.currentTarget) e.stopPropagation(); }} />
+      <div className="flex-1 pointer-events-auto" onClick={() => { if (!showNewBugForm) onClose(); }} />
       <div className="w-[58%] h-full bg-white border-l border-[#E5E7EB] shadow-2xl flex flex-col pointer-events-auto overflow-hidden">
 
         {/* Fixed Header */}
