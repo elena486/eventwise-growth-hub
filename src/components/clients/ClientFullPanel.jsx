@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
+import ReactDOM from 'react-dom';
 import { base44 } from '@/api/base44Client';
 import { format, differenceInDays } from 'date-fns';
 import {
@@ -190,17 +191,11 @@ function NewBugForm({ client, onClose, onCreated }) {
   };
 
   return (
-    <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-[300] p-4"
-    onClick={e => { e.stopPropagation(); onClose(); }}
-    onMouseDown={e => { e.stopPropagation(); e.preventDefault(); }}
-    >
-      <div className="bg-white rounded-xl shadow-2xl w-full max-w-md p-6"
-        onClick={e => e.stopPropagation()}
-        onMouseDown={e => e.stopPropagation()}
-      >
+    <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-[300] p-4" onClick={onClose}>
+      <div className="bg-white rounded-xl shadow-2xl w-full max-w-md p-6" onClick={e => e.stopPropagation()}>
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-base font-bold text-[#111827]">Log Bug — {client.name}</h3>
-          <button onClick={e => { e.stopPropagation(); onClose(); }} className="p-1.5 rounded-lg hover:bg-[#F7F7F8] text-[#9CA3AF]"><X className="w-4 h-4" /></button>
+          <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-[#F7F7F8] text-[#9CA3AF]"><X className="w-4 h-4" /></button>
         </div>
         <div className="space-y-3">
           <div>
@@ -240,7 +235,7 @@ function NewBugForm({ client, onClose, onCreated }) {
           </div>
         </div>
         <div className="flex gap-2 justify-end mt-5">
-          <button onClick={e => { e.stopPropagation(); onClose(); }} className="px-4 py-2 text-sm font-medium text-[#6B7280] hover:bg-[#F7F7F8] rounded-lg">Cancel</button>
+          <button onClick={onClose} className="px-4 py-2 text-sm font-medium text-[#6B7280] hover:bg-[#F7F7F8] rounded-lg">Cancel</button>
           <button onClick={handleSave} disabled={saving || !form.title.trim()}
             className="px-4 py-2 text-sm font-semibold bg-[#8403C5] text-white rounded-lg hover:bg-[#7002A8] disabled:opacity-50 transition-colors">
             {saving ? 'Saving…' : 'Log Bug'}
@@ -679,15 +674,15 @@ export default function ClientFullPanel({ client: initialClient, onClose, onUpda
         </div>
       </div>
 
-      {/* New Bug Form Modal */}
-      {showNewBugForm && (
+      {showNewBugForm && ReactDOM.createPortal(
         <NewBugForm
           client={client}
           onClose={() => setShowNewBugForm(false)}
           onCreated={(newBug) => {
             setBugs(prev => [newBug, ...prev]);
           }}
-        />
+        />,
+        document.body
       )}
     </div>
   );
