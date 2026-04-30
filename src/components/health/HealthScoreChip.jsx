@@ -1,4 +1,5 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
+import ReactDOM from 'react-dom';
 
 const TOOLTIP_TEXT = {
   emails: "Communication quality — 1: Chasing constantly, unclear comms — 3: Generally responsive, occasional delays — 5: Fast, clear, proactive communication",
@@ -10,6 +11,8 @@ const TOOLTIP_TEXT = {
   issues: "Problem resolution — 1: Active unresolved blockers — 3: Issues present but being addressed — 5: No blockers, fast resolution",
 };
 
+const TOOLTIP_WIDTH = 260;
+
 function chipColors(v) {
   if (!v || v === 0) return { bg: '#F3F4F6', text: '#9CA3AF' };
   if (v <= 2) return { bg: '#FEE2E2', text: '#B91C1C' };
@@ -17,19 +20,83 @@ function chipColors(v) {
   return { bg: '#DCFCE7', text: '#15803D' };
 }
 
-/**
- * HealthScoreChip
- * Props:
- *   scoreKey   — one of: emails, meetings, goals, adoption, knowledge, cx, issues
- *   label      — display label below chip
- *   value      — current score (1-5 or null/0)
- *   onSave     — (newValue: number) => void
- *   readonly   — boolean (no click-to-edit)
- */
+function Tooltip({ chipRef, text }) {
+  const [style, setStyle] = useState({ opacity: 0, top: 0, left: 0, flipBelow: false });
+
+  useEffect(() => {
+    if (!chipRef.current) return;
+    const rect = chipRef.current.getBoundingClientRect();
+    const chipCenterX = rect.left + rect.width / 2;
+    const TOOLTIP_HEIGHT_ESTIMATE = 80; // generous estimate
+    const GAP = 8;
+
+    let top;
+    let flipBelow = false;
+
+    // Default: above the chip
+    top = rect.top - TOOLTIP_HEIGHT_ESTIMATE - GAP;
+
+    // If it would go off the top of the viewport, flip to below
+    if (top < 0) {
+      top = rect.bottom + GAP;
+      flipBelow = true;
+    }
+
+    // Horizontal: centre on chip, clamp to viewport
+    let left = chipCenterX - TOOLTIP_WIDTH / 2;
+    if (left + TOOLTIP_WIDTH > window.innerWidth - 8) {
+      left = window.innerWidth - TOOLTIP_WIDTH - 8;
+    }
+    if (left < 8) left = 8;
+
+    setStyle({ opacity: 1, top, left, flipBelow });
+  }, [chipRef]);
+
+  return ReactDOM.createPortal(
+    <div
+      style={{
+        position: 'fixed',
+        top: style.top,
+        left: style.left,
+        zIndex: 99999,
+        background: '#1E2035',
+        color: '#fff',
+        fontSize: 13,
+        padding: 12,
+        borderRadius: 8,
+        width: TOOLTIP_WIDTH,
+        maxWidth: TOOLTIP_WIDTH,
+        boxShadow: '0 4px 12px rgba(0,0,0,0.2)',
+        whiteSpace: 'normal',
+        pointerEvents: 'none',
+        lineHeight: 1.5,
+        opacity: style.opacity,
+      }}
+    >
+      {text}
+      {/* Arrow */}
+      <div style={{
+        position: 'absolute',
+        ...(style.flipBelow
+          ? { bottom: '100%', borderBottom: '6px solid #1E2035', borderTop: 'none' }
+          : { top: '100%', borderTop: '6px solid #1E2035', borderBottom: 'none' }),
+        left: '50%',
+        transform: 'translateX(-50%)',
+        width: 0,
+        height: 0,
+        borderLeft: '6px solid transparent',
+        borderRight: '6px solid transparent',
+      }} />
+    </div>,
+    document.body
+  );
+}
+
 export default function HealthScoreChip({ scoreKey, label, value, onSave, readonly = false }) {
   const [showTooltip, setShowTooltip] = useState(false);
   const [editing, setEditing] = useState(false);
   const tooltipTimer = useRef(null);
+  const chipRef = useRef(null);
   const { bg, text } = chipColors(value);
 
   const handleMouseEnter = () => {
@@ -56,6 +123,7 @@ export default function HealthScoreChip({ scoreKey, label, value, onSave, readon
     >
       {/* Chip */}
       <div
+        ref={chipRef}
         onClick={() => { if (!readonly) setEditing(e => !e); }}
         style={{
           width: 32,
@@ -131,42 +199,9 @@ export default function HealthScoreChip({ scoreKey, label, value, onSave, readon
         </div>
       )}
 
-      {/* Tooltip */}
+      {/* Tooltip — portalled to body, fixed position */}
       {showTooltip && !editing && TOOLTIP_TEXT[scoreKey] && (
-        <div
-          style={{
-            position: 'absolute',
-            bottom: '100%',
-            left: '50%',
-            transform: 'translateX(-50%)',
-            marginBottom: 8,
-            zIndex: 9999,
-            background: '#1E2035',
-            color: '#fff',
-            fontSize: 13,
-            padding: 12,
-            borderRadius: 8,
-            maxWidth: 260,
-            boxShadow: '0 4px 12px rgba(0,0,0,0.2)',
-            whiteSpace: 'normal',
-            pointerEvents: 'none',
-            lineHeight: 1.5,
-          }}
-        >
-          {TOOLTIP_TEXT[scoreKey]}
-          {/* Arrow */}
-          <div style={{
-            position: 'absolute',
-            top: '100%',
-            left: '50%',
-            transform: 'translateX(-50%)',
-            width: 0,
-            height: 0,
-            borderLeft: '6px solid transparent',
-            borderRight: '6px solid transparent',
-            borderTop: '6px solid #1E2035',
-          }} />
-        </div>
+        <Tooltip chipRef={chipRef} text={TOOLTIP_TEXT[scoreKey]} />
       )}
     </div>
   );
