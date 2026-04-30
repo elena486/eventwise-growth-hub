@@ -190,7 +190,7 @@ function NewBugForm({ client, onClose, onCreated }) {
   };
 
   return (
-    <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-[300] p-4" onClick={onClose}>
+    <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-[300] p-4" onClick={e => { e.stopPropagation(); onClose(); }}>
       <div className="bg-white rounded-xl shadow-2xl w-full max-w-md p-6" onClick={e => e.stopPropagation()}>
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-base font-bold text-[#111827]">Log Bug — {client.name}</h3>
