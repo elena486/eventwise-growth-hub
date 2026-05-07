@@ -57,7 +57,7 @@ export default function LeadModal({ lead, onSave, onClose }) {
           <div className="grid grid-cols-2 gap-4">
             <div>
               <Label className="text-xs font-medium text-ew-body mb-1.5 block">Plan</Label>
-              <Select value={form.plan} onValueChange={v => update('plan', v)}>
+              <Select value={form.plan || 'Starter'} onValueChange={v => update('plan', v)}>
                 <SelectTrigger className="h-9 text-sm"><SelectValue /></SelectTrigger>
                 <SelectContent>
                   {PLANS.map(p => <SelectItem key={p} value={p}>{p}</SelectItem>)}
@@ -76,7 +76,7 @@ export default function LeadModal({ lead, onSave, onClose }) {
           <div className="grid grid-cols-2 gap-4">
             <div>
               <Label className="text-xs font-medium text-ew-body mb-1.5 block">Stage</Label>
-              <Select value={form.stage} onValueChange={v => update('stage', v)}>
+              <Select value={form.stage || 'Contacted'} onValueChange={v => update('stage', v)}>
                 <SelectTrigger className="h-9 text-sm"><SelectValue /></SelectTrigger>
                 <SelectContent>
                   {STAGES.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
