@@ -138,7 +138,7 @@ export default function Sidebar({ form, setForm, onGenerate, onDownload, hasProp
                     <SelectValue placeholder="Select company…" />
                   </SelectTrigger>
                   <SelectContent>
-                    {leads.map(l => (
+                    {leads.filter(l => l.companyName).map(l => (
                       <SelectItem key={l.id} value={l.companyName}>{l.companyName}</SelectItem>
                     ))}
                     <SelectItem value="__new__">
