@@ -1,10 +1,12 @@
 import React, { useState } from 'react';
 import MarketingReporting from '@/components/marketing/MarketingReporting';
 import ContentHubMain from '@/components/marketing/ContentHubMain';
+import DinnerRoadshow from '@/components/marketing/DinnerRoadshow';
 
 const TABS = [
   { id: 'reporting', label: 'Reporting' },
   { id: 'content', label: 'Content Hub' },
+  { id: 'dinner', label: '🍽 Dinner Roadshow' },
 ];
 
 export default function Marketing() {
@@ -23,6 +25,7 @@ export default function Marketing() {
       <div className="flex-1 overflow-hidden flex">
         {tab === 'reporting' && <MarketingReporting />}
         {tab === 'content' && <ContentHubMain />}
+        {tab === 'dinner' && <DinnerRoadshow />}
       </div>
     </div>
   );
