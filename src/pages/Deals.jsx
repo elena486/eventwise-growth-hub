@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
-import { format, differenceInDays } from 'date-fns';
-import { ChevronDown, ChevronRight, Pencil, RefreshCw, X, User, Trash2 } from 'lucide-react';
+import { format, differenceInDays, startOfMonth, endOfMonth } from 'date-fns';
+import { ChevronDown, ChevronRight, Pencil, RefreshCw, X, User, Trash2, Info } from 'lucide-react';
 import InlineCell from '@/components/shared/InlineCell';
 import DealEditModal from '@/components/deals/DealEditModal';
 import RenewModal from '@/components/deals/RenewModal';
@@ -23,12 +23,31 @@ const STATUS_STYLES = {
   Churned: 'bg-red-50 text-red-600',
 };
 
+const CHURN_REASONS = ['Price', 'Product gaps', 'No longer running events', 'Went to competitor', 'No engagement', 'Other'];
+
 function RenewalBadge({ date }) {
   if (!date) return null;
   const diff = differenceInDays(new Date(date), new Date());
   if (diff < 0) return <span className="ml-1.5 text-[10px] font-semibold px-2 py-0.5 rounded-full bg-red-100 text-red-600">Renewal overdue</span>;
   if (diff <= 60) return <span className="ml-1.5 text-[10px] font-semibold px-2 py-0.5 rounded-full bg-amber-100 text-amber-700">Renewing soon</span>;
   return null;
+}
+
+function BackdatedChip() {
+  const [tip, setTip] = useState(false);
+  return (
+    <span className="relative inline-flex items-center gap-0.5">
+      <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-gray-100 text-gray-500">Backdated</span>
+      <button onMouseEnter={() => setTip(true)} onMouseLeave={() => setTip(false)} className="text-gray-400 hover:text-gray-600">
+        <Info className="w-3 h-3" />
+      </button>
+      {tip && (
+        <div className="absolute bottom-full left-0 mb-1 w-56 bg-gray-800 text-white text-xs rounded-lg p-2 z-50 leading-relaxed shadow-xl">
+          This deal was added retroactively and is excluded from monthly growth calculations.
+        </div>
+      )}
+    </span>
+  );
 }
 
 function ValueBreakdown({ deal }) {
@@ -60,6 +79,62 @@ function IconBtn({ icon: Icon, label, onClick, className = '' }) {
   );
 }
 
+// Churn modal with date, reason, notes
+function ChurnModal({ deal, onClose, onChurned }) {
+  const [churnDate, setChurnDate] = useState(format(new Date(), 'yyyy-MM-dd'));
+  const [churnReason, setChurnReason] = useState('');
+  const [churnNotes, setChurnNotes] = useState('');
+  const [saving, setSaving] = useState(false);
+
+  const inputCls = 'w-full text-sm border border-ew-border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-navy/20 bg-white';
+  const labelCls = 'block text-xs font-medium text-ew-body mb-1';
+
+  const handleConfirm = async () => {
+    if (!churnReason) return;
+    setSaving(true);
+    const updates = { status: 'Churned', churnDate, churnReason, churnNotes };
+    await base44.entities.Deal.update(deal.id, updates);
+    if (deal.clientId) {
+      await base44.entities.Client.update(deal.clientId, { status: 'Churn' });
+    }
+    onChurned({ ...deal, ...updates });
+    setSaving(false);
+    onClose();
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4" onClick={onClose}>
+      <div className="bg-white rounded-xl shadow-2xl w-full max-w-md p-6" onClick={e => e.stopPropagation()}>
+        <h3 className="text-base font-bold text-navy mb-1">Mark as churned</h3>
+        <p className="text-sm text-ew-body mb-5">Recording churn details for <strong>{deal.clientName}</strong>.</p>
+        <div className="space-y-3">
+          <div>
+            <label className={labelCls}>Churn date *</label>
+            <input type="date" className={inputCls} value={churnDate} onChange={e => setChurnDate(e.target.value)} />
+          </div>
+          <div>
+            <label className={labelCls}>Churn reason *</label>
+            <select className={inputCls} value={churnReason} onChange={e => setChurnReason(e.target.value)}>
+              <option value="">— Select a reason —</option>
+              {CHURN_REASONS.map(r => <option key={r}>{r}</option>)}
+            </select>
+          </div>
+          <div>
+            <label className={labelCls}>Additional notes (optional)</label>
+            <textarea className={inputCls + ' h-20 resize-none'} value={churnNotes} onChange={e => setChurnNotes(e.target.value)} placeholder="Any additional context about why this client churned…" />
+          </div>
+        </div>
+        <div className="flex justify-end gap-3 mt-5">
+          <button onClick={onClose} className="px-4 py-2 text-sm font-medium text-ew-body hover:bg-ew-bg rounded-lg">Cancel</button>
+          <button onClick={handleConfirm} disabled={saving || !churnReason} className="px-4 py-2 text-sm font-semibold bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-40 transition-colors">
+            {saving ? 'Saving…' : 'Confirm churn'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function Deals({ onRenewalProposal, onViewClient, onNavigate }) {
   const [deals, setDeals] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -67,7 +142,6 @@ export default function Deals({ onRenewalProposal, onViewClient, onNavigate }) {
   const [filter, setFilter] = useState('Active');
   const [selectedDeal, setSelectedDeal] = useState(null);
 
-  // Modals
   const [editDeal, setEditDeal] = useState(null);
   const [renewDeal, setRenewDeal] = useState(null);
   const [churnConfirm, setChurnConfirm] = useState(null);
@@ -96,9 +170,9 @@ export default function Deals({ onRenewalProposal, onViewClient, onNavigate }) {
     await base44.entities.Deal.update(id, updates);
   };
 
-  const handleChurn = async (id) => {
-    await base44.entities.Deal.update(id, { status: 'Churned' });
-    setDeals(prev => prev.map(d => d.id === id ? { ...d, status: 'Churned' } : d));
+  const handleChurned = (updated) => {
+    setDeals(prev => prev.map(d => d.id === updated.id ? updated : d));
+    if (selectedDeal?.id === updated.id) setSelectedDeal(updated);
     setChurnConfirm(null);
   };
 
@@ -120,7 +194,6 @@ export default function Deals({ onRenewalProposal, onViewClient, onNavigate }) {
     return differenceInDays(new Date(deal.subscriptionEndDate), new Date()) <= 90;
   };
 
-  // Filter tabs
   const activeDeals = deals.filter(d => d.status === 'Active' || d.status === 'Up for Renewal');
   const churnedDeals = deals.filter(d => d.status === 'Churned');
   const displayDeals = filter === 'Churned' ? churnedDeals : activeDeals;
@@ -132,6 +205,14 @@ export default function Deals({ onRenewalProposal, onViewClient, onNavigate }) {
     return differenceInDays(new Date(d.subscriptionEndDate), new Date()) <= 60;
   }).length;
 
+  // Accounting margin across active deals with accounting fees
+  const acctDeals = activeDeals.filter(d =>
+    d.accountingService === 'Separate fee' || d.accountingService === 'Included in accounting service fee'
+  );
+  const totalAcctRevenue = acctDeals.reduce((s, d) => s + (d.accountingServiceFee || 0), 0);
+  const totalAcctCost = acctDeals.reduce((s, d) => s + (d.accountingCost || 0), 0);
+  const acctMargin = totalAcctRevenue - totalAcctCost;
+
   return (
     <div className="flex-1 bg-ew-bg overflow-y-auto p-8 font-dm">
       <div className="mb-6">
@@ -139,17 +220,19 @@ export default function Deals({ onRenewalProposal, onViewClient, onNavigate }) {
         <p className="text-ew-muted text-sm mt-0.5">All client subscription deals</p>
       </div>
 
-      {/* Stats — always based on active deals */}
-      <div className="grid grid-cols-4 gap-4 mb-6">
+      {/* Stats */}
+      <div className="grid grid-cols-5 gap-4 mb-6">
         {[
           { label: 'Total active deals', value: activeDeals.length },
           { label: 'Total MRR', value: fmt(mrr) },
           { label: 'Total ARR', value: fmt(arr) },
           { label: 'Renewals in 60 days', value: renewingSoon },
+          { label: 'Accounting margin /mo', value: totalAcctRevenue > 0 ? fmt(acctMargin) : '—', sub: totalAcctRevenue > 0 ? `Rev: ${fmt(totalAcctRevenue)} · Cost: ${fmt(totalAcctCost)}` : 'No accounting deals' },
         ].map(c => (
           <div key={c.label} className="bg-white border border-ew-border rounded-xl p-5">
             <p className="text-xs font-medium text-ew-muted uppercase tracking-[0.12em] mb-1">{c.label}</p>
             <p className="text-2xl font-bold text-navy">{c.value}</p>
+            {c.sub && <p className="text-[11px] text-ew-muted mt-0.5">{c.sub}</p>}
           </div>
         ))}
       </div>
@@ -157,11 +240,8 @@ export default function Deals({ onRenewalProposal, onViewClient, onNavigate }) {
       {/* Filter tabs */}
       <div className="flex items-center gap-1.5 mb-4">
         {['Active', 'Churned'].map(f => (
-          <button
-            key={f}
-            onClick={() => setFilter(f)}
-            className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors border ${filter === f ? 'bg-navy text-white border-navy' : 'bg-white border-ew-border text-ew-body hover:bg-ew-bg'}`}
-          >
+          <button key={f} onClick={() => setFilter(f)}
+            className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors border ${filter === f ? 'bg-navy text-white border-navy' : 'bg-white border-ew-border text-ew-body hover:bg-ew-bg'}`}>
             {f} {f === 'Churned' && churnedDeals.length > 0 && <span className="ml-1 text-xs opacity-70">({churnedDeals.length})</span>}
           </button>
         ))}
@@ -174,13 +254,13 @@ export default function Deals({ onRenewalProposal, onViewClient, onNavigate }) {
           <table className="w-full text-sm">
             <thead className="bg-ew-footer border-b border-ew-border">
               <tr>
-                {['Client', 'Plan', 'Monthly', 'Annual ▾', 'Year 1 total'].map(h => (
+                {['Client', 'Plan', 'Monthly', 'Annual ▾', 'Year 1 total', 'Accounting service', 'Start date', 'End date', 'Status'].map(h => (
                   <th key={h} className="px-4 py-3 text-left text-[11px] font-semibold text-ew-muted uppercase tracking-[0.12em]">{h}</th>
                 ))}
-                <th className="px-4 py-3 text-left text-[11px] font-semibold text-ew-muted uppercase tracking-[0.12em]">Accounting service</th>
-                {['Start date', 'End date', 'Status', 'Actions'].map(h => (
+                {filter === 'Churned' && ['Churn date', 'Churn reason', 'Churn notes'].map(h => (
                   <th key={h} className="px-4 py-3 text-left text-[11px] font-semibold text-ew-muted uppercase tracking-[0.12em]">{h}</th>
                 ))}
+                <th className="px-4 py-3 text-left text-[11px] font-semibold text-ew-muted uppercase tracking-[0.12em]">Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -188,89 +268,80 @@ export default function Deals({ onRenewalProposal, onViewClient, onNavigate }) {
                 <React.Fragment key={deal.id}>
                   <tr className={`group border-b border-ew-border hover:bg-navy/[0.02] transition-colors cursor-pointer ${selectedDeal?.id === deal.id ? 'bg-[#F3E8FF] border-l-2 border-l-[#8403C5]' : expanded === deal.id ? 'bg-navy/[0.02]' : i % 2 === 1 ? 'bg-[#FAFBFE]' : 'bg-white'}`}
                     onClick={() => setSelectedDeal(deal)}>
-                    {/* Client */}
                     <td className="px-4 py-3 min-w-[140px]">
-                      <InlineCell value={deal.clientName} onSave={save(deal.id, 'clientName')} className="font-semibold text-navy" />
+                      <div className="flex flex-col gap-0.5">
+                        <InlineCell value={deal.clientName} onSave={save(deal.id, 'clientName')} className="font-semibold text-navy" />
+                        {deal.backdated && <BackdatedChip />}
+                      </div>
                     </td>
-                    {/* Plan */}
                     <td className="px-4 py-3">
                       <InlineCell value={deal.plan} onSave={save(deal.id, 'plan')} type="select" options={['Starter', 'Professional', 'Business']} className="text-ew-body" />
                     </td>
-                    {/* Monthly */}
                     <td className="px-4 py-3 min-w-[100px]">
                       <InlineCell value={deal.monthlyValue} onSave={save(deal.id, 'monthlyValue')} type="number" displayEl={<span className="font-semibold text-navy">{fmt(deal.monthlyValue)}</span>} placeholder="Set value" />
                     </td>
-                    {/* Annual expandable */}
                     <td className="px-4 py-3 min-w-[110px]" onClick={e => e.stopPropagation()}>
                       <button onClick={() => setExpanded(prev => prev === deal.id ? null : deal.id)} className="flex items-center gap-1 font-semibold text-navy hover:text-navy/70 transition-colors">
                         {fmt(deal.annualValue || (deal.monthlyValue || 0) * 12)}
                         {expanded === deal.id ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5" />}
                       </button>
                     </td>
-                    {/* Year 1 */}
                     <td className="px-4 py-3">
                       <InlineCell value={deal.totalFirstYearValue} readOnly displayEl={<span className="font-semibold text-navy">{fmt(deal.totalFirstYearValue)}</span>} />
                     </td>
-                    {/* Accounting */}
                     <td className="px-4 py-3 min-w-[160px]">
                       <span className="text-xs text-ew-body">{deal.accountingService || (deal.accountingServiceIncluded ? 'Included' : 'Not included')}</span>
                       {deal.accountingService === 'Separate fee' && deal.accountingServiceFee > 0 && (
                         <p className="text-xs text-ew-muted">{fmt(deal.accountingServiceFee)}/mo</p>
                       )}
                     </td>
-                    {/* Start date */}
                     <td className="px-4 py-3 min-w-[110px]">
                       <InlineCell value={deal.subscriptionStartDate || ''} onSave={save(deal.id, 'subscriptionStartDate')} type="date" displayEl={<span className="text-ew-body">{fmtDate(deal.subscriptionStartDate)}</span>} placeholder="Set date" />
                     </td>
-                    {/* End date */}
                     <td className="px-4 py-3 min-w-[130px]">
                       <InlineCell value={deal.subscriptionEndDate || ''} onSave={save(deal.id, 'subscriptionEndDate')} type="date"
                         displayEl={<span><span className="text-ew-body">{fmtDate(deal.subscriptionEndDate)}</span><RenewalBadge date={deal.subscriptionEndDate} /></span>}
-                        placeholder="Set date"
-                      />
+                        placeholder="Set date" />
                     </td>
-                    {/* Status */}
                     <td className="px-4 py-3">
                       <InlineCell value={deal.status} onSave={save(deal.id, 'status')} type="select" options={['Active', 'Up for Renewal', 'Churned']}
-                        displayEl={<span className={`text-[11px] font-semibold px-2.5 py-1 rounded-full ${STATUS_STYLES[deal.status] || 'bg-gray-100 text-gray-600'}`}>{deal.status}</span>}
-                      />
+                        displayEl={<span className={`text-[11px] font-semibold px-2.5 py-1 rounded-full ${STATUS_STYLES[deal.status] || 'bg-gray-100 text-gray-600'}`}>{deal.status}</span>} />
                     </td>
-                    {/* Actions */}
+                    {filter === 'Churned' && (
+                      <>
+                        <td className="px-4 py-3 text-sm text-ew-body whitespace-nowrap">{fmtDate(deal.churnDate)}</td>
+                        <td className="px-4 py-3 text-sm text-ew-body whitespace-nowrap">{deal.churnReason || '—'}</td>
+                        <td className="px-4 py-3 text-xs text-ew-muted max-w-[180px] truncate">{deal.churnNotes || '—'}</td>
+                      </>
+                    )}
                     <td className="px-4 py-3 min-w-[130px]" onClick={e => e.stopPropagation()}>
                       <div className="flex items-center gap-0.5">
-                        {/* Edit */}
                         <IconBtn icon={Pencil} label="View / Edit deal" onClick={() => setEditDeal(deal)} className="text-ew-muted hover:text-navy hover:bg-ew-bg" />
-                        {/* Renew — only within 90 days */}
                         {isRenewable(deal) && (
                           <IconBtn icon={RefreshCw} label="Renew deal" onClick={() => setRenewDeal(deal)} className="text-amber-500 hover:text-amber-700 hover:bg-amber-50" />
                         )}
-                        {/* Mark churned — only for non-churned */}
                         {deal.status !== 'Churned' && (
                           <IconBtn icon={X} label="Mark as churned" onClick={() => setChurnConfirm(deal)} className="text-ew-muted hover:text-red-600 hover:bg-red-50" />
                         )}
-                        {/* View client */}
                         {onViewClient && (
                           <IconBtn icon={User} label="View client record" onClick={() => onViewClient(deal.clientId)} className="text-ew-muted hover:text-navy hover:bg-ew-bg" />
                         )}
-                        {/* Delete */}
                         <IconBtn icon={Trash2} label="Delete deal" onClick={() => setDeleteConfirm(deal)} className="text-ew-muted hover:text-red-500 hover:bg-red-50" />
                       </div>
                     </td>
                   </tr>
                   {expanded === deal.id && (
                     <tr className="border-b border-ew-border bg-navy/[0.01]" onClick={e => e.stopPropagation()}>
-                      <td colSpan={10} className="px-4 pb-3"><ValueBreakdown deal={deal} /></td>
+                      <td colSpan={filter === 'Churned' ? 13 : 10} className="px-4 pb-3"><ValueBreakdown deal={deal} /></td>
                     </tr>
                   )}
                 </React.Fragment>
               ))}
               {displayDeals.length === 0 && (
                 <tr>
-                  <td colSpan={10} className="px-4 py-16 text-center">
+                  <td colSpan={filter === 'Churned' ? 13 : 10} className="px-4 py-16 text-center">
                     <div className="text-4xl mb-3">🤝</div>
-                    <p className="text-sm text-[#6B7280]">
-                      {filter === 'Churned' ? 'No churned deals.' : 'No deals yet. Close your first lead to get started.'}
-                    </p>
+                    <p className="text-sm text-[#6B7280]">{filter === 'Churned' ? 'No churned deals.' : 'No deals yet. Close your first lead to get started.'}</p>
                   </td>
                 </tr>
               )}
@@ -279,51 +350,31 @@ export default function Deals({ onRenewalProposal, onViewClient, onNavigate }) {
         </div>
       )}
 
-      {/* Edit modal */}
       {editDeal && <DealEditModal deal={editDeal} onClose={() => setEditDeal(null)} onSaved={handleSaved} />}
-
-      {/* Renew modal */}
       {renewDeal && <RenewModal deal={renewDeal} onClose={() => setRenewDeal(null)} onRenewed={handleSaved} />}
+      {churnConfirm && <ChurnModal deal={churnConfirm} onClose={() => setChurnConfirm(null)} onChurned={handleChurned} />}
 
-      {/* Churn confirm */}
-      {churnConfirm && (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4" onClick={() => setChurnConfirm(null)}>
-          <div className="bg-white rounded-xl shadow-2xl w-full max-w-sm p-6" onClick={e => e.stopPropagation()}>
-            <h3 className="text-base font-bold text-navy mb-2">Mark as churned?</h3>
-            <p className="text-sm text-ew-body mb-5">Are you sure you want to mark <strong>{churnConfirm.clientName}</strong>'s deal as churned? This cannot be undone.</p>
-            <div className="flex justify-end gap-3">
-              <button onClick={() => setChurnConfirm(null)} className="px-4 py-2 text-sm font-medium text-ew-body hover:bg-ew-bg rounded-lg transition-colors">Cancel</button>
-              <button onClick={() => handleChurn(churnConfirm.id)} className="px-4 py-2 text-sm font-semibold bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors">Mark churned</button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Delete confirm */}
       {deleteConfirm && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4" onClick={() => setDeleteConfirm(null)}>
           <div className="bg-white rounded-xl shadow-2xl w-full max-w-sm p-6" onClick={e => e.stopPropagation()}>
             <h3 className="text-base font-bold text-navy mb-2">Delete deal?</h3>
             <p className="text-sm text-ew-body mb-5">This will permanently delete the deal record for <strong>{deleteConfirm.clientName}</strong>. Only delete test or incorrect entries.</p>
             <div className="flex justify-end gap-3">
-              <button onClick={() => setDeleteConfirm(null)} className="px-4 py-2 text-sm font-medium text-ew-body hover:bg-ew-bg rounded-lg transition-colors">Cancel</button>
-              <button onClick={() => handleDelete(deleteConfirm.id)} className="px-4 py-2 text-sm font-semibold bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors">Delete</button>
+              <button onClick={() => setDeleteConfirm(null)} className="px-4 py-2 text-sm font-medium text-ew-body hover:bg-ew-bg rounded-lg">Cancel</button>
+              <button onClick={() => handleDelete(deleteConfirm.id)} className="px-4 py-2 text-sm font-semibold bg-red-600 text-white rounded-lg hover:bg-red-700">Delete</button>
             </div>
           </div>
         </div>
       )}
 
-      {/* Deal detail panel */}
       {selectedDeal && (
         <DealDetailPanel
           deal={selectedDeal}
           onClose={() => setSelectedDeal(null)}
           onUpdated={handleSaved}
-          onDelete={(id) => {
-            setDeals(prev => prev.filter(d => d.id !== id));
-            setSelectedDeal(null);
-          }}
+          onDelete={(id) => { setDeals(prev => prev.filter(d => d.id !== id)); setSelectedDeal(null); }}
           onNavigate={onNavigate}
+          onChurn={(deal) => setChurnConfirm(deal)}
         />
       )}
     </div>

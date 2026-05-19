@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import { X } from 'lucide-react';
-import { format, addMonths } from 'date-fns';
 import { base44 } from '@/api/base44Client';
 
 function fmt(n) {
@@ -24,6 +23,8 @@ export default function DealEditModal({ deal, onClose, onSaved }) {
     onboardingFee: deal.onboardingFee || 0,
     status: deal.status || 'Active',
     notes: deal.notes || '',
+    backdated: deal.backdated || false,
+    backdatedStartDate: deal.subscriptionStartDate || '',
   });
   const [saving, setSaving] = useState(false);
 
@@ -44,6 +45,7 @@ export default function DealEditModal({ deal, onClose, onSaved }) {
       accountingServiceValue: acctg,
       onboardingFee: fee,
       totalFirstYearValue: total,
+      subscriptionStartDate: form.backdated ? form.backdatedStartDate : form.subscriptionStartDate,
     };
     await base44.entities.Deal.update(deal.id, updates);
     setSaving(false);
@@ -81,14 +83,38 @@ export default function DealEditModal({ deal, onClose, onSaved }) {
               <label className={labelCls}>Monthly value (£)</label>
               <input type="number" className={inputCls} value={form.monthlyValue} onChange={e => up('monthlyValue', e.target.value)} />
             </div>
-            <div>
-              <label className={labelCls}>Start date</label>
-              <input type="date" className={inputCls} value={form.subscriptionStartDate} onChange={e => up('subscriptionStartDate', e.target.value)} />
-            </div>
+            {!form.backdated && (
+              <div>
+                <label className={labelCls}>Start date</label>
+                <input type="date" className={inputCls} value={form.subscriptionStartDate} onChange={e => up('subscriptionStartDate', e.target.value)} />
+              </div>
+            )}
             <div>
               <label className={labelCls}>End date</label>
               <input type="date" className={inputCls} value={form.subscriptionEndDate} onChange={e => up('subscriptionEndDate', e.target.value)} />
             </div>
+          </div>
+
+          {/* Backdate toggle */}
+          <div className="border border-ew-border rounded-xl p-4 bg-ew-bg space-y-3">
+            <div className="flex items-center gap-3">
+              <button
+                onClick={() => up('backdated', !form.backdated)}
+                className={`relative inline-flex h-5 w-9 rounded-full transition-colors shrink-0 ${form.backdated ? 'bg-navy' : 'bg-gray-200'}`}
+              >
+                <span className={`inline-block w-3.5 h-3.5 bg-white rounded-full shadow transition-transform mt-0.5 ${form.backdated ? 'translate-x-4' : 'translate-x-1'}`} />
+              </button>
+              <div>
+                <p className="text-sm font-medium text-ew-body">Backdate this deal</p>
+                <p className="text-xs text-ew-muted">Excluded from "added this month" metrics but included in MRR/ARR totals</p>
+              </div>
+            </div>
+            {form.backdated && (
+              <div>
+                <label className={labelCls}>Actual deal start date</label>
+                <input type="date" className={inputCls} value={form.backdatedStartDate} onChange={e => up('backdatedStartDate', e.target.value)} />
+              </div>
+            )}
           </div>
 
           <div className="border-t border-ew-border pt-4">
@@ -114,7 +140,6 @@ export default function DealEditModal({ deal, onClose, onSaved }) {
             <textarea className={inputCls + ' h-16 resize-none'} value={form.notes} onChange={e => up('notes', e.target.value)} />
           </div>
 
-          {/* Summary */}
           <div className="border-t border-ew-border pt-4">
             <p className="text-[10px] font-semibold text-ew-muted uppercase tracking-[0.18em] mb-3">Deal summary</p>
             <div className="bg-ew-bg rounded-xl p-4 grid grid-cols-4 gap-4 text-center">

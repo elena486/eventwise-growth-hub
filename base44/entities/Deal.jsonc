@@ -33,11 +33,30 @@
     "annualValue": {
       "type": "number"
     },
+    "accountingService": {
+      "type": "string",
+      "enum": [
+        "Not included",
+        "Included in plan",
+        "Included in accounting service fee",
+        "Separate fee"
+      ]
+    },
+    "accountingServiceFee": {
+      "type": "number",
+      "description": "Monthly accounting fee charged to client, only when accountingService = Separate fee"
+    },
+    "accountingCost": {
+      "type": "number",
+      "description": "Monthly accounting cost paid to ITLA/accountant for this client"
+    },
     "accountingServiceIncluded": {
-      "type": "boolean"
+      "type": "boolean",
+      "description": "Legacy field - kept for backward compat"
     },
     "accountingServiceValue": {
-      "type": "number"
+      "type": "number",
+      "description": "Legacy annual accounting value"
     },
     "onboardingPackage": {
       "type": "string",
@@ -61,8 +80,47 @@
         "Churned"
       ]
     },
+    "backdated": {
+      "type": "boolean",
+      "description": "True if this deal was added retroactively"
+    },
     "notes": {
       "type": "string"
+    },
+    "handoverNotes": {
+      "type": "string",
+      "description": "Sales handover notes from Closed Won flow"
+    },
+    "closedBy": {
+      "type": "string",
+      "description": "Who closed the deal"
+    },
+    "csOwner": {
+      "type": "string",
+      "enum": [
+        "Martinique Keeler",
+        "Chris Carter"
+      ]
+    },
+    "churnDate": {
+      "type": "string",
+      "format": "date",
+      "description": "When the client cancelled"
+    },
+    "churnReason": {
+      "type": "string",
+      "enum": [
+        "Price",
+        "Product gaps",
+        "No longer running events",
+        "Went to competitor",
+        "No engagement",
+        "Other"
+      ]
+    },
+    "churnNotes": {
+      "type": "string",
+      "description": "Additional churn context"
     }
   },
   "required": [

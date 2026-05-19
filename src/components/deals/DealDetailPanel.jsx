@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { base44 } from '@/api/base44Client';
 import { format, differenceInDays } from 'date-fns';
-import { X, Mail, Trash2, ExternalLink } from 'lucide-react';
+import { X, Trash2, ExternalLink, Info } from 'lucide-react';
 
 const PLAN_COLORS = {
   Starter: 'bg-blue-100 text-blue-700',
@@ -13,12 +13,10 @@ const STATUS_STYLES = {
   Active: 'bg-emerald-50 text-emerald-700',
   'Up for Renewal': 'bg-amber-50 text-amber-700',
   Churned: 'bg-red-50 text-red-600',
-  'At Risk': 'bg-orange-50 text-orange-700',
-  'On Hold': 'bg-gray-100 text-gray-600',
-  Cancelled: 'bg-red-100 text-red-700',
 };
 
 const ACCT_OPTIONS = ['Not included', 'Included in plan', 'Included in accounting service fee', 'Separate fee'];
+const ACCT_WITH_FEE = ['Included in accounting service fee', 'Separate fee'];
 const DEAL_STATUSES = ['Active', 'At Risk', 'On Hold', 'Up for Renewal', 'Churned', 'Cancelled'];
 const CS_OWNERS = ['Martinique Keeler', 'Chris Carter'];
 const ONBOARDING_PKGS = ['Success Essential', 'Success Plus', 'Success Premium'];
@@ -32,6 +30,11 @@ function fmt(n) {
 function fmtDate(d) {
   if (!d) return '—';
   try { return format(new Date(d), 'd MMM yyyy'); } catch { return d; }
+}
+
+function pct(a, b) {
+  if (!b || b === 0) return '—';
+  return Math.round(((a) / b) * 100) + '%';
 }
 
 const ic = 'w-full text-sm border border-[#E5E7EB] rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#8403C5]/20 focus:border-[#8403C5] bg-white transition-colors';
@@ -48,18 +51,15 @@ function EndDateField({ date }) {
   return (
     <div>
       <span className={cls}>{fmtDate(date)}</span>
-      <p className="text-xs text-[#9CA3AF] mt-0.5">
-        {diff < 0 ? `${Math.abs(diff)}d overdue` : `${diff}d remaining`}
-      </p>
+      <p className="text-xs text-[#9CA3AF] mt-0.5">{diff < 0 ? `${Math.abs(diff)}d overdue` : `${diff}d remaining`}</p>
     </div>
   );
 }
 
-export default function DealDetailPanel({ deal: initialDeal, onClose, onUpdated, onDelete, onNavigate }) {
+export default function DealDetailPanel({ deal: initialDeal, onClose, onUpdated, onDelete, onNavigate, onChurn }) {
   const [deal, setDeal] = useState(initialDeal);
   const [notes, setNotes] = useState(initialDeal.notes || '');
   const [deleteConfirm, setDeleteConfirm] = useState(false);
-  const [churnConfirm, setChurnConfirm] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const notesTimer = useRef(null);
   const saveTimer = useRef(null);
@@ -90,18 +90,6 @@ export default function DealDetailPanel({ deal: initialDeal, onClose, onUpdated,
     }, 800);
   };
 
-  const handleChurn = async () => {
-    await base44.entities.Deal.update(deal.id, { status: 'Churned' });
-    // Also update client
-    if (deal.clientId) {
-      await base44.entities.Client.update(deal.clientId, { status: 'Churn' });
-    }
-    const updated = { ...deal, status: 'Churned' };
-    setDeal(updated);
-    onUpdated(updated);
-    setChurnConfirm(false);
-  };
-
   const handleDelete = async () => {
     setDeleting(true);
     await base44.entities.Deal.delete(deal.id);
@@ -111,7 +99,13 @@ export default function DealDetailPanel({ deal: initialDeal, onClose, onUpdated,
   };
 
   const annual = (deal.monthlyValue || 0) * 12;
-  const endDiff = deal.subscriptionEndDate ? differenceInDays(new Date(deal.subscriptionEndDate), new Date()) : null;
+
+  // Accounting margin calcs
+  const showAcctMargin = ACCT_WITH_FEE.includes(deal.accountingService);
+  const acctFee = deal.accountingServiceFee || 0;
+  const acctCost = deal.accountingCost || 0;
+  const acctMarginGbp = acctFee - acctCost;
+  const acctMarginPct = acctFee > 0 ? Math.round((acctMarginGbp / acctFee) * 100) : null;
 
   return (
     <div className="fixed inset-0 z-40 flex pointer-events-none">
@@ -131,13 +125,17 @@ export default function DealDetailPanel({ deal: initialDeal, onClose, onUpdated,
           <div className="flex items-center gap-2 mt-2 flex-wrap">
             {deal.plan && <span className={`text-[11px] font-semibold px-2.5 py-0.5 rounded-full ${PLAN_COLORS[deal.plan] || 'bg-gray-100 text-gray-600'}`}>{deal.plan}</span>}
             {deal.status && <span className={`text-[11px] font-semibold px-2.5 py-0.5 rounded-full ${STATUS_STYLES[deal.status] || 'bg-gray-100 text-gray-600'}`}>{deal.status}</span>}
+            {deal.backdated && (
+              <span className="text-[11px] font-semibold px-2.5 py-0.5 rounded-full bg-gray-100 text-gray-500" title="This deal was added retroactively and is excluded from monthly growth calculations">
+                Backdated
+              </span>
+            )}
           </div>
         </div>
 
         {/* Body */}
         <div className="flex-1 overflow-y-auto px-6 py-5">
 
-          {/* S1: Deal Financials */}
           <SectionTitle>Deal Financials</SectionTitle>
           <div className="grid grid-cols-2 gap-3 mb-4">
             <div>
@@ -164,9 +162,9 @@ export default function DealDetailPanel({ deal: initialDeal, onClose, onUpdated,
                 {ACCT_OPTIONS.map(o => <option key={o}>{o}</option>)}
               </select>
             </div>
-            {deal.accountingService === 'Separate fee' && (
+            {(deal.accountingService === 'Separate fee' || deal.accountingService === 'Included in accounting service fee') && (
               <div>
-                <label className={labelCls}>Accounting fee (£/month)</label>
+                <label className={labelCls}>Accounting fee charged (£/month)</label>
                 <input type="number" className={ic} value={deal.accountingServiceFee || ''} onChange={e => autoSave('accountingServiceFee', parseFloat(e.target.value) || 0)} placeholder="0" />
               </div>
             )}
@@ -179,9 +177,38 @@ export default function DealDetailPanel({ deal: initialDeal, onClose, onUpdated,
             </div>
           </div>
 
+          {/* Accounting Margin */}
+          {showAcctMargin && (
+            <>
+              <hr className="border-[#F3F4F6] mb-4" />
+              <SectionTitle>Accounting Margin</SectionTitle>
+              <div className="grid grid-cols-2 gap-3 mb-4">
+                <div>
+                  <label className={labelCls}>Fee charged to client (£/mo)</label>
+                  <input type="number" className={ic} value={deal.accountingServiceFee || ''} onChange={e => autoSave('accountingServiceFee', parseFloat(e.target.value) || 0)} placeholder="0" />
+                </div>
+                <div>
+                  <label className={labelCls}>Accounting cost (£/mo)</label>
+                  <input type="number" className={ic} value={deal.accountingCost || ''} onChange={e => autoSave('accountingCost', parseFloat(e.target.value) || 0)} placeholder="0 — what Eventwise pays ITLA" />
+                </div>
+                <div>
+                  <label className={labelCls}>Gross margin £</label>
+                  <p className={`text-sm font-semibold pt-2 ${acctFee > 0 ? (acctMarginGbp >= 0 ? 'text-emerald-600' : 'text-red-600') : 'text-[#9CA3AF]'}`}>
+                    {acctFee > 0 ? fmt(acctMarginGbp) + '/mo' : '—'}
+                  </p>
+                </div>
+                <div>
+                  <label className={labelCls}>Gross margin %</label>
+                  <p className={`text-sm font-semibold pt-2 ${acctFee > 0 ? (acctMarginPct >= 0 ? 'text-emerald-600' : 'text-red-600') : 'text-[#9CA3AF]'}`}>
+                    {acctFee > 0 && acctMarginPct !== null ? acctMarginPct + '%' : '—'}
+                  </p>
+                </div>
+              </div>
+            </>
+          )}
+
           <hr className="border-[#F3F4F6] mb-4" />
 
-          {/* S2: Contract Dates */}
           <SectionTitle>Contract Dates</SectionTitle>
           <div className="grid grid-cols-2 gap-3 mb-4">
             <div>
@@ -197,7 +224,23 @@ export default function DealDetailPanel({ deal: initialDeal, onClose, onUpdated,
 
           <hr className="border-[#F3F4F6] mb-4" />
 
-          {/* S3: Ownership */}
+          {/* Backdated toggle */}
+          <SectionTitle>Deal Settings</SectionTitle>
+          <div className="flex items-center gap-3 mb-4">
+            <button
+              onClick={() => autoSave('backdated', !deal.backdated)}
+              className={`relative inline-flex h-5 w-9 rounded-full transition-colors shrink-0 ${deal.backdated ? 'bg-[#8403C5]' : 'bg-gray-200'}`}
+            >
+              <span className={`inline-block w-3.5 h-3.5 bg-white rounded-full shadow transition-transform mt-0.5 ${deal.backdated ? 'translate-x-4' : 'translate-x-1'}`} />
+            </button>
+            <div>
+              <p className="text-sm font-medium text-[#374151]">Backdated deal</p>
+              <p className="text-xs text-[#9CA3AF]">Excluded from "added this month" metrics but included in totals</p>
+            </div>
+          </div>
+
+          <hr className="border-[#F3F4F6] mb-4" />
+
           <SectionTitle>Deal Ownership</SectionTitle>
           <div className="grid grid-cols-2 gap-3 mb-4">
             <div>
@@ -221,7 +264,6 @@ export default function DealDetailPanel({ deal: initialDeal, onClose, onUpdated,
 
           <hr className="border-[#F3F4F6] mb-4" />
 
-          {/* S4: Handover notes */}
           {deal.handoverNotes && (
             <>
               <SectionTitle>Sales Handover Notes</SectionTitle>
@@ -232,24 +274,48 @@ export default function DealDetailPanel({ deal: initialDeal, onClose, onUpdated,
             </>
           )}
 
-          {/* S5: Linked records */}
+          {/* Churn details — visible when churned */}
+          {deal.status === 'Churned' && (deal.churnDate || deal.churnReason || deal.churnNotes) && (
+            <>
+              <SectionTitle>Churn Details</SectionTitle>
+              <div className="bg-red-50 border border-red-200 rounded-xl p-4 mb-4 space-y-2">
+                {deal.churnDate && (
+                  <div className="flex gap-4">
+                    <span className="text-xs font-bold text-red-400 uppercase tracking-wide w-28 shrink-0">Churn date</span>
+                    <span className="text-sm text-red-800">{fmtDate(deal.churnDate)}</span>
+                  </div>
+                )}
+                {deal.churnReason && (
+                  <div className="flex gap-4">
+                    <span className="text-xs font-bold text-red-400 uppercase tracking-wide w-28 shrink-0">Reason</span>
+                    <span className="text-sm text-red-800">{deal.churnReason}</span>
+                  </div>
+                )}
+                {deal.churnNotes && (
+                  <div className="flex gap-4">
+                    <span className="text-xs font-bold text-red-400 uppercase tracking-wide w-28 shrink-0">Notes</span>
+                    <span className="text-sm text-red-800 whitespace-pre-wrap">{deal.churnNotes}</span>
+                  </div>
+                )}
+              </div>
+              <hr className="border-[#F3F4F6] mb-4" />
+            </>
+          )}
+
           <SectionTitle>Linked Records</SectionTitle>
           <div className="space-y-2 mb-4">
             {deal.clientId && onNavigate && (
-              <button onClick={() => { onNavigate('clients'); onClose(); }}
-                className="flex items-center gap-2 text-sm text-[#8403C5] hover:underline font-medium">
+              <button onClick={() => { onNavigate('clients'); onClose(); }} className="flex items-center gap-2 text-sm text-[#8403C5] hover:underline font-medium">
                 <ExternalLink className="w-3.5 h-3.5" /> View client record →
               </button>
             )}
             {deal.leadId && onNavigate && (
-              <button onClick={() => { onNavigate('pipeline'); onClose(); }}
-                className="flex items-center gap-2 text-sm text-[#8403C5] hover:underline font-medium">
+              <button onClick={() => { onNavigate('pipeline'); onClose(); }} className="flex items-center gap-2 text-sm text-[#8403C5] hover:underline font-medium">
                 <ExternalLink className="w-3.5 h-3.5" /> View original lead →
               </button>
             )}
             {deal.clientId && onNavigate && (
-              <button onClick={() => { onNavigate('onboarding'); onClose(); }}
-                className="flex items-center gap-2 text-sm text-[#8403C5] hover:underline font-medium">
+              <button onClick={() => { onNavigate('onboarding'); onClose(); }} className="flex items-center gap-2 text-sm text-[#8403C5] hover:underline font-medium">
                 <ExternalLink className="w-3.5 h-3.5" /> View onboarding →
               </button>
             )}
@@ -257,29 +323,16 @@ export default function DealDetailPanel({ deal: initialDeal, onClose, onUpdated,
 
           <hr className="border-[#F3F4F6] mb-4" />
 
-          {/* S6: Notes */}
           <SectionTitle>Notes</SectionTitle>
           <textarea className={`${ic} min-h-[80px] resize-none mb-4`} value={notes} onChange={e => handleNotesChange(e.target.value)} placeholder="Add notes here — auto-saves..." />
 
           {/* Footer actions */}
           <div className="border-t border-[#F3F4F6] pt-4 space-y-3">
-            {deal.status !== 'Churned' && (
-              churnConfirm ? (
-                <div className="bg-amber-50 border border-amber-200 rounded-xl p-4">
-                  <p className="text-sm text-[#374151] mb-3">
-                    Are you sure you want to mark this deal as churned? The client record will also be updated to Churned status.
-                  </p>
-                  <div className="flex gap-2">
-                    <button onClick={handleChurn} className="px-4 py-2 text-sm font-semibold bg-amber-600 text-white rounded-lg hover:bg-amber-700 transition-colors">Confirm</button>
-                    <button onClick={() => setChurnConfirm(false)} className="px-4 py-2 text-sm font-medium text-[#6B7280] hover:bg-[#F7F7F8] rounded-lg">Cancel</button>
-                  </div>
-                </div>
-              ) : (
-                <button onClick={() => setChurnConfirm(true)}
-                  className="flex items-center gap-1.5 text-sm font-medium text-amber-700 hover:text-amber-900 transition-colors">
-                  Mark as churned
-                </button>
-              )
+            {deal.status !== 'Churned' && onChurn && (
+              <button onClick={() => { onClose(); onChurn(deal); }}
+                className="flex items-center gap-1.5 text-sm font-medium text-amber-700 hover:text-amber-900 transition-colors">
+                Mark as churned
+              </button>
             )}
             {deleteConfirm ? (
               <div className="bg-red-50 border border-red-200 rounded-xl p-4">
