@@ -17,6 +17,7 @@ import HR from './HR';
 import SalesAssets from './SalesAssets';
 import OutreachAnalytics from './OutreachAnalytics';
 import Competitors from './Competitors';
+import LinkSpace from './LinkSpace';
 import { LOGO_BLACK, LOGO_WHITE } from '@/lib/proposalData';
 import ClientDetailPanel from '@/components/clients/ClientDetailPanel';
 import ClientFullPanel from '@/components/clients/ClientFullPanel';
@@ -44,6 +45,9 @@ const GROUPS = [
     { id: 'requests', label: 'Team To Do Requests' },
     { id: 'hr', label: 'Time Off Requests' },
     { id: 'competitors', label: 'Competitors' },
+  ]},
+  { id: 'links', label: '🔗 Links', tabs: [
+    { id: 'links', label: 'Link Space' },
   ]},
   { id: 'marketing', label: 'Marketing', tabs: [
     { id: 'marketing', label: 'Marketing' },
@@ -230,6 +234,7 @@ export default function AppShell() {
         {tab === 'bugs' && <BugTracker />}
         {tab === 'assets' && <SalesAssets />}
         {tab === 'outreach' && <OutreachAnalytics />}
+        {tab === 'links' && <LinkSpace user={user} />}
       </div>
       {detailClient && (
         <ClientDetailPanel
