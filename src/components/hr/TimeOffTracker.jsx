@@ -7,6 +7,7 @@ import DeclineModal from './DeclineModal';
 import TimeOffSidePanel from './TimeOffSidePanel';
 
 const MEMBERS = ['All', 'Chris', 'Elena', 'Martinique', 'George', 'Ramesh', 'Sreeja', 'David'];
+const ANNUAL_ALLOWANCE = 25;
 const CURRENT_YEAR = new Date().getFullYear();
 
 const STATUS_STYLES = {
@@ -115,7 +116,7 @@ export default function TimeOffTracker() {
       {/* Header */}
       <div className="flex items-start justify-between mb-5">
         <div>
-          <h1 className="text-2xl font-bold text-navy">Time Off & Sick Days</h1>
+          <h1 className="text-2xl font-bold text-navy">Time Off &amp; Sick Days</h1>
           <p className="text-ew-muted text-sm mt-0.5">Full team record of approved leave and sick days</p>
         </div>
         <button
@@ -143,7 +144,11 @@ export default function TimeOffTracker() {
             className={`bg-white border rounded-xl p-4 cursor-pointer hover:shadow-md transition-all ${memberFilter === p.name ? 'border-[#8403C5] ring-2 ring-[#8403C5]/20' : 'border-ew-border'}`}>
             <p className="text-[11px] font-semibold text-ew-muted uppercase tracking-[0.12em] mb-1">{p.name}</p>
             <div className="flex items-center gap-3 text-sm">
-              {p.vacation > 0 && <span className="font-medium text-emerald-700">{p.vacation}d vacation</span>}
+              {p.vacation > 0 && (
+                <span className={`font-medium ${p.vacation >= ANNUAL_ALLOWANCE ? 'text-red-600' : p.vacation >= ANNUAL_ALLOWANCE * 0.8 ? 'text-amber-600' : 'text-emerald-700'}`}>
+                  {p.vacation}/{ANNUAL_ALLOWANCE}d vacation
+                </span>
+              )}
               {p.sick > 0 && <span className="font-medium text-amber-700">{p.sick}d sick</span>}
             </div>
           </div>
