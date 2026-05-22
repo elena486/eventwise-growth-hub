@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
 import { format, differenceInDays, startOfMonth, endOfMonth } from 'date-fns';
-import { ChevronDown, ChevronRight, Pencil, RefreshCw, X, User, Trash2, Info } from 'lucide-react';
+import { ChevronDown, ChevronRight, Pencil, RefreshCw, X, User, Trash2, Info, Download } from 'lucide-react';
+import { downloadCSV, fmtCsvDate, fmtCsvMoney, safe, todayStr } from '@/lib/csvExport';
 import InlineCell from '@/components/shared/InlineCell';
 import DealEditModal from '@/components/deals/DealEditModal';
 import RenewModal from '@/components/deals/RenewModal';
@@ -194,6 +195,45 @@ export default function Deals({ onRenewalProposal, onViewClient, onNavigate }) {
     return differenceInDays(new Date(deal.subscriptionEndDate), new Date()) <= 90;
   };
 
+  const handleExportCSV = () => {
+    if (displayDeals.length === 0) {
+      alert('Nothing to export — no data matches the current filters');
+      return;
+    }
+    const cols = [
+      { label: 'Client name',                  getValue: d => safe(d.clientName) },
+      { label: 'Plan',                         getValue: d => safe(d.plan) },
+      { label: 'Monthly value (£)',            getValue: d => fmtCsvMoney(d.monthlyValue) },
+      { label: 'Annual value (£)',             getValue: d => fmtCsvMoney(d.annualValue || (d.monthlyValue || 0) * 12) },
+      { label: 'Setup fee (£)',                getValue: d => fmtCsvMoney(d.onboardingFee) },
+      { label: 'Accounting service',           getValue: d => safe(d.accountingService || (d.accountingServiceIncluded ? 'Included in plan' : 'Not included')) },
+      { label: 'Accounting fee charged (£/mo)', getValue: d => fmtCsvMoney(d.accountingServiceFee) },
+      { label: 'Accounting cost (£/mo)',       getValue: d => fmtCsvMoney(d.accountingCost) },
+      { label: 'Accounting margin (£)',        getValue: d => {
+        const fee = d.accountingServiceFee || 0;
+        const cost = d.accountingCost || 0;
+        return fee > 0 ? fmtCsvMoney(fee - cost) : '';
+      }},
+      { label: 'Accounting margin %',          getValue: d => {
+        const fee = d.accountingServiceFee || 0;
+        const cost = d.accountingCost || 0;
+        return fee > 0 ? String(Math.round(((fee - cost) / fee) * 100)) : '';
+      }},
+      { label: 'Onboarding plan',              getValue: d => safe(d.onboardingPackage) },
+      { label: 'Contract start date',         getValue: d => fmtCsvDate(d.subscriptionStartDate) },
+      { label: 'Contract end date',           getValue: d => fmtCsvDate(d.subscriptionEndDate) },
+      { label: 'Status',                       getValue: d => safe(d.status) },
+      { label: 'Closed by',                    getValue: d => safe(d.closedBy) },
+      { label: 'CS owner',                     getValue: d => safe(d.csOwner) },
+      { label: 'Churn date',                   getValue: d => fmtCsvDate(d.churnDate) },
+      { label: 'Churn reason',                 getValue: d => safe(d.churnReason) },
+      { label: 'Churn notes',                  getValue: d => safe(d.churnNotes) },
+      { label: 'Backdated',                    getValue: d => d.backdated ? 'Yes' : 'No' },
+      { label: 'Date added',                  getValue: d => fmtCsvDate(d.created_date) },
+    ];
+    downloadCSV(displayDeals, cols, `Eventwise_Deals_${todayStr()}.csv`);
+  };
+
   const activeDeals = deals.filter(d => d.status === 'Active' || d.status === 'Up for Renewal');
   const churnedDeals = deals.filter(d => d.status === 'Churned');
   const displayDeals = filter === 'Churned' ? churnedDeals : activeDeals;
@@ -238,13 +278,19 @@ export default function Deals({ onRenewalProposal, onViewClient, onNavigate }) {
       </div>
 
       {/* Filter tabs */}
-      <div className="flex items-center gap-1.5 mb-4">
+      <div className="flex items-center gap-1.5 mb-4 justify-between">
+        <div className="flex items-center gap-1.5">
         {['Active', 'Churned'].map(f => (
           <button key={f} onClick={() => setFilter(f)}
             className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors border ${filter === f ? 'bg-navy text-white border-navy' : 'bg-white border-ew-border text-ew-body hover:bg-ew-bg'}`}>
             {f} {f === 'Churned' && churnedDeals.length > 0 && <span className="ml-1 text-xs opacity-70">({churnedDeals.length})</span>}
           </button>
         ))}
+        </div>
+        <button onClick={handleExportCSV}
+          className="h-9 px-3 flex items-center gap-1.5 text-sm font-medium border border-ew-border bg-white text-ew-body hover:bg-ew-bg rounded-lg transition-colors">
+          <Download className="w-3.5 h-3.5" /> Export CSV
+        </button>
       </div>
 
       {loading ? (

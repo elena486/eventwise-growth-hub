@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { base44 } from '@/api/base44Client';
-import { Plus, SlidersHorizontal, ChevronDown, BarChart2 } from 'lucide-react';
+import { Plus, SlidersHorizontal, ChevronDown, BarChart2, Download } from 'lucide-react';
+import { downloadCSV, fmtCsvDate, fmtCsvMoney, safe, todayStr, getPrimaryContact } from '@/lib/csvExport';
 
 const STATS_COLLAPSED_KEY = 'pipeline_stats_collapsed_v1';
 import { Button } from '@/components/ui/button';
@@ -156,6 +157,40 @@ export default function Pipeline({ onProposalHandoff, onViewDeals }) {
 
   const isLostView = ownerFilter === 'Lost Leads';
 
+  const handleExportCSV = () => {
+    if (displayLeads.length === 0) {
+      alert('Nothing to export — no data matches the current filters');
+      return;
+    }
+    const cols = [
+      { label: 'Company name',              getValue: r => safe(r.companyName) },
+      { label: 'Primary contact name',      getValue: r => safe(getPrimaryContact(r).name) },
+      { label: 'Primary contact email',     getValue: r => safe(getPrimaryContact(r).email) },
+      { label: 'Primary contact phone',     getValue: r => safe(getPrimaryContact(r).phone) },
+      { label: 'Job title',                 getValue: r => safe(getPrimaryContact(r).jobTitle) },
+      { label: 'Owner',                     getValue: r => safe(r.leadOwner) },
+      { label: 'Plan',                      getValue: r => safe(r.plan) },
+      { label: 'Monthly value (£)',         getValue: r => fmtCsvMoney(r.dealValueMonthly) },
+      { label: 'Annual value (£)',          getValue: r => fmtCsvMoney((r.dealValueMonthly || 0) * 12) },
+      { label: 'Setup fee (£)',             getValue: r => fmtCsvMoney(r.setupFee) },
+      { label: 'Accounting service',        getValue: r => safe(r.accountingService) },
+      { label: 'Onboarding plan',           getValue: r => safe(r.onboardingPlan) },
+      { label: 'Stage',                     getValue: r => safe(r.stage) },
+      { label: 'Probability %',             getValue: r => r.probability != null ? String(r.probability) : '' },
+      { label: 'Expected close month',      getValue: r => safe(r.expectedCloseMonth) },
+      { label: 'Next action',               getValue: r => safe(r.nextAction) },
+      { label: 'Next action due date',      getValue: r => fmtCsvDate(r.nextActionDue) },
+      { label: 'Last activity',             getValue: r => fmtCsvDate(r.lastActivity) },
+      { label: 'How they heard about Eventwise', getValue: r => safe(r.heardAbout) },
+      { label: 'Industry',                  getValue: r => safe(r.industry) },
+      { label: 'Competitors evaluating',    getValue: r => safe(r.competitorsEvaluating) },
+      { label: 'Timeline to decision',      getValue: r => safe(r.timelineToDecision) },
+      { label: 'Date added',               getValue: r => fmtCsvDate(r.created_date) },
+      { label: 'Notes',                     getValue: r => safe(r.notes) },
+    ];
+    downloadCSV(displayLeads, cols, `Eventwise_Pipeline_${todayStr()}.csv`);
+  };
+
   // Build display leads
   const activeLeads = leads.filter(l => !l.converted && l.stage !== 'Closed Lost');
   const lostLeads = leads.filter(l => l.stage === 'Closed Lost');
@@ -197,11 +232,17 @@ export default function Pipeline({ onProposalHandoff, onViewDeals }) {
             <h1 className="text-2xl font-bold text-navy">{isLostView ? 'Lost Leads' : 'Warm Leads'}</h1>
             <p className="text-ew-muted text-sm mt-0.5">{isLostView ? 'All closed lost leads' : 'Your active pipeline — updated as you go'}</p>
           </div>
-          {!isLostView && (
-            <Button onClick={handleAddLead} className="h-9 bg-navy hover:bg-navy/90 text-white font-semibold text-sm">
-              <Plus className="w-4 h-4 mr-1.5" />Add Lead
-            </Button>
-          )}
+          <div className="flex items-center gap-2">
+            <button onClick={handleExportCSV}
+              className="h-9 px-3 flex items-center gap-1.5 text-sm font-medium border border-ew-border bg-white text-ew-body hover:bg-ew-bg rounded-lg transition-colors">
+              <Download className="w-3.5 h-3.5" /> Export CSV
+            </button>
+            {!isLostView && (
+              <Button onClick={handleAddLead} className="h-9 bg-navy hover:bg-navy/90 text-white font-semibold text-sm">
+                <Plus className="w-4 h-4 mr-1.5" />Add Lead
+              </Button>
+            )}
+          </div>
         </div>
 
         {/* Collapsible filters + stats — toggle button is the first item */}

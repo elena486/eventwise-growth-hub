@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
 import { Plus, LayoutGrid, List, Search, ExternalLink, FileText, Video, Mic, Wrench, BookOpen, Presentation, File, Trash2, Pencil, AlertTriangle, Download, ChevronDown, ChevronRight, Mail } from 'lucide-react';
+import { downloadCSV, fmtCsvDate, safe, todayStr } from '@/lib/csvExport';
 import { format } from 'date-fns';
 import AssetModal from '@/components/sales/AssetModal';
 import AssetDetailPanel from '@/components/sales/AssetDetailPanel';
@@ -173,6 +174,23 @@ export default function SalesAssets() {
   const [sortDir, setSortDir] = useState('asc');
   const [detailAsset, setDetailAsset] = useState(null);
 
+  const handleExportCSV = () => {
+    if (filtered.length === 0) {
+      alert('Nothing to export — no data matches the current filters');
+      return;
+    }
+    const cols = [
+      { label: 'Title',      getValue: a => safe(a.title) },
+      { label: 'Type',       getValue: a => safe(a.type) },
+      { label: 'Status',     getValue: a => safe(a.status) },
+      { label: 'URL',        getValue: a => safe(a.url || a.fileUrl) },
+      { label: 'Date added', getValue: a => fmtCsvDate(a.created_date) },
+      { label: 'Added by',   getValue: a => safe(a.addedBy) },
+      { label: 'Notes',      getValue: a => safe(a.notes) },
+    ];
+    downloadCSV(filtered, cols, `Eventwise_Sales_Assets_${todayStr()}.csv`);
+  };
+
   const load = async () => {
     const data = await base44.entities.SalesAsset.list('-created_date');
     setAssets(data);
@@ -247,9 +265,15 @@ export default function SalesAssets() {
           <h1 className="text-2xl font-bold text-navy">Sales Assets</h1>
           <p className="text-ew-muted text-sm mt-0.5">Videos, one-pagers, decks, tools and guides for outreach</p>
         </div>
-        <button onClick={openNew} className="h-9 px-4 bg-navy hover:bg-navy/90 text-white font-semibold text-sm rounded-lg flex items-center gap-1.5 transition-colors shrink-0">
-          <Plus className="w-4 h-4" /> Add Asset
-        </button>
+        <div className="flex items-center gap-2">
+          <button onClick={handleExportCSV}
+            className="h-9 px-3 flex items-center gap-1.5 text-sm font-medium border border-ew-border bg-white text-ew-body hover:bg-ew-bg rounded-lg transition-colors shrink-0">
+            <Download className="w-3.5 h-3.5" /> Export CSV
+          </button>
+          <button onClick={openNew} className="h-9 px-4 bg-navy hover:bg-navy/90 text-white font-semibold text-sm rounded-lg flex items-center gap-1.5 transition-colors shrink-0">
+            <Plus className="w-4 h-4" /> Add Asset
+          </button>
+        </div>
       </div>
 
       {/* Re-upload warning banner */}

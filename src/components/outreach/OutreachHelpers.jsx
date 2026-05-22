@@ -48,7 +48,7 @@ export function exportCSV(rows, columns, filename) {
   const header = columns.map(c => `"${c.label}"`).join(',');
   const body = rows.map(r => columns.map(c => `"${(r[c.key] ?? '').toString().replace(/"/g, '""')}"`).join(',')).join('\n');
   const csv = header + '\n' + body;
-  const blob = new Blob([csv], { type: 'text/csv' });
+  const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
