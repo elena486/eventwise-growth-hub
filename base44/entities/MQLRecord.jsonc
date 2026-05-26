@@ -1,0 +1,71 @@
+{
+  "name": "MQLRecord",
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string"
+    },
+    "company": {
+      "type": "string"
+    },
+    "jobTitle": {
+      "type": "string"
+    },
+    "email": {
+      "type": "string"
+    },
+    "source": {
+      "type": "string",
+      "enum": [
+        "Website Form",
+        "Budget Health Check",
+        "Event Budget Template",
+        "ROI Calculator",
+        "EPS 2026",
+        "LinkedIn",
+        "Newsletter",
+        "Referral",
+        "Other Event",
+        "Other"
+      ]
+    },
+    "leadStatus": {
+      "type": "string",
+      "enum": [
+        "New MQL",
+        "SQL Accepted",
+        "SQL Rejected",
+        "Converted",
+        "Not qualified"
+      ],
+      "default": "New MQL"
+    },
+    "assignedTo": {
+      "type": "string",
+      "enum": [
+        "Chris",
+        "George",
+        "Ramesh",
+        "Elena"
+      ]
+    },
+    "dateAdded": {
+      "type": "string",
+      "format": "date"
+    },
+    "dateSentToSales": {
+      "type": "string",
+      "format": "date"
+    },
+    "notes": {
+      "type": "string"
+    },
+    "monthCollected": {
+      "type": "string",
+      "description": "e.g. February 2026 \u2014 auto-set from dateAdded"
+    }
+  },
+  "required": [
+    "name"
+  ]
+}

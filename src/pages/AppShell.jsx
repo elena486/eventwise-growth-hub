@@ -15,6 +15,7 @@ import Handbook from './Handbook';
 import Requests from './Requests';
 import HR from './HR';
 import SalesAssets from './SalesAssets';
+import MQLTracker from './MQLTracker';
 import OutreachAnalytics from './OutreachAnalytics';
 import Competitors from './Competitors';
 import LinkSpace from './LinkSpace';
@@ -51,6 +52,7 @@ const GROUPS = [
   ]},
   { id: 'marketing', label: 'Marketing', tabs: [
     { id: 'marketing', label: 'Marketing' },
+    { id: 'mql', label: 'MQL Tracker' },
   ]},
   { id: 'handbook', label: 'Eventwise Wiki', tabs: [
     { id: 'handbook', label: 'Eventwise Wiki' },
@@ -227,6 +229,7 @@ export default function AppShell() {
         {tab === 'deals' && <Deals onRenewalProposal={(data) => { handleProposalHandoff(data); }} onViewClient={(clientId) => { setTab('clients'); }} onNavigate={setTab} />}
         {tab === 'sprints' && <Sprints />}
         {tab === 'marketing' && <Marketing />}
+        {tab === 'mql' && <MQLTracker />}
         {tab === 'handbook' && <Handbook onNavigate={(t) => setTab(t)} />}
         {tab === 'requests' && <Requests />}
         {tab === 'hr' && <HR />}
