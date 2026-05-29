@@ -1,0 +1,46 @@
+{
+  "name": "SprintNote",
+  "type": "object",
+  "properties": {
+    "person": {
+      "type": "string",
+      "description": "sreeja | george | martinique"
+    },
+    "monthYear": {
+      "type": "string",
+      "description": "e.g. April 2026"
+    },
+    "meetingDate": {
+      "type": "string",
+      "format": "date"
+    },
+    "rag": {
+      "type": "string",
+      "enum": [
+        "green",
+        "amber",
+        "red"
+      ]
+    },
+    "wentWell": {
+      "type": "string"
+    },
+    "toImprove": {
+      "type": "string"
+    },
+    "actionsAgreed": {
+      "type": "string"
+    },
+    "privateNotes": {
+      "type": "string"
+    },
+    "followUpDate": {
+      "type": "string",
+      "format": "date"
+    }
+  },
+  "required": [
+    "person",
+    "monthYear"
+  ]
+}

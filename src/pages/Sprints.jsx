@@ -3,8 +3,9 @@ import { base44 } from '@/api/base44Client';
 import { MEMBERS, ragColor, RAG_STYLES, formatKpiValue, currentWeekStart, getWeekNumber, subWeeks } from '@/lib/sprintConfig';
 import SprintSubmitModal from '@/components/sprints/SprintSubmitModal';
 import SprintMemberDetail from '@/components/sprints/SprintMemberDetail';
-import { Users, CheckCircle2, AlertTriangle, XCircle, Clock, Download, ChevronRight, BarChart2, LayoutDashboard } from 'lucide-react';
+import { Users, CheckCircle2, AlertTriangle, XCircle, Clock, Download, ChevronRight, BarChart2, LayoutDashboard, Lock } from 'lucide-react';
 import SprintAnalytics from '@/components/sprints/SprintAnalytics';
+import SprintNotes from '@/components/sprints/SprintNotes';
 import { format } from 'date-fns';
 
 const FILTER_PRESETS = [
@@ -216,6 +217,7 @@ export default function Sprints() {
   const [customTo, setCustomTo] = useState('');
   const [pendingHover, setPendingHover] = useState(false);
   const [analyticsView, setAnalyticsView] = useState(false);
+  const [sprintNotesView, setSprintNotesView] = useState(false);
 
   const load = useCallback(() => {
     base44.entities.SprintSubmission.list('-created_date', 500).then(setSubmissions);
@@ -337,6 +339,10 @@ export default function Sprints() {
     URL.revokeObjectURL(url);
   };
 
+  if (sprintNotesView) {
+    return <SprintNotes onBack={() => setSprintNotesView(false)} />;
+  }
+
   if (selectedMember) {
     const memberSubs = submissions.filter(s => s.memberName === selectedMember.name).sort((a, b) => a.weekStart.localeCompare(b.weekStart));
     const memberFilteredSubs = filteredSubs.filter(s => s.memberName === selectedMember.name).sort((a, b) => a.weekStart.localeCompare(b.weekStart));
@@ -408,6 +414,9 @@ export default function Sprints() {
               <BarChart2 className="w-3.5 h-3.5" /> Analytics
             </button>
           </div>
+          <button onClick={() => setSprintNotesView(true)} className="flex items-center gap-1.5 text-xs text-gray-300 hover:text-white border border-gray-600 rounded-lg px-3 py-1.5 transition-colors">
+            <Lock className="w-3.5 h-3.5" /> Sprint Notes
+          </button>
           <button onClick={exportCSV} className="flex items-center gap-1.5 text-xs text-gray-300 hover:text-white border border-gray-600 rounded-lg px-3 py-1.5 transition-colors">
             <Download className="w-3.5 h-3.5" /> Export CSV
           </button>
