@@ -252,11 +252,15 @@ function ActivityLog({ entries, onSave }) {
           {/* Summary */}
           <div>
             <label className="block text-[11px] font-medium text-ew-muted mb-1">Summary <span className="text-red-400">*</span></label>
-            <textarea
+            <MentionTextarea
               className={ic + ' h-24 resize-none'}
               value={newEntry.summary}
-              onChange={e => setNewEntry(n => ({ ...n, summary: e.target.value }))}
+              onChange={v => setNewEntry(n => ({ ...n, summary: v }))}
               placeholder="What happened? Key points, outcomes, anything relevant..."
+              rows={4}
+              author={newEntry.addedBy}
+              section="Pipeline / Activity Log"
+              appUrl="https://app.base44.com/apps/68036e9feb8b4d9b7625aaa5/AppShell?tab=pipeline"
             />
           </div>
 
@@ -758,13 +762,14 @@ export default function LeadDetailPanel({ lead, onClose, onUpdate, onDelete, onC
               </div>
               <div className="col-span-2">
                 <FieldRow label="Notes">
-                  <textarea
+                  <MentionTextarea
                     className={ic + ' resize-none'}
-                    style={{ minHeight: '96px' }}
                     rows={4}
                     value={data.notes || ''}
-                    onChange={f('notes')}
+                    onChange={v => autoSave({ notes: v })}
                     placeholder="General notes about this lead — context, history, anything useful..."
+                    section={`Pipeline / ${data.companyName} / Notes`}
+                    appUrl="https://app.base44.com/apps/68036e9feb8b4d9b7625aaa5/AppShell?tab=pipeline"
                   />
                 </FieldRow>
               </div>

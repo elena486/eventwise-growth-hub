@@ -185,7 +185,7 @@ export default function MentionTextarea({
     const textBefore = val.slice(0, caret);
     const atMatch = textBefore.match(/@([A-Za-z]*)$/);
 
-    if (atMatch && atMatch[1].length >= 1) {
+    if (atMatch) {
       const q = atMatch[1];
       const items = TEAM.filter(t => t.name.toLowerCase().startsWith(q.toLowerCase()));
       if (items.length > 0) {
