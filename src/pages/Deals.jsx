@@ -1,12 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
 import { format, differenceInDays, startOfMonth, endOfMonth } from 'date-fns';
-import { ChevronDown, ChevronRight, Pencil, RefreshCw, X, User, Trash2, Info, Download } from 'lucide-react';
+import { ChevronDown, ChevronRight, Pencil, RefreshCw, X, User, Trash2, Info, Download, Plus } from 'lucide-react';
 import { downloadCSV, fmtCsvDate, fmtCsvMoney, safe, todayStr } from '@/lib/csvExport';
 import InlineCell from '@/components/shared/InlineCell';
 import DealEditModal from '@/components/deals/DealEditModal';
 import RenewModal from '@/components/deals/RenewModal';
 import DealDetailPanel from '@/components/deals/DealDetailPanel';
+import AddHistoricalDealModal from '@/components/deals/AddHistoricalDealModal';
 
 function fmt(n) {
   if (!n && n !== 0) return '—';
@@ -34,17 +35,17 @@ function RenewalBadge({ date }) {
   return null;
 }
 
-function BackdatedChip() {
+function HistoricalChip() {
   const [tip, setTip] = useState(false);
   return (
     <span className="relative inline-flex items-center gap-0.5">
-      <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-gray-100 text-gray-500">Backdated</span>
+      <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-gray-100 text-gray-500">Historical</span>
       <button onMouseEnter={() => setTip(true)} onMouseLeave={() => setTip(false)} className="text-gray-400 hover:text-gray-600">
         <Info className="w-3 h-3" />
       </button>
       {tip && (
-        <div className="absolute bottom-full left-0 mb-1 w-56 bg-gray-800 text-white text-xs rounded-lg p-2 z-50 leading-relaxed shadow-xl">
-          This deal was added retroactively and is excluded from monthly growth calculations.
+        <div className="absolute bottom-full left-0 mb-1 w-64 bg-gray-800 text-white text-xs rounded-lg p-2 z-50 leading-relaxed shadow-xl">
+          This deal was added retroactively and is excluded from monthly growth metrics.
         </div>
       )}
     </span>
@@ -138,7 +139,10 @@ function ChurnModal({ deal, onClose, onChurned }) {
 
 export default function Deals({ onRenewalProposal, onViewClient, onNavigate }) {
   const [deals, setDeals] = useState([]);
+  const [clients, setClients] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [showAddDeal, setShowAddDeal] = useState(false);
+  const [addDealSuccess, setAddDealSuccess] = useState(null);
   const [expanded, setExpanded] = useState(null);
   const [filter, setFilter] = useState('Active');
   const [selectedDeal, setSelectedDeal] = useState(null);
@@ -149,8 +153,12 @@ export default function Deals({ onRenewalProposal, onViewClient, onNavigate }) {
   const [deleteConfirm, setDeleteConfirm] = useState(null);
 
   const load = async () => {
-    const data = await base44.entities.Deal.list('-created_date');
+    const [data, clientData] = await Promise.all([
+      base44.entities.Deal.list('-created_date'),
+      base44.entities.Client.list(),
+    ]);
     setDeals(data);
+    setClients(clientData);
     setLoading(false);
   };
 
@@ -236,10 +244,29 @@ export default function Deals({ onRenewalProposal, onViewClient, onNavigate }) {
 
   const activeDeals = deals.filter(d => d.status === 'Active' || d.status === 'Up for Renewal');
   const churnedDeals = deals.filter(d => d.status === 'Churned');
-  const displayDeals = filter === 'Churned' ? churnedDeals : activeDeals;
+
+  // Sort: new (non-backdated) first by start date desc, then historical below by start date desc
+  const sortedActive = [...activeDeals].sort((a, b) => {
+    if (!!a.backdated !== !!b.backdated) return a.backdated ? 1 : -1;
+    return (b.subscriptionStartDate || '').localeCompare(a.subscriptionStartDate || '');
+  });
+  const sortedChurned = [...churnedDeals].sort((a, b) =>
+    (b.subscriptionStartDate || '').localeCompare(a.subscriptionStartDate || '')
+  );
+  const displayDeals = filter === 'Churned' ? sortedChurned : sortedActive;
 
   const mrr = activeDeals.reduce((s, d) => s + (d.monthlyValue || 0), 0);
   const arr = mrr * 12;
+
+  // MRR THIS MONTH — non-backdated (new) deals added in current calendar month
+  const thisMonthStart = startOfMonth(new Date());
+  const thisMonthEnd = endOfMonth(new Date());
+  const mrrThisMonth = activeDeals
+    .filter(d => !d.backdated && d.created_date && new Date(d.created_date) >= thisMonthStart && new Date(d.created_date) <= thisMonthEnd)
+    .reduce((s, d) => s + (d.monthlyValue || 0), 0);
+
+  // TOTAL CLIENTS — all active (non-churned) client records
+  const totalClients = clients.filter(c => c.status !== 'Churn').length;
   const renewingSoon = activeDeals.filter(d => {
     if (!d.subscriptionEndDate) return false;
     return differenceInDays(new Date(d.subscriptionEndDate), new Date()) <= 60;
@@ -261,11 +288,13 @@ export default function Deals({ onRenewalProposal, onViewClient, onNavigate }) {
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-5 gap-4 mb-6">
+      <div className="grid grid-cols-7 gap-4 mb-6">
         {[
           { label: 'Total active deals', value: activeDeals.length },
           { label: 'Total MRR', value: fmt(mrr) },
           { label: 'Total ARR', value: fmt(arr) },
+          { label: 'MRR this month', value: fmt(mrrThisMonth), sub: 'New deals only' },
+          { label: 'Total clients', value: totalClients, sub: 'Active in CS' },
           { label: 'Renewals in 60 days', value: renewingSoon },
           { label: 'Accounting margin /mo', value: totalAcctRevenue > 0 ? fmt(acctMargin) : '—', sub: totalAcctRevenue > 0 ? `Rev: ${fmt(totalAcctRevenue)} · Cost: ${fmt(totalAcctCost)}` : 'No accounting deals' },
         ].map(c => (
@@ -287,11 +316,29 @@ export default function Deals({ onRenewalProposal, onViewClient, onNavigate }) {
           </button>
         ))}
         </div>
-        <button onClick={handleExportCSV}
-          className="h-9 px-3 flex items-center gap-1.5 text-sm font-medium border border-ew-border bg-white text-ew-body hover:bg-ew-bg rounded-lg transition-colors">
-          <Download className="w-3.5 h-3.5" /> Export CSV
-        </button>
+        <div className="flex items-center gap-2">
+          <button onClick={handleExportCSV}
+            className="h-9 px-3 flex items-center gap-1.5 text-sm font-medium border border-ew-border bg-white text-ew-body hover:bg-ew-bg rounded-lg transition-colors">
+            <Download className="w-3.5 h-3.5" /> Export CSV
+          </button>
+          <button onClick={() => setShowAddDeal(true)}
+            className="h-9 px-4 flex items-center gap-1.5 text-sm font-semibold bg-[#8403C5] text-white rounded-lg hover:bg-[#7002A8] transition-colors">
+            <Plus className="w-3.5 h-3.5" /> Add Deal
+          </button>
+        </div>
       </div>
+
+      {/* Success banner */}
+      {addDealSuccess && (
+        <div className="mb-4 flex items-start gap-3 bg-emerald-50 border border-emerald-200 rounded-xl p-4">
+          <span className="text-emerald-500 text-lg">✓</span>
+          <div className="flex-1">
+            <p className="text-sm font-semibold text-emerald-800">Deal added and client record created in Customer Success.</p>
+            <p className="text-xs text-emerald-700 mt-0.5">Martinique has been notified to complete their health scores.</p>
+          </div>
+          <button onClick={() => setAddDealSuccess(null)} className="text-emerald-400 hover:text-emerald-600"><X className="w-4 h-4" /></button>
+        </div>
+      )}
 
       {loading ? (
         <div className="flex items-center justify-center h-48"><div className="w-6 h-6 border-2 border-navy/20 border-t-navy rounded-full animate-spin" /></div>
@@ -317,7 +364,7 @@ export default function Deals({ onRenewalProposal, onViewClient, onNavigate }) {
                     <td className="px-4 py-3 min-w-[140px]">
                       <div className="flex flex-col gap-0.5">
                         <InlineCell value={deal.clientName} onSave={save(deal.id, 'clientName')} className="font-semibold text-navy" />
-                        {deal.backdated && <BackdatedChip />}
+                        {deal.backdated && <HistoricalChip />}
                       </div>
                     </td>
                     <td className="px-4 py-3">
@@ -396,6 +443,17 @@ export default function Deals({ onRenewalProposal, onViewClient, onNavigate }) {
         </div>
       )}
 
+      {showAddDeal && (
+        <AddHistoricalDealModal
+          onClose={() => setShowAddDeal(false)}
+          onAdded={(newDeal) => {
+            setDeals(prev => [newDeal, ...prev]);
+            setShowAddDeal(false);
+            setAddDealSuccess(true);
+            base44.entities.Client.list().then(setClients);
+          }}
+        />
+      )}
       {editDeal && <DealEditModal deal={editDeal} onClose={() => setEditDeal(null)} onSaved={handleSaved} />}
       {renewDeal && <RenewModal deal={renewDeal} onClose={() => setRenewDeal(null)} onRenewed={handleSaved} />}
       {churnConfirm && <ChurnModal deal={churnConfirm} onClose={() => setChurnConfirm(null)} onChurned={handleChurned} />}

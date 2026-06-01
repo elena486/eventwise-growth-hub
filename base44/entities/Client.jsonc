@@ -86,6 +86,14 @@
     "transcripts": {
       "type": "string",
       "description": "JSON array of meeting transcript objects"
+    },
+    "addedManually": {
+      "type": "boolean",
+      "description": "True if this client was added manually via the Add Historical Deal flow \u2014 not through pipeline"
+    },
+    "dealId": {
+      "type": "string",
+      "description": "Linked deal record ID"
     }
   },
   "required": [

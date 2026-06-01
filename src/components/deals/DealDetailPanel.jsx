@@ -126,8 +126,8 @@ export default function DealDetailPanel({ deal: initialDeal, onClose, onUpdated,
             {deal.plan && <span className={`text-[11px] font-semibold px-2.5 py-0.5 rounded-full ${PLAN_COLORS[deal.plan] || 'bg-gray-100 text-gray-600'}`}>{deal.plan}</span>}
             {deal.status && <span className={`text-[11px] font-semibold px-2.5 py-0.5 rounded-full ${STATUS_STYLES[deal.status] || 'bg-gray-100 text-gray-600'}`}>{deal.status}</span>}
             {deal.backdated && (
-              <span className="text-[11px] font-semibold px-2.5 py-0.5 rounded-full bg-gray-100 text-gray-500" title="This deal was added retroactively and is excluded from monthly growth calculations">
-                Backdated
+              <span className="text-[11px] font-semibold px-2.5 py-0.5 rounded-full bg-gray-100 text-gray-500" title="This deal was added retroactively and is excluded from monthly growth metrics">
+                Historical
               </span>
             )}
           </div>
@@ -234,7 +234,7 @@ export default function DealDetailPanel({ deal: initialDeal, onClose, onUpdated,
               <span className={`inline-block w-3.5 h-3.5 bg-white rounded-full shadow transition-transform mt-0.5 ${deal.backdated ? 'translate-x-4' : 'translate-x-1'}`} />
             </button>
             <div>
-              <p className="text-sm font-medium text-[#374151]">Backdated deal</p>
+              <p className="text-sm font-medium text-[#374151]">Historical deal</p>
               <p className="text-xs text-[#9CA3AF]">Excluded from "added this month" metrics but included in totals</p>
             </div>
           </div>

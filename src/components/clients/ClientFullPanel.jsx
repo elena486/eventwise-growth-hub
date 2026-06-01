@@ -510,6 +510,19 @@ export default function ClientFullPanel({ client: initialClient, onClose, onUpda
                   </select>
                 </div>
               </div>
+              {client.addedManually && (
+                <div className="bg-gray-50 border border-gray-200 rounded-xl p-3 mb-4 flex items-center gap-2">
+                  <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-gray-200 text-gray-600">Existing client</span>
+                  <p className="text-xs text-gray-500">Added manually — please complete health scores and set priority tier.</p>
+                </div>
+              )}
+              {client.dealId && (
+                <div className="mb-4">
+                  <a href={`/AppShell?tab=deals`} className="flex items-center gap-1.5 text-sm text-[#8403C5] hover:underline font-medium">
+                    <ExternalLink className="w-3.5 h-3.5" /> View deal →
+                  </a>
+                </div>
+              )}
               {client.handoffIncomplete && (
                 <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 mb-4">
                   <p className="text-sm font-semibold text-amber-800 mb-1">📋 Handoff incomplete</p>
