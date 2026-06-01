@@ -303,13 +303,16 @@ function ExternalLinksEditor({ links, onChange }) {
 
 // ─── Main Panel ───────────────────────────────────────────────────────────────
 
-export default function LeadDetailPanel({ lead, onClose, onUpdate, onDelete, onClosedWon }) {
+export default function LeadDetailPanel({ lead, onClose, onUpdate, onDelete, onClosedWon, isNew = false, onSaved }) {
   const [data, setData] = useState(lead);
   const [activeTab, setActiveTab] = useState('contacts');
   const [lostPrompt, setLostPrompt] = useState(false);
   const [lostReason, setLostReason] = useState('');
   const [deleteConfirm, setDeleteConfirm] = useState(false);
+  const [cancelConfirm, setCancelConfirm] = useState(false);
+  const [saving, setSaving] = useState(false);
   const saveTimer = useRef(null);
+  const isDirty = useRef(false);
 
   useEffect(() => { setData(lead); }, [lead.id]);
 
@@ -329,13 +332,14 @@ export default function LeadDetailPanel({ lead, onClose, onUpdate, onDelete, onC
   const autoSave = useCallback((updates) => {
     const merged = { ...data, ...updates };
     setData(merged);
+    if (isNew) { isDirty.current = true; return; }
     clearTimeout(saveTimer.current);
     saveTimer.current = setTimeout(async () => {
       const now = new Date().toISOString();
       await base44.entities.Lead.update(merged.id, { ...updates, lastActivity: now });
       onUpdate({ ...merged, lastActivity: now });
     }, 500);
-  }, [data]);
+  }, [data, isNew]);
 
   const f = (field) => (e) => autoSave({ [field]: e.target.value });
 
@@ -355,6 +359,19 @@ export default function LeadDetailPanel({ lead, onClose, onUpdate, onDelete, onC
     onClose();
   };
 
+  const handleSaveNew = async () => {
+    if (!data.companyName?.trim()) return;
+    setSaving(true);
+    const now = new Date().toISOString();
+    const created = await base44.entities.Lead.create({ ...data, stage: data.stage || 'New Lead', lastActivity: now });
+    setSaving(false);
+    onSaved(created);
+  };
+
+  const handleCancelNew = () => {
+    if (isDirty.current) { setCancelConfirm(true); } else { onClose(); }
+  };
+
   const annual = (parseFloat(data.dealValueMonthly) || 0) * 12;
 
   return (
@@ -363,15 +380,30 @@ export default function LeadDetailPanel({ lead, onClose, onUpdate, onDelete, onC
       <div className="shrink-0 px-6 pt-5 pb-0 border-b border-ew-border">
         <div className="flex items-start justify-between gap-4 mb-2">
           <div className="flex-1 min-w-0">
-            <input
-              className="text-xl font-bold text-navy bg-transparent border-none outline-none w-full hover:bg-ew-bg focus:bg-ew-bg rounded px-1 -ml-1 transition-colors"
-              value={data.companyName || ''} onChange={f('companyName')} placeholder="Company name"
-            />
+            {isNew && !data.companyName?.trim() ? (
+              <p className="text-xl font-bold text-navy px-1">New Lead</p>
+            ) : (
+              <input
+                className="text-xl font-bold text-navy bg-transparent border-none outline-none w-full hover:bg-ew-bg focus:bg-ew-bg rounded px-1 -ml-1 transition-colors"
+                value={data.companyName || ''} onChange={f('companyName')} placeholder="Company name"
+              />
+            )}
             {primaryDisplayName && <p className="text-sm text-ew-muted px-1 -ml-1 mt-0.5">{primaryDisplayName}</p>}
           </div>
-          <button onClick={onClose} className="p-1.5 text-ew-muted hover:text-navy hover:bg-ew-bg rounded-lg shrink-0 transition-colors">
-            <X className="w-5 h-5" />
-          </button>
+          {isNew ? (
+            <div className="flex items-center gap-2 shrink-0">
+              <button onClick={handleCancelNew} className="px-3 py-1.5 text-sm font-medium text-ew-body hover:bg-ew-bg rounded-lg border border-ew-border transition-colors">Cancel</button>
+              <button onClick={handleSaveNew} disabled={saving || !data.companyName?.trim()}
+                className="px-4 py-1.5 text-sm font-semibold bg-[#8403C5] text-white rounded-lg hover:bg-[#7002A8] disabled:opacity-40 transition-colors">
+                {saving ? 'Saving…' : 'Save lead'}
+              </button>
+              <button onClick={handleCancelNew} className="p-1.5 text-ew-muted hover:text-navy hover:bg-ew-bg rounded-lg transition-colors"><X className="w-5 h-5" /></button>
+            </div>
+          ) : (
+            <button onClick={onClose} className="p-1.5 text-ew-muted hover:text-navy hover:bg-ew-bg rounded-lg shrink-0 transition-colors">
+              <X className="w-5 h-5" />
+            </button>
+          )}
         </div>
         <div className="flex items-center gap-3 mb-3 flex-wrap">
           <StageBadge stage={data.stage} />
@@ -664,6 +696,20 @@ export default function LeadDetailPanel({ lead, onClose, onUpdate, onDelete, onC
           </div>
         )}
       </div>
+
+      {/* Cancel confirm (new lead) */}
+      {cancelConfirm && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-[200] p-4" onClick={() => setCancelConfirm(false)}>
+          <div className="bg-white rounded-xl shadow-2xl w-full max-w-sm p-6" onClick={e => e.stopPropagation()}>
+            <h3 className="text-base font-bold text-navy mb-2">Discard this lead?</h3>
+            <p className="text-sm text-ew-body mb-5">Your changes will not be saved.</p>
+            <div className="flex justify-end gap-3">
+              <button onClick={() => setCancelConfirm(false)} className="px-4 py-2 text-sm font-medium text-ew-body hover:bg-ew-bg rounded-lg">Keep editing</button>
+              <button onClick={onClose} className="px-4 py-2 text-sm font-semibold bg-red-600 text-white rounded-lg hover:bg-red-700">Discard</button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Delete confirm */}
       {deleteConfirm && (

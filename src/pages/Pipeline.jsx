@@ -49,6 +49,8 @@ export default function Pipeline({ onProposalHandoff, onViewDeals }) {
   const [closedWonLead, setClosedWonLead] = useState(null);
   const [newLeadId, setNewLeadId] = useState(null);
   const [selectedLead, setSelectedLead] = useState(null);
+  const [showNewPanel, setShowNewPanel] = useState(false);
+  const [leadAddedToast, setLeadAddedToast] = useState(false);
   const [showConverted, setShowConverted] = useState(false);
   const [showMonthPicker, setShowMonthPicker] = useState(false);
   const [statsCollapsed, setStatsCollapsed] = useState(() => {
@@ -97,11 +99,17 @@ export default function Pipeline({ onProposalHandoff, onViewDeals }) {
     return data;
   };
 
-  const handleAddLead = async () => {
-    const now = new Date().toISOString();
-    const newLead = await base44.entities.Lead.create({ companyName: '', stage: 'Contacted', lastActivity: now });
+  const handleAddLead = () => {
+    setSelectedLead(null);
+    setShowNewPanel(true);
+  };
+
+  const handleNewLeadSaved = (newLead) => {
     setLeads(prev => [newLead, ...prev]);
-    setNewLeadId(newLead.id);
+    setShowNewPanel(false);
+    setSelectedLead(newLead);
+    setLeadAddedToast(true);
+    setTimeout(() => setLeadAddedToast(false), 3000);
   };
 
   const handleDelete = async (id) => {
@@ -416,8 +424,15 @@ export default function Pipeline({ onProposalHandoff, onViewDeals }) {
         )}
       </div>
 
-      {/* Detail panel */}
-      {selectedLead && (
+      {/* Lead added toast */}
+      {leadAddedToast && (
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 bg-emerald-600 text-white text-sm font-semibold px-5 py-2.5 rounded-full shadow-xl animate-toast-in">
+          ✓ Lead added
+        </div>
+      )}
+
+      {/* Detail panel — existing lead */}
+      {selectedLead && !showNewPanel && (
         <div className="w-[60%] border-l border-ew-border overflow-hidden flex flex-col">
           <LeadDetailPanel
             lead={selectedLead}
@@ -425,6 +440,21 @@ export default function Pipeline({ onProposalHandoff, onViewDeals }) {
             onUpdate={handleLeadUpdate}
             onDelete={handleDelete}
             onClosedWon={handleClosedWon}
+          />
+        </div>
+      )}
+
+      {/* New lead panel */}
+      {showNewPanel && (
+        <div className="w-[60%] border-l border-ew-border overflow-hidden flex flex-col">
+          <LeadDetailPanel
+            lead={{ companyName: '', stage: 'New Lead' }}
+            isNew
+            onClose={() => setShowNewPanel(false)}
+            onSaved={handleNewLeadSaved}
+            onUpdate={() => {}}
+            onDelete={() => {}}
+            onClosedWon={() => {}}
           />
         </div>
       )}
