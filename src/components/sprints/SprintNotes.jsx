@@ -155,6 +155,10 @@ function NoteEntry({ note, isFirst, onUpdate, onDelete }) {
         <div className="px-5 pb-5 border-t border-ew-border dark:border-gray-700 space-y-4 pt-4">
           <div className="grid grid-cols-2 gap-4">
             <div>
+              <label className={lc}>Month / Year</label>
+              <input className={`${inp} w-full`} value={note.monthYear || ''} placeholder="e.g. May 2026" onChange={e => onUpdate({ monthYear: e.target.value })} />
+            </div>
+            <div>
               <label className={lc}>Date of meeting</label>
               <input type="date" className={inp} value={note.meetingDate || ''} onChange={e => onUpdate({ meetingDate: e.target.value })} />
             </div>
