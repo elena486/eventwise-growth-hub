@@ -20,7 +20,16 @@ const HEARD_ABOUT = ['LinkedIn', 'Referral', 'Inbound', 'Outbound', 'Event', 'EP
 const ACCOUNTING_SERVICE_OPTIONS = ['Not included', 'Included in plan', 'Included in accounting service fee', 'Separate fee'];
 const ONBOARDING_PLANS = ['Basic', 'Standard', 'Enterprise', 'Option 1'];
 const LOG_TYPES = ['Call', 'Email', 'Demo', 'Meeting', 'LinkedIn', 'Note'];
-const LOG_MEMBERS = ['Chris', 'Ramesh', 'George', 'Elena'];
+const LOG_MEMBERS = ['Chris', 'Ramesh', 'George', 'Elena', 'Martinique'];
+
+const LOG_TYPE_ICONS = {
+  Call: '📞',
+  Email: '✉️',
+  Demo: '🎥',
+  Meeting: '🤝',
+  LinkedIn: '💼',
+  Note: '📝',
+};
 const PROPOSAL_STATUSES = ['Not sent', 'Sent', 'Accepted', 'Declined'];
 
 const LOG_TYPE_STYLES = {
@@ -31,6 +40,24 @@ const LOG_TYPE_STYLES = {
   LinkedIn: 'bg-[#DBEAFE] text-[#1D4ED8]',
   Note: 'bg-amber-100 text-amber-700',
 };
+
+function fmtActivityDate(isoOrDate) {
+  if (!isoOrDate) return '';
+  try {
+    const d = new Date(isoOrDate);
+    const now = new Date();
+    const isToday = d.toDateString() === now.toDateString();
+    const time = format(d, 'HH:mm');
+    if (isToday) return `Today at ${time}`;
+    const isThisYear = d.getFullYear() === now.getFullYear();
+    return format(d, isThisYear ? 'd MMM' : 'd MMM yyyy') + ` at ${time}`;
+  } catch { return String(isoOrDate); }
+}
+
+function nowDateTimeLocal() {
+  const d = new Date();
+  return format(d, "yyyy-MM-dd'T'HH:mm");
+}
 
 const TABS = [
   { id: 'contacts', label: 'Contacts' },
@@ -151,18 +178,23 @@ function ContactsSection({ contacts, onChange }) {
 
 // ─── Activity Log ─────────────────────────────────────────────────────────────
 
-function ActivityLog({ entries, onSave, companyName }) {
+function ActivityLog({ entries, onSave }) {
   const [adding, setAdding] = useState(false);
-  const [newEntry, setNewEntry] = useState({ type: 'Note', date: todayStr(), summary: '', addedBy: 'Chris' });
+  const [newEntry, setNewEntry] = useState({ type: 'Note', datetime: nowDateTimeLocal(), summary: '', addedBy: 'Chris' });
   const [editingId, setEditingId] = useState(null);
   const [editDraft, setEditDraft] = useState({});
   const [deleteConfirm, setDeleteConfirm] = useState(null);
 
+  const openForm = () => {
+    setNewEntry({ type: 'Note', datetime: nowDateTimeLocal(), summary: '', addedBy: 'Chris' });
+    setAdding(true);
+  };
+
   const addEntry = () => {
     if (!newEntry.summary.trim()) return;
-    onSave([{ ...newEntry, id: Date.now(), createdAt: new Date().toISOString() }, ...entries]);
+    const iso = newEntry.datetime ? new Date(newEntry.datetime).toISOString() : new Date().toISOString();
+    onSave([{ ...newEntry, id: Date.now(), createdAt: iso }, ...entries]);
     setAdding(false);
-    setNewEntry({ type: 'Note', date: todayStr(), summary: '', addedBy: 'Chris' });
   };
 
   const saveEdit = (id) => {
@@ -177,86 +209,164 @@ function ActivityLog({ entries, onSave, companyName }) {
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-3">
+      {/* Header + add button */}
+      <div className="flex items-center justify-between mb-4">
         <SectionTitle>Activity Log</SectionTitle>
-        <button onClick={() => setAdding(v => !v)} className="flex items-center gap-1 text-xs text-[#8403C5] hover:underline font-semibold">
-          <Plus className="w-3 h-3" /> Log activity
-        </button>
+        {!adding && (
+          <button onClick={openForm}
+            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-white bg-[#8403C5] hover:bg-[#7002A8] rounded-lg transition-colors">
+            <Plus className="w-3.5 h-3.5" /> Log activity
+          </button>
+        )}
       </div>
+
+      {/* Inline add form */}
       {adding && (
-        <div className="bg-[#F7F8FC] border border-ew-border rounded-xl p-4 mb-4 space-y-3">
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="block text-[11px] font-medium text-ew-muted mb-1">Type</label>
-              <select className={ic} value={newEntry.type} onChange={e => setNewEntry(n => ({ ...n, type: e.target.value }))}>
-                {LOG_TYPES.map(t => <option key={t}>{t}</option>)}
-              </select>
-            </div>
-            <div>
-              <label className="block text-[11px] font-medium text-ew-muted mb-1">Date</label>
-              <input type="date" className={ic} value={newEntry.date} onChange={e => setNewEntry(n => ({ ...n, date: e.target.value }))} />
-            </div>
-          </div>
+        <div className="bg-[#F7F8FC] border border-ew-border rounded-xl p-4 mb-5 space-y-3">
+          {/* Type buttons */}
           <div>
-            <label className="block text-[11px] font-medium text-ew-muted mb-1">Summary</label>
-            <MentionTextarea className={ic + ' h-20 resize-none'} value={newEntry.summary} onChange={v => setNewEntry(n => ({ ...n, summary: v }))} placeholder="What happened?" rows={3} author={newEntry.addedBy} section={`Pipeline / Activity Log`} appUrl="https://app.base44.com/apps/68036e9feb8b4d9b7625aaa5/AppShell?tab=pipeline" />
+            <label className="block text-[11px] font-medium text-ew-muted mb-2">Type</label>
+            <div className="flex flex-wrap gap-1.5">
+              {LOG_TYPES.map(t => (
+                <button key={t} type="button"
+                  onClick={() => setNewEntry(n => ({ ...n, type: t }))}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold border transition-colors ${
+                    newEntry.type === t
+                      ? LOG_TYPE_STYLES[t] + ' border-transparent ring-2 ring-offset-1 ring-[#8403C5]/30'
+                      : 'bg-white border-ew-border text-ew-body hover:bg-ew-bg'
+                  }`}>
+                  <span>{LOG_TYPE_ICONS[t]}</span>{t}
+                </button>
+              ))}
+            </div>
           </div>
+
+          {/* Date + time */}
+          <div>
+            <label className="block text-[11px] font-medium text-ew-muted mb-1">Date &amp; time</label>
+            <input type="datetime-local" className={ic + ' text-sm'}
+              value={newEntry.datetime}
+              onChange={e => setNewEntry(n => ({ ...n, datetime: e.target.value }))} />
+          </div>
+
+          {/* Summary */}
+          <div>
+            <label className="block text-[11px] font-medium text-ew-muted mb-1">Summary <span className="text-red-400">*</span></label>
+            <textarea
+              className={ic + ' h-24 resize-none'}
+              value={newEntry.summary}
+              onChange={e => setNewEntry(n => ({ ...n, summary: e.target.value }))}
+              placeholder="What happened? Key points, outcomes, anything relevant..."
+            />
+          </div>
+
+          {/* Added by */}
           <div>
             <label className="block text-[11px] font-medium text-ew-muted mb-1">Added by</label>
-            <select className={ic} value={newEntry.addedBy} onChange={e => setNewEntry(n => ({ ...n, addedBy: e.target.value }))}>
+            <select className={ic} value={newEntry.addedBy}
+              onChange={e => setNewEntry(n => ({ ...n, addedBy: e.target.value }))}>
               {LOG_MEMBERS.map(m => <option key={m}>{m}</option>)}
             </select>
           </div>
+
           <div className="flex gap-2 justify-end pt-1">
-            <button onClick={() => setAdding(false)} className="px-3 py-1.5 text-sm text-ew-body hover:bg-ew-bg rounded-lg">Cancel</button>
-            <button onClick={addEntry} disabled={!newEntry.summary.trim()} className="px-4 py-1.5 text-sm font-semibold bg-[#8403C5] text-white rounded-lg hover:bg-[#7002A8] disabled:opacity-40">Save</button>
+            <button onClick={() => setAdding(false)}
+              className="px-3 py-1.5 text-sm text-ew-body hover:bg-ew-bg rounded-lg border border-ew-border transition-colors">Cancel</button>
+            <button onClick={addEntry} disabled={!newEntry.summary.trim()}
+              className="px-4 py-1.5 text-sm font-semibold bg-[#8403C5] text-white rounded-lg hover:bg-[#7002A8] disabled:opacity-40 transition-colors">Save</button>
           </div>
         </div>
       )}
+
+      {/* Feed */}
       <div className="space-y-2">
-        {entries.length === 0 && !adding && <p className="text-sm text-ew-muted italic">No activity logged yet.</p>}
+        {entries.length === 0 && !adding && (
+          <div className="text-center py-10 border border-dashed border-ew-border rounded-xl">
+            <p className="text-2xl mb-2">📋</p>
+            <p className="text-sm text-ew-muted">No activity logged yet.</p>
+            <button onClick={openForm}
+              className="mt-3 text-xs text-[#8403C5] hover:underline font-semibold">Log your first entry</button>
+          </div>
+        )}
         {entries.map(entry => (
-          <div key={entry.id} className="group flex gap-3 bg-white border border-ew-border rounded-lg p-3 hover:border-[#8403C5]/30 transition-colors">
+          <div key={entry.id}
+            className="group flex gap-3 bg-white border border-ew-border rounded-xl p-3.5 hover:border-[#8403C5]/30 transition-colors">
             {editingId === entry.id ? (
               <div className="flex-1 space-y-2">
-                <div className="grid grid-cols-2 gap-2">
-                  <select className={ic + ' text-xs py-1'} value={editDraft.type} onChange={e => setEditDraft(d => ({ ...d, type: e.target.value }))}>
-                    {LOG_TYPES.map(t => <option key={t}>{t}</option>)}
-                  </select>
-                  <input type="date" className={ic + ' text-xs py-1'} value={editDraft.date} onChange={e => setEditDraft(d => ({ ...d, date: e.target.value }))} />
+                <div className="flex flex-wrap gap-1.5 mb-2">
+                  {LOG_TYPES.map(t => (
+                    <button key={t} type="button"
+                      onClick={() => setEditDraft(d => ({ ...d, type: t }))}
+                      className={`flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-semibold border transition-colors ${
+                        editDraft.type === t
+                          ? LOG_TYPE_STYLES[t] + ' border-transparent'
+                          : 'bg-white border-ew-border text-ew-body hover:bg-ew-bg'
+                      }`}>
+                      <span>{LOG_TYPE_ICONS[t]}</span>{t}
+                    </button>
+                  ))}
                 </div>
-                <MentionTextarea className={ic + ' h-16 resize-none text-xs'} value={editDraft.summary} onChange={v => setEditDraft(d => ({ ...d, summary: v }))} rows={3} section="Pipeline / Activity Log" appUrl="https://app.base44.com/apps/68036e9feb8b4d9b7625aaa5/AppShell?tab=pipeline" />
+                <input type="datetime-local" className={ic + ' text-xs py-1.5'}
+                  value={editDraft.datetime || ''}
+                  onChange={e => setEditDraft(d => ({ ...d, datetime: e.target.value }))} />
+                <textarea className={ic + ' h-16 resize-none text-sm'}
+                  value={editDraft.summary}
+                  onChange={e => setEditDraft(d => ({ ...d, summary: e.target.value }))} />
                 <div className="flex gap-2 justify-end">
-                  <button onClick={() => setEditingId(null)} className="px-2 py-1 text-xs text-ew-body hover:bg-ew-bg rounded">Cancel</button>
-                  <button onClick={() => saveEdit(entry.id)} className="px-3 py-1 text-xs font-semibold bg-[#8403C5] text-white rounded">Save</button>
+                  <button onClick={() => setEditingId(null)}
+                    className="px-2 py-1 text-xs text-ew-body hover:bg-ew-bg rounded">Cancel</button>
+                  <button onClick={() => saveEdit(entry.id)}
+                    className="px-3 py-1 text-xs font-semibold bg-[#8403C5] text-white rounded">Save</button>
                 </div>
               </div>
             ) : (
               <>
+                {/* Icon */}
+                <div className="text-xl shrink-0 mt-0.5">{LOG_TYPE_ICONS[entry.type] || '📝'}</div>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 mb-1 flex-wrap">
-                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${LOG_TYPE_STYLES[entry.type] || 'bg-gray-100 text-gray-600'}`}>{entry.type}</span>
-                    <span className="text-[11px] text-ew-muted">{fmtDate(entry.date)}</span>
-                    {entry.addedBy && <span className="text-[11px] text-ew-muted">· {entry.addedBy}</span>}
+                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                      LOG_TYPE_STYLES[entry.type] || 'bg-gray-100 text-gray-600'
+                    }`}>{entry.type}</span>
+                    <span className="text-[11px] text-ew-muted">
+                      {fmtActivityDate(entry.createdAt || entry.datetime || entry.date)}
+                    </span>
+                    {entry.addedBy && (
+                      <span className="text-[11px] text-ew-muted">· {entry.addedBy}</span>
+                    )}
                   </div>
-                  <p className="text-sm text-ew-body">{entry.summary}</p>
+                  <p className="text-sm text-ew-body whitespace-pre-wrap">{entry.summary}</p>
                 </div>
                 <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
-                  <button onClick={() => { setEditingId(entry.id); setEditDraft({ type: entry.type, date: entry.date, summary: entry.summary }); }} className="p-1 text-ew-muted hover:text-navy rounded"><Pencil className="w-3 h-3" /></button>
-                  <button onClick={() => setDeleteConfirm(entry.id)} className="p-1 text-ew-muted hover:text-red-500 rounded"><X className="w-3 h-3" /></button>
+                  <button
+                    onClick={() => {
+                      setEditingId(entry.id);
+                      const dtVal = entry.createdAt
+                        ? format(new Date(entry.createdAt), "yyyy-MM-dd'T'HH:mm")
+                        : (entry.datetime || entry.date || '');
+                      setEditDraft({ type: entry.type, datetime: dtVal, summary: entry.summary });
+                    }}
+                    className="p-1 text-ew-muted hover:text-navy rounded"><Pencil className="w-3 h-3" /></button>
+                  <button onClick={() => setDeleteConfirm(entry.id)}
+                    className="p-1 text-ew-muted hover:text-red-500 rounded"><X className="w-3 h-3" /></button>
                 </div>
               </>
             )}
           </div>
         ))}
       </div>
+
       {deleteConfirm && (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-[200] p-4" onClick={() => setDeleteConfirm(null)}>
-          <div className="bg-white rounded-xl shadow-2xl w-full max-w-xs p-5" onClick={e => e.stopPropagation()}>
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-[200] p-4"
+          onClick={() => setDeleteConfirm(null)}>
+          <div className="bg-white rounded-xl shadow-2xl w-full max-w-xs p-5"
+            onClick={e => e.stopPropagation()}>
             <p className="text-sm font-semibold text-navy mb-3">Delete this activity entry?</p>
             <div className="flex gap-2 justify-end">
-              <button onClick={() => setDeleteConfirm(null)} className="px-3 py-1.5 text-sm text-ew-body hover:bg-ew-bg rounded-lg">Cancel</button>
-              <button onClick={() => deleteEntry(deleteConfirm)} className="px-3 py-1.5 text-sm font-semibold bg-red-600 text-white rounded-lg">Delete</button>
+              <button onClick={() => setDeleteConfirm(null)}
+                className="px-3 py-1.5 text-sm text-ew-body hover:bg-ew-bg rounded-lg">Cancel</button>
+              <button onClick={() => deleteEntry(deleteConfirm)}
+                className="px-3 py-1.5 text-sm font-semibold bg-red-600 text-white rounded-lg">Delete</button>
             </div>
           </div>
         </div>
@@ -561,7 +671,14 @@ export default function LeadDetailPanel({ lead, onClose, onUpdate, onDelete, onC
         {/* ACTIVITY LOG TAB */}
         {activeTab === 'activity' && (
           <div className="space-y-5">
-            <ActivityLog entries={logEntries} onSave={entries => autoSave({ activityLog: JSON.stringify(entries) })} companyName={data.companyName} />
+            <ActivityLog
+              entries={logEntries}
+              onSave={entries => {
+                const mostRecent = entries[0];
+                const lastActivity = mostRecent?.createdAt || new Date().toISOString();
+                autoSave({ activityLog: JSON.stringify(entries), lastActivity });
+              }}
+            />
             <TranscriptSection
               transcripts={(() => { try { return JSON.parse(data.transcripts || '[]'); } catch { return []; } })()}
               onChange={val => autoSave({ transcripts: JSON.stringify(val) })}

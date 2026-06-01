@@ -8,7 +8,7 @@
     },
     "contactName": {
       "type": "string",
-      "description": "Contact name"
+      "description": "Contact name (legacy / primary contact display name)"
     },
     "contacts": {
       "type": "string",

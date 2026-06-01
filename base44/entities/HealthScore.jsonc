@@ -1,0 +1,45 @@
+{
+  "name": "HealthScore",
+  "type": "object",
+  "properties": {
+    "clientId": {
+      "type": "string"
+    },
+    "clientName": {
+      "type": "string"
+    },
+    "emails": {
+      "type": "number"
+    },
+    "meetings": {
+      "type": "number"
+    },
+    "goals": {
+      "type": "number"
+    },
+    "adoption": {
+      "type": "number"
+    },
+    "knowledge": {
+      "type": "number"
+    },
+    "cx": {
+      "type": "number"
+    },
+    "issues": {
+      "type": "number"
+    },
+    "totalScore": {
+      "type": "number"
+    },
+    "rating": {
+      "type": "string"
+    },
+    "quadrant": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "clientId"
+  ]
+}
