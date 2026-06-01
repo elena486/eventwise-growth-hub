@@ -441,6 +441,17 @@ export default function LeadDetailPanel({ lead, onClose, onUpdate, onDelete, onC
                 </FieldRow>
               </div>
             </div>
+            {data.notes && (
+              <div>
+                <div className="flex items-center justify-between mb-1">
+                  <span className="text-[11px] font-medium text-ew-muted">Notes</span>
+                  <button onClick={() => setActiveTab('nextsteps')} className="text-[11px] text-[#8403C5] hover:underline font-medium">Edit in Next Steps →</button>
+                </div>
+                <div className="bg-gray-50 border border-ew-border rounded-lg px-3 py-2">
+                  <p className="text-sm text-ew-body line-clamp-2 whitespace-pre-wrap">{data.notes}</p>
+                </div>
+              </div>
+            )}
           </div>
         )}
 
@@ -594,6 +605,18 @@ export default function LeadDetailPanel({ lead, onClose, onUpdate, onDelete, onC
                   <select className={ic} value={data.stage || ''} onChange={e => handleStageChange(e.target.value)}>
                     {STAGES.map(s => <option key={s}>{s}</option>)}
                   </select>
+                </FieldRow>
+              </div>
+              <div className="col-span-2">
+                <FieldRow label="Notes">
+                  <textarea
+                    className={ic + ' resize-none'}
+                    style={{ minHeight: '96px' }}
+                    rows={4}
+                    value={data.notes || ''}
+                    onChange={f('notes')}
+                    placeholder="General notes about this lead — context, history, anything useful..."
+                  />
                 </FieldRow>
               </div>
             </div>
