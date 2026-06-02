@@ -191,6 +191,19 @@ export default function ReportForm({ report, onBack }) {
   const momLI = prevLI().totalImpressions && chrisLI.totalImpressions
     ? (((chrisLI.totalImpressions - prevLI().totalImpressions) / prevLI().totalImpressions) * 100).toFixed(1) + '%' : '—';
 
+  // ── Convert file to base64 ──────────────────────────────────────────────────
+  const fileToBase64 = (file) => new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const dataUrl = reader.result;
+      const base64 = dataUrl.split(',')[1];
+      const media_type = file.type || 'image/jpeg';
+      resolve({ base64, media_type });
+    };
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+
   // ── AI Extract ──────────────────────────────────────────────────────────────
   const extractAll = async () => {
     setExtracting(true);
@@ -200,31 +213,28 @@ export default function ReportForm({ report, onBack }) {
     const newAiFields = new Set();
     const newAiMissing = new Set();
     let successCount = 0;
+    const resultSummary = { website: null, chrisLI: null, company: null, newsletter: null };
 
-    const processPlatform = async (key, cfg, currentFiles, applyData) => {
+    const processPlatform = async (key, currentFiles, applyData) => {
       if (!Array.isArray(currentFiles) || currentFiles.length === 0) return;
       try {
-        // Upload all images for this platform
-        const uploadedUrls = await Promise.all(
-          currentFiles.map(f => base44.integrations.Core.UploadFile({ file: f.file }).then(r => r.file_url))
-        );
-        setScreenshots(p => ({
-          ...p,
-          [key]: currentFiles.map((f, i) => ({ ...f, uploadedUrl: uploadedUrls[i] }))
-        }));
+        // Convert all images to base64
+        const images = await Promise.all(currentFiles.map(f => fileToBase64(f.file)));
 
-        // Call Claude with all images
-        const result = await base44.integrations.Core.InvokeLLM({
-          prompt: cfg.prompt,
-          file_urls: uploadedUrls,
-          model: 'claude_sonnet_4_6',
-          response_json_schema: cfg.schema,
-        });
+        // Call backend function with base64 images
+        const res = await base44.functions.invoke('extractMarketingScreenshot', { platform: key, images });
+        const data = res.data;
 
-        applyData(result, newAiFields, newAiMissing);
+        if (!data.success || !data.extracted) {
+          throw new Error(data.error || 'Extraction failed');
+        }
+
+        applyData(data.extracted, data.narrative || '', newAiFields, newAiMissing);
         successCount++;
+        resultSummary[key] = true;
         setExtractStep(s => s + 1);
       } catch (err) {
+        resultSummary[key] = false;
         setScreenshots(p => ({
           ...p,
           [key]: currentFiles.map(f => ({ ...f, error: true }))
@@ -234,52 +244,66 @@ export default function ReportForm({ report, onBack }) {
     };
 
     await Promise.all([
-      processPlatform('website', PLATFORM_CONFIGS.website, screenshots.website || [], (d, af, am) => {
-        const map = { activeUsers: d.active_users, sessions: d.sessions, newUsers: d.new_users,
-          engagedSessions: d.engaged_sessions_pct, avgEngagementTime: d.avg_engagement_time,
-          topTrafficSource: d.top_traffic_source, gscImpressions: d.gsc_impressions,
-          gscClicks: d.gsc_clicks, gscAvgPosition: d.gsc_avg_position, notes: d.narrative };
+      processPlatform('website', screenshots.website || [], (d, narrative, af, am) => {
+        const map = {
+          activeUsers: d.active_users, sessions: d.sessions, newUsers: d.new_users,
+          engagedSessions: d.engaged_sessions_pct,
+          avgEngagementTime: d.avg_engagement_time_seconds != null ? `${d.avg_engagement_time_seconds}s` : null,
+          topTrafficSource: d.top_traffic_source, organicSearchUsers: d.organic_search_sessions,
+          gscImpressions: d.gsc_impressions, gscClicks: d.gsc_clicks,
+          gscAvgPosition: d.gsc_avg_position,
+          notes: narrative || null,
+        };
         setWebsite(p => {
           const updated = { ...p };
           Object.entries(map).forEach(([k, v]) => {
-            if (v != null && v !== 0 && v !== '') { updated[k] = v; af.add('w_' + k); }
+            if (v != null && v !== '') { updated[k] = v; af.add('w_' + k); }
             else am.add('w_' + k);
           });
           return updated;
         });
       }),
-      processPlatform('chrisLI', PLATFORM_CONFIGS.chrisLI, screenshots.chrisLI || [], (d, af, am) => {
-        const map = { totalImpressions: d.impressions, uniqueMembersReached: d.unique_reach,
+      processPlatform('chrisLI', screenshots.chrisLI || [], (d, narrative, af, am) => {
+        const map = {
+          totalImpressions: d.impressions, uniqueMembersReached: d.unique_reach,
           reactions: d.reactions, comments: d.comments, reposts: d.reposts,
-          newFollowers: d.new_connections, notes: d.narrative };
+          newFollowers: d.new_connections,
+          notes: narrative || null,
+        };
         setChrisLI(p => {
           const updated = { ...p };
           Object.entries(map).forEach(([k, v]) => {
-            if (v != null && v !== 0 && v !== '') { updated[k] = v; af.add('li_' + k); }
+            if (v != null && v !== '') { updated[k] = v; af.add('li_' + k); }
             else am.add('li_' + k);
           });
           return updated;
         });
       }),
-      processPlatform('company', PLATFORM_CONFIGS.company, screenshots.company || [], (d, af, am) => {
-        const map = { totalImpressions: d.page_impressions, newFollowers: d.new_followers,
-          reactions: d.reactions, clicks: d.clicks, notes: d.narrative };
+      processPlatform('company', screenshots.company || [], (d, narrative, af, am) => {
+        const map = {
+          totalImpressions: d.page_impressions, newFollowers: d.new_followers,
+          reactions: d.reactions, clicks: d.clicks,
+          notes: narrative || null,
+        };
         setCompany(p => {
           const updated = { ...p };
           Object.entries(map).forEach(([k, v]) => {
-            if (v != null && v !== 0 && v !== '') { updated[k] = v; af.add('cp_' + k); }
+            if (v != null && v !== '') { updated[k] = v; af.add('cp_' + k); }
             else am.add('cp_' + k);
           });
           return updated;
         });
       }),
-      processPlatform('newsletter', PLATFORM_CONFIGS.newsletter, screenshots.newsletter || [], (d, af, am) => {
-        const map = { openRate: d.open_rate, clickRate: d.click_rate, listSize: d.total_subscribers,
-          unsubscribes: d.unsubscribes, notes: d.narrative };
+      processPlatform('newsletter', screenshots.newsletter || [], (d, narrative, af, am) => {
+        const map = {
+          openRate: d.open_rate, clickRate: d.click_rate, listSize: d.total_subscribers,
+          newSubscribers: d.new_subscribers, unsubscribes: d.unsubscribes,
+          notes: narrative || null,
+        };
         setNewsletter(p => {
           const updated = { ...p };
           Object.entries(map).forEach(([k, v]) => {
-            if (v != null && v !== 0 && v !== '') { updated[k] = v; af.add('nl_' + k); }
+            if (v != null && v !== '') { updated[k] = v; af.add('nl_' + k); }
             else am.add('nl_' + k);
           });
           return updated;
@@ -290,7 +314,12 @@ export default function ReportForm({ report, onBack }) {
     setAiFields(newAiFields);
     setAiMissing(newAiMissing);
     setExtracting(false);
-    setExtractMsg(`✨ Data extracted from ${successCount} screenshot${successCount !== 1 ? 's' : ''}. Please review the numbers below and correct anything that looks wrong before saving.`);
+
+    const labels = { website: 'GA4', chrisLI: 'Chris LinkedIn', company: 'Company Page', newsletter: 'Newsletter' };
+    const parts = Object.entries(resultSummary)
+      .filter(([k]) => screenshots[k]?.length > 0)
+      .map(([k, ok]) => `${labels[k]} ${ok ? '✓' : '✗'}`);
+    setExtractMsg(`✨ Extracted from screenshots: ${parts.join(', ')}. Please review and correct anything that looks wrong before saving.`);
     setActiveTab('website');
   };
 
