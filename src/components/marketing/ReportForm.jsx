@@ -148,7 +148,7 @@ export default function ReportForm({ report, onBack }) {
   const uploadedCount  = Object.values(screenshots).filter(v => v?.file).length;
 
   useEffect(() => {
-    base44.entities.MarketingReport.list('-year,-month', 100).then(all => {
+    base44.entities.MarketingReport.list('-year', 100).then(all => {
       const sorted = all.sort((a, b) => {
         if (b.year !== a.year) return b.year - a.year;
         return MONTHS.indexOf(b.month) - MONTHS.indexOf(a.month);
