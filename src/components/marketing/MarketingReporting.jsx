@@ -115,7 +115,11 @@ export default function MarketingReporting() {
   };
 
   if (view === 'form') return <ReportForm report={editReport} onBack={() => { setView('dashboard'); setEditReport(null); load(); }} />;
-  if (view === 'view') return <ReportView report={viewReport} onBack={() => { setView('dashboard'); setViewReport(null); load(); }} onEdit={() => { setEditReport(viewReport); setView('form'); }} onSent={load} />;
+  if (view === 'view') {
+    const viewIdx = reports.findIndex(r => r.id === viewReport?.id);
+    const prevForView = viewIdx >= 0 ? reports[viewIdx + 1] : null;
+    return <ReportView report={viewReport} prevReport={prevForView} onBack={() => { setView('dashboard'); setViewReport(null); load(); }} onEdit={() => { setEditReport(viewReport); setView('form'); }} onSent={load} />;
+  }
 
   const statCards = latest ? [
     { icon: <Globe className="w-5 h-5" style={{ color: '#8403C5' }} />, label: 'Website Sessions', value: fmtK(getWebsite(latest).sessions), sub: 'GA4', prev: getWebsite(prev)?.sessions, curr: getWebsite(latest).sessions },
