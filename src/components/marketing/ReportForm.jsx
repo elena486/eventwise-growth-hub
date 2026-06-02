@@ -49,40 +49,57 @@ const PLATFORM_CONFIGS = {
   },
 };
 
-// ─── Upload Zone ──────────────────────────────────────────────────────────────
+// ─── Upload Zone (multi-image per platform) ───────────────────────────────────
 function UploadZone({ platform, value, onChange }) {
   const inputRef = useRef(null);
   const cfg = PLATFORM_CONFIGS[platform];
+  // value is now an array of { file, previewUrl, uploadedUrl } or null
+  const files = value || [];
 
-  const handleFile = (file) => {
-    if (!file || !file.type.startsWith('image/')) return;
-    const previewUrl = URL.createObjectURL(file);
-    onChange({ file, previewUrl, uploadedUrl: null, error: false });
+  const handleFiles = (newFiles) => {
+    const valid = Array.from(newFiles).filter(f => f.type.startsWith('image/'));
+    const entries = valid.map(f => ({ file: f, previewUrl: URL.createObjectURL(f), uploadedUrl: null, error: false }));
+    onChange([...files, ...entries]);
   };
 
-  const onDrop = (e) => {
-    e.preventDefault();
-    handleFile(e.dataTransfer.files[0]);
-  };
+  const removeFile = (idx) => onChange(files.filter((_, i) => i !== idx));
+
+  const onDrop = (e) => { e.preventDefault(); handleFiles(e.dataTransfer.files); };
 
   return (
     <div className="flex flex-col gap-1.5">
       <div className="flex items-center gap-1.5 text-sm font-semibold text-[#242450]">
         <span>{cfg.icon}</span><span>{cfg.label}</span>
-        {value?.uploadedUrl && <CheckCircle2 className="w-3.5 h-3.5 text-green-500 ml-1" />}
-        {value?.error && <span className="text-[10px] font-medium text-red-500 ml-1">Read failed</span>}
+        {files.some(f => f.uploadedUrl) && <CheckCircle2 className="w-3.5 h-3.5 text-green-500 ml-1" />}
+        {files.some(f => f.error) && <span className="text-[10px] font-medium text-red-500 ml-1">Read failed</span>}
+        {files.length > 0 && <span className="text-[10px] font-medium text-[#8403C5] ml-1">{files.length} image{files.length > 1 ? 's' : ''}</span>}
       </div>
-      {value?.previewUrl ? (
-        <div className="relative w-full h-40 rounded-xl overflow-hidden border border-gray-200 bg-gray-50 group">
-          <img src={value.previewUrl} alt="preview" className="w-full h-full object-cover" />
+
+      {/* Thumbnails */}
+      {files.length > 0 && (
+        <div className="flex flex-wrap gap-2">
+          {files.map((f, i) => (
+            <div key={i} className="relative w-20 h-16 rounded-lg overflow-hidden border border-gray-200 bg-gray-50 group shrink-0">
+              <img src={f.previewUrl} alt="" className="w-full h-full object-cover" />
+              <button
+                onClick={() => removeFile(i)}
+                className="absolute top-0.5 right-0.5 w-5 h-5 bg-black/60 rounded-full flex items-center justify-center text-white opacity-0 group-hover:opacity-100 transition-opacity"
+              >
+                <X className="w-2.5 h-2.5" />
+              </button>
+            </div>
+          ))}
           <button
-            onClick={() => onChange(null)}
-            className="absolute top-1.5 right-1.5 w-6 h-6 bg-black/60 rounded-full flex items-center justify-center text-white opacity-0 group-hover:opacity-100 transition-opacity"
+            onClick={() => inputRef.current?.click()}
+            className="w-20 h-16 rounded-lg border-2 border-dashed border-gray-200 hover:border-[#8403C5]/50 flex items-center justify-center text-gray-300 hover:text-[#8403C5] transition-colors shrink-0"
           >
-            <X className="w-3 h-3" />
+            <Upload className="w-4 h-4" />
           </button>
         </div>
-      ) : (
+      )}
+
+      {/* Drop zone (shown when no files yet) */}
+      {files.length === 0 && (
         <div
           className="w-full h-40 rounded-xl border-2 border-dashed border-gray-200 hover:border-[#8403C5]/50 hover:bg-purple-50/30 transition-colors cursor-pointer flex flex-col items-center justify-center gap-2 text-center p-3"
           onClick={() => inputRef.current?.click()}
@@ -92,10 +109,10 @@ function UploadZone({ platform, value, onChange }) {
           <Upload className="w-6 h-6 text-gray-300" />
           <p className="text-[12px] text-gray-400 font-medium leading-tight">{cfg.uploadLabel}</p>
           <p className="text-[11px] text-gray-300">Click to upload or drag and drop</p>
-          <p className="text-[10px] text-gray-300">JPG, PNG, WEBP</p>
+          <p className="text-[10px] text-gray-300">JPG, PNG, WEBP — multiple allowed</p>
         </div>
       )}
-      <input ref={inputRef} type="file" accept="image/*" className="hidden" onChange={e => handleFile(e.target.files[0])} />
+      <input ref={inputRef} type="file" accept="image/*" multiple className="hidden" onChange={e => handleFiles(e.target.files)} />
     </div>
   );
 }
@@ -144,8 +161,8 @@ export default function ReportForm({ report, onBack }) {
   const [aiMissing,   setAiMissing]   = useState(new Set()); // keys that AI couldn't find
 
   const isDraft = status === 'Draft';
-  const hasScreenshots = Object.values(screenshots).some(v => v?.file);
-  const uploadedCount  = Object.values(screenshots).filter(v => v?.file).length;
+  const hasScreenshots = Object.values(screenshots).some(v => Array.isArray(v) && v.length > 0);
+  const uploadedCount  = Object.values(screenshots).filter(v => Array.isArray(v) && v.length > 0).length;
 
   useEffect(() => {
     base44.entities.MarketingReport.list('-year', 100).then(all => {
@@ -184,17 +201,22 @@ export default function ReportForm({ report, onBack }) {
     const newAiMissing = new Set();
     let successCount = 0;
 
-    const processPlatform = async (key, cfg, currentUpload, applyData) => {
-      if (!currentUpload?.file) return;
+    const processPlatform = async (key, cfg, currentFiles, applyData) => {
+      if (!Array.isArray(currentFiles) || currentFiles.length === 0) return;
       try {
-        // Upload image first
-        const { file_url } = await base44.integrations.Core.UploadFile({ file: currentUpload.file });
-        setScreenshots(p => ({ ...p, [key]: { ...p[key], uploadedUrl: file_url } }));
+        // Upload all images for this platform
+        const uploadedUrls = await Promise.all(
+          currentFiles.map(f => base44.integrations.Core.UploadFile({ file: f.file }).then(r => r.file_url))
+        );
+        setScreenshots(p => ({
+          ...p,
+          [key]: currentFiles.map((f, i) => ({ ...f, uploadedUrl: uploadedUrls[i] }))
+        }));
 
-        // Call Claude
+        // Call Claude with all images
         const result = await base44.integrations.Core.InvokeLLM({
           prompt: cfg.prompt,
-          file_urls: [file_url],
+          file_urls: uploadedUrls,
           model: 'claude_sonnet_4_6',
           response_json_schema: cfg.schema,
         });
@@ -203,13 +225,16 @@ export default function ReportForm({ report, onBack }) {
         successCount++;
         setExtractStep(s => s + 1);
       } catch (err) {
-        setScreenshots(p => ({ ...p, [key]: { ...p[key], error: true } }));
+        setScreenshots(p => ({
+          ...p,
+          [key]: currentFiles.map(f => ({ ...f, error: true }))
+        }));
         setExtractStep(s => s + 1);
       }
     };
 
     await Promise.all([
-      processPlatform('website', PLATFORM_CONFIGS.website, screenshots.website, (d, af, am) => {
+      processPlatform('website', PLATFORM_CONFIGS.website, screenshots.website || [], (d, af, am) => {
         const map = { activeUsers: d.active_users, sessions: d.sessions, newUsers: d.new_users,
           engagedSessions: d.engaged_sessions_pct, avgEngagementTime: d.avg_engagement_time,
           topTrafficSource: d.top_traffic_source, gscImpressions: d.gsc_impressions,
@@ -223,7 +248,7 @@ export default function ReportForm({ report, onBack }) {
           return updated;
         });
       }),
-      processPlatform('chrisLI', PLATFORM_CONFIGS.chrisLI, screenshots.chrisLI, (d, af, am) => {
+      processPlatform('chrisLI', PLATFORM_CONFIGS.chrisLI, screenshots.chrisLI || [], (d, af, am) => {
         const map = { totalImpressions: d.impressions, uniqueMembersReached: d.unique_reach,
           reactions: d.reactions, comments: d.comments, reposts: d.reposts,
           newFollowers: d.new_connections, notes: d.narrative };
@@ -236,7 +261,7 @@ export default function ReportForm({ report, onBack }) {
           return updated;
         });
       }),
-      processPlatform('company', PLATFORM_CONFIGS.company, screenshots.company, (d, af, am) => {
+      processPlatform('company', PLATFORM_CONFIGS.company, screenshots.company || [], (d, af, am) => {
         const map = { totalImpressions: d.page_impressions, newFollowers: d.new_followers,
           reactions: d.reactions, clicks: d.clicks, notes: d.narrative };
         setCompany(p => {
@@ -248,7 +273,7 @@ export default function ReportForm({ report, onBack }) {
           return updated;
         });
       }),
-      processPlatform('newsletter', PLATFORM_CONFIGS.newsletter, screenshots.newsletter, (d, af, am) => {
+      processPlatform('newsletter', PLATFORM_CONFIGS.newsletter, screenshots.newsletter || [], (d, af, am) => {
         const map = { openRate: d.open_rate, clickRate: d.click_rate, listSize: d.total_subscribers,
           unsubscribes: d.unsubscribes, notes: d.narrative };
         setNewsletter(p => {
