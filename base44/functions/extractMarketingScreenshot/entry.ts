@@ -44,7 +44,7 @@ Deno.serve(async (req) => {
         'anthropic-version': '2023-06-01',
       },
       body: JSON.stringify({
-        model: 'claude-sonnet-4-20250514',
+        model: 'claude-opus-4-6',
         max_tokens: 1000,
         messages: [{ role: 'user', content }],
       }),
@@ -63,14 +63,21 @@ Deno.serve(async (req) => {
     const jsonPart = narrativeSplit[0].trim();
     const narrative = narrativeSplit[1]?.trim() || '';
 
-    // Parse JSON — strip code fences if present
-    const clean = jsonPart.replace(/```json?\n?/g, '').replace(/```/g, '').trim();
+    // Parse JSON — try to extract from code fences first, then raw
     let extracted;
     try {
+      const fenceMatch = jsonPart.match(/```(?:json)?\s*([\s\S]*?)```/);
+      const clean = fenceMatch ? fenceMatch[1].trim() : jsonPart.replace(/```json?\n?/g, '').replace(/```/g, '').trim();
       extracted = JSON.parse(clean);
     } catch {
-      // Fallback: return raw text for manual review
-      return Response.json({ success: false, rawText, narrative });
+      // Try extracting first { ... } block from the full rawText
+      try {
+        const jsonMatch = rawText.match(/\{[\s\S]*?\}/);
+        if (jsonMatch) extracted = JSON.parse(jsonMatch[0]);
+        else return Response.json({ success: false, rawText, narrative });
+      } catch {
+        return Response.json({ success: false, rawText, narrative });
+      }
     }
 
     return Response.json({ success: true, extracted, narrative });
