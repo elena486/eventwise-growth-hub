@@ -25,6 +25,7 @@ export const TYPE_ICONS = {
   'Case Study': File,
   'Podcast':    Mic,
   'Template':   File,
+  'Blog':       BookOpen,
   'Other':      File,
 };
 
@@ -37,11 +38,12 @@ export const TYPE_COLORS = {
   'Case Study': 'bg-pink-50 text-pink-700',
   'Podcast':    'bg-indigo-50 text-indigo-700',
   'Template':   'bg-cyan-50 text-cyan-700',
+  'Blog':       'bg-rose-50 text-rose-700',
   'Other':      'bg-gray-100 text-gray-600',
 };
 
-export const TYPES = ['Video', 'One-Pager', 'Deck', 'Tool', 'Guide', 'Case Study', 'Podcast', 'Template', 'Other'];
-const QUICK_FILTERS = ['All', 'Good to Use', 'Needs Creating', 'Videos', 'One-Pagers', 'Decks & Presentations'];
+export const TYPES = ['Video', 'One-Pager', 'Deck', 'Tool', 'Guide', 'Case Study', 'Podcast', 'Template', 'Blog', 'Other'];
+const QUICK_FILTERS = ['All', 'Good to Use', 'Needs Creating', 'Videos', 'One-Pagers', 'Decks & Presentations', 'Blogs'];
 
 // Monday-hosted file URLs that need re-uploading
 const isMondayFile = (url) => url && url.includes('monday.com/protected_static');
@@ -289,6 +291,7 @@ export default function SalesAssets() {
     else if (quickFilter === 'Videos') matchFilter = a.type === 'Video';
     else if (quickFilter === 'One-Pagers') matchFilter = a.type === 'One-Pager';
     else if (quickFilter === 'Decks & Presentations') matchFilter = a.type === 'Deck';
+    else if (quickFilter === 'Blogs') matchFilter = a.type === 'Blog';
     return matchSearch && matchFilter;
   });
 
