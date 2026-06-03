@@ -435,7 +435,6 @@ export default function LeadDetailPanel({ lead, onClose, onUpdate, onDelete, onC
 
   useEffect(() => { setData(lead); }, [lead.id]);
 
-  const logEntries = currentLogEntries;
   const extLinks = (() => { try { return JSON.parse(data.externalLinks || '[]'); } catch { return []; } })();
   const leadFiles = (() => { try { const p = JSON.parse(data.fileUrl || '[]'); return Array.isArray(p) ? p : []; } catch { return data.fileUrl ? [{ name: data.fileName || data.fileUrl, url: data.fileUrl }] : []; } })();
   const contacts = (() => { try { const p = JSON.parse(data.contacts || '[]'); return Array.isArray(p) ? p : []; } catch { return []; } })();
@@ -495,6 +494,7 @@ export default function LeadDetailPanel({ lead, onClose, onUpdate, onDelete, onC
 
   // Dynamic tab labels
   const currentLogEntries = (() => { try { return JSON.parse(data.activityLog || '[]'); } catch { return []; } })();
+  const logEntries = currentLogEntries;
   const activityCount = currentLogEntries.length;
   const isNextActionOverdue = data.nextActionDue && new Date(data.nextActionDue) < new Date() && data.nextAction;
 
