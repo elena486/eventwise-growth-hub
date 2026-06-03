@@ -4,7 +4,7 @@ import { format } from 'date-fns';
 import MentionTextarea, { sendMentionNotifications } from '@/components/shared/MentionTextarea';
 import {
   X, Mail, ExternalLink, Phone, Plus, Pencil, Trash2,
-  Check, ChevronDown, ChevronUp, AlertTriangle, Star
+  Check, ChevronDown, ChevronUp, AlertTriangle, Star, Link
 } from 'lucide-react';
 import MultiFileUpload from '@/components/shared/MultiFileUpload';
 import TranscriptSection from '@/components/shared/TranscriptSection';
@@ -59,14 +59,7 @@ function nowDateTimeLocal() {
   return format(d, "yyyy-MM-dd'T'HH:mm");
 }
 
-const TABS = [
-  { id: 'contacts', label: 'Contacts' },
-  { id: 'deal', label: 'Deal Info' },
-  { id: 'activity', label: 'Activity Log' },
-  { id: 'objections', label: 'Objections & Intel' },
-  { id: 'nextsteps', label: 'Next Steps' },
-  { id: 'files', label: 'Files & Docs' },
-];
+// TABS are computed dynamically based on data — see below in component
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -417,6 +410,14 @@ function ExternalLinksEditor({ links, onChange }) {
 
 // ─── Main Panel ───────────────────────────────────────────────────────────────
 
+function showToast(msg, color = 'bg-emerald-600') {
+  const el = document.createElement('div');
+  el.className = `fixed bottom-6 left-1/2 -translate-x-1/2 z-[9999] ${color} text-white text-sm font-semibold px-5 py-2.5 rounded-full shadow-xl animate-toast-in`;
+  el.textContent = msg;
+  document.body.appendChild(el);
+  setTimeout(() => el.remove(), 2500);
+}
+
 export default function LeadDetailPanel({ lead, onClose, onUpdate, onDelete, onClosedWon, isNew = false, onSaved }) {
   const [data, setData] = useState(lead);
   const [activeTab, setActiveTab] = useState('contacts');
@@ -425,12 +426,16 @@ export default function LeadDetailPanel({ lead, onClose, onUpdate, onDelete, onC
   const [deleteConfirm, setDeleteConfirm] = useState(false);
   const [cancelConfirm, setCancelConfirm] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [quickNote, setQuickNote] = useState('');
+  const [markDoneMode, setMarkDoneMode] = useState(false);
+  const [newNextAction, setNewNextAction] = useState('');
+  const [newNextActionDue, setNewNextActionDue] = useState('');
   const saveTimer = useRef(null);
   const isDirty = useRef(false);
 
   useEffect(() => { setData(lead); }, [lead.id]);
 
-  const logEntries = (() => { try { return JSON.parse(data.activityLog || '[]'); } catch { return []; } })();
+  const logEntries = currentLogEntries;
   const extLinks = (() => { try { return JSON.parse(data.externalLinks || '[]'); } catch { return []; } })();
   const leadFiles = (() => { try { const p = JSON.parse(data.fileUrl || '[]'); return Array.isArray(p) ? p : []; } catch { return data.fileUrl ? [{ name: data.fileName || data.fileUrl, url: data.fileUrl }] : []; } })();
   const contacts = (() => { try { const p = JSON.parse(data.contacts || '[]'); return Array.isArray(p) ? p : []; } catch { return []; } })();
@@ -488,6 +493,58 @@ export default function LeadDetailPanel({ lead, onClose, onUpdate, onDelete, onC
 
   const annual = (parseFloat(data.dealValueMonthly) || 0) * 12;
 
+  // Dynamic tab labels
+  const currentLogEntries = (() => { try { return JSON.parse(data.activityLog || '[]'); } catch { return []; } })();
+  const activityCount = currentLogEntries.length;
+  const isNextActionOverdue = data.nextActionDue && new Date(data.nextActionDue) < new Date() && data.nextAction;
+
+  const TABS = [
+    { id: 'contacts', label: 'Contacts' },
+    { id: 'deal', label: 'Deal Info' },
+    { id: 'activity', label: activityCount > 0 ? `Activity Log (${activityCount})` : 'Activity Log' },
+    { id: 'objections', label: 'Objections & Intel' },
+    { id: 'nextsteps', label: isNextActionOverdue ? 'Next Steps ⚠' : 'Next Steps' },
+    { id: 'files', label: 'Files & Docs' },
+  ];
+
+  const handleQuickNote = () => {
+    if (!quickNote.trim()) return;
+    const entries = currentLogEntries;
+    const newEntry = { id: Date.now(), type: 'Note', summary: quickNote.trim(), createdAt: new Date().toISOString(), addedBy: 'George' };
+    const updated = [newEntry, ...entries];
+    autoSave({ activityLog: JSON.stringify(updated), lastActivity: newEntry.createdAt });
+    setQuickNote('');
+    showToast('✓ Note saved');
+  };
+
+  const handleMarkDone = () => {
+    // Log completion in activity log
+    const entries = currentLogEntries;
+    const doneEntry = { id: Date.now(), type: 'Note', summary: `✅ Next action completed: "${data.nextAction}"`, createdAt: new Date().toISOString(), addedBy: 'George' };
+    const updated = [doneEntry, ...entries];
+    autoSave({ activityLog: JSON.stringify(updated), nextAction: '', nextActionDue: '', lastActivity: doneEntry.createdAt });
+    setMarkDoneMode(true);
+  };
+
+  const handleSetNewNextAction = () => {
+    if (!newNextAction.trim()) return;
+    autoSave({ nextAction: newNextAction.trim(), nextActionDue: newNextActionDue || null });
+    setMarkDoneMode(false);
+    setNewNextAction('');
+    setNewNextActionDue('');
+    showToast('✓ Next action set');
+  };
+
+  const nextDueCls = () => {
+    if (!data.nextActionDue) return ic;
+    const d = new Date(data.nextActionDue);
+    const now = new Date();
+    const diffDays = (d - now) / 86400000;
+    if (diffDays < 0) return ic + ' border-red-400 bg-red-50 text-red-700';
+    if (diffDays < 2) return ic + ' border-amber-400 bg-amber-50 text-amber-700';
+    return ic + ' border-green-400 bg-green-50 text-green-700';
+  };
+
   return (
     <div className="flex flex-col h-full bg-white border-l border-ew-border overflow-hidden">
       {/* Fixed Header */}
@@ -528,15 +585,35 @@ export default function LeadDetailPanel({ lead, onClose, onUpdate, onDelete, onC
           {data.lastActivity && <span className="text-[11px] text-ew-muted ml-auto">Updated {fmtDateTime(data.lastActivity)}</span>}
         </div>
 
+        {/* Quick note bar */}
+        {!isNew && (
+          <div className="flex items-center gap-2 mb-3">
+            <input
+              className="flex-1 text-sm border border-ew-border rounded-lg px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-[#8403C5]/20 bg-white"
+              placeholder="Add a quick note or update..."
+              value={quickNote}
+              onChange={e => setQuickNote(e.target.value)}
+              onKeyDown={e => { if (e.key === 'Enter') handleQuickNote(); }}
+            />
+            <button onClick={handleQuickNote} disabled={!quickNote.trim()}
+              className="px-3 py-1.5 text-xs font-semibold bg-[#8403C5] text-white rounded-lg hover:bg-[#7002A8] disabled:opacity-40 transition-colors whitespace-nowrap">
+              Log
+            </button>
+          </div>
+        )}
+
         {/* Tab bar */}
         <div className="flex items-center gap-0 -mb-px overflow-x-auto">
           {TABS.map(tab => (
             <button key={tab.id} onClick={() => setActiveTab(tab.id)}
               className={`px-3 py-2 text-xs font-medium transition-colors whitespace-nowrap relative shrink-0 ${
-                activeTab === tab.id ? 'text-[#8403C5] font-semibold' : 'text-ew-muted hover:text-navy'
+                activeTab === tab.id ? 'text-[#8403C5] font-semibold' : tab.id === 'nextsteps' && isNextActionOverdue ? 'text-amber-600 hover:text-amber-700' : 'text-ew-muted hover:text-navy'
               }`}>
               {tab.label}
               {activeTab === tab.id && <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-[#8403C5] rounded-t-full" />}
+              {tab.id === 'nextsteps' && isNextActionOverdue && activeTab !== 'nextsteps' && (
+                <span className="absolute top-1.5 right-0 w-1.5 h-1.5 bg-amber-500 rounded-full" />
+              )}
             </button>
           ))}
         </div>
@@ -735,24 +812,67 @@ export default function LeadDetailPanel({ lead, onClose, onUpdate, onDelete, onC
         {/* NEXT STEPS TAB */}
         {activeTab === 'nextsteps' && (
           <div>
-            <SectionTitle>Next Steps</SectionTitle>
-            <div className="grid grid-cols-2 gap-3">
-              <div className="col-span-2">
-                <FieldRow label="Next action">
-                  <input className={ic} value={data.nextAction || ''} onChange={f('nextAction')} placeholder="What needs to happen next?" />
-                </FieldRow>
+            {/* Prominent next action block */}
+            <div className="bg-[#F7F8FC] border border-ew-border rounded-xl p-4 mb-4">
+              <div className="flex items-center justify-between mb-1.5">
+                <p className="text-[11px] font-bold text-ew-muted uppercase tracking-[0.18em]">Next Action</p>
+                {data.nextAction && !markDoneMode && (
+                  <button onClick={handleMarkDone}
+                    className="flex items-center gap-1 text-xs font-semibold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 px-2.5 py-1 rounded-lg transition-colors">
+                    <Check className="w-3.5 h-3.5" /> Mark as done
+                  </button>
+                )}
               </div>
-              <FieldRow label="Next action due date">
-                <input type="date" className={ic} value={data.nextActionDue || ''} onChange={f('nextActionDue')} />
-              </FieldRow>
+              <input className="w-full text-base font-semibold text-navy bg-white border border-ew-border rounded-lg px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-[#8403C5]/20 mb-2"
+                value={data.nextAction || ''} onChange={f('nextAction')} placeholder="What needs to happen next?" />
+              <div className="flex items-center gap-2">
+                <label className="text-[11px] font-medium text-ew-muted whitespace-nowrap">Due date:</label>
+                <input type="date" className={`text-sm border rounded-lg px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-[#8403C5]/20 flex-1 ${
+                  data.nextActionDue ? (() => {
+                    const diffDays = (new Date(data.nextActionDue) - new Date()) / 86400000;
+                    if (diffDays < 0) return 'border-red-400 bg-red-50 text-red-700 font-semibold';
+                    if (diffDays < 2) return 'border-amber-400 bg-amber-50 text-amber-700';
+                    return 'border-green-400 bg-green-50 text-green-700';
+                  })() : 'border-ew-border bg-white'
+                }`}
+                  value={data.nextActionDue || ''} onChange={f('nextActionDue')} />
+                {data.nextActionDue && (() => {
+                  const diffDays = (new Date(data.nextActionDue) - new Date()) / 86400000;
+                  if (diffDays < 0) return <span className="text-xs font-semibold text-red-600 whitespace-nowrap">⚠ Overdue</span>;
+                  if (diffDays < 1) return <span className="text-xs font-semibold text-amber-600 whitespace-nowrap">Due today</span>;
+                  if (diffDays < 2) return <span className="text-xs font-semibold text-amber-600 whitespace-nowrap">Due tomorrow</span>;
+                  return null;
+                })()}
+              </div>
+
+              {/* Mark as Done — set new next action */}
+              {markDoneMode && (
+                <div className="mt-3 p-3 bg-white border border-emerald-200 rounded-xl">
+                  <p className="text-sm font-semibold text-navy mb-2">✅ Done! What's the next step?</p>
+                  <input className="w-full text-sm border border-ew-border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#8403C5]/20 mb-2 bg-white"
+                    value={newNextAction} onChange={e => setNewNextAction(e.target.value)}
+                    placeholder="e.g. Follow up after demo" autoFocus />
+                  <div className="flex items-center gap-2 mb-2">
+                    <label className="text-xs text-ew-muted whitespace-nowrap">Due:</label>
+                    <input type="date" className="flex-1 text-sm border border-ew-border rounded-lg px-3 py-1.5 focus:outline-none bg-white"
+                      value={newNextActionDue} onChange={e => setNewNextActionDue(e.target.value)} />
+                  </div>
+                  <div className="flex gap-2 justify-end">
+                    <button onClick={() => setMarkDoneMode(false)} className="px-3 py-1.5 text-xs text-ew-body hover:bg-ew-bg rounded-lg">Skip</button>
+                    <button onClick={handleSetNewNextAction} disabled={!newNextAction.trim()}
+                      className="px-4 py-1.5 text-xs font-semibold bg-[#8403C5] text-white rounded-lg hover:bg-[#7002A8] disabled:opacity-40">Set next action</button>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
               <FieldRow label="Follow-up reminder">
                 <input type="date" className={ic} value={data.followUpReminder || ''} onChange={f('followUpReminder')} />
               </FieldRow>
-              <div className="col-span-2">
-                <FieldRow label="Follow-up note">
-                  <input className={ic} value={data.followUpNote || ''} onChange={f('followUpNote')} placeholder="Optional note for reminder…" />
-                </FieldRow>
-              </div>
+              <FieldRow label="Follow-up note">
+                <input className={ic} value={data.followUpNote || ''} onChange={f('followUpNote')} placeholder="Optional note…" />
+              </FieldRow>
               <div className="col-span-2">
                 <FieldRow label="Stage">
                   <select className={ic} value={data.stage || ''} onChange={e => handleStageChange(e.target.value)}>

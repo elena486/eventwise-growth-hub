@@ -3,7 +3,7 @@ import { format } from 'date-fns';
 import StageBadge from './Stagebadge';
 import PlanBadge from './PlanBadge';
 import InlineCell from '@/components/shared/InlineCell';
-import { ChevronUp, ChevronDown, ChevronsUpDown, FileText, Trash2, Check, X, Pencil, Settings2, RotateCcw, AlertTriangle, Undo2 } from 'lucide-react';
+import { ChevronUp, ChevronDown, ChevronsUpDown, FileText, Trash2, Check, X, Pencil, Settings2, RotateCcw, AlertTriangle, Undo2, Clock } from 'lucide-react';
 
 const STAGE_ORDER = ['New Lead', 'Contacted', 'Discovery Call', 'Demo Booked', 'Proposal Sent', 'Negotiation', 'Closed Won', 'Closed Lost', 'On Hold'];
 const PLANS = ['Starter', 'Growth', 'Scale', 'Professional', 'Custom'];
@@ -345,6 +345,14 @@ export default function LeadTable({ leads, onDelete, onProposal, onUpdateField, 
           <td className="px-4 py-3 min-w-[160px]" onClick={e => e.stopPropagation()}>
             <InlineCell value={lead.companyName} onSave={save(lead.id, 'companyName')} placeholder="Company name" autoEdit={isNew} className="font-semibold text-navy text-sm" />
             <ContactCell lead={lead} onSave={save(lead.id, 'contactName')} />
+            {lead.nextAction && (
+              <div className="flex items-start gap-1 mt-1">
+                <Clock className={`w-3 h-3 shrink-0 mt-0.5 ${lead.nextActionDue && new Date(lead.nextActionDue) < new Date() ? 'text-red-500' : 'text-ew-muted'}`} />
+                <p className={`text-[11px] leading-tight line-clamp-1 ${lead.nextActionDue && new Date(lead.nextActionDue) < new Date() ? 'text-red-600 font-medium' : 'text-ew-muted'}`}>
+                  {lead.nextAction}{lead.nextActionDue ? ` — due ${format(new Date(lead.nextActionDue), 'd MMM')}` : ''}
+                </p>
+              </div>
+            )}
           </td>
         )}
         {show('owner') && (

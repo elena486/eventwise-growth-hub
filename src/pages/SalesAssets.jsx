@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { base44 } from '@/api/base44Client';
-import { Plus, LayoutGrid, List, Search, ExternalLink, FileText, Video, Mic, Wrench, BookOpen, Presentation, File, Trash2, Pencil, AlertTriangle, Download, ChevronDown, ChevronRight, Mail } from 'lucide-react';
+import { Plus, LayoutGrid, List, Search, ExternalLink, FileText, Video, Mic, Wrench, BookOpen, Presentation, File, Trash2, Pencil, AlertTriangle, Download, ChevronDown, ChevronRight, Mail, Check, X, Link } from 'lucide-react';
 import { downloadCSV, fmtCsvDate, safe, todayStr } from '@/lib/csvExport';
 import { format } from 'date-fns';
 import AssetModal from '@/components/sales/AssetModal';
@@ -71,7 +71,81 @@ function hasNoLink(asset) {
   return !hasUrl && !hasFile;
 }
 
-function AssetCard({ asset, onEdit, onDelete, onClick }) {
+// ─── Inline Link Editor ────────────────────────────────────────────────────────
+function InlineLinkEditor({ asset, onSaved }) {
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState('');
+  const [saving, setSaving] = useState(false);
+  const inputRef = useRef(null);
+
+  const open = (e) => {
+    e.stopPropagation();
+    setDraft(asset.url || '');
+    setEditing(true);
+    setTimeout(() => inputRef.current?.focus(), 50);
+  };
+
+  const save = async (e) => {
+    e?.stopPropagation();
+    setSaving(true);
+    const updated = await base44.entities.SalesAsset.update(asset.id, { url: draft || null });
+    setSaving(false);
+    setEditing(false);
+    onSaved({ ...asset, url: draft || null });
+    // Toast
+    const el = document.createElement('div');
+    el.className = 'fixed bottom-6 left-1/2 -translate-x-1/2 z-[9999] bg-emerald-600 text-white text-sm font-semibold px-5 py-2.5 rounded-full shadow-xl animate-toast-in';
+    el.textContent = '✓ Link updated';
+    document.body.appendChild(el);
+    setTimeout(() => el.remove(), 2500);
+  };
+
+  const cancel = (e) => { e?.stopPropagation(); setEditing(false); };
+
+  if (editing) {
+    return (
+      <div className="flex items-center gap-1.5 w-full" onClick={e => e.stopPropagation()}>
+        <input
+          ref={inputRef}
+          className="flex-1 text-xs border border-[#8403C5]/40 rounded-lg px-2.5 py-1.5 focus:outline-none focus:ring-2 focus:ring-[#8403C5]/20 bg-white"
+          value={draft}
+          onChange={e => setDraft(e.target.value)}
+          placeholder="https://…"
+          onKeyDown={e => { if (e.key === 'Enter') save(e); if (e.key === 'Escape') cancel(e); }}
+        />
+        <button onClick={save} disabled={saving} className="p-1.5 text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors">
+          <Check className="w-3.5 h-3.5" />
+        </button>
+        <button onClick={cancel} className="p-1.5 text-ew-muted hover:bg-ew-bg rounded-lg transition-colors">
+          <X className="w-3.5 h-3.5" />
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex items-center gap-1.5" onClick={e => e.stopPropagation()}>
+      {asset.url ? (
+        <>
+          <a href={asset.url} target="_blank" rel="noopener noreferrer"
+            className="inline-flex items-center gap-1 text-[11px] font-medium text-navy hover:text-[#8403C5] transition-colors">
+            <ExternalLink className="w-3 h-3" /> Open
+          </a>
+          <button onClick={open} className="p-1 text-ew-muted hover:text-[#8403C5] transition-colors" title="Edit link">
+            <Pencil className="w-3 h-3" />
+          </button>
+        </>
+      ) : (
+        <button onClick={open}
+          className="inline-flex items-center gap-1 text-[11px] font-semibold text-amber-700 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-full hover:bg-amber-100 transition-colors">
+          <Link className="w-3 h-3" /> Add link
+        </button>
+      )}
+    </div>
+  );
+}
+
+function AssetCard({ asset, onEdit, onDelete, onClick, onLinkSaved }) {
   const needsReupload = isMondayFile(asset.fileUrl);
   const emailCount = getEmailCount(asset);
   const noLink = hasNoLink(asset);
@@ -101,26 +175,17 @@ function AssetCard({ asset, onEdit, onDelete, onClick }) {
             <Mail className="w-2.5 h-2.5" /> {emailCount} email{emailCount !== 1 ? 's' : ''}
           </span>
         )}
-        {noLink && (
-          <span className="inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full bg-amber-50 text-amber-700 border border-amber-200">
-            ⚠ No link
-          </span>
-        )}
       </div>
 
       {asset.notes && (
         <p className="text-xs text-ew-body line-clamp-2">{asset.notes}</p>
       )}
 
-      <div className="flex items-center gap-2 mt-auto pt-1 flex-wrap" onClick={e => e.stopPropagation()}>
-        {asset.url && (
-          <a href={asset.url} target="_blank" rel="noopener noreferrer"
-            className="inline-flex items-center gap-1 text-[11px] font-medium text-navy hover:text-[#8403C5] transition-colors">
-            <ExternalLink className="w-3 h-3" /> Open
-          </a>
-        )}
+      <div className="flex items-center gap-2 mt-auto pt-1 flex-wrap">
+        <InlineLinkEditor asset={asset} onSaved={onLinkSaved} />
         {asset.fileUrl && !needsReupload && (
           <a href={asset.fileUrl} target="_blank" rel="noopener noreferrer"
+            onClick={e => e.stopPropagation()}
             className="inline-flex items-center gap-1 text-[11px] font-medium text-navy hover:text-[#8403C5] transition-colors">
             <Download className="w-3 h-3" /> {asset.fileName || 'Download'}
           </a>
@@ -138,7 +203,7 @@ function AssetCard({ asset, onEdit, onDelete, onClick }) {
   );
 }
 
-function TypeSection({ type, items, onEdit, onDelete, onView }) {
+function TypeSection({ type, items, onEdit, onDelete, onView, onLinkSaved }) {
   const [open, setOpen] = useState(false);
   return (
     <div className="bg-white border border-ew-border rounded-xl overflow-hidden">
@@ -153,7 +218,7 @@ function TypeSection({ type, items, onEdit, onDelete, onView }) {
       {open && (
         <div className="px-5 pb-5 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 border-t border-ew-border pt-4">
           {items.map(a => (
-            <AssetCard key={a.id} asset={a} onEdit={onEdit} onDelete={onDelete} onClick={() => onView(a)} />
+            <AssetCard key={a.id} asset={a} onEdit={onEdit} onDelete={onDelete} onClick={() => onView(a)} onLinkSaved={onLinkSaved} />
           ))}
         </div>
       )}
@@ -323,7 +388,7 @@ export default function SalesAssets() {
       ) : view === 'grid' ? (
         <div className="space-y-3">
           {Object.entries(grouped).map(([type, items]) => (
-            <TypeSection key={type} type={type} items={items} onEdit={openEdit} onDelete={setDeleteConfirm} onView={setDetailAsset} />
+            <TypeSection key={type} type={type} items={items} onEdit={openEdit} onDelete={setDeleteConfirm} onView={setDetailAsset} onLinkSaved={handleSaved} />
           ))}
         </div>
       ) : (
@@ -354,13 +419,9 @@ export default function SalesAssets() {
                     </td>
                     <td className="px-4 py-3 text-ew-body text-xs whitespace-nowrap">{asset.addedBy || '—'}</td>
                     <td className="px-4 py-3 text-ew-muted text-xs whitespace-nowrap">{fmtDate(asset.lastUpdated)}</td>
-                    <td className="px-4 py-3">
+                    <td className="px-4 py-3" onClick={e => e.stopPropagation()}>
                       <div className="flex items-center gap-2 flex-wrap">
-                        {asset.url && (
-                          <a href={asset.url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-[11px] text-navy hover:text-[#8403C5] transition-colors whitespace-nowrap">
-                            <ExternalLink className="w-3 h-3" /> Open
-                          </a>
-                        )}
+                        <InlineLinkEditor asset={asset} onSaved={handleSaved} />
                         {asset.fileUrl && !needsReupload && (
                           <a href={asset.fileUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-[11px] text-navy hover:text-[#8403C5] transition-colors whitespace-nowrap">
                             <Download className="w-3 h-3" /> File
