@@ -50,6 +50,14 @@
     },
     "declineReason": {
       "type": "string"
+    },
+    "attachmentUrl": {
+      "type": "string",
+      "description": "URL of uploaded supporting document"
+    },
+    "attachmentName": {
+      "type": "string",
+      "description": "Original file name of supporting document"
     }
   },
   "required": [

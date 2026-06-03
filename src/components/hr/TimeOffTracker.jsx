@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
-import { Plus, Pencil, Trash2, Check, X, ChevronDown } from 'lucide-react';
+import { Plus, Pencil, Trash2, Check, X, ChevronDown, Paperclip } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 import TimeOffModal from './TimeOffModal';
 import DeclineModal from './DeclineModal';
@@ -221,8 +221,24 @@ export default function TimeOffTracker() {
                     <span className={`text-[11px] font-semibold px-2.5 py-1 rounded-full ${STATUS_STYLES[r.status] || 'bg-gray-100 text-gray-500'}`}>{r.status}</span>
                   </td>
                   <td className="px-4 py-3 text-ew-body text-xs max-w-[200px]">
-                    <span className="line-clamp-2">{r.notes || '—'}</span>
-                    {r.declineReason && <span className="block text-red-500 mt-0.5">Declined: {r.declineReason}</span>}
+                    <div className="flex items-start gap-1.5">
+                      <div>
+                        <span className="line-clamp-2">{r.notes || '—'}</span>
+                        {r.declineReason && <span className="block text-red-500 mt-0.5">Declined: {r.declineReason}</span>}
+                      </div>
+                      {r.attachmentUrl && (
+                        <a
+                          href={r.attachmentUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          title={r.attachmentName || 'Attached file'}
+                          onClick={e => e.stopPropagation()}
+                          className="shrink-0 text-[#8403C5] hover:text-[#6d02a3] transition-colors mt-0.5"
+                        >
+                          <Paperclip className="w-3.5 h-3.5" />
+                        </a>
+                      )}
+                    </div>
                   </td>
                   <td className="px-4 py-3" onClick={e => e.stopPropagation()}>
                     <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">

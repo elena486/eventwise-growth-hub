@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, Check, AlertTriangle } from 'lucide-react';
+import { X, Check, AlertTriangle, Download, Paperclip } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
 import { format, parseISO } from 'date-fns';
 
@@ -29,6 +29,7 @@ export default function TimeOffSidePanel({ record, onClose, onUpdated, onDeleted
   const [declineReason, setDeclineReason] = useState('');
   const [deleteConfirm, setDeleteConfirm] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [removeDocConfirm, setRemoveDocConfirm] = useState(false);
 
   const isPending = record.status === 'Pending';
   const isLocked = record.status === 'Approved' || record.status === 'Declined';
@@ -169,6 +170,39 @@ export default function TimeOffSidePanel({ record, onClose, onUpdated, onDeleted
             <div>
               <label className={labelCls}>Decline Reason</label>
               <p className="text-sm text-red-600">{form.declineReason}</p>
+            </div>
+          )}
+
+          {/* Supporting document */}
+          {form.attachmentUrl && (
+            <div>
+              <label className={labelCls}>Supporting document</label>
+              <div className="flex items-center gap-2 border border-ew-border rounded-lg px-3 py-2 bg-[#FAFBFE]">
+                <Paperclip className="w-4 h-4 text-[#8403C5] shrink-0" />
+                <a href={form.attachmentUrl} target="_blank" rel="noopener noreferrer" className="flex-1 text-sm font-medium text-[#8403C5] hover:underline truncate">
+                  {form.attachmentName || 'Attached file'}
+                </a>
+                <a href={form.attachmentUrl} download={form.attachmentName} className="p-1 text-ew-muted hover:text-navy transition-colors" title="Download">
+                  <Download className="w-4 h-4" />
+                </a>
+                {!removeDocConfirm ? (
+                  <button onClick={() => setRemoveDocConfirm(true)} className="p-1 text-ew-muted hover:text-red-500 transition-colors" title="Remove file">
+                    <X className="w-4 h-4" />
+                  </button>
+                ) : (
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-xs text-red-600 font-medium">Remove?</span>
+                    <button onClick={async () => {
+                      const updated = { ...form, attachmentUrl: null, attachmentName: null };
+                      await base44.entities.TimeOffRecord.update(form.id, { attachmentUrl: null, attachmentName: null });
+                      setForm(updated);
+                      onUpdated(updated);
+                      setRemoveDocConfirm(false);
+                    }} className="px-2 py-0.5 text-xs bg-red-600 text-white rounded font-semibold hover:bg-red-700">Yes</button>
+                    <button onClick={() => setRemoveDocConfirm(false)} className="px-2 py-0.5 text-xs text-ew-muted hover:bg-ew-bg rounded">No</button>
+                  </div>
+                )}
+              </div>
             </div>
           )}
         </div>
