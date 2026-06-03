@@ -262,7 +262,8 @@ export default function MentionTextarea({
     zIndex: 1,
     background: 'transparent',
     color: 'transparent',
-    caretColor: '#111827',
+    WebkitTextFillColor: 'transparent',
+    caretColor: '#8403C5',
     resize: 'none',
   };
 

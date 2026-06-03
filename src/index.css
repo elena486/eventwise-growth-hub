@@ -90,6 +90,24 @@
   }
 
   /* ============================================================
+     GLOBAL INPUT TEXT COLOUR FIX — light mode
+     Ensures typed text is always visible in every state.
+     ============================================================ */
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]),
+  textarea,
+  [contenteditable] {
+    color: #111827 !important;
+    -webkit-text-fill-color: #111827 !important;
+    caret-color: #8403C5 !important;
+  }
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"])::placeholder,
+  textarea::placeholder {
+    color: #9CA3AF !important;
+    -webkit-text-fill-color: #9CA3AF !important;
+    opacity: 1 !important;
+  }
+
+  /* ============================================================
      DARK MODE — COMPREHENSIVE OVERRIDES
      ============================================================ */
 
@@ -229,10 +247,26 @@
     background-color: #2A2A3E !important;
     border-color: #3A3A5E !important;
     color: #E8E8F0 !important;
+    -webkit-text-fill-color: #E8E8F0 !important;
+    caret-color: #A855F7 !important;
+  }
+  .dark input:focus:not([type="checkbox"]):not([type="radio"]):not([type="range"]),
+  .dark input:active:not([type="checkbox"]):not([type="radio"]):not([type="range"]),
+  .dark textarea:focus,
+  .dark textarea:active {
+    color: #E8E8F0 !important;
+    -webkit-text-fill-color: #E8E8F0 !important;
+    caret-color: #A855F7 !important;
+  }
+  .dark [contenteditable] {
+    color: #E8E8F0 !important;
+    -webkit-text-fill-color: #E8E8F0 !important;
+    caret-color: #A855F7 !important;
   }
   .dark input::placeholder,
   .dark textarea::placeholder {
     color: #6060A0 !important;
+    -webkit-text-fill-color: #6060A0 !important;
     opacity: 1 !important;
   }
   /* Radix/shadcn Select trigger and content */
