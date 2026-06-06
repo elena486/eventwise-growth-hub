@@ -432,6 +432,7 @@ export default function LeadDetailPanel({ lead, onClose, onUpdate, onDelete, onC
   const [newNextActionDue, setNewNextActionDue] = useState('');
   const saveTimer = useRef(null);
   const isDirty = useRef(false);
+  const dataRef = useRef(data);
 
   useEffect(() => { setData(lead); }, [lead.id]);
 
@@ -448,16 +449,22 @@ export default function LeadDetailPanel({ lead, onClose, onUpdate, onDelete, onC
   };
 
   const autoSave = useCallback((updates) => {
-    const merged = { ...data, ...updates };
-    setData(merged);
-    if (isNew) { isDirty.current = true; return; }
-    clearTimeout(saveTimer.current);
-    saveTimer.current = setTimeout(async () => {
-      const now = new Date().toISOString();
-      await base44.entities.Lead.update(merged.id, { ...updates, lastActivity: now });
-      onUpdate({ ...merged, lastActivity: now });
-    }, 500);
-  }, [data, isNew]);
+    setData(prev => {
+      const merged = { ...prev, ...updates };
+      dataRef.current = merged;
+      if (!isNew) {
+        clearTimeout(saveTimer.current);
+        saveTimer.current = setTimeout(async () => {
+          const now = new Date().toISOString();
+          await base44.entities.Lead.update(merged.id, { ...updates, lastActivity: now });
+          onUpdate({ ...merged, lastActivity: now });
+        }, 500);
+      } else {
+        isDirty.current = true;
+      }
+      return merged;
+    });
+  }, [isNew]);
 
   const f = (field) => (e) => autoSave({ [field]: e.target.value });
 
@@ -478,10 +485,11 @@ export default function LeadDetailPanel({ lead, onClose, onUpdate, onDelete, onC
   };
 
   const handleSaveNew = async () => {
-    if (!data.companyName?.trim()) return;
+    const current = dataRef.current;
+    if (!current.companyName?.trim()) return;
     setSaving(true);
     const now = new Date().toISOString();
-    const created = await base44.entities.Lead.create({ ...data, stage: data.stage || 'New Lead', lastActivity: now });
+    const created = await base44.entities.Lead.create({ ...current, stage: current.stage || 'New Lead', lastActivity: now });
     setSaving(false);
     onSaved(created);
   };
