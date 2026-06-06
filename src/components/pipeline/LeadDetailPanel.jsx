@@ -559,14 +559,11 @@ export default function LeadDetailPanel({ lead, onClose, onUpdate, onDelete, onC
       <div className="shrink-0 px-6 pt-5 pb-0 border-b border-ew-border">
         <div className="flex items-start justify-between gap-4 mb-2">
           <div className="flex-1 min-w-0">
-            {isNew && !data.companyName?.trim() ? (
-              <p className="text-xl font-bold text-navy px-1">New Lead</p>
-            ) : (
-              <input
-                className="text-xl font-bold text-navy bg-transparent border-none outline-none w-full hover:bg-ew-bg focus:bg-ew-bg rounded px-1 -ml-1 transition-colors"
-                value={data.companyName || ''} onChange={f('companyName')} placeholder="Company name"
-              />
-            )}
+            <input
+              className="text-xl font-bold text-navy bg-transparent border-none outline-none w-full hover:bg-ew-bg focus:bg-ew-bg rounded px-1 -ml-1 transition-colors"
+              value={data.companyName || ''} onChange={f('companyName')} placeholder="Company name"
+              autoFocus={isNew}
+            />
             {primaryDisplayName && <p className="text-sm text-ew-muted px-1 -ml-1 mt-0.5">{primaryDisplayName}</p>}
           </div>
           {isNew ? (
