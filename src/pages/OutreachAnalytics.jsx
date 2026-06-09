@@ -5,12 +5,17 @@ import AnalyticsView from '@/components/outreach/AnalyticsView';
 
 export default function OutreachAnalytics() {
   const [campaigns, setCampaigns] = useState([]);
+  const [salesAssets, setSalesAssets] = useState([]);
   const [loading, setLoading] = useState(true);
   const [view, setView] = useState('input'); // 'input' | 'analytics'
 
   const load = async () => {
-    const data = await base44.entities.ApolloOutreachCampaign.list('-launchDate', 500);
+    const [data, assets] = await Promise.all([
+      base44.entities.ApolloOutreachCampaign.list('-launchDate', 500),
+      base44.entities.SalesAsset.list(),
+    ]);
     setCampaigns(data);
+    setSalesAssets(assets);
     setLoading(false);
   };
 
@@ -49,7 +54,7 @@ export default function OutreachAnalytics() {
         ) : (
           <>
             {view === 'input' && <InputView campaigns={campaigns} onRefresh={load} />}
-            {view === 'analytics' && <AnalyticsView campaigns={campaigns} />}
+            {view === 'analytics' && <AnalyticsView campaigns={campaigns} salesAssets={salesAssets} />}
           </>
         )}
       </div>
