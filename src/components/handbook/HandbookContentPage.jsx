@@ -4,7 +4,7 @@ import { format } from 'date-fns';
 import ReactQuill from 'react-quill';
 import { useAuth } from '@/lib/AuthContext';
 
-const ALLOWED_EDITORS = ['chris@eventwise.com', 'elena@eventwise.com'];
+const ALLOWED_EDITORS = ['chris@eventwise.com', 'elena@eventwise.com', 'sreeja@eventwise.com'];
 
 const QUILL_MODULES = {
   toolbar: [

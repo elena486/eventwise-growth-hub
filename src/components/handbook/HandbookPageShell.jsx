@@ -3,7 +3,7 @@ import { Pencil, Check, X, Trash2 } from 'lucide-react';
 import { format } from 'date-fns';
 import { useAuth } from '@/lib/AuthContext';
 
-const ALLOWED_EDITORS = ['chris@eventwise.com', 'elena@eventwise.com'];
+const ALLOWED_EDITORS = ['chris@eventwise.com', 'elena@eventwise.com', 'sreeja@eventwise.com'];
 
 /**
  * Shared shell for custom handbook pages.

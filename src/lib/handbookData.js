@@ -350,6 +350,156 @@ export const DEFAULT_HANDBOOK = {
       ],
     },
     {
+      id: 'product-qa', label: '📦 Product & QA', expanded: false,
+      pages: [
+        {
+          id: 'pqa-overview', title: 'Product Overview', type: 'content',
+          description: 'Internal knowledge base for the Eventwise platform — how it works, how it is tested, and where documentation lives.',
+          content: `<p>This section is the internal knowledge base for the Eventwise platform — covering how the product works, how it is tested, and where documentation lives. Owned by Sreeja (QA) with input from Chris on product direction.</p>`,
+          updatedAt: '2026-06-09',
+        },
+        {
+          id: 'pqa-user-guides', title: 'User Guides', type: 'link',
+          description: 'Internal platform guides for the Eventwise team — for reference when supporting clients or onboarding. Not shared directly with clients — Martinique uses these to answer client questions.',
+          links: [
+            { id: 1, label: 'Budget Creation Guide →', url: '', note: '' },
+            { id: 2, label: 'Event Creation Guide →', url: '', note: '' },
+            { id: 3, label: 'Purchasing & Purchase Orders Guide →', url: '', note: '' },
+            { id: 4, label: 'Ticket Revenue & Integrations Guide →', url: '', note: '' },
+            { id: 5, label: 'Approval Workflows Guide →', url: '', note: '' },
+            { id: 6, label: 'Reporting & Budget vs Actuals Guide →', url: '', note: '' },
+            { id: 7, label: 'Organisation Dashboard Guide →', url: '', note: '' },
+            { id: 8, label: 'Xero Integration Guide →', url: '', note: '' },
+            { id: 9, label: 'User Roles & Permissions Guide →', url: '', note: '' },
+          ],
+          footerNote: '⚠️ These guides are in development. Add Google Doc or PDF links as each guide is completed. Sreeja to review each guide for technical accuracy.',
+          footerNoteType: 'amber',
+          updatedAt: '2026-06-09',
+        },
+        {
+          id: 'pqa-qa-process', title: 'QA Process', type: 'content',
+          description: 'How QA testing works at Eventwise — Sreeja\'s process, responsibilities, and standards.',
+          content: `<h2>Overview</h2>
+<p>QA is owned by Sreeja. All new features and bug fixes must pass QA before being marked as released. The Bug Tracker in Customer Success > Bug Tracker is the live record of all identified and client-reported bugs.</p>
+
+<h2>Testing Cadence</h2>
+<ul>
+<li><strong>Weekly regression testing:</strong> 20 test cases minimum per week, submitted via the Sprints tab every Monday</li>
+<li><strong>New feature testing:</strong> triggered when Chris flags a new build — Sreeja tests before it goes live</li>
+<li><strong>Bug verification:</strong> when a bug is marked resolved by the dev team, Sreeja verifies the fix before closing the bug record in the Bug Tracker</li>
+</ul>
+
+<h2>Test Environments</h2>
+<p><em>[Add test environment URLs here]</em></p>
+
+<h2>What Counts as a Bug</h2>
+<ul>
+<li><strong>Critical:</strong> platform unusable, data loss, incorrect financial calculations, broken integrations (Xero, ticket sellers)</li>
+<li><strong>High:</strong> key feature broken, incorrect data display, broken flow</li>
+<li><strong>Medium:</strong> UI glitch, non-critical feature broken, poor UX</li>
+<li><strong>Low:</strong> cosmetic issue, minor copy error, edge case</li>
+</ul>
+
+<h2>Reporting a Bug</h2>
+<p>All bugs go into CS > Bug Tracker. Set the client if client-reported, set priority, add full steps to reproduce. Sreeja is assigned on all new bugs automatically.</p>`,
+          updatedAt: '2026-06-09',
+        },
+        {
+          id: 'pqa-test-cases', title: 'Test Cases', type: 'content',
+          description: 'Living document of test cases Sreeja runs weekly. Updated as new features are added.',
+          content: `<h2>Core Test Areas</h2>
+
+<h3>Authentication &amp; Access</h3>
+<ul>
+<li>Login / logout works correctly</li>
+<li>User roles and permissions applied correctly</li>
+<li>Password reset flow works</li>
+</ul>
+
+<h3>Budget Management</h3>
+<ul>
+<li>Create a new budget</li>
+<li>Add cost lines and departments</li>
+<li>Edit and delete budget lines</li>
+<li>Budget totals calculate correctly</li>
+</ul>
+
+<h3>Approval Workflows</h3>
+<ul>
+<li>Raise a purchase request</li>
+<li>Approve and decline a request</li>
+<li>Budget updates correctly after approval</li>
+<li>Approval notifications send correctly</li>
+</ul>
+
+<h3>Ticket Revenue</h3>
+<ul>
+<li>Eventbrite integration syncs correctly</li>
+<li>Skiddle integration syncs correctly</li>
+<li>Revenue figures update in live budget</li>
+</ul>
+
+<h3>Xero Integration</h3>
+<ul>
+<li>POs sync to Xero bills</li>
+<li>Account codes map correctly</li>
+<li>Payments sync correctly</li>
+</ul>
+
+<h3>Reporting</h3>
+<ul>
+<li>Budget vs actuals report generates correctly</li>
+<li>Department breakdown is accurate</li>
+<li>Export functions work</li>
+</ul>
+
+<p><em>Note: Sreeja to add new test cases whenever a new feature is shipped by Chris.</em></p>`,
+          updatedAt: '2026-06-09',
+        },
+        {
+          id: 'pqa-release-notes', title: 'Release Notes', type: 'content',
+          description: 'A log of what has been released and when. Sreeja updates this after each release is verified.',
+          content: `<h2>Format for Each Entry</h2>
+<p><strong>[Version / Date]</strong><br/>
+What was released: [description]<br/>
+Tested by: Sreeja<br/>
+Released by: Chris<br/>
+Known issues at release: [any known bugs]<br/>
+Status: Live ✓</p>
+
+<p><em>[Sreeja to add entries here as releases happen — most recent at top]</em></p>`,
+          updatedAt: '2026-06-09',
+        },
+        {
+          id: 'pqa-known-issues', title: 'Known Issues & Workarounds', type: 'content',
+          description: 'Current known platform issues and internal workarounds. Maintained by Sreeja for the team\'s awareness.',
+          content: `<p>This page documents known issues the team may encounter, with workarounds until a fix is deployed. When a fix is released and verified by Sreeja, move the item to Release Notes and remove it from here.</p>
+
+<h2>Format</h2>
+<p><strong>Issue:</strong> [Description]<br/>
+<strong>Affects:</strong> [Which features or clients]<br/>
+<strong>Internal workaround:</strong> [What the team should do in the meantime]<br/>
+<strong>Priority:</strong> Critical / High / Medium / Low<br/>
+<strong>Fix status:</strong> In development / Awaiting prioritisation</p>
+
+<p><em>[Sreeja to populate as issues are identified]</em></p>`,
+          updatedAt: '2026-06-09',
+        },
+        {
+          id: 'pqa-dev-contacts', title: 'Dev Contacts & Resources', type: 'link',
+          description: 'Technical contacts and external resources for the development team.',
+          links: [
+            { id: 1, label: 'Platform Architecture Doc →', url: '', note: '' },
+            { id: 2, label: 'API Documentation →', url: '', note: '' },
+            { id: 3, label: 'Xero Integration Specs →', url: '', note: '' },
+            { id: 4, label: 'Ticket Seller Integration Specs →', url: '', note: '' },
+          ],
+          contactsNote: 'Matt Hadfield — Senior Software Developer, Synergitech — matt@synergitech.co.uk\nChris Carter — Product direction — chris@eventwise.com',
+          updatedAt: '2026-06-09',
+        },
+      ],
+    },
+    {
       id: 'links', label: '🔗 Links & Assets', expanded: false,
       pages: [
         {
