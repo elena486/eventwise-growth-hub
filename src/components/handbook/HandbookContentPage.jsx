@@ -18,9 +18,9 @@ const QUILL_MODULES = {
 
 const QUILL_FORMATS = ['header', 'bold', 'italic', 'underline', 'list', 'bullet', 'link'];
 
-export default function HandbookContentPage({ section, page, onUpdate, onDelete }) {
+export default function HandbookContentPage({ section, page, onUpdate, onDelete, allowEdit }) {
   const { user } = useAuth();
-  const canEdit = ALLOWED_EDITORS.includes(user?.email?.toLowerCase());
+  const canEdit = allowEdit || ALLOWED_EDITORS.includes(user?.email?.toLowerCase());
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState('');
   const [titleDraft, setTitleDraft] = useState('');
