@@ -58,12 +58,15 @@ export const MEMBERS = [
     questions: [
       { id: 'q1', label: 'New leads added this week', type: 'number' },
       { id: 'q2', label: 'Responses received', type: 'number' },
+      { id: 'q2b', label: 'LinkedIn connections sent', type: 'number' },
+      { id: 'q2c', label: 'LinkedIn replies received', type: 'number' },
+      { id: 'q2d', label: 'Messaging angle tested this week', type: 'text', placeholder: 'What approach did you try this week...' },
       { id: 'q3', label: 'Meetings booked', type: 'number' },
       { id: 'q4', label: 'What worked best this week', type: 'text', placeholder: 'One sentence...' },
     ],
     kpi1: { questionId: 'q1', label: 'New leads', target: 50, unit: '' },
     kpi2: { questionId: 'q3', label: 'Meetings booked', target: 5, unit: '' },
-    qualitativeIds: ['q4'],
+    qualitativeIds: ['q2d', 'q4'],
     duplicateLastMonth: false,
   },
   {
