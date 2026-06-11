@@ -237,7 +237,7 @@ export default function Handbook({ onNavigate }) {
 
       <div className="flex-1 overflow-hidden flex">
         {activePage ? (() => {
-          const isOpenSection = activeSection.id === 'product-qa';
+          const isOpenSection = activeSection.id === 'product-qa' || activeSection.id === 'links';
           const props = {
             key: activePage.id,
             section: activeSection,
