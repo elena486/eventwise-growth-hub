@@ -2,13 +2,9 @@ import React, { useState } from 'react';
 import { Pencil, Check, X, Trash2, ExternalLink, Plus, AlertTriangle } from 'lucide-react';
 import { format } from 'date-fns';
 import { INTERNAL_NAV } from '@/lib/handbookData';
-import { useAuth } from '@/lib/AuthContext';
-
-const ALLOWED_EDITORS = ['chris@eventwise.com', 'elena@eventwise.com', 'sreeja@eventwise.com'];
 
 export default function HandbookLinkPage({ section, page, onUpdate, onDelete, onNavigate, allowEdit }) {
-  const { user } = useAuth();
-  const canEdit = allowEdit || ALLOWED_EDITORS.includes(user?.email?.toLowerCase());
+  const canEdit = !!allowEdit;
   const [editing, setEditing] = useState(false);
   const [editLinks, setEditLinks] = useState([]);
   const [titleDraft, setTitleDraft] = useState('');

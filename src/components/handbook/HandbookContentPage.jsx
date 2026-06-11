@@ -4,7 +4,7 @@ import { format } from 'date-fns';
 import ReactQuill from 'react-quill';
 import { useAuth } from '@/lib/AuthContext';
 
-const ALLOWED_EDITORS = ['chris@eventwise.com', 'elena@eventwise.com', 'sreeja@eventwise.com'];
+const ALLOWED_EDITORS = ['chris@eventwise.com', 'elena@eventwise.com', 'sreeja@eventwise.com', 'george@eventwise.com', 'ramesh@eventwise.com', 'martinique@eventwise.com'];
 
 const QUILL_MODULES = {
   toolbar: [
@@ -20,7 +20,7 @@ const QUILL_FORMATS = ['header', 'bold', 'italic', 'underline', 'list', 'bullet'
 
 export default function HandbookContentPage({ section, page, onUpdate, onDelete, allowEdit }) {
   const { user } = useAuth();
-  const canEdit = allowEdit || ALLOWED_EDITORS.includes(user?.email?.toLowerCase());
+  const canEdit = !!allowEdit || ALLOWED_EDITORS.includes(user?.email?.toLowerCase());
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState('');
   const [titleDraft, setTitleDraft] = useState('');
