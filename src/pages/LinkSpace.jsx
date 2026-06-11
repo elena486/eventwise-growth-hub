@@ -21,13 +21,6 @@ const EMPTY_FORM = { name: '', url: '', category: 'Booking', owner: 'Shared', de
 const ic = 'w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#8403C5]/20 bg-white';
 const labelCls = 'block text-[11px] font-semibold text-gray-400 uppercase tracking-[0.08em] mb-1';
 
-function canEdit(user) {
-  if (!user) return false;
-  const name = (user.full_name || '').toLowerCase();
-  const email = (user.email || '').toLowerCase();
-  return name.includes('chris') || name.includes('elena') || email.includes('chris') || email.includes('elena') || user.role === 'admin';
-}
-
 export default function LinkSpace({ user }) {
   const [links, setLinks] = useState(INITIAL_LINKS);
   const [showForm, setShowForm] = useState(false);
@@ -37,7 +30,7 @@ export default function LinkSpace({ user }) {
   const [deleteConfirm, setDeleteConfirm] = useState(null);
   const [filterCat, setFilterCat] = useState('All');
 
-  const editable = canEdit(user);
+  const editable = !!user;
 
   const grouped = CATEGORIES.reduce((acc, cat) => {
     const items = links.filter(l =>
