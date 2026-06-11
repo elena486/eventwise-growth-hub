@@ -20,7 +20,11 @@ const QUILL_FORMATS = ['header', 'bold', 'italic', 'underline', 'list', 'bullet'
 
 export default function HandbookContentPage({ section, page, onUpdate, onDelete, allowEdit }) {
   const { user } = useAuth();
-  const canEdit = !!allowEdit || ALLOWED_EDITORS.includes(user?.email?.toLowerCase());
+  // allowEdit=true means the section is open to all users (e.g. Links section)
+  // otherwise fall back to the whitelist
+  // allowEdit=true means section is open to ALL logged-in users (e.g. Links section)
+  // otherwise fall back to the specific whitelist
+  const canEdit = (allowEdit === true && !!user) || ALLOWED_EDITORS.includes(user?.email?.toLowerCase());
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState('');
   const [titleDraft, setTitleDraft] = useState('');
