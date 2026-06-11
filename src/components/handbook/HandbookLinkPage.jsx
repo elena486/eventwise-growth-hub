@@ -1,16 +1,18 @@
 import React, { useState } from 'react';
-import { Pencil, Check, X, Trash2, ExternalLink, Plus, AlertTriangle } from 'lucide-react';
+import { Pencil, Check, X, Trash2, ExternalLink, Plus, AlertTriangle, Copy, CheckCheck } from 'lucide-react';
 import { format } from 'date-fns';
 import { INTERNAL_NAV } from '@/lib/handbookData';
 
 export default function HandbookLinkPage({ section, page, onUpdate, onDelete, onNavigate, allowEdit }) {
-  const canEdit = !!allowEdit;
+  // Links pages are always editable by all users
+  const canEdit = true;
   const [editing, setEditing] = useState(false);
   const [editLinks, setEditLinks] = useState([]);
   const [titleDraft, setTitleDraft] = useState('');
   const [descDraft, setDescDraft] = useState('');
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [deleteLinkConfirm, setDeleteLinkConfirm] = useState(null);
+  const [copiedId, setCopiedId] = useState(null);
 
   const fmtDate = (d) => { try { return format(new Date(d), 'd MMM yyyy'); } catch { return d; } };
 
@@ -58,6 +60,14 @@ export default function HandbookLinkPage({ section, page, onUpdate, onDelete, on
     }
   };
 
+  const copyToClipboard = async (url, id) => {
+    try {
+      await navigator.clipboard.writeText(url);
+      setCopiedId(id);
+      setTimeout(() => setCopiedId(null), 2000);
+    } catch {}
+  };
+
   return (
     <div className="flex-1 overflow-y-auto bg-[#F7F8FC] p-8">
       <div className="max-w-3xl mx-auto">
@@ -100,7 +110,7 @@ export default function HandbookLinkPage({ section, page, onUpdate, onDelete, on
               {page.updatedAt && !editing && (
                 <span className="text-[12px] text-[#9CA3AF] hidden sm:block">Updated {fmtDate(page.updatedAt)}</span>
               )}
-              {canEdit && (editing ? (
+              {editing ? (
                 <>
                   <button onClick={saveEdit}
                     className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold bg-[#8403C5] text-white rounded-lg hover:bg-[#7002A8] transition-colors">
@@ -122,7 +132,7 @@ export default function HandbookLinkPage({ section, page, onUpdate, onDelete, on
                     <Trash2 className="w-3.5 h-3.5" />
                   </button>
                 </>
-              ))}
+              )}
             </div>
           </div>
           <hr className="border-ew-border mt-4" />
@@ -180,33 +190,56 @@ export default function HandbookLinkPage({ section, page, onUpdate, onDelete, on
               )}
               {(page.links || []).map(link => (
                 <div key={link.id}>
-                  {isInternal(link.url) ? (
-                    <button
-                      onClick={() => handleLinkClick(link.url)}
-                      className="w-full flex items-center justify-between px-4 py-3.5 border border-[#8403C5] text-[#8403C5] rounded-xl text-[14px] font-medium hover:bg-[#8403C5] hover:text-white transition-all group"
-                    >
-                      <span>{link.label}</span>
-                      <ExternalLink className="w-4 h-4 opacity-60 group-hover:opacity-100" />
-                    </button>
-                  ) : link.url ? (
-                    <a
-                      href={link.url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="w-full flex items-center justify-between px-4 py-3.5 border border-[#8403C5] text-[#8403C5] rounded-xl text-[14px] font-medium hover:bg-[#8403C5] hover:text-white transition-all group"
-                    >
-                      <span>{link.label}</span>
-                      <ExternalLink className="w-4 h-4 opacity-60 group-hover:opacity-100" />
-                    </a>
-                  ) : (
-                    <button
-                      disabled
-                      className="w-full flex items-center justify-between px-4 py-3.5 border border-ew-border text-[#9CA3AF] rounded-xl text-[14px] cursor-not-allowed opacity-60"
-                    >
-                      <span>URL not set — click Edit links to add</span>
-                      <ExternalLink className="w-4 h-4 opacity-40" />
-                    </button>
+                  <div className="flex items-stretch gap-2">
+                    {/* Main link button */}
+                    {isInternal(link.url) ? (
+                      <button
+                        onClick={() => handleLinkClick(link.url)}
+                        className="flex-1 flex items-center justify-between px-4 py-3.5 border border-[#8403C5] text-[#8403C5] rounded-xl text-[14px] font-medium hover:bg-[#8403C5] hover:text-white transition-all group"
+                      >
+                        <span>{link.label}</span>
+                        <ExternalLink className="w-4 h-4 opacity-60 group-hover:opacity-100" />
+                      </button>
+                    ) : link.url ? (
+                      <a
+                        href={link.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex-1 flex items-center justify-between px-4 py-3.5 border border-[#8403C5] text-[#8403C5] rounded-xl text-[14px] font-medium hover:bg-[#8403C5] hover:text-white transition-all group"
+                      >
+                        <span>{link.label}</span>
+                        <ExternalLink className="w-4 h-4 opacity-60 group-hover:opacity-100" />
+                      </a>
+                    ) : (
+                      <button
+                        disabled
+                        className="flex-1 flex items-center justify-between px-4 py-3.5 border border-ew-border text-[#9CA3AF] rounded-xl text-[14px] cursor-not-allowed opacity-60"
+                      >
+                        <span>URL not set — click Edit links to add</span>
+                        <ExternalLink className="w-4 h-4 opacity-40" />
+                      </button>
+                    )}
+
+                    {/* Copy URL button — only shown when there's a real external URL */}
+                    {link.url && !isInternal(link.url) && (
+                      <button
+                        onClick={() => copyToClipboard(link.url, link.id)}
+                        title="Copy URL"
+                        className="flex items-center justify-center px-3 border border-ew-border rounded-xl text-ew-muted hover:text-[#8403C5] hover:border-[#8403C5] transition-colors shrink-0"
+                      >
+                        {copiedId === link.id
+                          ? <CheckCheck className="w-4 h-4 text-green-600" />
+                          : <Copy className="w-4 h-4" />
+                        }
+                      </button>
+                    )}
+                  </div>
+
+                  {/* URL display for easy reading/copying */}
+                  {link.url && !isInternal(link.url) && (
+                    <p className="text-[11px] text-[#9CA3AF] px-1 mt-1 truncate select-all" title={link.url}>{link.url}</p>
                   )}
+
                   {link.note && (
                     <div className={`mt-1.5 flex items-start gap-2 px-3 py-2 rounded-lg text-xs ${link.note.startsWith('⚠️') ? 'bg-amber-50 text-amber-700 border border-amber-200' : 'bg-ew-bg text-ew-muted'}`}>
                       {link.note.startsWith('⚠️') && <AlertTriangle className="w-3.5 h-3.5 shrink-0 mt-0.5" />}
