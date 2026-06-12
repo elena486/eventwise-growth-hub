@@ -11,7 +11,7 @@ import TeamPage from '@/components/handbook/pages/TeamPage';
 
 const STORAGE_KEY = 'handbook_v2';
 
-export default function Handbook({ onNavigate }) {
+export default function Handbook({ onNavigate, focusWikiPage, onFocusConsumed }) {
   const [hb, setHb] = useState(null);
   const [activeSectionId, setActiveSectionId] = useState('company');
   const [activePageId, setActivePageId] = useState('about');
@@ -208,6 +208,15 @@ export default function Handbook({ onNavigate }) {
   const handleInternalNavigate = (tab) => {
     if (onNavigate) onNavigate(tab);
   };
+
+  // Focus wiki page from global search
+  useEffect(() => {
+    if (!focusWikiPage || !loaded || !hb) return;
+    const { pageId, sectionId } = focusWikiPage;
+    if (pageId) setActivePageId(pageId);
+    if (sectionId) setActiveSectionId(sectionId);
+    onFocusConsumed?.();
+  }, [focusWikiPage, loaded, hb]);
 
   if (!loaded || !hb) {
     return (

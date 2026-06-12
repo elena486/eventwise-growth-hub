@@ -87,7 +87,7 @@ function HealthCell({ client }) {
   );
 }
 
-export default function Clients({ onViewHealth, onViewOnboarding, onViewDetail, onOpenFullPanel }) {
+export default function Clients({ onViewHealth, onViewOnboarding, onViewDetail, onOpenFullPanel, focusClientId, onFocusConsumed }) {
   const [clients, setClients] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState('All');
@@ -107,6 +107,21 @@ export default function Clients({ onViewHealth, onViewOnboarding, onViewDetail, 
   };
 
   useEffect(() => { load(); }, []);
+
+  // Focus client from global search
+  useEffect(() => {
+    if (!focusClientId || !onOpenFullPanel) return;
+    base44.entities.Client.get(focusClientId).then(client => {
+      if (client) {
+        setClients(prev => {
+          const exists = prev.find(c => c.id === client.id);
+          return exists ? prev : [client, ...prev];
+        });
+        onOpenFullPanel(client, clients);
+      }
+      onFocusConsumed?.();
+    }).catch(() => onFocusConsumed?.());
+  }, [focusClientId]);
 
   const handleUpdateField = async (id, field, value) => {
     setClients(prev => prev.map(c => c.id === id ? { ...c, [field]: value } : c));

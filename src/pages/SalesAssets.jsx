@@ -228,7 +228,7 @@ function TypeSection({ type, items, onEdit, onDelete, onView, onLinkSaved }) {
   );
 }
 
-export default function SalesAssets() {
+export default function SalesAssets({ focusAssetId, onFocusConsumed }) {
   const [assets, setAssets] = useState([]);
   const [loading, setLoading] = useState(true);
   const [view, setView] = useState('grid');
@@ -265,6 +265,21 @@ export default function SalesAssets() {
   };
 
   useEffect(() => { load(); }, []);
+
+  // Focus asset from global search
+  useEffect(() => {
+    if (!focusAssetId) return;
+    base44.entities.SalesAsset.get(focusAssetId).then(asset => {
+      if (asset) {
+        setAssets(prev => {
+          const exists = prev.find(a => a.id === asset.id);
+          return exists ? prev : [asset, ...prev];
+        });
+        setDetailAsset(asset);
+      }
+      onFocusConsumed?.();
+    }).catch(() => onFocusConsumed?.());
+  }, [focusAssetId]);
 
   const handleSaved = (saved) => {
     setAssets(prev => {

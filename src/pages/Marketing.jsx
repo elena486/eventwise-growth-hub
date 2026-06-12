@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import MarketingReporting from '@/components/marketing/MarketingReporting';
 import ContentHubMain from '@/components/marketing/ContentHubMain';
 import DinnerRoadshow from '@/components/marketing/DinnerRoadshow';
@@ -9,8 +9,15 @@ const TABS = [
   { id: 'dinner', label: '🍽 Dinner Roadshow' },
 ];
 
-export default function Marketing() {
+export default function Marketing({ focusContentId, onFocusConsumed }) {
   const [tab, setTab] = useState('reporting');
+
+  // Focus content from global search
+  useEffect(() => {
+    if (!focusContentId) return;
+    setTab('content');
+    onFocusConsumed?.();
+  }, [focusContentId]);
 
   return (
     <div className="flex flex-col flex-1 overflow-hidden font-dm">
@@ -24,7 +31,7 @@ export default function Marketing() {
       </div>
       <div className="flex-1 overflow-hidden flex">
         {tab === 'reporting' && <MarketingReporting />}
-        {tab === 'content' && <ContentHubMain />}
+        {tab === 'content' && <ContentHubMain focusContentId={focusContentId} onFocusConsumed={onFocusConsumed} />}
         {tab === 'dinner' && <DinnerRoadshow />}
       </div>
     </div>

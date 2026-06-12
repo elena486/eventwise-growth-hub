@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import RequestForm from '@/components/requests/RequestForm';
 import RequestBoard from '@/components/requests/RequestBoard';
 
@@ -7,9 +7,19 @@ const TABS = [
   { id: 'board', label: 'Company To-Do Board' },
 ];
 
-export default function Requests() {
+export default function Requests({ focusRequestId, onFocusConsumed }) {
   const [tab, setTab] = useState('form');
   const [boardRefresh, setBoardRefresh] = useState(0);
+
+  // Focus request from global search
+  useEffect(() => {
+    if (!focusRequestId) return;
+    setTab('board');
+    setBoardRefresh(n => n + 1);
+    // Store the focused request ID so RequestBoard can pick it up
+    sessionStorage.setItem('focus_request_id', focusRequestId);
+    onFocusConsumed?.();
+  }, [focusRequestId]);
 
   const handleSubmitted = () => {
     setBoardRefresh(n => n + 1);

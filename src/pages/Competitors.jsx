@@ -50,7 +50,7 @@ function trunc(str, len = 60) {
   return str.length > len ? str.slice(0, len) + '…' : str;
 }
 
-export default function Competitors() {
+export default function Competitors({ focusCompetitorId, onFocusConsumed }) {
   const [competitors, setCompetitors] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -73,6 +73,21 @@ export default function Competitors() {
   };
 
   useEffect(() => { load(); }, []);
+
+  // Focus competitor from global search
+  useEffect(() => {
+    if (!focusCompetitorId) return;
+    base44.entities.Competitor.get(focusCompetitorId).then(comp => {
+      if (comp) {
+        setCompetitors(prev => {
+          const exists = prev.find(c => c.id === comp.id);
+          return exists ? prev : [comp, ...prev];
+        });
+        setDetailCompetitor(comp);
+      }
+      onFocusConsumed?.();
+    }).catch(() => onFocusConsumed?.());
+  }, [focusCompetitorId]);
 
   const handleSaved = (saved) => {
     setCompetitors(prev => {

@@ -39,7 +39,7 @@ function getMonthOptions() {
   return opts;
 }
 
-export default function Pipeline({ onProposalHandoff, onViewDeals }) {
+export default function Pipeline({ onProposalHandoff, onViewDeals, focusLeadId, onFocusConsumed }) {
   const [leads, setLeads] = useState([]);
   const [loading, setLoading] = useState(true);
   const [stageFilter, setStageFilter] = useState(null);
@@ -72,6 +72,21 @@ export default function Pipeline({ onProposalHandoff, onViewDeals }) {
       setLoading(false);
     });
   }, []);
+
+  // Focus lead from global search
+  useEffect(() => {
+    if (!focusLeadId) return;
+    base44.entities.Lead.get(focusLeadId).then(lead => {
+      if (lead) {
+        setLeads(prev => {
+          const exists = prev.find(l => l.id === lead.id);
+          return exists ? prev : [lead, ...prev];
+        });
+        setSelectedLead(lead);
+      }
+      onFocusConsumed?.();
+    }).catch(() => onFocusConsumed?.());
+  }, [focusLeadId]);
 
   // Listen for undo restore events
   useEffect(() => {

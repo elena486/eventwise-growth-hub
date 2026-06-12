@@ -29,7 +29,7 @@ function fmtDate(d) {
   try { return format(new Date(d), 'd MMM yyyy'); } catch { return d; }
 }
 
-export default function BugTracker() {
+export default function BugTracker({ focusBugId, onFocusConsumed }) {
   const [bugs, setBugs] = useState([]);
   const [clients, setClients] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -49,6 +49,21 @@ export default function BugTracker() {
   };
 
   useEffect(() => { load(); }, []);
+
+  // Focus bug from global search
+  useEffect(() => {
+    if (!focusBugId) return;
+    base44.entities.Bug.get(focusBugId).then(bug => {
+      if (bug) {
+        setBugs(prev => {
+          const exists = prev.find(b => b.id === bug.id);
+          return exists ? prev : [bug, ...prev];
+        });
+        setSelected(bug);
+      }
+      onFocusConsumed?.();
+    }).catch(() => onFocusConsumed?.());
+  }, [focusBugId]);
 
   const handleAdd = async () => {
     const nextNum = bugs.length > 0 ? Math.max(...bugs.map(b => b.bugNumber || 0)) + 1 : 1;

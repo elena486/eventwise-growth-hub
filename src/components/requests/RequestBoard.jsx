@@ -30,6 +30,22 @@ export default function RequestBoard({ refresh }) {
 
   useEffect(() => { load(); }, [refresh]);
 
+  // Focus request from global search
+  useEffect(() => {
+    const focusId = sessionStorage.getItem('focus_request_id');
+    if (!focusId) return;
+    sessionStorage.removeItem('focus_request_id');
+    base44.entities.Request.get(focusId).then(req => {
+      if (req) {
+        setRequests(prev => {
+          const exists = prev.find(r => r.id === req.id);
+          return exists ? prev : [req, ...prev];
+        });
+        setSelectedReq(req);
+      }
+    }).catch(() => {});
+  }, [refresh]);
+
   const handleUpdate = async (id, field, value) => {
     setRequests(prev => prev.map(r => r.id === id ? { ...r, [field]: value } : r));
     await base44.entities.Request.update(id, { [field]: value });

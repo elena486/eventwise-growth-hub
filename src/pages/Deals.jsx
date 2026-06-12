@@ -137,7 +137,7 @@ function ChurnModal({ deal, onClose, onChurned }) {
   );
 }
 
-export default function Deals({ onRenewalProposal, onViewClient, onNavigate }) {
+export default function Deals({ onRenewalProposal, onViewClient, onNavigate, focusDealId, onFocusConsumed }) {
   const [deals, setDeals] = useState([]);
   const [clients, setClients] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -163,6 +163,22 @@ export default function Deals({ onRenewalProposal, onViewClient, onNavigate }) {
   };
 
   useEffect(() => { load(); }, []);
+
+  // Focus deal from global search
+  useEffect(() => {
+    if (!focusDealId) return;
+    base44.entities.Deal.get(focusDealId).then(deal => {
+      if (deal) {
+        setDeals(prev => {
+          const exists = prev.find(d => d.id === deal.id);
+          return exists ? prev : [deal, ...prev];
+        });
+        if (deal.status === 'Churned') setFilter('Churned');
+        setSelectedDeal(deal);
+      }
+      onFocusConsumed?.();
+    }).catch(() => onFocusConsumed?.());
+  }, [focusDealId]);
 
   const handleUpdateField = async (id, field, value) => {
     const deal = deals.find(d => d.id === id);

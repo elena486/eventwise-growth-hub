@@ -8,7 +8,7 @@ import { base44 } from '@/api/base44Client';
 
 const TABS = ['Content', 'PR Coverage', 'Lead Magnets'];
 
-export default function ContentHubMain() {
+export default function ContentHubMain({ focusContentId, onFocusConsumed }) {
   const [tab, setTab] = useState('Content');
   const [calendarView, setCalendarView] = useState(false);
   const [analyticsView, setAnalyticsView] = useState(false);
@@ -22,6 +22,16 @@ export default function ContentHubMain() {
       base44.entities.ContentItem.list('-publishDate', 300).then(setItems);
     }
   }, [isContent]);
+
+  // Focus content from global search
+  useEffect(() => {
+    if (!focusContentId) return;
+    setTab('Content');
+    base44.entities.ContentItem.get(focusContentId).then(item => {
+      if (item) setSelectedItem(item);
+      onFocusConsumed?.();
+    }).catch(() => onFocusConsumed?.());
+  }, [focusContentId]);
 
   const handleOpenItem = (item) => {
     setAnalyticsView(false);

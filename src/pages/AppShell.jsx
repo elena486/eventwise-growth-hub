@@ -27,10 +27,11 @@ import ClientFullPanel from '@/components/clients/ClientFullPanel';
 import { useDarkMode } from '@/hooks/useDarkMode';
 import useAutoRefresh from '@/hooks/useAutoRefresh';
 import AutoRefreshToast from '@/components/AutoRefreshToast';
-import { Moon, Sun, LogOut, ChevronDown, Settings } from 'lucide-react';
+import { Moon, Sun, LogOut, ChevronDown, Settings, Search } from 'lucide-react';
 import NotificationBell from '@/components/NotificationBell';
 import PostRefreshBanner from '@/components/PostRefreshBanner';
 import FirstVisitModal from '@/components/FirstVisitModal';
+import GlobalSearch from '@/components/GlobalSearch';
 import { base44 } from '@/api/base44Client';
 
 const GROUPS = [
@@ -90,6 +91,10 @@ export default function AppShell() {
   const [notificationPanelOpen, setNotificationPanelOpen] = useState(false);
   const postRefreshBannerTimer = useRef(null);
 
+  // Global search state
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [searchFocus, setSearchFocus] = useState(null);
+
   const LAST_READ_KEY = 'changelog_last_read';
 
   const getLastRead = useCallback(() => parseInt(localStorage.getItem(LAST_READ_KEY) || '0', 10), []);
@@ -146,6 +151,24 @@ export default function AppShell() {
     setPostRefreshBanner(false);
     setNotificationPanelOpen(true);
   };
+
+  // Cmd+K / Ctrl+K to open search
+  useEffect(() => {
+    const handler = (e) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+        e.preventDefault();
+        setSearchOpen(prev => !prev);
+      }
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, []);
+
+  const handleSearchNavigate = useCallback(({ tab, focusType, focusId, sectionId }) => {
+    setSearchFocus({ tab, focusType, focusId, sectionId });
+    setSearchParams({ tab });
+  }, [setSearchParams]);
+
   const avatarRef = useRef(null);
 
   const setTab = (t) => setSearchParams({ tab: t });
@@ -202,6 +225,16 @@ export default function AppShell() {
             <span className="w-px h-4 bg-white/20 inline-block" />
             <span className="text-[11px] text-white/50 font-medium tracking-widest uppercase">HQ</span>
           </div>
+
+          {/* Global search button */}
+          <button
+            onClick={() => setSearchOpen(true)}
+            className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-white/50 hover:text-white hover:bg-white/10 transition-all text-sm"
+            title="Search (Cmd+K)"
+          >
+            <Search className="w-4 h-4" />
+            <span className="hidden md:inline text-xs text-white/30 font-mono">⌘K</span>
+          </button>
 
           {/* Group tabs */}
           <div className="flex items-center gap-1 overflow-x-auto" style={{ scrollbarWidth: 'none' }}>
@@ -316,27 +349,35 @@ export default function AppShell() {
 
       {/* Content */}
       <div className="flex-1 overflow-hidden flex dark:bg-[#0F0F1A]">
-        {tab === 'pipeline' && <Pipeline onProposalHandoff={handleProposalHandoff} onViewDeals={() => setTab('deals')} />}
+        {tab === 'pipeline' && <Pipeline onProposalHandoff={handleProposalHandoff} onViewDeals={() => setTab('deals')} focusLeadId={searchFocus?.focusType === 'lead' ? searchFocus.focusId : null} onFocusConsumed={() => setSearchFocus(null)} />}
         {tab === 'proposal' && <ProposalGeneratorInner handoff={proposalHandoff} onHandoffConsumed={() => setProposalHandoff(null)} />}
-        {tab === 'clients' && <Clients onViewHealth={handleViewHealth} onViewOnboarding={handleViewOnboarding} onViewDetail={setDetailClient} onOpenFullPanel={(client, allClients) => { setFullPanelClient(client); setFullPanelClients(allClients || []); }} />}
+        {tab === 'clients' && <Clients onViewHealth={handleViewHealth} onViewOnboarding={handleViewOnboarding} onViewDetail={setDetailClient} onOpenFullPanel={(client, allClients) => { setFullPanelClient(client); setFullPanelClients(allClients || []); }} focusClientId={searchFocus?.focusType === 'client' ? searchFocus.focusId : null} onFocusConsumed={() => setSearchFocus(null)} />}
         {tab === 'onboarding' && <Onboarding focusClientId={focusClientId} />}
         {tab === 'health' && <HealthRenewals focusClientId={focusClientId} />}
         {tab === 'renewals' && <Renewals />}
-        {tab === 'deals' && <Deals onRenewalProposal={(data) => { handleProposalHandoff(data); }} onViewClient={(clientId) => { setTab('clients'); }} onNavigate={setTab} />}
+        {tab === 'deals' && <Deals onRenewalProposal={(data) => { handleProposalHandoff(data); }} onViewClient={(clientId) => { setTab('clients'); }} onNavigate={setTab} focusDealId={searchFocus?.focusType === 'deal' ? searchFocus.focusId : null} onFocusConsumed={() => setSearchFocus(null)} />}
         {tab === 'sprints' && <Sprints />}
-        {tab === 'marketing' && <Marketing />}
+        {tab === 'marketing' && <Marketing focusContentId={searchFocus?.focusType === 'content' ? searchFocus.focusId : null} onFocusConsumed={() => setSearchFocus(null)} />}
         {tab === 'mql' && <MQLTracker />}
-        {tab === 'handbook' && <Handbook onNavigate={(t) => setTab(t)} />}
-        {tab === 'requests' && <Requests />}
+        {tab === 'handbook' && <Handbook onNavigate={(t) => setTab(t)} focusWikiPage={searchFocus?.focusType === 'wiki' ? { pageId: searchFocus.focusId, sectionId: searchFocus.sectionId } : null} onFocusConsumed={() => setSearchFocus(null)} />}
+        {tab === 'requests' && <Requests focusRequestId={searchFocus?.focusType === 'request' ? searchFocus.focusId : null} onFocusConsumed={() => setSearchFocus(null)} />}
         {tab === 'hr' && <HR />}
-        {tab === 'competitors' && <Competitors />}
-        {tab === 'bugs' && <BugTracker />}
-        {tab === 'assets' && <SalesAssets />}
+        {tab === 'competitors' && <Competitors focusCompetitorId={searchFocus?.focusType === 'competitor' ? searchFocus.focusId : null} onFocusConsumed={() => setSearchFocus(null)} />}
+        {tab === 'bugs' && <BugTracker focusBugId={searchFocus?.focusType === 'bug' ? searchFocus.focusId : null} onFocusConsumed={() => setSearchFocus(null)} />}
+        {tab === 'assets' && <SalesAssets focusAssetId={searchFocus?.focusType === 'asset' ? searchFocus.focusId : null} onFocusConsumed={() => setSearchFocus(null)} />}
         {tab === 'outreach' && <OutreachAnalytics />}
         {tab === 'links' && <LinkSpace user={user} />}
         {tab === 'changelog' && <ChangelogView />}
         {tab === 'changelog-admin' && <ChangelogAdmin />}
       </div>
+
+      {/* Global search overlay */}
+      <GlobalSearch
+        open={searchOpen}
+        onClose={() => setSearchOpen(false)}
+        onNavigate={handleSearchNavigate}
+      />
+
       {detailClient && (
         <ClientDetailPanel
           client={detailClient}
