@@ -8,7 +8,7 @@ Deno.serve(async (req) => {
 
     const payload = await req.json();
 
-    await fetch('https://eventwise-slack-bot.onrender.com/webhooks/base44', {
+    const res = await fetch('https://eventwise-slack-bot.onrender.com/webhooks/base44', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -17,7 +17,11 @@ Deno.serve(async (req) => {
       body: JSON.stringify(payload),
     });
 
-    return Response.json({ ok: true });
+    const resText = await res.text();
+    console.log('Slack bot response status:', res.status);
+    console.log('Slack bot response body:', resText);
+
+    return Response.json({ ok: true, slackStatus: res.status, slackResponse: resText });
   } catch (error) {
     return Response.json({ error: error.message }, { status: 500 });
   }
