@@ -43,6 +43,8 @@ export const MEMBERS = [
       { id: 'q2', label: 'Leads qualified / sales-ready (SQLs)', type: 'number' },
       { id: 'q3', label: 'LinkedIn impressions growth % vs last week', type: 'number', suffix: '%' },
       { id: 'q4', label: 'Content or campaigns published', type: 'number', targetLabel: '4 target' },
+      { id: 'q_website', label: 'Website sessions this week', type: 'number', targetLabel: '150 target' },
+      { id: 'q_shipped', label: 'One thing shipped this week', type: 'text', placeholder: 'A process, tool, asset, or update completed this week...' },
       { id: 'q5', label: 'Confidence (1–5)', type: 'confidence' },
       { id: 'q6', label: 'Blocker (optional)', type: 'text', placeholder: 'Describe any blockers...' },
     ],
