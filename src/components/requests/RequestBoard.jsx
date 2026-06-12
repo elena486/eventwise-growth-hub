@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
+import { addRecentlyViewed } from '@/utils/recentlyViewed';
 import { format, isThisWeek, isThisMonth } from 'date-fns';
 import { Plus, Trash2, Check, X, LayoutList, Columns, Archive, Eye } from 'lucide-react';
 import InlineCell from '@/components/shared/InlineCell';
@@ -29,6 +30,19 @@ export default function RequestBoard({ refresh }) {
   };
 
   useEffect(() => { load(); }, [refresh]);
+
+  // Track recently viewed when request detail opens
+  useEffect(() => {
+    if (selectedReq) {
+      addRecentlyViewed({
+        type: 'request',
+        name: selectedReq.title || `Request #${selectedReq.requestNumber || '—'}`,
+        section: 'Operations → Team To Do',
+        tab: 'requests',
+        recordId: selectedReq.id,
+      });
+    }
+  }, [selectedReq]);
 
   // Focus request from global search
   useEffect(() => {

@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
+import { addRecentlyViewed } from '@/utils/recentlyViewed';
 import { format, differenceInDays, startOfMonth, endOfMonth } from 'date-fns';
 import { ChevronDown, ChevronRight, Pencil, RefreshCw, X, User, Trash2, Info, Download, Plus } from 'lucide-react';
 import { downloadCSV, fmtCsvDate, fmtCsvMoney, safe, todayStr } from '@/lib/csvExport';
@@ -163,6 +164,19 @@ export default function Deals({ onRenewalProposal, onViewClient, onNavigate, foc
   };
 
   useEffect(() => { load(); }, []);
+
+  // Track recently viewed when deal detail opens
+  useEffect(() => {
+    if (selectedDeal) {
+      addRecentlyViewed({
+        type: 'deal',
+        name: selectedDeal.clientName || 'Unnamed Deal',
+        section: 'Sales → Deals',
+        tab: 'deals',
+        recordId: selectedDeal.id,
+      });
+    }
+  }, [selectedDeal]);
 
   // Focus deal from global search
   useEffect(() => {

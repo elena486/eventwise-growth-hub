@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { base44 } from '@/api/base44Client';
+import { addRecentlyViewed } from '@/utils/recentlyViewed';
 import { DEFAULT_HANDBOOK } from '@/lib/handbookData';
 import HandbookSidebar from '@/components/handbook/HandbookSidebar';
 import HandbookContentPage from '@/components/handbook/HandbookContentPage';
@@ -208,6 +209,21 @@ export default function Handbook({ onNavigate, focusWikiPage, onFocusConsumed })
   const handleInternalNavigate = (tab) => {
     if (onNavigate) onNavigate(tab);
   };
+
+  // Track recently viewed when wiki page opens
+  useEffect(() => {
+    if (!loaded || !hb || !activePage) return;
+    const section = hb.sections.find(s => s.id === activeSectionId);
+    const sectionLabel = section?.label || 'Eventwise Wiki';
+    addRecentlyViewed({
+      type: 'wiki',
+      name: activePage.title || 'Untitled Page',
+      section: `Wiki → ${sectionLabel}`,
+      tab: 'handbook',
+      recordId: activePage.id,
+      sectionId: activeSectionId,
+    });
+  }, [activePageId, activeSectionId, loaded, hb]);
 
   // Focus wiki page from global search
   useEffect(() => {

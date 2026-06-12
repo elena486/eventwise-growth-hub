@@ -35,6 +35,7 @@ import GlobalSearch from '@/components/GlobalSearch';
 import KeyboardShortcutsModal from '@/components/KeyboardShortcutsModal';
 import useKeyboardShortcuts from '@/hooks/useKeyboardShortcuts';
 import { base44 } from '@/api/base44Client';
+import { getRecentlyViewed, addRecentlyViewed, clearRecentlyViewed, TYPE_META, formatRelativeTime } from '@/utils/recentlyViewed';
 
 const GROUPS = [
   { id: 'sales', label: 'Sales', tabs: [
@@ -92,6 +93,11 @@ export default function AppShell() {
   const [showFirstVisitModal, setShowFirstVisitModal] = useState(false);
   const [notificationPanelOpen, setNotificationPanelOpen] = useState(false);
   const postRefreshBannerTimer = useRef(null);
+
+  // HQ dropdown state
+  const [hqOpen, setHqOpen] = useState(false);
+  const hqRef = useRef(null);
+  const [recentItems, setRecentItems] = useState(() => getRecentlyViewed());
 
   // Global search state
   const [searchOpen, setSearchOpen] = useState(false);
@@ -153,6 +159,52 @@ export default function AppShell() {
     setPostRefreshBanner(false);
     setNotificationPanelOpen(true);
   };
+
+  // Close HQ dropdown on Escape
+  useEffect(() => {
+    const handler = (e) => { if (e.key === 'Escape' && hqOpen) setHqOpen(false); };
+    document.addEventListener('keydown', handler);
+    return () => document.removeEventListener('keydown', handler);
+  }, [hqOpen]);
+
+  // Close HQ dropdown on outside click
+  useEffect(() => {
+    const handler = (e) => {
+      if (hqRef.current && !hqRef.current.contains(e.target)) setHqOpen(false);
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, []);
+
+  // Refresh recent items list when dropdown opens
+  useEffect(() => {
+    if (hqOpen) setRecentItems(getRecentlyViewed());
+  }, [hqOpen]);
+
+  // Track recently viewed when AppShell-managed panels open
+  useEffect(() => {
+    if (detailClient) {
+      addRecentlyViewed({
+        type: 'client',
+        name: detailClient.name || 'Unnamed Client',
+        section: 'Customer Success → Clients',
+        tab: 'clients',
+        recordId: detailClient.id,
+      });
+    }
+  }, [detailClient]);
+
+  useEffect(() => {
+    if (fullPanelClient) {
+      addRecentlyViewed({
+        type: 'client',
+        name: fullPanelClient.name || 'Unnamed Client',
+        section: 'Customer Success → Clients',
+        tab: 'clients',
+        recordId: fullPanelClient.id,
+      });
+    }
+  }, [fullPanelClient]);
 
   // Keyboard shortcuts
   const { shortcutsModalOpen, setShortcutsModalOpen } = useKeyboardShortcuts({
@@ -221,11 +273,66 @@ export default function AppShell() {
       {/* Top nav */}
       <nav className="bg-[#242450] shrink-0 px-6 flex items-center justify-between h-14">
         <div className="flex items-center gap-6 min-w-0">
-          {/* Logo */}
-          <div className="flex items-center gap-2.5 shrink-0">
+          {/* Logo + HQ dropdown */}
+          <div className="relative flex items-center gap-2.5 shrink-0" ref={hqRef}>
             <img src={LOGO_WHITE} alt="Eventwise" className="h-4" />
             <span className="w-px h-4 bg-white/20 inline-block" />
-            <span className="text-[11px] text-white/50 font-medium tracking-widest uppercase">HQ</span>
+            <button
+              onClick={() => setHqOpen(o => !o)}
+              className="flex items-center gap-0.5 text-[11px] text-white/50 font-medium tracking-widest uppercase hover:text-white/80 hover:bg-white/10 px-2 py-1 rounded-md transition-colors"
+            >
+              HQ
+              <span className="text-[9px] leading-none mt-px">{hqOpen ? '▲' : '▼'}</span>
+            </button>
+            {hqOpen && (
+              <div className="absolute left-0 top-full mt-1.5 w-[280px] bg-white dark:bg-[#1E2035] rounded-[10px] border border-[#E5E7EB] dark:border-[#2E2E4E] shadow-[0_8px_24px_rgba(0,0,0,0.12)] z-50 overflow-hidden">
+                <div className="px-4 py-3 border-b border-[#F2F2F4] dark:border-[#2E2E4E]">
+                  <p className="text-[10px] font-bold text-[#9CA3AF] uppercase tracking-[0.08em]">Recently viewed</p>
+                </div>
+                {recentItems.length === 0 ? (
+                  <p className="text-sm text-[#9CA3AF] italic text-center py-8 px-4">
+                    Nothing viewed yet — your recent records will appear here
+                  </p>
+                ) : (
+                  <div>
+                    {recentItems.map((item, i) => {
+                      const meta = TYPE_META[item.type] || { icon: '📌', label: item.type };
+                      return (
+                        <button
+                          key={i}
+                          onClick={() => {
+                            setHqOpen(false);
+                            setSearchParams({ tab: item.tab });
+                            setSearchFocus({ tab: item.tab, focusType: item.type, focusId: item.recordId, sectionId: item.sectionId || null });
+                          }}
+                          className="w-full flex items-center gap-3 px-4 h-[52px] hover:bg-[#F3F4F6] dark:hover:bg-[#2D3748] transition-colors text-left"
+                        >
+                          <span className="text-lg shrink-0">{meta.icon}</span>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-semibold text-[#111827] dark:text-[#E8E8F0] truncate">{item.name}</p>
+                            <p className="text-[11px] text-[#9CA3AF]">{item.section}</p>
+                          </div>
+                          <span className="text-[11px] text-[#9CA3AF] shrink-0">{formatRelativeTime(item.timestamp)}</span>
+                        </button>
+                      );
+                    })}
+                    <div className="border-t border-[#F2F2F4] dark:border-[#2E2E4E] px-4 py-2.5">
+                      <button
+                        onClick={() => {
+                          if (window.confirm('Clear your recent history?')) {
+                            clearRecentlyViewed();
+                            setRecentItems([]);
+                          }
+                        }}
+                        className="text-[11px] text-[#9CA3AF] hover:text-[#EF4444] transition-colors"
+                      >
+                        Clear history
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
 
           {/* Global search button */}

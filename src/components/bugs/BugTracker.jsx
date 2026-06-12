@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
+import { addRecentlyViewed } from '@/utils/recentlyViewed';
 import { format, differenceInDays, isThisMonth } from 'date-fns';
 import { Plus, Trash2, Check, X } from 'lucide-react';
 import InlineCell from '@/components/shared/InlineCell';
@@ -49,6 +50,19 @@ export default function BugTracker({ focusBugId, onFocusConsumed }) {
   };
 
   useEffect(() => { load(); }, []);
+
+  // Track recently viewed when bug detail opens
+  useEffect(() => {
+    if (selected) {
+      addRecentlyViewed({
+        type: 'bug',
+        name: selected.title || `Bug #${selected.bugNumber || '—'}`,
+        section: 'Customer Success → Bug Tracker',
+        tab: 'bugs',
+        recordId: selected.id,
+      });
+    }
+  }, [selected]);
 
   // Focus bug from global search
   useEffect(() => {

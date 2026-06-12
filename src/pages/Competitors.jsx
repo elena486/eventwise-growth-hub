@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
+import { addRecentlyViewed } from '@/utils/recentlyViewed';
 import { Plus, Search, LayoutGrid, List, ExternalLink, GitCompareArrows, Trash2 } from 'lucide-react';
 import CompetitorCard from '@/components/competitors/CompetitorCard';
 import CompetitorModal from '@/components/competitors/CompetitorModal';
@@ -73,6 +74,19 @@ export default function Competitors({ focusCompetitorId, onFocusConsumed }) {
   };
 
   useEffect(() => { load(); }, []);
+
+  // Track recently viewed when competitor detail opens
+  useEffect(() => {
+    if (detailCompetitor) {
+      addRecentlyViewed({
+        type: 'competitor',
+        name: detailCompetitor.companyName || 'Unnamed Competitor',
+        section: 'Operations → Competitors',
+        tab: 'competitors',
+        recordId: detailCompetitor.id,
+      });
+    }
+  }, [detailCompetitor]);
 
   // Focus competitor from global search
   useEffect(() => {

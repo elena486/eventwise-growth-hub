@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import ContentKanban from './ContentKanban';
+import { addRecentlyViewed } from '@/utils/recentlyViewed';
 import ContentAnalytics from './ContentAnalytics';
 import PRCoverageTab from './PRCoverageTab';
 import LeadMagnetsTab from './LeadMagnetsTab';
@@ -22,6 +23,19 @@ export default function ContentHubMain({ focusContentId, onFocusConsumed }) {
       base44.entities.ContentItem.list('-publishDate', 300).then(setItems);
     }
   }, [isContent]);
+
+  // Track recently viewed when content item panel opens
+  useEffect(() => {
+    if (selectedItem) {
+      addRecentlyViewed({
+        type: 'content',
+        name: selectedItem.title || 'Untitled Content',
+        section: 'Marketing → Content Hub',
+        tab: 'marketing',
+        recordId: selectedItem.id,
+      });
+    }
+  }, [selectedItem]);
 
   // Focus content from global search
   useEffect(() => {

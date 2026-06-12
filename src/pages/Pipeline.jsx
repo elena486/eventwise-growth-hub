@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { base44 } from '@/api/base44Client';
+import { addRecentlyViewed } from '@/utils/recentlyViewed';
 import { Plus, SlidersHorizontal, ChevronDown, BarChart2, Download } from 'lucide-react';
 import { downloadCSV, fmtCsvDate, fmtCsvMoney, safe, todayStr, getPrimaryContact } from '@/lib/csvExport';
 
@@ -110,6 +111,19 @@ export default function Pipeline({ onProposalHandoff, onViewDeals, focusLeadId, 
       window.removeEventListener('ew-new-entry', onNew);
     };
   }, [closedWonLead, selectedLead, showNewPanel]);
+
+  // Track recently viewed when lead detail opens
+  useEffect(() => {
+    if (selectedLead) {
+      addRecentlyViewed({
+        type: 'lead',
+        name: selectedLead.companyName || 'Unnamed Lead',
+        section: 'Sales → Pipeline',
+        tab: 'pipeline',
+        recordId: selectedLead.id,
+      });
+    }
+  }, [selectedLead]);
 
   // Close month picker on outside click
   useEffect(() => {
