@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useAuth } from '@/lib/AuthContext';
 import Pipeline from './Pipeline';
+import HQDashboard from './HQDashboard';
 import ProposalGeneratorInner from '@/components/proposal/ProposalGeneratorInner';
 import Clients from './Clients';
 import Onboarding from './Onboarding';
@@ -76,7 +77,7 @@ function getGroupForTab(tab) {
 
 export default function AppShell() {
   const [searchParams, setSearchParams] = useSearchParams();
-  const tab = searchParams.get('tab') || 'pipeline';
+  const tab = searchParams.get('tab') || 'dashboard';
   const { user } = useAuth();
   const [proposalHandoff, setProposalHandoff] = useState(null);
   const [focusClientId, setFocusClientId] = useState(null);
@@ -275,7 +276,9 @@ export default function AppShell() {
         <div className="flex items-center gap-6 min-w-0">
           {/* Logo + HQ dropdown */}
           <div className="relative flex items-center gap-2.5 shrink-0" ref={hqRef}>
-            <img src={LOGO_WHITE} alt="Eventwise" className="h-4" />
+            <button onClick={() => setSearchParams({})} className="shrink-0" title="Dashboard">
+              <img src={LOGO_WHITE} alt="Eventwise" className="h-4" />
+            </button>
             <span className="w-px h-4 bg-white/20 inline-block" />
             <button
               onClick={() => setHqOpen(o => !o)}
@@ -449,8 +452,8 @@ export default function AppShell() {
         />
       )}
 
-      {/* Sub-nav */}
-      {activeGroup.tabs.length > 1 && (
+      {/* Sub-nav — skip for dashboard */}
+      {tab !== 'dashboard' && activeGroup.tabs.length > 1 && (
         <div className="bg-white border-b border-[#EBEBEB] shrink-0 px-6 flex items-center gap-1 h-10">
           {activeGroup.tabs.map(t => (
             <button
@@ -469,6 +472,7 @@ export default function AppShell() {
 
       {/* Content */}
       <div className="flex-1 overflow-hidden flex dark:bg-[#0F0F1A]">
+        {tab === 'dashboard' && <HQDashboard user={user} onNavigate={setTab} onRefresh={() => window.dispatchEvent(new Event('hq-refresh'))} />}
         {tab === 'pipeline' && <Pipeline onProposalHandoff={handleProposalHandoff} onViewDeals={() => setTab('deals')} focusLeadId={searchFocus?.focusType === 'lead' ? searchFocus.focusId : null} onFocusConsumed={() => setSearchFocus(null)} />}
         {tab === 'proposal' && <ProposalGeneratorInner handoff={proposalHandoff} onHandoffConsumed={() => setProposalHandoff(null)} />}
         {tab === 'clients' && <Clients onViewHealth={handleViewHealth} onViewOnboarding={handleViewOnboarding} onViewDetail={setDetailClient} onOpenFullPanel={(client, allClients) => { setFullPanelClient(client); setFullPanelClients(allClients || []); }} focusClientId={searchFocus?.focusType === 'client' ? searchFocus.focusId : null} onFocusConsumed={() => setSearchFocus(null)} />}

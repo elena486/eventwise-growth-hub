@@ -7,6 +7,7 @@ import { AuthProvider, useAuth } from '@/lib/AuthContext';
 import UserNotRegisteredError from '@/components/UserNotRegisteredError';
 import { Navigate } from 'react-router-dom';
 import AppShell from './pages/AppShell';
+import HQDashboard from './pages/HQDashboard';
 import { LOGO_BLACK } from '@/lib/proposalData';
 import { ToastProvider } from '@/components/shared/Toast';
 // Add page imports here
