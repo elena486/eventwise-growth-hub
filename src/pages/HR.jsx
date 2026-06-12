@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import TimeOffTracker from '@/components/hr/TimeOffTracker';
 import HRRequestForm from '@/components/hr/HRRequestForm';
 
@@ -15,6 +15,13 @@ export default function HR() {
     setRefreshKey(k => k + 1);
     setTab('tracker');
   };
+
+  // Keyboard shortcut: Cmd+N to open Log Time Off form
+  useEffect(() => {
+    const onNew = () => setTab('tracker');
+    window.addEventListener('ew-new-entry', onNew);
+    return () => window.removeEventListener('ew-new-entry', onNew);
+  }, []);
 
   return (
     <div className="flex-1 flex flex-col overflow-hidden font-dm">

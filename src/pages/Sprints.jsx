@@ -225,6 +225,17 @@ export default function Sprints() {
 
   useEffect(() => { load(); }, [load]);
 
+  // Keyboard shortcut: Escape to close modals/panels
+  useEffect(() => {
+    const onEscape = () => {
+      if (showModal) { setShowModal(false); return; }
+      if (selectedMember) { setSelectedMember(null); return; }
+      if (sprintNotesView) setSprintNotesView(false);
+    };
+    window.addEventListener('ew-escape', onEscape);
+    return () => window.removeEventListener('ew-escape', onEscape);
+  }, [showModal, selectedMember, sprintNotesView]);
+
   const today = currentWeekStart();
   const lastWeek = subWeeks(today, 1);
   let effectiveFrom = dateFrom;

@@ -169,6 +169,21 @@ export default function MQLTracker() {
   };
   useEffect(() => { load(); }, []);
 
+  // Keyboard shortcuts: Escape to close modals, Cmd+N to add MQL
+  useEffect(() => {
+    const onEscape = () => {
+      if (deleteConfirm) { setDeleteConfirm(null); return; }
+      if (showForm) { setShowForm(false); setEditRecord(null); }
+    };
+    const onNew = () => { setEditRecord(null); setShowForm(true); };
+    window.addEventListener('ew-escape', onEscape);
+    window.addEventListener('ew-new-entry', onNew);
+    return () => {
+      window.removeEventListener('ew-escape', onEscape);
+      window.removeEventListener('ew-new-entry', onNew);
+    };
+  }, [deleteConfirm, showForm]);
+
   const filtered = useMemo(() => {
     return records.filter(r => {
       if (sourceFilter !== 'All' && r.source !== sourceFilter) return false;

@@ -180,6 +180,25 @@ export default function Deals({ onRenewalProposal, onViewClient, onNavigate, foc
     }).catch(() => onFocusConsumed?.());
   }, [focusDealId]);
 
+  // Keyboard shortcuts: Escape to close panels, Cmd+N to add deal
+  useEffect(() => {
+    const onEscape = () => {
+      if (deleteConfirm) { setDeleteConfirm(null); return; }
+      if (churnConfirm) { setChurnConfirm(null); return; }
+      if (renewDeal) { setRenewDeal(null); return; }
+      if (editDeal) { setEditDeal(null); return; }
+      if (showAddDeal) { setShowAddDeal(false); return; }
+      if (selectedDeal) setSelectedDeal(null);
+    };
+    const onNew = () => setShowAddDeal(true);
+    window.addEventListener('ew-escape', onEscape);
+    window.addEventListener('ew-new-entry', onNew);
+    return () => {
+      window.removeEventListener('ew-escape', onEscape);
+      window.removeEventListener('ew-new-entry', onNew);
+    };
+  }, [deleteConfirm, churnConfirm, renewDeal, editDeal, showAddDeal, selectedDeal]);
+
   const handleUpdateField = async (id, field, value) => {
     const deal = deals.find(d => d.id === id);
     const updates = { [field]: value };

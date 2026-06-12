@@ -21,6 +21,13 @@ export default function Requests({ focusRequestId, onFocusConsumed }) {
     onFocusConsumed?.();
   }, [focusRequestId]);
 
+  // Keyboard shortcut: Cmd+N to open request form
+  useEffect(() => {
+    const onNew = () => setTab('form');
+    window.addEventListener('ew-new-entry', onNew);
+    return () => window.removeEventListener('ew-new-entry', onNew);
+  }, []);
+
   const handleSubmitted = () => {
     setBoardRefresh(n => n + 1);
     setTab('board');

@@ -27,11 +27,13 @@ import ClientFullPanel from '@/components/clients/ClientFullPanel';
 import { useDarkMode } from '@/hooks/useDarkMode';
 import useAutoRefresh from '@/hooks/useAutoRefresh';
 import AutoRefreshToast from '@/components/AutoRefreshToast';
-import { Moon, Sun, LogOut, ChevronDown, Settings, Search } from 'lucide-react';
+import { Moon, Sun, LogOut, ChevronDown, Settings, Search, HelpCircle } from 'lucide-react';
 import NotificationBell from '@/components/NotificationBell';
 import PostRefreshBanner from '@/components/PostRefreshBanner';
 import FirstVisitModal from '@/components/FirstVisitModal';
 import GlobalSearch from '@/components/GlobalSearch';
+import KeyboardShortcutsModal from '@/components/KeyboardShortcutsModal';
+import useKeyboardShortcuts from '@/hooks/useKeyboardShortcuts';
 import { base44 } from '@/api/base44Client';
 
 const GROUPS = [
@@ -152,17 +154,17 @@ export default function AppShell() {
     setNotificationPanelOpen(true);
   };
 
-  // Cmd+K / Ctrl+K to open search
-  useEffect(() => {
-    const handler = (e) => {
-      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
-        e.preventDefault();
-        setSearchOpen(prev => !prev);
-      }
-    };
-    window.addEventListener('keydown', handler);
-    return () => window.removeEventListener('keydown', handler);
-  }, []);
+  // Keyboard shortcuts
+  const { shortcutsModalOpen, setShortcutsModalOpen } = useKeyboardShortcuts({
+    searchOpen,
+    onToggleSearch: () => setSearchOpen(prev => !prev),
+    notificationPanelOpen,
+    onCloseNotificationPanel: () => setNotificationPanelOpen(false),
+    fullPanelOpen: !!fullPanelClient,
+    onCloseFullPanel: () => setFullPanelClient(null),
+    detailClientOpen: !!detailClient,
+    onCloseDetailClient: () => setDetailClient(null),
+  });
 
   const handleSearchNavigate = useCallback(({ tab, focusType, focusId, sectionId }) => {
     setSearchFocus({ tab, focusType, focusId, sectionId });
@@ -377,6 +379,21 @@ export default function AppShell() {
         onClose={() => setSearchOpen(false)}
         onNavigate={handleSearchNavigate}
       />
+
+      {/* Keyboard shortcuts modal */}
+      <KeyboardShortcutsModal
+        open={shortcutsModalOpen}
+        onClose={() => setShortcutsModalOpen(false)}
+      />
+
+      {/* Shortcut hint button */}
+      <button
+        onClick={() => setShortcutsModalOpen(true)}
+        className="fixed bottom-5 right-5 w-9 h-9 flex items-center justify-center rounded-full bg-white border border-[#E5E7EB] text-[#9CA3AF] hover:text-[#374151] hover:border-[#D1D5DB] shadow-sm hover:shadow-md transition-all z-40"
+        title="Keyboard shortcuts (⌘/)"
+      >
+        <HelpCircle className="w-4 h-4" />
+      </button>
 
       {detailClient && (
         <ClientDetailPanel

@@ -123,6 +123,23 @@ export default function Clients({ onViewHealth, onViewOnboarding, onViewDetail, 
     }).catch(() => onFocusConsumed?.());
   }, [focusClientId]);
 
+  // Keyboard shortcuts: Escape to close panels, Cmd+N to add client
+  useEffect(() => {
+    const onEscape = () => {
+      if (deleteConfirmId) { setDeleteConfirmId(null); return; }
+      if (emailModal) { setEmailModal(null); return; }
+      if (aiPanelClient) { setAiPanelClient(null); return; }
+      if (showAddModal) setShowAddModal(false);
+    };
+    const onNew = () => setShowAddModal(true);
+    window.addEventListener('ew-escape', onEscape);
+    window.addEventListener('ew-new-entry', onNew);
+    return () => {
+      window.removeEventListener('ew-escape', onEscape);
+      window.removeEventListener('ew-new-entry', onNew);
+    };
+  }, [deleteConfirmId, emailModal, aiPanelClient, showAddModal]);
+
   const handleUpdateField = async (id, field, value) => {
     setClients(prev => prev.map(c => c.id === id ? { ...c, [field]: value } : c));
     await base44.entities.Client.update(id, { [field]: value });

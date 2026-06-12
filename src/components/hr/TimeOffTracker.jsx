@@ -61,6 +61,23 @@ export default function TimeOffTracker() {
 
   useEffect(() => { load(); }, []);
 
+  // Keyboard shortcuts: Escape to close panels, Cmd+N to log time off
+  useEffect(() => {
+    const onEscape = () => {
+      if (deleteConfirm) { setDeleteConfirm(null); return; }
+      if (declineRecord) { setDeclineRecord(null); return; }
+      if (showModal) { setShowModal(false); setEditRecord(null); return; }
+      if (sidePanelRecord) setSidePanelRecord(null);
+    };
+    const onNew = () => { setEditRecord(null); setShowModal(true); };
+    window.addEventListener('ew-escape', onEscape);
+    window.addEventListener('ew-new-entry', onNew);
+    return () => {
+      window.removeEventListener('ew-escape', onEscape);
+      window.removeEventListener('ew-new-entry', onNew);
+    };
+  }, [deleteConfirm, declineRecord, showModal, sidePanelRecord]);
+
   const handleSaved = (saved) => {
     setRecords(prev => {
       const exists = prev.find(r => r.id === saved.id);

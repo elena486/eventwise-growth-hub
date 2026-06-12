@@ -281,6 +281,22 @@ export default function SalesAssets({ focusAssetId, onFocusConsumed }) {
     }).catch(() => onFocusConsumed?.());
   }, [focusAssetId]);
 
+  // Keyboard shortcuts: Escape to close panels, Cmd+N to add asset
+  useEffect(() => {
+    const onEscape = () => {
+      if (deleteConfirm) { setDeleteConfirm(null); return; }
+      if (showModal) { setShowModal(false); setEditAsset(null); return; }
+      if (detailAsset) setDetailAsset(null);
+    };
+    const onNew = () => openNew();
+    window.addEventListener('ew-escape', onEscape);
+    window.addEventListener('ew-new-entry', onNew);
+    return () => {
+      window.removeEventListener('ew-escape', onEscape);
+      window.removeEventListener('ew-new-entry', onNew);
+    };
+  }, [deleteConfirm, showModal, detailAsset]);
+
   const handleSaved = (saved) => {
     setAssets(prev => {
       const exists = prev.find(a => a.id === saved.id);

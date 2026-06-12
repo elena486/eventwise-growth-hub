@@ -21,6 +21,13 @@ export default function OutreachAnalytics() {
 
   useEffect(() => { load(); }, []);
 
+  // Keyboard shortcut: Cmd+N to open input view (new campaign form)
+  useEffect(() => {
+    const onNew = () => setView('input');
+    window.addEventListener('ew-new-entry', onNew);
+    return () => window.removeEventListener('ew-new-entry', onNew);
+  }, []);
+
   return (
     <div className="flex-1 bg-[#F7F7F8] overflow-y-auto font-dm">
       {/* Sub-header */}

@@ -89,6 +89,24 @@ export default function Competitors({ focusCompetitorId, onFocusConsumed }) {
     }).catch(() => onFocusConsumed?.());
   }, [focusCompetitorId]);
 
+  // Keyboard shortcuts: Escape to close panels, Cmd+N to add competitor
+  useEffect(() => {
+    const onEscape = () => {
+      if (bulkDeleteConfirm) { setBulkDeleteConfirm(false); return; }
+      if (deleteConfirm) { setDeleteConfirm(null); return; }
+      if (showCompare) { setShowCompare(false); return; }
+      if (showModal) { setShowModal(false); setEditCompetitor(null); return; }
+      if (detailCompetitor) setDetailCompetitor(null);
+    };
+    const onNew = () => openNew();
+    window.addEventListener('ew-escape', onEscape);
+    window.addEventListener('ew-new-entry', onNew);
+    return () => {
+      window.removeEventListener('ew-escape', onEscape);
+      window.removeEventListener('ew-new-entry', onNew);
+    };
+  }, [bulkDeleteConfirm, deleteConfirm, showCompare, showModal, detailCompetitor]);
+
   const handleSaved = (saved) => {
     setCompetitors(prev => {
       const exists = prev.find(c => c.id === saved.id);

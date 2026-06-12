@@ -33,6 +33,13 @@ export default function ContentHubMain({ focusContentId, onFocusConsumed }) {
     }).catch(() => onFocusConsumed?.());
   }, [focusContentId]);
 
+  // Keyboard shortcuts: Cmd+N to add content
+  useEffect(() => {
+    const onNew = () => setTab('Content');
+    window.addEventListener('ew-new-entry', onNew);
+    return () => window.removeEventListener('ew-new-entry', onNew);
+  }, []);
+
   const handleOpenItem = (item) => {
     setAnalyticsView(false);
     setSelectedItem(item);

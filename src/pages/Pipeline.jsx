@@ -95,6 +95,22 @@ export default function Pipeline({ onProposalHandoff, onViewDeals, focusLeadId, 
     return () => window.removeEventListener('pipeline-refresh', handler);
   }, []);
 
+  // Keyboard shortcuts: Escape to close panels, Cmd+N to add lead
+  useEffect(() => {
+    const onEscape = () => {
+      if (closedWonLead) { setClosedWonLead(null); return; }
+      if (selectedLead) { setSelectedLead(null); return; }
+      if (showNewPanel) setShowNewPanel(false);
+    };
+    const onNew = () => handleAddLead();
+    window.addEventListener('ew-escape', onEscape);
+    window.addEventListener('ew-new-entry', onNew);
+    return () => {
+      window.removeEventListener('ew-escape', onEscape);
+      window.removeEventListener('ew-new-entry', onNew);
+    };
+  }, [closedWonLead, selectedLead, showNewPanel]);
+
   // Close month picker on outside click
   useEffect(() => {
     const handler = (e) => {
