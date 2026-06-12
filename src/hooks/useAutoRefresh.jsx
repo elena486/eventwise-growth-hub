@@ -15,6 +15,7 @@ export default function useAutoRefresh() {
   const countdownTimer = useRef(null);
 
   const reload = useCallback(() => {
+    sessionStorage.setItem('auto_refreshed', '1');
     window.location.reload();
   }, []);
 

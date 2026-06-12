@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useAuth } from '@/lib/AuthContext';
 import Pipeline from './Pipeline';
@@ -19,14 +19,19 @@ import MQLTracker from './MQLTracker';
 import OutreachAnalytics from './OutreachAnalytics';
 import Competitors from './Competitors';
 import LinkSpace from './LinkSpace';
+import ChangelogAdmin from './ChangelogAdmin';
+import ChangelogView from './ChangelogView';
 import { LOGO_BLACK, LOGO_WHITE } from '@/lib/proposalData';
 import ClientDetailPanel from '@/components/clients/ClientDetailPanel';
 import ClientFullPanel from '@/components/clients/ClientFullPanel';
 import { useDarkMode } from '@/hooks/useDarkMode';
 import useAutoRefresh from '@/hooks/useAutoRefresh';
 import AutoRefreshToast from '@/components/AutoRefreshToast';
-import { Moon, Sun, LogOut, ChevronDown } from 'lucide-react';
-import { useState as useLocalState, useRef, useEffect as useLocalEffect } from 'react';
+import { Moon, Sun, LogOut, ChevronDown, Settings } from 'lucide-react';
+import NotificationBell from '@/components/NotificationBell';
+import PostRefreshBanner from '@/components/PostRefreshBanner';
+import FirstVisitModal from '@/components/FirstVisitModal';
+import { base44 } from '@/api/base44Client';
 
 const GROUPS = [
   { id: 'sales', label: 'Sales', tabs: [
@@ -77,6 +82,70 @@ export default function AppShell() {
   const [dark, setDark] = useDarkMode();
   const { showWarning, countdown, reload, dismiss } = useAutoRefresh();
   const [avatarOpen, setAvatarOpen] = useState(false);
+
+  // Changelog / notification state
+  const [changelogEntries, setChangelogEntries] = useState([]);
+  const [postRefreshBanner, setPostRefreshBanner] = useState(false);
+  const [showFirstVisitModal, setShowFirstVisitModal] = useState(false);
+  const [notificationPanelOpen, setNotificationPanelOpen] = useState(false);
+  const postRefreshBannerTimer = useRef(null);
+
+  const LAST_READ_KEY = 'changelog_last_read';
+
+  const getLastRead = useCallback(() => parseInt(localStorage.getItem(LAST_READ_KEY) || '0', 10), []);
+
+  const loadChangelog = useCallback(async () => {
+    try {
+      const data = await base44.entities.ChangelogEntry.list('-created_date');
+      const lastRead = getLastRead();
+      const enriched = data.map(e => ({
+        ...e,
+        _unread: new Date(e.created_date).getTime() > lastRead,
+      }));
+      setChangelogEntries(enriched);
+      return enriched;
+    } catch { return []; }
+  }, [getLastRead]);
+
+  const markAllRead = useCallback(() => {
+    localStorage.setItem(LAST_READ_KEY, String(Date.now()));
+    loadChangelog();
+  }, [loadChangelog]);
+
+  const unreadCount = changelogEntries.filter(e => e._unread).length;
+
+  // Load changelog on mount + check post-refresh
+  useEffect(() => {
+    loadChangelog().then(enriched => {
+      const wasAutoRefreshed = sessionStorage.getItem('auto_refreshed');
+      if (wasAutoRefreshed) {
+        sessionStorage.removeItem('auto_refreshed');
+        const newCount = enriched.filter(e => e._unread).length;
+        if (newCount > 0) {
+          setPostRefreshBanner(true);
+          if (postRefreshBannerTimer.current) clearTimeout(postRefreshBannerTimer.current);
+          postRefreshBannerTimer.current = setTimeout(() => setPostRefreshBanner(false), 10000);
+          if (newCount >= 3) setShowFirstVisitModal(true);
+        }
+      } else {
+        // Check for first-visit modal even without auto-refresh
+        const newCount = enriched.filter(e => e._unread).length;
+        const lastRead = getLastRead();
+        if (newCount >= 3 && lastRead === 0) setShowFirstVisitModal(true);
+      }
+    });
+  }, []);
+
+  const handleOpenNotificationPanel = () => {
+    setNotificationPanelOpen(true);
+    // Entries get marked as read when panel opens
+    markAllRead();
+  };
+
+  const handleSeeWhatsNew = () => {
+    setPostRefreshBanner(false);
+    setNotificationPanelOpen(true);
+  };
   const avatarRef = useRef(null);
 
   const setTab = (t) => setSearchParams({ tab: t });
@@ -154,6 +223,13 @@ export default function AppShell() {
 
         {/* Right: user + utilities */}
         <div className="flex items-center gap-2 shrink-0 ml-4">
+          <NotificationBell
+            unreadCount={unreadCount}
+            entries={changelogEntries}
+            onOpenPanel={handleOpenNotificationPanel}
+            onMarkAllRead={markAllRead}
+            onViewAll={() => setTab('changelog')}
+          />
           <button
             onClick={() => setDark(d => !d)}
             className="p-2 text-white/50 hover:text-white rounded-lg hover:bg-white/10 transition-colors"
@@ -190,6 +266,14 @@ export default function AppShell() {
                       <span className={`absolute top-0.5 w-3 h-3 bg-white rounded-full shadow transition-transform ${dark ? 'translate-x-4' : 'translate-x-0.5'}`} />
                     </span>
                   </button>
+                  {(user?.email || '').toLowerCase().includes('elena') && (
+                    <button
+                      onClick={() => { setAvatarOpen(false); setTab('changelog-admin'); }}
+                      className="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-[#374151] hover:bg-[#F9FAFB] transition-colors"
+                    >
+                      <Settings className="w-4 h-4" /> Changelog Admin
+                    </button>
+                  )}
                   <button
                     onClick={() => { setAvatarOpen(false); import('@/api/base44Client').then(m => m.base44.auth.logout()); }}
                     className="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-red-500 hover:bg-red-50 transition-colors border-t border-[#EBEBEB]"
@@ -202,6 +286,15 @@ export default function AppShell() {
           )}
         </div>
       </nav>
+
+      {/* Post-refresh banner */}
+      {postRefreshBanner && (
+        <PostRefreshBanner
+          newCount={unreadCount}
+          onSeeWhatsNew={handleSeeWhatsNew}
+          onDismiss={() => setPostRefreshBanner(false)}
+        />
+      )}
 
       {/* Sub-nav */}
       {activeGroup.tabs.length > 1 && (
@@ -241,6 +334,8 @@ export default function AppShell() {
         {tab === 'assets' && <SalesAssets />}
         {tab === 'outreach' && <OutreachAnalytics />}
         {tab === 'links' && <LinkSpace user={user} />}
+        {tab === 'changelog' && <ChangelogView />}
+        {tab === 'changelog-admin' && <ChangelogAdmin />}
       </div>
       {detailClient && (
         <ClientDetailPanel
@@ -251,6 +346,13 @@ export default function AppShell() {
       )}
       {showWarning && (
         <AutoRefreshToast countdown={countdown} onRefresh={reload} onDismiss={dismiss} />
+      )}
+      {showFirstVisitModal && (
+        <FirstVisitModal
+          entries={changelogEntries.filter(e => e._unread).slice(0, 3)}
+          onClose={() => { setShowFirstVisitModal(false); markAllRead(); }}
+          onSeeAll={() => { setShowFirstVisitModal(false); setTab('changelog'); }}
+        />
       )}
       {fullPanelClient && (
         <ClientFullPanel

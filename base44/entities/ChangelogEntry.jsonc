@@ -1,0 +1,41 @@
+{
+  "name": "ChangelogEntry",
+  "type": "object",
+  "properties": {
+    "date": {
+      "type": "string",
+      "description": "e.g. Jun 2026"
+    },
+    "type": {
+      "type": "string",
+      "enum": [
+        "New Feature",
+        "Improvement",
+        "Bug Fix",
+        "Coming Soon"
+      ]
+    },
+    "title": {
+      "type": "string"
+    },
+    "description": {
+      "type": "string"
+    },
+    "affects": {
+      "type": "string",
+      "description": "JSON array of affected areas, e.g. [\"Sales\", \"Marketing\"]"
+    },
+    "addedBy": {
+      "type": "string",
+      "enum": [
+        "Elena",
+        "Chris"
+      ]
+    }
+  },
+  "required": [
+    "date",
+    "type",
+    "title"
+  ]
+}
