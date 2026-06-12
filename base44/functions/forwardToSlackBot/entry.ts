@@ -39,28 +39,22 @@ Deno.serve(async (req) => {
     const user = await base44.auth.me();
     if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
 
-    const botToken = Deno.env.get('SLACK_BOT_TOKEN');
-    if (!botToken) return Response.json({ error: 'SLACK_BOT_TOKEN not set' }, { status: 500 });
+    const webhookUrl = 'https://hooks.slack.com/services/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';
 
     const payload = await req.json();
     const message = formatSlackMessage(payload);
 
-    const res = await fetch('https://slack.com/api/chat.postMessage', {
+    const res = await fetch(webhookUrl, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${botToken}`,
-      },
-      body: JSON.stringify({
-        channel: 'C0B9PCV3UT1',
-        ...message,
-      }),
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(message),
     });
 
-    const resData = await res.json();
-    console.log('Slack API response:', JSON.stringify(resData));
+    const resText = await res.text();
+    console.log('Slack webhook response:', res.status, resText);
 
-    return Response.json({ ok: resData.ok, slackResponse: resData });
+    const ok = res.ok && resText === 'ok';
+    return Response.json({ ok, slackResponse: resText });
   } catch (error) {
     return Response.json({ error: error.message }, { status: 500 });
   }
