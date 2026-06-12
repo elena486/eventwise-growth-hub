@@ -185,9 +185,12 @@ export default function LinkSpace({ user }) {
                             Open <ExternalLink className="w-3 h-3" />
                           </a>
                         ) : (
-                          <span className="inline-flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-medium bg-gray-100 text-gray-400 rounded-lg italic">
+                          <button
+                            onClick={() => startEdit(link)}
+                            className="inline-flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-medium bg-gray-100 text-gray-400 rounded-lg italic hover:bg-gray-200 hover:text-gray-600 transition-colors cursor-pointer"
+                          >
                             No URL set yet
-                          </span>
+                          </button>
                         )}
                       </>
                     )}
