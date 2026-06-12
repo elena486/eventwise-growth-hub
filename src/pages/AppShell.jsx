@@ -23,6 +23,8 @@ import { LOGO_BLACK, LOGO_WHITE } from '@/lib/proposalData';
 import ClientDetailPanel from '@/components/clients/ClientDetailPanel';
 import ClientFullPanel from '@/components/clients/ClientFullPanel';
 import { useDarkMode } from '@/hooks/useDarkMode';
+import useAutoRefresh from '@/hooks/useAutoRefresh';
+import AutoRefreshToast from '@/components/AutoRefreshToast';
 import { Moon, Sun, LogOut, ChevronDown } from 'lucide-react';
 import { useState as useLocalState, useRef, useEffect as useLocalEffect } from 'react';
 
@@ -73,6 +75,7 @@ export default function AppShell() {
   const [fullPanelClient, setFullPanelClient] = useState(null);
   const [fullPanelClients, setFullPanelClients] = useState([]);
   const [dark, setDark] = useDarkMode();
+  const { showWarning, countdown, reload, dismiss } = useAutoRefresh();
   const [avatarOpen, setAvatarOpen] = useState(false);
   const avatarRef = useRef(null);
 
@@ -245,6 +248,9 @@ export default function AppShell() {
           onClose={() => setDetailClient(null)}
           onUpdated={(updated) => setDetailClient(updated)}
         />
+      )}
+      {showWarning && (
+        <AutoRefreshToast countdown={countdown} onRefresh={reload} onDismiss={dismiss} />
       )}
       {fullPanelClient && (
         <ClientFullPanel
