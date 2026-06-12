@@ -42,14 +42,6 @@ Deno.serve(async (req) => {
     const botToken = Deno.env.get('SLACK_BOT_TOKEN');
     if (!botToken) return Response.json({ error: 'SLACK_BOT_TOKEN not set' }, { status: 500 });
 
-    // Look up channel ID by name
-    const listRes = await fetch('https://slack.com/api/conversations.list', {
-      headers: { 'Authorization': `Bearer ${botToken}` },
-    });
-    const listData = await listRes.json();
-    const channel = listData.channels?.find(c => c.name === 'crm-updates');
-    if (!channel) return Response.json({ error: '#crm-updates channel not found', slackList: listData }, { status: 500 });
-
     const payload = await req.json();
     const message = formatSlackMessage(payload);
 
@@ -60,7 +52,7 @@ Deno.serve(async (req) => {
         'Authorization': `Bearer ${botToken}`,
       },
       body: JSON.stringify({
-        channel: channel.id,
+        channel: 'C0B9PCV3UT1',
         ...message,
       }),
     });
