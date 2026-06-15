@@ -79,21 +79,6 @@ export default function BugTracker({ focusBugId, onFocusConsumed }) {
     }).catch(() => onFocusConsumed?.());
   }, [focusBugId]);
 
-  // Keyboard shortcuts: Escape to close panels, Cmd+N to log bug
-  useEffect(() => {
-    const onEscape = () => {
-      if (deleteId) { setDeleteId(null); return; }
-      if (selected) setSelected(null);
-    };
-    const onNew = () => handleAdd();
-    window.addEventListener('ew-escape', onEscape);
-    window.addEventListener('ew-new-entry', onNew);
-    return () => {
-      window.removeEventListener('ew-escape', onEscape);
-      window.removeEventListener('ew-new-entry', onNew);
-    };
-  }, [deleteId, selected, handleAdd]);
-
   const handleAdd = async () => {
     const nextNum = bugs.length > 0 ? Math.max(...bugs.map(b => b.bugNumber || 0)) + 1 : 1;
     const newBug = await base44.entities.Bug.create({
@@ -108,6 +93,21 @@ export default function BugTracker({ focusBugId, onFocusConsumed }) {
     setBugs(prev => [newBug, ...prev]);
     setSelected(newBug);
   };
+
+  // Keyboard shortcuts: Escape to close panels, Cmd+N to log bug
+  useEffect(() => {
+    const onEscape = () => {
+      if (deleteId) { setDeleteId(null); return; }
+      if (selected) setSelected(null);
+    };
+    const onNew = () => handleAdd();
+    window.addEventListener('ew-escape', onEscape);
+    window.addEventListener('ew-new-entry', onNew);
+    return () => {
+      window.removeEventListener('ew-escape', onEscape);
+      window.removeEventListener('ew-new-entry', onNew);
+    };
+  }, [deleteId, selected, handleAdd]);
 
   const handleUpdate = async (id, field, value) => {
     setBugs(prev => prev.map(b => b.id === id ? { ...b, [field]: value } : b));
