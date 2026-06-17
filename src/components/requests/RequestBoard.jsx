@@ -28,29 +28,14 @@ const LIST_COLUMNS = [
   { key: 'submittedAt', label: 'Created', sortable: true },
 ];
 
-// Resolve current user's team name from auth data
+// Resolve current user's team name from auth data — strict exact match only
 function resolveUserName(me) {
   if (!me) return null;
   const fullName = me.full_name || '';
-  const email = (me.email || '').toLowerCase();
-
-  // Try exact match on first name from full_name
   const firstName = fullName.split(' ')[0];
+  // Only accept the first name if it exactly matches a known team member
   if (TEAM_MEMBERS.includes(firstName)) return firstName;
-
-  // Try full name contains a team member
-  for (const tm of TEAM_MEMBERS) {
-    if (fullName.toLowerCase().includes(tm.toLowerCase())) return tm;
-  }
-
-  // Try email prefix
-  const emailPrefix = email.split('@')[0];
-  const emailFirst = emailPrefix.split('.')[0];
-  const capped = emailFirst.charAt(0).toUpperCase() + emailFirst.slice(1).toLowerCase();
-  if (TEAM_MEMBERS.includes(capped)) return capped;
-
-  // Fallback: return firstName if it looks reasonable
-  return firstName || null;
+  return null;
 }
 
 export default function RequestBoard({ refresh }) {
@@ -127,7 +112,7 @@ export default function RequestBoard({ refresh }) {
     let result = displayRequests.filter(r => r._displayStatus !== 'Cancelled');
 
     if (myTasks && currentUser) {
-      result = result.filter(r => r.assignedTo === currentUser || r.requestedBy === currentUser);
+      result = result.filter(r => r.assignedTo === currentUser);
     }
 
     if (search) {
