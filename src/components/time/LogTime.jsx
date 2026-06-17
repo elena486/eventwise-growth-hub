@@ -492,18 +492,20 @@ export default function LogTime({ onLogged }) {
             </button>
           )}
           <div className="relative">
-            <button onClick={() => setMenuOpenId(menuOpenId === entry.id ? null : entry.id)} className="p-1.5 hover:bg-[#EBEBF5] rounded">
+            <button
+              onClick={(e) => { e.stopPropagation(); setMenuOpenId(menuOpenId === entry.id ? null : entry.id); }}
+              className="p-1.5 hover:bg-[#EBEBF5] rounded entry-menu" title="More actions">
               <MoreVertical className="w-3.5 h-3.5 text-[#9CA3AF]" />
             </button>
             {menuOpenId === entry.id && (
-              <div className="absolute right-0 top-full mt-1 w-36 bg-white border border-[#EBEBF5] rounded-lg shadow-lg z-30 py-1">
-                <button onClick={() => handleEdit(entry)} className="w-full flex items-center gap-2 px-3 py-2 text-xs text-[#242450] hover:bg-[#F6F6FB]">
+              <div className="absolute right-0 top-full mt-1 w-36 bg-white border border-[#EBEBF5] rounded-lg shadow-lg z-30 py-1 entry-menu" onClick={e => e.stopPropagation()}>
+                <button onClick={() => handleEdit(entry)} className="w-full flex items-center gap-2 px-3 py-2 text-xs text-[#242450] hover:bg-[#F6F6FB]" title="Edit entry">
                   <Pencil className="w-3 h-3" /> Edit
                 </button>
-                <button onClick={() => handleDuplicate(entry)} className="w-full flex items-center gap-2 px-3 py-2 text-xs text-[#242450] hover:bg-[#F6F6FB]">
+                <button onClick={() => handleDuplicate(entry)} className="w-full flex items-center gap-2 px-3 py-2 text-xs text-[#242450] hover:bg-[#F6F6FB]" title="Duplicate entry">
                   <Copy className="w-3 h-3" /> Duplicate
                 </button>
-                <button onClick={() => handleDelete(entry)} className="w-full flex items-center gap-2 px-3 py-2 text-xs text-[#DC2626] hover:bg-[#FEF2F2]">
+                <button onClick={() => handleDelete(entry)} className="w-full flex items-center gap-2 px-3 py-2 text-xs text-[#DC2626] hover:bg-[#FEF2F2]" title="Delete entry">
                   <Trash2 className="w-3 h-3" /> Delete
                 </button>
               </div>
@@ -514,12 +516,12 @@ export default function LogTime({ onLogged }) {
     );
   };
 
-  // Close menu on outside click
+  // Close menu on outside click (mousedown fires before the ⋮ button's click)
   useEffect(() => {
     if (!menuOpenId) return;
-    const handler = () => setMenuOpenId(null);
-    document.addEventListener('click', handler);
-    return () => document.removeEventListener('click', handler);
+    const handler = (e) => { if (!e.target.closest('.entry-menu')) setMenuOpenId(null); };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
   }, [menuOpenId]);
 
   return (
