@@ -353,7 +353,7 @@ function CalendarView({ entries, weekStart, DAYS, onOpenEntry, onAddForDay }) {
           const cellMinHeight = 300 + Math.max(0, items.length - 3) * 80;
           const dateStr = format(addDays(weekStart, i), 'yyyy-MM-dd');
           return (
-            <div key={i} className="relative border-r border-[#EBEBF5] last:border-r-0 p-2 space-y-1.5"
+            <div key={i} className="relative border-r border-[#EBEBF5] last:border-r-0 p-2 space-y-1.5 cursor-cell"
               style={{ minHeight: cellMinHeight }}
               onClick={(e) => {
                 if (e.target === e.currentTarget) onAddForDay(dateStr);
