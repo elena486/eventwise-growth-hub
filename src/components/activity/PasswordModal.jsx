@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { X, Lock } from 'lucide-react';
 
-const CORRECT_PASSWORD = 'EW2026!';
+const CORRECT_PASSWORD = 'Lolipop13243546!';
 
 export default function PasswordModal({ onSuccess, onClose }) {
   const [password, setPassword] = useState('');
