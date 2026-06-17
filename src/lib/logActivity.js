@@ -1,15 +1,31 @@
 import { base44 } from '@/api/base44Client';
 
-export async function logActivity({ teamMember, actionType, section, recordName = '', details = '' }) {
+let _cachedName = null;
+async function resolveTeamMember() {
+  if (_cachedName) return _cachedName;
   try {
-    await base44.entities.ActivityLog.create({
-      teamMember,
-      actionType,
-      section,
-      recordName,
-      details,
-    });
+    const me = await base44.auth.me();
+    if (me?.full_name) {
+      const first = me.full_name.split(' ')[0];
+      const members = ['Chris', 'Elena', 'George', 'Martinique', 'Sreeja', 'Ramesh'];
+      if (members.includes(first)) {
+        _cachedName = first;
+        return first;
+      }
+    }
   } catch {}
+  return '';
+}
+
+export async function logActivity({ teamMember, actionType, section, recordName = '', details = '' }) {
+  if (!actionType || !section) return;
+  try {
+    const member = teamMember || await resolveTeamMember();
+    if (!member) return;
+    await base44.entities.ActivityLog.create({ teamMember: member, actionType, section, recordName, details });
+  } catch (err) {
+    console.error('[logActivity] Failed:', err?.message || err);
+  }
 }
 
 export const SECTION_COLORS = {

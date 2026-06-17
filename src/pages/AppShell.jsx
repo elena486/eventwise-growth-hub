@@ -41,6 +41,7 @@ import useKeyboardShortcuts from '@/hooks/useKeyboardShortcuts';
 import { base44 } from '@/api/base44Client';
 import { getRecentlyViewed, addRecentlyViewed, clearRecentlyViewed, TYPE_META, formatRelativeTime } from '@/utils/recentlyViewed';
 import FloatingTimer from '@/components/time/FloatingTimer';
+import PasswordModal from '@/components/activity/PasswordModal';
 
 const GROUPS = [
   { id: 'sales', label: 'Sales', tabs: [
@@ -68,7 +69,6 @@ const GROUPS = [
     { id: 'time-log', label: 'Today' },
     { id: 'time-timesheet', label: 'My History' },
     { id: 'time-overview', label: 'Team Overview' },
-    { id: 'time-activity', label: 'Hub Activity' },
   ]},
   { id: 'links', label: '🔗 Links', tabs: [
     { id: 'links', label: 'Link Space' },
@@ -114,6 +114,7 @@ export default function AppShell() {
   // Global search state
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchFocus, setSearchFocus] = useState(null);
+  const [passwordModalOpen, setPasswordModalOpen] = useState(false);
 
   const LAST_READ_KEY = 'changelog_last_read';
 
@@ -455,6 +456,28 @@ export default function AppShell() {
                       <Settings className="w-4 h-4" /> Changelog Admin
                     </button>
                   )}
+                  {(() => {
+                    const isHubAdmin = (user?.email || '').toLowerCase().includes('elena') || (user?.email || '').toLowerCase().includes('chris');
+                    if (!isHubAdmin) return null;
+                    return (
+                      <>
+                        <div className="border-t border-[#F0F0F0]" />
+                        <button
+                          onClick={() => {
+                            setAvatarOpen(false);
+                            if (sessionStorage.getItem('hub_insights_unlocked') === '1') {
+                              setTab('time-activity');
+                            } else {
+                              setPasswordModalOpen(true);
+                            }
+                          }}
+                          className="w-full flex items-center gap-2 px-4 py-2.5 text-[13px] text-[#9CA3AF] hover:bg-[#FAFAFA] transition-colors"
+                        >
+                          Hub Insights
+                        </button>
+                      </>
+                    );
+                  })()}
                   <button
                     onClick={() => { setAvatarOpen(false); import('@/api/base44Client').then(m => m.base44.auth.logout()); }}
                     className="w-full flex items-center gap-2 px-4 py-2.5 text-[13px] text-[#DC2626] hover:bg-[#FEF2F2] transition-colors border-t border-[#F0F0F0]"
@@ -582,6 +605,14 @@ export default function AppShell() {
 
       {/* Floating Timer — global across all tabs */}
       <FloatingTimer onStopAndLog={() => setSearchParams({ tab: 'time-log' })} />
+
+      {/* Password modal for Hub Insights */}
+      {passwordModalOpen && (
+        <PasswordModal
+          onSuccess={() => { setPasswordModalOpen(false); setTab('time-activity'); }}
+          onClose={() => setPasswordModalOpen(false)}
+        />
+      )}
     </div>
   );
 }

@@ -2,6 +2,7 @@ import React, { createContext, useState, useContext, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
 import { appParams } from '@/lib/app-params';
 import { createAxiosClient } from '@base44/sdk/dist/utils/axios-client';
+import { logActivity } from '@/lib/logActivity';
 
 const AuthContext = createContext();
 
@@ -95,6 +96,7 @@ export const AuthProvider = ({ children }) => {
       setUser(currentUser);
       setIsAuthenticated(true);
       setIsLoadingAuth(false);
+      logActivity({ teamMember: '', actionType: 'Logged in', section: 'Authentication', recordName: currentUser.full_name || currentUser.email || '' });
     } catch (error) {
       console.error('User auth check failed:', error);
       setIsLoadingAuth(false);
@@ -111,6 +113,7 @@ export const AuthProvider = ({ children }) => {
   };
 
   const logout = (shouldRedirect = true) => {
+    sessionStorage.removeItem('hub_insights_unlocked');
     setUser(null);
     setIsAuthenticated(false);
     
