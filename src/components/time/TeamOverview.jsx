@@ -190,26 +190,27 @@ export default function TeamOverview({ refresh }) {
         }
       });
 
-      // No-log streak: find most recent entry date across ALL time
-      let mostRecentDateStr = '';
-      entries.forEach(e => {
-        if (e.teamMember === name && e.date > mostRecentDateStr) mostRecentDateStr = e.date;
-      });
-      if (mostRecentDateStr) {
-        const loggedDays = new Set();
-        entries.filter(e => e.teamMember === name).forEach(e => { try { loggedDays.add(e.date); } catch {} });
-        // Walk backwards from the day before the most recent entry date, counting gaps
-        let streak = 0;
-        let cursor = addDays(now, -1);
-        while (streak < 90) {
-          const ds = format(cursor, 'yyyy-MM-dd');
-          if (!isWeekend(cursor)) {
-            if (loggedDays.has(ds)) break;
-            streak++;
+      // No-log streak: only check if person is NOT active in current period
+      // If they have entries this period, they're clearly logging — no streak possible
+      if (!activeMemberNames.has(name)) {
+        const personEntries = entries.filter(e => e.teamMember === name);
+        if (personEntries.length > 0) {
+          let mostRecentDateStr = '';
+          personEntries.forEach(e => { if (e.date > mostRecentDateStr) mostRecentDateStr = e.date; });
+          const loggedDays = new Set();
+          personEntries.forEach(e => { try { loggedDays.add(e.date); } catch {} });
+          let streak = 0;
+          let cursor = addDays(now, -1);
+          while (streak < 90) {
+            const ds = format(cursor, 'yyyy-MM-dd');
+            if (!isWeekend(cursor)) {
+              if (loggedDays.has(ds)) break;
+              streak++;
+            }
+            cursor = addDays(cursor, -1);
           }
-          cursor = addDays(cursor, -1);
+          if (streak >= 5) streakNames.push({ name, days: streak });
         }
-        if (streak >= 5) streakNames.push({ name, days: streak });
       }
     });
 
