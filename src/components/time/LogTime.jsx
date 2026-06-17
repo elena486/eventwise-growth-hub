@@ -659,7 +659,7 @@ export default function LogTime({ onLogged }) {
           </div>
           <span className="px-3 py-1 text-xs font-bold bg-[#8403C5] text-white rounded-full">{formatDuration(todayTotal)}</span>
         </div>
-        <div className="bg-white border border-[#EBEBF5] rounded-xl overflow-hidden shadow-[0_1px_4px_rgba(0,0,0,0.03)]">
+        <div className="bg-white border border-[#EBEBF5] rounded-xl shadow-[0_1px_4px_rgba(0,0,0,0.03)]">
           {todayEntries.length === 0 ? (
             <div className="px-5 py-12 text-center">
               <p className="text-[15px] font-medium text-[#4A5568]">No time logged today</p>
@@ -713,7 +713,7 @@ function DayGroup({ day, children }) {
   try { format(parseISO(day.date), 'EEE d MMM'); } catch { return <div>{children}</div>; }
 
   return (
-    <div className="bg-white border border-[#EBEBF5] rounded-xl overflow-hidden shadow-[0_1px_4px_rgba(0,0,0,0.03)]">
+    <div className="bg-white border border-[#EBEBF5] rounded-xl shadow-[0_1px_4px_rgba(0,0,0,0.03)]">
       <button onClick={() => setOpen(o => !o)}
         className="w-full flex items-center justify-between px-5 py-3 hover:bg-[#F6F6FB] transition-colors">
         <span className="text-[13px] font-bold text-[#242450]">
