@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { base44 } from '@/api/base44Client';
 import { format, parseISO, startOfWeek, endOfWeek, isWithinInterval, isToday, isYesterday } from 'date-fns';
-import { Play, Square, Pause, PoundSterling, MoreVertical, RotateCw, Copy, Pencil, Trash2 } from 'lucide-react';
+import { Play, Square, Pause, PoundSterling, MoreVertical, RotateCw, Copy, Pencil, Trash2, CalendarDays } from 'lucide-react';
 import TaskPresetSelect from './TaskPresetSelect';
 import StopTimerModal from './StopTimerModal';
 import { CATEGORY_COLORS, CATEGORY_LABELS } from './categoryColors';
@@ -21,7 +21,7 @@ function formatTimer(ms) {
 function formatDuration(minutes) {
   const h = Math.floor(minutes / 60);
   const m = minutes % 60;
-  if (h === 0 && m === 0) return '—';
+  if (h === 0 && m === 0) return '0h';
   if (h === 0) return `${m}m`;
   if (m === 0) return `${h}h`;
   return `${h}h ${m}m`;
@@ -245,15 +245,6 @@ export default function LogTime({ onLogged }) {
   const todayTotal = todayEntries.reduce((s, e) => s + (e.durationMinutes || 0), 0);
   const weekTotal = weekEntries.reduce((s, e) => s + (e.durationMinutes || 0), 0);
 
-  // ── Day label helper ──
-  function dayLabel(dateStr) {
-    try {
-      const d = parseISO(dateStr);
-      if (isYesterday(d)) return 'Yesterday';
-      return format(d, 'EEE d MMM');
-    } catch { return dateStr; }
-  }
-
   // ── Timer: Update DB as fields change ──
   useEffect(() => {
     if (!activeTimerId || timerStatus === 'idle') return;
@@ -474,33 +465,43 @@ export default function LogTime({ onLogged }) {
   };
 
   // ── Entry row component ──
-  const EntryRow = ({ entry, showReplay = true }) => {
+  const EntryRow = ({ entry, showReplay = true, idx }) => {
     const color = CATEGORY_COLORS[entry.category] || '#9CA3AF';
     const hasTimes = entry.timerStartedAt && entry.timerStoppedAt;
+    const desc = entry.projectTask?.trim();
+    const catLabel = entry.category?.trim();
     return (
-      <div className="flex items-center gap-3 px-4 py-2.5 border-t border-[#F2F2F4] hover:bg-[#F6F6FB] transition-colors group">
+      <div className={`flex items-center gap-4 px-5 py-4 hover:bg-[#FAFBFC] transition-colors group ${idx !== undefined && idx % 2 === 1 ? 'bg-[#FAFAFD]/40' : ''}`}>
         <div className="flex-1 min-w-0">
-          <p className="text-sm font-medium text-[#242450] truncate">{entry.projectTask || '—'}</p>
-          <div className="flex items-center gap-2 mt-0.5">
-            <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded" style={{ backgroundColor: `${color}18`, color }}>{entry.category}</span>
-            {entry.clientName && <span className="text-[10px] text-[#5777AB]">{entry.clientName}</span>}
+          <p className={`text-[15px] font-bold text-[#242450] truncate ${!desc ? 'text-[#9CA3AF] italic font-normal' : ''}`}>
+            {desc || 'No description'}
+          </p>
+          <div className="flex items-center gap-2 mt-1">
+            <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full" style={{ backgroundColor: `${color}20`, color }}>
+              {catLabel || 'Uncategorised'}
+            </span>
+            {entry.clientName && (
+              <span className="text-[11px] text-[#4A5568] border border-[#D8D8EE] rounded-full px-2 py-0.5">{entry.clientName}</span>
+            )}
           </div>
         </div>
-        <span className="text-[10px] text-[#9CA3AF] shrink-0 w-24 text-right">
-          {hasTimes ? `${formatTimeOfDay(entry.timerStartedAt)} – ${formatTimeOfDay(entry.timerStoppedAt)}` : '—'}
-        </span>
-        <span className="text-sm font-bold text-[#242450] font-mono shrink-0 w-20 text-right">{formatDuration(entry.durationMinutes)}</span>
+        <div className="shrink-0 flex flex-col items-end gap-0.5">
+          <span className="text-[12px] text-[#4A5568] font-mono">
+            {hasTimes ? `${formatTimeOfDay(entry.timerStartedAt)} – ${formatTimeOfDay(entry.timerStoppedAt)}` : <span className="text-[#9CA3AF] italic">No time range</span>}
+          </span>
+          <span className="text-[18px] font-bold text-[#242450]">{formatDuration(entry.durationMinutes)}</span>
+        </div>
         <div className="flex items-center gap-0.5 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
           {showReplay && (
-            <button onClick={() => handleReplay(entry)} className="p-1.5 hover:bg-[#EBEBF5] rounded" title="Resume task">
-              <RotateCw className="w-3.5 h-3.5 text-[#5777AB]" />
+            <button onClick={() => handleReplay(entry)} className="p-2 hover:bg-[#EBEBF5] rounded-lg" title="Resume task">
+              <RotateCw className="w-4 h-4 text-[#5777AB]" />
             </button>
           )}
           <div className="relative">
             <button
               onClick={(e) => { e.stopPropagation(); setMenuOpenId(menuOpenId === entry.id ? null : entry.id); }}
-              className="p-1.5 hover:bg-[#EBEBF5] rounded entry-menu" title="More actions">
-              <MoreVertical className="w-3.5 h-3.5 text-[#9CA3AF]" />
+              className="p-2 hover:bg-[#EBEBF5] rounded-lg entry-menu" title="More actions">
+              <MoreVertical className="w-4 h-4 text-[#9CA3AF]" />
             </button>
             {menuOpenId === entry.id && (
               <div className="absolute right-0 top-full mt-1 w-36 bg-white border border-[#EBEBF5] rounded-lg shadow-lg z-50 py-1 entry-menu" onClick={e => e.stopPropagation()}>
@@ -530,103 +531,119 @@ export default function LogTime({ onLogged }) {
   }, [menuOpenId]);
 
   return (
-    <div className="max-w-3xl mx-auto pt-2 space-y-6">
+    <div className="max-w-[900px] mx-auto pt-4 space-y-10">
       {/* ══════════════════════════════════════
           SECTION 1 — QUICK ENTRY BAR
           ══════════════════════════════════ */}
-      <div className="bg-white border border-[#EBEBF5] rounded-xl px-4 py-3">
-        <div className="flex items-center gap-2 flex-wrap">
+      <div className="bg-white rounded-xl shadow-[0_2px_12px_rgba(0,0,0,0.06)] border-l-4 border-l-[#8403C5] px-7 py-6">
+        <div className="flex items-end gap-3 flex-wrap">
           {/* Team Member */}
-          <select value={teamMember} onChange={e => setTeamMember(e.target.value)}
-            className="px-2.5 py-2 text-xs border border-[#EBEBF5] rounded-lg bg-white text-[#242450] shrink-0">
-            <option value="">Team member</option>
-            {TEAM_MEMBERS.map(m => <option key={m} value={m}>{m}</option>)}
-          </select>
-
-          {/* What are you working on? */}
-          <TaskPresetSelect
-            category={quickCat}
-            value={quickDesc}
-            onChange={setQuickDesc}
-            placeholder="What are you working on?"
-            className="flex-1 min-w-[160px] px-3 py-2 text-sm border border-[#EBEBF5] rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-[#8403C5]/20"
-          />
+          <div className="shrink-0">
+            <label className="block text-[10px] font-semibold text-[#242450] uppercase tracking-[0.06em] mb-1">Team member</label>
+            <select value={teamMember} onChange={e => setTeamMember(e.target.value)}
+              className="px-3 py-2 text-sm border border-[#E2E8F0] rounded-lg bg-[#F8FAFC] text-[#242450] w-[120px] focus:outline-none focus:border-[#8403C5] focus:ring-2 focus:ring-[#8403C5]/10 transition-all">
+              <option value="">Select…</option>
+              {TEAM_MEMBERS.map(m => <option key={m} value={m}>{m}</option>)}
+            </select>
+          </div>
 
           {/* Category */}
-          <select value={quickCat} onChange={e => setQuickCat(e.target.value)}
-            className="px-2.5 py-2 text-xs border border-[#EBEBF5] rounded-lg bg-white text-[#242450] shrink-0">
-            <option value="">Category</option>
-            {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
-          </select>
+          <div className="shrink-0">
+            <label className="block text-[10px] font-semibold text-[#242450] uppercase tracking-[0.06em] mb-1">Category</label>
+            <select value={quickCat} onChange={e => setQuickCat(e.target.value)}
+              className="px-3 py-2 text-sm border border-[#E2E8F0] rounded-lg bg-[#F8FAFC] text-[#242450] w-[180px] focus:outline-none focus:border-[#8403C5] focus:ring-2 focus:ring-[#8403C5]/10 transition-all">
+              <option value="">Select…</option>
+              {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
+            </select>
+          </div>
+
+          {/* What are you working on? */}
+          <div className="flex-1 min-w-[180px]">
+            <label className="block text-[10px] font-semibold text-[#242450] uppercase tracking-[0.06em] mb-1">Task description</label>
+            <TaskPresetSelect
+              category={quickCat}
+              value={quickDesc}
+              onChange={setQuickDesc}
+              placeholder="What are you working on?"
+              className="w-full px-3 py-2 text-sm border border-[#E2E8F0] rounded-lg bg-[#F8FAFC] focus:outline-none focus:border-[#8403C5] focus:ring-2 focus:ring-[#8403C5]/10 transition-all"
+            />
+          </div>
 
           {/* Client */}
-          <select value={quickClientId} onChange={e => { setQuickClientId(e.target.value); const c = clients.find(cl => cl.id === e.target.value); setQuickClientName(c?.name || ''); }}
-            className="px-2.5 py-2 text-xs border border-[#EBEBF5] rounded-lg bg-white text-[#242450] shrink-0 max-w-[120px]">
-            <option value="">Client</option>
-            {clients.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-          </select>
+          <div className="shrink-0">
+            <label className="block text-[10px] font-semibold text-[#242450] uppercase tracking-[0.06em] mb-1">
+              Client <span className="font-normal normal-case text-[#9CA3AF]">(optional)</span>
+            </label>
+            <select value={quickClientId} onChange={e => { setQuickClientId(e.target.value); const c = clients.find(cl => cl.id === e.target.value); setQuickClientName(c?.name || ''); }}
+              className="px-3 py-2 text-sm border border-[#E2E8F0] rounded-lg bg-[#F8FAFC] text-[#242450] w-[130px] focus:outline-none focus:border-[#8403C5] focus:ring-2 focus:ring-[#8403C5]/10 transition-all">
+              <option value="">None</option>
+              {clients.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+            </select>
+          </div>
 
           {/* Billable toggle */}
-          <button onClick={() => setQuickBillable(b => !b)} title="Billable"
-            className={`p-2 rounded-lg border transition-colors shrink-0 ${quickBillable ? 'bg-[#E8F7F2] border-[#1D9E75] text-[#1D9E75]' : 'border-[#EBEBF5] text-[#9CA3AF] hover:border-[#D8D8EE]'}`}>
-            <PoundSterling className="w-4 h-4" />
-          </button>
+          <div className="shrink-0">
+            <label className="block text-[10px] font-semibold text-[#242450] uppercase tracking-[0.06em] mb-1">&nbsp;</label>
+            <button onClick={() => setQuickBillable(b => !b)} title="Billable"
+              className={`h-[38px] px-4 rounded-lg border transition-colors ${quickBillable ? 'bg-[#E8F7F2] border-[#1D9E75] text-[#1D9E75]' : 'border-[#E2E8F0] text-[#9CA3AF] hover:border-[#D8D8EE]'}`}>
+              <PoundSterling className="w-4 h-4" />
+            </button>
+          </div>
 
           {/* Duration */}
-          <div className="flex items-center gap-1 shrink-0">
-            <input type="number" min="0" value={quickH} onChange={e => setQuickH(e.target.value)}
-              className="w-12 px-2 py-2 text-xs text-center border border-[#EBEBF5] rounded-lg bg-white" placeholder="0" />
-            <span className="text-xs text-[#5777AB]">h</span>
-            <input type="number" min="0" max="59" value={quickM} onChange={e => setQuickM(e.target.value)}
-              className="w-12 px-2 py-2 text-xs text-center border border-[#EBEBF5] rounded-lg bg-white" placeholder="0" />
-            <span className="text-xs text-[#5777AB]">m</span>
+          <div className="shrink-0">
+            <label className="block text-[10px] font-semibold text-[#242450] uppercase tracking-[0.06em] mb-1">Duration</label>
+            <div className="flex items-center gap-1">
+              <input type="number" min="0" value={quickH} onChange={e => setQuickH(e.target.value)}
+                className="w-12 px-2 py-2 text-sm text-center border border-[#E2E8F0] rounded-lg bg-[#F8FAFC] focus:outline-none focus:border-[#8403C5] focus:ring-2 focus:ring-[#8403C5]/10 transition-all" placeholder="0" />
+              <span className="text-xs text-[#5777AB] font-medium">h</span>
+              <input type="number" min="0" max="59" value={quickM} onChange={e => setQuickM(e.target.value)}
+                className="w-12 px-2 py-2 text-sm text-center border border-[#E2E8F0] rounded-lg bg-[#F8FAFC] focus:outline-none focus:border-[#8403C5] focus:ring-2 focus:ring-[#8403C5]/10 transition-all" placeholder="0" />
+              <span className="text-xs text-[#5777AB] font-medium">m</span>
+            </div>
           </div>
 
           {/* Log button */}
-          <button onClick={handleQuickLog}
-            disabled={!quickDesc.trim() || ((parseInt(quickH) || 0) + (parseInt(quickM) || 0)) <= 0}
-            className="px-4 py-2 text-xs font-semibold bg-[#8403C5] hover:bg-[#6B02A0] disabled:bg-[#D8D8EE] disabled:text-[#9CA3AF] text-white rounded-lg transition-colors shrink-0">
-            Log
-          </button>
+          <div className="shrink-0">
+            <label className="block text-[10px] font-semibold text-[#242450] uppercase tracking-[0.06em] mb-1">&nbsp;</label>
+            <button onClick={handleQuickLog}
+              disabled={!quickDesc.trim() || ((parseInt(quickH) || 0) + (parseInt(quickM) || 0)) <= 0}
+              className="h-[38px] px-4 text-sm font-semibold border-2 border-[#8403C5] text-[#8403C5] bg-transparent hover:bg-[#F3E8FF] disabled:border-[#D8D8EE] disabled:text-[#D8D8EE] disabled:hover:bg-transparent rounded-lg transition-all shrink-0">
+              Log
+            </button>
+          </div>
 
           {/* Divider */}
-          <div className="w-px h-8 bg-[#EBEBF5] shrink-0 hidden sm:block" />
+          <div className="w-px h-[52px] bg-[#EBEBF5] shrink-0 hidden sm:block" />
 
           {/* Timer buttons */}
-          <div className="flex items-center gap-1.5 shrink-0">
-            {timerStatus === 'idle' ? (
-              <button onClick={handleStartTimer}
-                className="flex items-center gap-1 px-3 py-2 text-xs font-semibold bg-[#242450] hover:bg-[#1A1A3A] text-white rounded-lg transition-colors">
-                <Play className="w-3.5 h-3.5" fill="white" /> Start
-              </button>
-            ) : (
-              <>
-                <span className={`font-mono text-sm font-bold tracking-wider ${timerStatus === 'running' ? 'text-[#E8A020]' : 'text-[#9CA3AF]'}`}>
-                  {formatTimer(elapsed)}
-                </span>
-                {timerStatus === 'running' ? (
-                  <>
-                    <button onClick={handlePauseTimer} className="p-1.5 hover:bg-[#EBEBF5] rounded" title="Pause">
-                      <Pause className="w-3.5 h-3.5 text-[#5777AB]" />
-                    </button>
-                    <button onClick={handleStopAndLog}
-                      className="flex items-center gap-1 px-2.5 py-1.5 text-xs font-semibold bg-[#DC2626] hover:bg-[#B91C1C] text-white rounded-lg transition-colors">
-                      <Square className="w-3 h-3" fill="white" /> Stop
-                    </button>
-                  </>
-                ) : (
-                  <>
-                    <button onClick={handleResumeTimer} className="p-1.5 hover:bg-[#EBEBF5] rounded" title="Resume">
-                      <Play className="w-3.5 h-3.5 text-[#5777AB]" fill="#5777AB" />
-                    </button>
-                    <button onClick={handleStopAndLog}
-                      className="flex items-center gap-1 px-2.5 py-1.5 text-xs font-semibold border border-[#EBEBF5] text-[#5777AB] hover:bg-[#F6F6FB] rounded-lg transition-colors">
-                      <Square className="w-3 h-3" /> Stop
-                    </button>
-                  </>
-                )}
-              </>
-            )}
+          <div className="shrink-0">
+            <label className="block text-[10px] font-semibold text-[#242450] uppercase tracking-[0.06em] mb-1">&nbsp;</label>
+            <div className="flex items-center gap-2">
+              {timerStatus === 'idle' ? (
+                <button onClick={handleStartTimer}
+                  className="flex items-center gap-2 px-5 py-2 text-sm font-semibold bg-[#242450] hover:bg-[#1A1A3A] text-white rounded-full transition-all">
+                  <Play className="w-4 h-4" fill="white" /> Start Timer
+                </button>
+              ) : (
+                <>
+                  <button onClick={timerStatus === 'running' ? handlePauseTimer : handleResumeTimer}
+                    className={`flex items-center gap-1.5 px-4 py-2 text-sm font-bold rounded-full transition-all ${
+                      timerStatus === 'running'
+                        ? 'bg-[#FFFBEB] border-2 border-[#E8A020] text-[#A16207] animate-pulse'
+                        : 'border-2 border-[#EBEBF5] text-[#5777AB] hover:bg-[#F6F6FB]'
+                    }`}>
+                    <span className="w-2 h-2 rounded-full" style={{ backgroundColor: timerStatus === 'running' ? '#E8A020' : '#9CA3AF' }} />
+                    <span className="font-mono tracking-wider">⏱ {formatTimer(elapsed)}</span>
+                  </button>
+                  <button onClick={handleStopAndLog}
+                    className="flex items-center gap-1 px-3 py-2 text-sm font-semibold border-2 border-[#FECACA] text-[#DC2626] hover:bg-[#FEF2F2] rounded-lg transition-all"
+                    title="Stop & Log">
+                    <Square className="w-3.5 h-3.5" /> Stop
+                  </button>
+                </>
+              )}
+            </div>
           </div>
         </div>
       </div>
@@ -635,39 +652,47 @@ export default function LogTime({ onLogged }) {
           SECTION 2 — TODAY'S ENTRIES
           ══════════════════════════════════ */}
       <div>
-        <div className="flex items-center justify-between mb-3">
-          <h2 className="text-sm font-bold text-[#242450]">Today</h2>
-          <span className="text-xs font-semibold text-[#5777AB]">{formatDuration(todayTotal)} total</span>
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-3">
+            <div className="w-1 h-6 bg-[#8403C5] rounded-full" />
+            <h2 className="text-[18px] font-bold text-[#242450]">Today</h2>
+          </div>
+          <span className="px-3 py-1 text-xs font-bold bg-[#8403C5] text-white rounded-full">{formatDuration(todayTotal)}</span>
         </div>
-        <div className="bg-white border border-[#EBEBF5] rounded-xl">
+        <div className="bg-white border border-[#EBEBF5] rounded-xl overflow-hidden shadow-[0_1px_4px_rgba(0,0,0,0.03)]">
           {todayEntries.length === 0 ? (
-            <div className="px-4 py-10 text-center">
-              <p className="text-sm text-[#5777AB]">No time logged today</p>
-              <p className="text-xs text-[#9CA3AF] mt-1">Use the bar above to start tracking</p>
+            <div className="px-5 py-12 text-center">
+              <p className="text-[15px] font-medium text-[#4A5568]">No time logged today</p>
+              <p className="text-[13px] text-[#9CA3AF] mt-1">Use the entry bar above to start tracking</p>
             </div>
           ) : (
-            todayEntries.map(e => <EntryRow key={e.id} entry={e} />)
+            todayEntries.map((e, i) => <EntryRow key={e.id} entry={e} idx={i} />)
           )}
         </div>
       </div>
 
       {/* ══════════════════════════════════════
           SECTION 3 — THIS WEEK
-          ══════════════════════════════════════ */}
+          ══════════════════════════════════ */}
       <div>
-        <div className="flex items-center justify-between mb-3">
-          <h2 className="text-sm font-bold text-[#242450]">This Week</h2>
-          <span className="text-xs font-semibold text-[#5777AB]">{formatDuration(weekTotal)} total</span>
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-3">
+            <div className="w-1 h-6 bg-[#8403C5] rounded-full" />
+            <h2 className="text-[18px] font-bold text-[#242450]">This Week</h2>
+          </div>
+          <span className="px-3 py-1 text-xs font-bold bg-[#8403C5] text-white rounded-full">{formatDuration(weekTotal)}</span>
         </div>
         {weekByDay.length === 0 ? (
-          <div className="bg-white border border-[#EBEBF5] rounded-xl px-4 py-10 text-center">
-            <p className="text-sm text-[#5777AB]">No entries earlier this week</p>
+          <div className="bg-white border-2 border-dashed border-[#D8D8EE] rounded-xl px-5 py-12 text-center">
+            <CalendarDays className="w-10 h-10 text-[#8403C5]/40 mx-auto mb-3" />
+            <p className="text-[15px] font-medium text-[#4A5568]">No earlier entries this week</p>
+            <p className="text-[13px] text-[#9CA3AF] mt-1">Entries from previous days will appear here</p>
           </div>
         ) : (
-          <div className="space-y-3">
+          <div className="space-y-4">
             {weekByDay.map(day => (
               <DayGroup key={day.date} day={day}>
-                {day.entries.map(e => <EntryRow key={e.id} entry={e} showReplay={false} />)}
+                {day.entries.map((e, i) => <EntryRow key={e.id} entry={e} showReplay={false} idx={i} />)}
               </DayGroup>
             ))}
           </div>
@@ -688,10 +713,10 @@ function DayGroup({ day, children }) {
   try { format(parseISO(day.date), 'EEE d MMM'); } catch { return <div>{children}</div>; }
 
   return (
-    <div className="bg-white border border-[#EBEBF5] rounded-xl">
+    <div className="bg-white border border-[#EBEBF5] rounded-xl overflow-hidden shadow-[0_1px_4px_rgba(0,0,0,0.03)]">
       <button onClick={() => setOpen(o => !o)}
-        className="w-full flex items-center justify-between px-4 py-2.5 hover:bg-[#F6F6FB] transition-colors">
-        <span className="text-xs font-bold text-[#242450] uppercase tracking-[0.04em]">
+        className="w-full flex items-center justify-between px-5 py-3 hover:bg-[#F6F6FB] transition-colors">
+        <span className="text-[13px] font-bold text-[#242450]">
           {(() => {
             try {
               const d = parseISO(day.date);
@@ -700,9 +725,9 @@ function DayGroup({ day, children }) {
             } catch { return day.date; }
           })()}
         </span>
-        <span className="text-xs font-semibold text-[#5777AB]">{formatDuration(day.totalMin)}</span>
+        <span className="px-2.5 py-0.5 text-[11px] font-bold bg-[#8403C5]/10 text-[#8403C5] rounded-full">{formatDuration(day.totalMin)}</span>
       </button>
-      {open && <div>{children}</div>}
+      {open && <div className="border-t border-[#F2F2F4]">{children}</div>}
     </div>
   );
 }

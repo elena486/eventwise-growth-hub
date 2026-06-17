@@ -24,7 +24,7 @@ export default function TimeCapacity({ subTab, onSubTabChange }) {
   }, [isAdmin, active, onSubTabChange]);
 
   return (
-    <div className="flex-1 bg-[#F6F6FB] overflow-y-auto px-8 pb-8 font-dm pt-4">
+    <div className="flex-1 bg-[#F5F6FA] overflow-y-auto px-8 pb-8 font-dm pt-4">
       {active === 'log' && <LogTime onLogged={() => setRefreshKey(k => k + 1)} />}
       {active === 'timesheet' && <MyTimesheet refresh={refreshKey} />}
       {active === 'overview' && isAdmin && <TeamOverview refresh={refreshKey} />}
