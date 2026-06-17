@@ -52,10 +52,11 @@
       "type": "string",
       "enum": [
         "running",
+        "paused",
         "stopped",
         "logged"
       ],
-      "description": "Timer state: running, stopped (awaiting form review), logged (finalised)"
+      "description": "Timer state: running, paused, stopped (awaiting form review), logged (finalised)"
     },
     "timerStartedAt": {
       "type": "string",
@@ -64,6 +65,10 @@
     "timerStoppedAt": {
       "type": "string",
       "description": "ISO timestamp when the timer was stopped"
+    },
+    "timerPauseIntervals": {
+      "type": "string",
+      "description": "JSON array of pause/resume interval objects [{pausedAt, resumedAt}]"
     },
     "clientId": {
       "type": "string",

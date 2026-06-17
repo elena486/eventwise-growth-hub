@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { base44 } from '@/api/base44Client';
-import { Clock, Play, Square, X } from 'lucide-react';
+import { Clock, Play, Square, Pause, X } from 'lucide-react';
 
 const TEAM_MEMBERS = ['Chris', 'Elena', 'George', 'Martinique', 'Sreeja', 'Ramesh'];
 const CATEGORIES = [
@@ -30,7 +30,7 @@ function formatTime(ms) {
 export default function FloatingTimer({ onStopAndLog }) {
   const [expanded, setExpanded] = useState(false);
   const [elapsed, setElapsed] = useState(0);
-  const [running, setRunning] = useState(false);
+  const [timerStatus, setTimerStatus] = useState('idle'); // 'idle' | 'running' | 'paused'
   const [dbId, setDbId] = useState(null);
   const [teamMember, setTeamMember] = useState('');
   const [category, setCategory] = useState('');
@@ -40,6 +40,8 @@ export default function FloatingTimer({ onStopAndLog }) {
   const [clients, setClients] = useState([]);
   const startRef = useRef(null);
   const intervalRef = useRef(null);
+  const pauseStartRef = useRef(null);
+  const totalPausedMsRef = useRef(0);
 
   // Resolve current user
   useEffect(() => {
@@ -52,7 +54,7 @@ export default function FloatingTimer({ onStopAndLog }) {
     base44.entities.Client.list().then(c => setClients(c)).catch(() => {});
   }, []);
 
-  // Load running timer
+  // Load running/paused timer
   useEffect(() => {
     const init = async () => {
       const lsData = getFromLS();
@@ -60,44 +62,67 @@ export default function FloatingTimer({ onStopAndLog }) {
       if (!me) return;
       const firstName = me.full_name?.split(' ')[0] || '';
 
-      if (lsData && lsData.status === 'running' && lsData.startedAt) {
-        const startMs = new Date(lsData.startedAt).getTime();
-        const now = Date.now();
-        setRunning(true);
-        startRef.current = startMs;
-        setElapsed(now - startMs);
-        setCategory(lsData.category || '');
-        setProjectTask(lsData.projectDescription || '');
-        setClientId(lsData.clientId || '');
-        setClientName(lsData.clientName || '');
-        intervalRef.current = setInterval(() => setElapsed(Date.now() - startRef.current), 500);
-      }
+      // Check DB for running/paused timer
+      const all = await base44.entities.TimeEntry.filter(
+        { teamMember: firstName, timerStatus: { $in: ['running', 'paused'] } },
+        '-created_date', 10
+      );
 
-      // Check DB
-      const all = await base44.entities.TimeEntry.filter({ teamMember: firstName, timerStatus: 'running' }, '-created_date', 10);
       if (all.length > 0) {
         const record = all[0];
         setDbId(record.id);
-        setCategory(record.category || '');
-        setProjectTask(record.projectTask || '');
+        setCategory(record.category === '(Untitled session)' ? '' : record.category || '');
         setClientId(record.clientId || '');
         setClientName(record.clientName || '');
-        if (!running) {
-          const startMs = new Date(record.timerStartedAt).getTime();
-          setRunning(true);
+        setProjectTask(record.projectTask === '(Untitled session)' ? '' : record.projectTask || '');
+
+        const startedAt = record.timerStartedAt;
+        const intervals = JSON.parse(record.timerPauseIntervals || '[]');
+        if (startedAt) {
+          const startMs = new Date(startedAt).getTime();
           startRef.current = startMs;
-          setElapsed(Date.now() - startMs);
-          intervalRef.current = setInterval(() => setElapsed(Date.now() - startRef.current), 500);
-          saveToLS({
-            startedAt: record.timerStartedAt,
-            category: record.category || '',
-            projectDescription: record.projectTask || '',
-            clientId: record.clientId || '',
-            clientName: record.clientName || '',
-            status: 'running',
+
+          // Calculate total paused time from intervals
+          let totalPaused = 0;
+          intervals.forEach(iv => {
+            if (iv.pausedAt) {
+              const pausedMs = new Date(iv.pausedAt).getTime();
+              const resumedMs = iv.resumedAt ? new Date(iv.resumedAt).getTime() : Date.now();
+              totalPaused += resumedMs - pausedMs;
+            }
           });
+          totalPausedMsRef.current = totalPaused;
+
+          if (record.timerStatus === 'running') {
+            setTimerStatus('running');
+            intervalRef.current = setInterval(() => {
+              setElapsed(Date.now() - startRef.current - totalPausedMsRef.current);
+            }, 500);
+            setElapsed(Date.now() - startMs - totalPaused);
+          } else if (record.timerStatus === 'paused') {
+            setTimerStatus('paused');
+            const lastInterval = intervals[intervals.length - 1];
+            if (lastInterval && !lastInterval.resumedAt && lastInterval.pausedAt) {
+              pauseStartRef.current = new Date(lastInterval.pausedAt).getTime();
+            }
+            setElapsed(Date.now() - startMs - totalPaused);
+          }
         }
-      } else if (lsData?.status === 'running') {
+
+        // Sync localStorage
+        saveToLS({
+          startedAt: record.timerStartedAt,
+          category: record.category || '',
+          projectDescription: record.projectTask || '',
+          clientId: record.clientId || '',
+          clientName: record.clientName || '',
+          status: record.timerStatus,
+          totalPausedMs: totalPausedMsRef.current,
+          pauseIntervals: intervals,
+          recordId: record.id,
+        });
+      } else if (lsData && (lsData.status === 'running' || lsData.status === 'paused')) {
+        // Stale localStorage — clear
         clearLS();
       }
     };
@@ -105,67 +130,174 @@ export default function FloatingTimer({ onStopAndLog }) {
     return () => clearInterval(intervalRef.current);
   }, []);
 
+  // Update DB as fields change during active session
+  useEffect(() => {
+    if (!dbId || timerStatus === 'idle') return;
+    const debounce = setTimeout(async () => {
+      try {
+        await base44.entities.TimeEntry.update(dbId, {
+          category: category || '',
+          projectTask: projectTask.trim() || '(Untitled session)',
+          ...(clientId ? { clientId, clientName } : { clientId: '', clientName: '' }),
+        });
+      } catch {}
+    }, 600);
+    return () => clearTimeout(debounce);
+  }, [category, clientId, projectTask]);
+
   const handleStart = async () => {
-    if (!category || !projectTask.trim()) return;
     const me = await base44.auth.me().catch(() => null);
     if (!me) return;
     const firstName = me.full_name?.split(' ')[0] || '';
     const now = new Date().toISOString();
+    const nowMs = new Date(now).getTime();
 
     const record = await base44.entities.TimeEntry.create({
       date: new Date().toISOString().slice(0, 10),
       teamMember: firstName,
-      category,
-      projectTask: projectTask.trim(),
+      category: category || '',
+      projectTask: projectTask.trim() || '(Untitled session)',
       durationMinutes: 0,
       timerStatus: 'running',
       timerStartedAt: now,
+      timerPauseIntervals: '[]',
       ...(clientId ? { clientId, clientName } : {}),
     });
 
     setDbId(record.id);
-    setRunning(true);
-    startRef.current = new Date(now).getTime();
+    setTimerStatus('running');
+    startRef.current = nowMs;
     setElapsed(0);
-    intervalRef.current = setInterval(() => setElapsed(Date.now() - startRef.current), 500);
+    totalPausedMsRef.current = 0;
+    pauseStartRef.current = null;
+
+    intervalRef.current = setInterval(() => {
+      setElapsed(Date.now() - startRef.current - totalPausedMsRef.current);
+    }, 500);
 
     saveToLS({
       startedAt: now,
       category,
-      projectDescription: projectTask.trim(),
+      projectDescription: projectTask.trim() || '(Untitled session)',
       clientId,
       clientName,
       status: 'running',
+      totalPausedMs: 0,
+      pauseIntervals: [],
+      recordId: record.id,
     });
+  };
+
+  const handlePause = async () => {
+    const pauseTime = new Date().toISOString();
+    pauseStartRef.current = new Date(pauseTime).getTime();
+    clearInterval(intervalRef.current);
+    setTimerStatus('paused');
+
+    const lsData = getFromLS();
+    if (lsData) {
+      lsData.status = 'paused';
+      lsData.pauseStartedAt = pauseTime;
+      saveToLS(lsData);
+    }
+
+    if (dbId) {
+      try {
+        const record = await base44.entities.TimeEntry.get(dbId);
+        const intervals = JSON.parse(record.timerPauseIntervals || '[]');
+        intervals.push({ pausedAt: pauseTime, resumedAt: null });
+        await base44.entities.TimeEntry.update(dbId, {
+          timerStatus: 'paused',
+          timerPauseIntervals: JSON.stringify(intervals),
+        });
+      } catch {}
+    }
+  };
+
+  const handleResume = async () => {
+    const resumeTime = new Date().toISOString();
+    const resumeMs = new Date(resumeTime).getTime();
+
+    if (pauseStartRef.current) {
+      totalPausedMsRef.current += resumeMs - pauseStartRef.current;
+      pauseStartRef.current = null;
+    }
+
+    setTimerStatus('running');
+
+    intervalRef.current = setInterval(() => {
+      setElapsed(Date.now() - startRef.current - totalPausedMsRef.current);
+    }, 500);
+
+    const lsData = getFromLS();
+    if (lsData) {
+      lsData.status = 'running';
+      lsData.totalPausedMs = totalPausedMsRef.current;
+      delete lsData.pauseStartedAt;
+      saveToLS(lsData);
+    }
+
+    if (dbId) {
+      try {
+        const record = await base44.entities.TimeEntry.get(dbId);
+        const intervals = JSON.parse(record.timerPauseIntervals || '[]');
+        if (intervals.length > 0 && intervals[intervals.length - 1].resumedAt === null) {
+          intervals[intervals.length - 1].resumedAt = resumeTime;
+        }
+        await base44.entities.TimeEntry.update(dbId, {
+          timerStatus: 'running',
+          timerPauseIntervals: JSON.stringify(intervals),
+        });
+      } catch {}
+    }
   };
 
   const handleStopAndLog = async () => {
     clearInterval(intervalRef.current);
+
+    if (timerStatus === 'paused' && pauseStartRef.current) {
+      totalPausedMsRef.current += Date.now() - pauseStartRef.current;
+      pauseStartRef.current = null;
+    }
+
     const now = new Date();
-    const totalMin = Math.round(elapsed / 60000);
+    const totalActiveMs = Date.now() - startRef.current - totalPausedMsRef.current;
+    const totalMin = Math.max(1, Math.round(totalActiveMs / 60000));
 
     if (dbId) {
       await base44.entities.TimeEntry.update(dbId, {
         timerStatus: 'stopped',
         timerStoppedAt: now.toISOString(),
         durationMinutes: totalMin,
+        category: category || '',
+        projectTask: projectTask.trim() || '',
+        ...(clientId ? { clientId, clientName } : {}),
+        timerPauseIntervals: JSON.stringify([]),
       }).catch(() => {});
     }
 
+    // Pass review data via sessionStorage so LogTime tab picks it up
+    try {
+      sessionStorage.setItem('timer_review_data', JSON.stringify({
+        category: category || '',
+        projectTask: projectTask.trim() || '',
+        clientId: clientId || '',
+        clientName: clientName || '',
+        durationMinutes: totalMin,
+        recordId: dbId,
+      }));
+    } catch {}
+
     clearLS();
-    setRunning(false);
+    setTimerStatus('idle');
     setDbId(null);
+    totalPausedMsRef.current = 0;
+    pauseStartRef.current = null;
     setExpanded(false);
 
-    // Pass data up for navigation
-    onStopAndLog?.({
-      category,
-      projectTask,
-      clientId,
-      clientName,
-      durationMinutes: totalMin,
-      timerId: dbId,
-    });
+    // Notify LogTime tab to pick up the review data
+    window.dispatchEvent(new CustomEvent('timer-review-available'));
+    onStopAndLog?.();
   };
 
   const handleDiscard = async () => {
@@ -174,12 +306,15 @@ export default function FloatingTimer({ onStopAndLog }) {
       await base44.entities.TimeEntry.delete(dbId).catch(() => {});
     }
     clearLS();
-    setRunning(false);
+    setTimerStatus('idle');
     setDbId(null);
+    totalPausedMsRef.current = 0;
+    pauseStartRef.current = null;
     setExpanded(false);
   };
 
-  if (!running && !expanded) {
+  // ── Minimized: NOT STARTED ──
+  if (timerStatus === 'idle' && !expanded) {
     return (
       <button
         onClick={() => setExpanded(true)}
@@ -194,7 +329,8 @@ export default function FloatingTimer({ onStopAndLog }) {
     );
   }
 
-  if (running && !expanded) {
+  // ── Minimized: RUNNING ──
+  if (timerStatus === 'running' && !expanded) {
     return (
       <button
         onClick={() => setExpanded(true)}
@@ -209,7 +345,25 @@ export default function FloatingTimer({ onStopAndLog }) {
     );
   }
 
-  // Expanded panel
+  // ── Minimized: PAUSED ──
+  if (timerStatus === 'paused' && !expanded) {
+    return (
+      <button
+        onClick={() => setExpanded(true)}
+        className="fixed bottom-6 right-6 z-50 flex items-center gap-2 px-3.5 py-2.5 rounded-full bg-[#F6F6FB] border-2 border-[#9CA3AF] text-[#5777AB] shadow-lg hover:scale-105 transition-all group"
+      >
+        <span className="w-2 h-2 rounded-full bg-[#9CA3AF]" />
+        <span className="font-mono text-sm font-bold tracking-wider">{formatTime(elapsed)}</span>
+        <span className="absolute right-full mr-3 px-2.5 py-1.5 bg-[#242450] text-white text-xs font-semibold rounded-lg opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none">
+          Paused — click to view
+        </span>
+      </button>
+    );
+  }
+
+  // ── Expanded panel ──
+  const statusColor = timerStatus === 'running' ? 'text-[#E8A020]' : timerStatus === 'paused' ? 'text-[#9CA3AF]' : 'text-[#242450]';
+
   return (
     <div className="fixed bottom-6 right-6 z-50 w-80 bg-white border border-[#EBEBF5] rounded-2xl shadow-2xl overflow-hidden">
       {/* Header */}
@@ -218,22 +372,30 @@ export default function FloatingTimer({ onStopAndLog }) {
           <Clock className="w-4 h-4" />
           <span className="text-sm font-bold">⏱ Timer</span>
         </div>
-        <button onClick={() => running ? null : setExpanded(false)} className="p-1 hover:bg-white/10 rounded">
+        <button onClick={() => timerStatus === 'idle' ? setExpanded(false) : null} className="p-1 hover:bg-white/10 rounded">
           <X className="w-4 h-4" />
         </button>
       </div>
 
       {/* Elapsed */}
       <div className="px-4 py-4 text-center border-b border-[#EBEBF5]">
-        <span className="text-3xl font-bold text-[#242450] font-mono tracking-wider">
+        <span className={`text-3xl font-bold font-mono tracking-wider ${statusColor}`}>
           {formatTime(elapsed)}
         </span>
-        {running && (
-          <p className="text-xs text-[#A16207] font-semibold mt-1 flex items-center justify-center gap-1">
-            <span className="w-1.5 h-1.5 rounded-full bg-[#E8A020] animate-pulse" />
-            Running
-          </p>
-        )}
+        <div className="flex items-center justify-center gap-1.5 mt-1">
+          {timerStatus === 'running' && (
+            <>
+              <span className="w-1.5 h-1.5 rounded-full bg-[#E8A020] animate-pulse" />
+              <span className="text-xs text-[#A16207] font-semibold">Running</span>
+            </>
+          )}
+          {timerStatus === 'paused' && (
+            <>
+              <span className="w-1.5 h-1.5 rounded-full bg-[#9CA3AF]" />
+              <span className="text-xs text-[#5777AB] font-semibold">Paused</span>
+            </>
+          )}
+        </div>
       </div>
 
       {/* Form */}
@@ -245,44 +407,68 @@ export default function FloatingTimer({ onStopAndLog }) {
         </div>
         <div>
           <label className="text-[10px] font-bold text-[#5777AB] uppercase tracking-[0.06em] block mb-1">Category</label>
-          <select value={category} onChange={e => setCategory(e.target.value)} disabled={running}
-            className="w-full px-3 py-1.5 text-sm border border-[#EBEBF5] rounded-lg bg-white disabled:bg-[#F6F6FB] disabled:text-[#5777AB]">
+          <select value={category} onChange={e => setCategory(e.target.value)}
+            className="w-full px-3 py-1.5 text-sm border border-[#EBEBF5] rounded-lg bg-white">
             <option value="">Select…</option>
             {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
           </select>
         </div>
         <div>
           <label className="text-[10px] font-bold text-[#5777AB] uppercase tracking-[0.06em] block mb-1">Client <span className="font-normal normal-case text-[#9CA3AF]">(optional)</span></label>
-          <select value={clientId} onChange={e => { setClientId(e.target.value); const c = clients.find(cl => cl.id === e.target.value); setClientName(c?.name || ''); }} disabled={running}
-            className="w-full px-3 py-1.5 text-sm border border-[#EBEBF5] rounded-lg bg-white disabled:bg-[#F6F6FB]">
+          <select value={clientId} onChange={e => { setClientId(e.target.value); const c = clients.find(cl => cl.id === e.target.value); setClientName(c?.name || ''); }}
+            className="w-full px-3 py-1.5 text-sm border border-[#EBEBF5] rounded-lg bg-white">
             <option value="">None</option>
             {clients.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
           </select>
         </div>
         <div>
           <label className="text-[10px] font-bold text-[#5777AB] uppercase tracking-[0.06em] block mb-1">Project / Task</label>
-          <input type="text" value={projectTask} onChange={e => setProjectTask(e.target.value)} disabled={running}
+          <input type="text" value={projectTask} onChange={e => setProjectTask(e.target.value)}
             placeholder="What are you working on?"
-            className="w-full px-3 py-1.5 text-sm border border-[#EBEBF5] rounded-lg bg-white disabled:bg-[#F6F6FB]" />
+            className="w-full px-3 py-1.5 text-sm border border-[#EBEBF5] rounded-lg bg-white" />
         </div>
 
-        {!running ? (
+        {/* IDLE: Start button */}
+        {timerStatus === 'idle' && (
           <button onClick={handleStart}
-            disabled={!category || !projectTask.trim()}
-            className="w-full py-2.5 bg-[#242450] hover:bg-[#1A1A3A] disabled:bg-[#D8D8EE] disabled:text-[#9CA3AF] text-white font-semibold text-sm rounded-lg transition-colors flex items-center justify-center gap-2">
+            className="w-full py-2.5 bg-[#242450] hover:bg-[#1A1A3A] text-white font-semibold text-sm rounded-lg transition-colors flex items-center justify-center gap-2">
             <Play className="w-4 h-4" fill="white" /> Start Timer
           </button>
-        ) : (
-          <div className="space-y-2">
-            <button onClick={handleStopAndLog}
-              className="w-full py-2.5 bg-[#DC2626] hover:bg-[#B91C1C] text-white font-semibold text-sm rounded-lg transition-colors flex items-center justify-center gap-2">
-              <Square className="w-4 h-4" fill="white" /> Stop &amp; Log
+        )}
+
+        {/* RUNNING: Pause + Stop */}
+        {timerStatus === 'running' && (
+          <div className="flex gap-2">
+            <button onClick={handlePause}
+              className="flex-1 py-2.5 bg-white border border-[#EBEBF5] text-[#5777AB] hover:bg-[#F6F6FB] font-semibold text-sm rounded-lg transition-colors flex items-center justify-center gap-1.5">
+              <Pause className="w-3.5 h-3.5" /> Pause
             </button>
-            <button onClick={handleDiscard}
-              className="w-full py-1.5 text-xs text-[#DC2626] hover:bg-[#FEF2F2] rounded-lg transition-colors">
-              Discard timer
+            <button onClick={handleStopAndLog}
+              className="flex-1 py-2.5 bg-[#DC2626] hover:bg-[#B91C1C] text-white font-semibold text-sm rounded-lg transition-colors flex items-center justify-center gap-1.5">
+              <Square className="w-3.5 h-3.5" fill="white" /> Stop &amp; Log
             </button>
           </div>
+        )}
+
+        {/* PAUSED: Resume + Stop */}
+        {timerStatus === 'paused' && (
+          <div className="flex gap-2">
+            <button onClick={handleResume}
+              className="flex-1 py-2.5 bg-[#242450] hover:bg-[#1A1A3A] text-white font-semibold text-sm rounded-lg transition-colors flex items-center justify-center gap-1.5">
+              <Play className="w-3.5 h-3.5" fill="white" /> Resume
+            </button>
+            <button onClick={handleStopAndLog}
+              className="flex-1 py-2.5 bg-white border border-[#EBEBF5] text-[#5777AB] hover:bg-[#F6F6FB] font-semibold text-sm rounded-lg transition-colors flex items-center justify-center gap-1.5">
+              <Square className="w-3.5 h-3.5" /> Stop &amp; Log
+            </button>
+          </div>
+        )}
+
+        {timerStatus !== 'idle' && (
+          <button onClick={handleDiscard}
+            className="w-full py-1.5 text-xs text-[#DC2626] hover:bg-[#FEF2F2] rounded-lg transition-colors">
+            Discard timer
+          </button>
         )}
       </div>
     </div>
