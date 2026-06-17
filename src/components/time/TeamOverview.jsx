@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { base44 } from '@/api/base44Client';
 import { format, parseISO, isWithinInterval, startOfWeek, endOfWeek, startOfMonth, endOfMonth, subMonths } from 'date-fns';
-import { Download, Filter } from 'lucide-react';
+import { Download, Filter, AlertTriangle, CheckCircle2, ChevronDown, ChevronRight } from 'lucide-react';
 import { CATEGORY_COLORS, CATEGORY_LABELS } from './categoryColors';
 
 const TEAM_MEMBERS = ['Chris', 'Elena', 'George', 'Martinique', 'Sreeja', 'Ramesh'];
@@ -9,6 +9,20 @@ const CATEGORIES = [
   'Sales & Outbound', 'Customer Success & Onboarding', 'Marketing & Content',
   'Operations & Admin', 'Product & Tech', 'Finance', 'Strategy & Planning', 'Other',
 ];
+const MEMBER_COLORS = {
+  'Chris': '#8403C5', 'Elena': '#1D9E75', 'George': '#E8A020',
+  'Martinique': '#0EA5E9', 'Sreeja': '#DC2626', 'Ramesh': '#5777AB',
+};
+const BAR_COLORS = {
+  'Sales & Outbound': '#3B82F6',
+  'Customer Success & Onboarding': '#22C55E',
+  'Marketing & Content': '#A855F7',
+  'Operations & Admin': '#F97316',
+  'Product & Tech': '#14B8A6',
+  'Finance': '#EAB308',
+  'Strategy & Planning': '#1E3A5F',
+  'Other': '#9CA3AF',
+};
 
 function fmtHours(minutes) {
   const h = Math.floor(minutes / 60);
@@ -38,6 +52,8 @@ export default function TeamOverview({ refresh }) {
   const [categoryFilter, setCategoryFilter] = useState([]);
   const [billableOnly, setBillableOnly] = useState(false);
   const [filterOpen, setFilterOpen] = useState(false);
+  const [showUnlinkedOnly, setShowUnlinkedOnly] = useState(false);
+  const [collapsedCategories, setCollapsedCategories] = useState({});
 
   const load = async () => {
     setLoading(true);
@@ -248,65 +264,92 @@ export default function TeamOverview({ refresh }) {
       </div>
 
       {/* Section 1: Team Summary */}
-      <div>
-        <h3 className="text-sm font-bold text-[#242450] mb-3">Team Summary</h3>
-        <div className="bg-white border border-[#EBEBF5] rounded-xl overflow-hidden">
-          <table className="w-full text-sm">
-            <thead>
-              <tr>
-                {['Name', 'Total hours', 'Top category', 'Billable', 'Entries'].map(h => (
-                  <th key={h} className="px-4 py-3 text-left text-[11px] font-bold text-[#5777AB] uppercase tracking-[0.08em]">{h}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {teamSummary.length === 0 ? (
-                <tr><td colSpan={5} className="px-4 py-12 text-center text-sm text-[#5777AB]">No data for this period</td></tr>
-              ) : (
-                teamSummary.map(m => (
-                  <tr key={m.name} className={`border-t border-[#F2F2F4] hover:bg-[#F6F6FB] transition-colors ${m.totalMin === 0 ? 'bg-[#FFFBEB]' : ''}`}>
-                    <td className="px-4 py-2.5 text-xs font-semibold text-[#242450]">{m.name}</td>
-                    <td className="px-4 py-2.5 text-xs font-semibold text-[#242450]">{fmtHoursShort(m.totalMin)}</td>
-                    <td className="px-4 py-2.5 text-xs text-[#5777AB]">{m.topCategory}</td>
-                    <td className="px-4 py-2.5 text-xs text-[#242450]">{fmtHoursShort(m.billableMin)}</td>
-                    <td className="px-4 py-2.5 text-xs text-[#5777AB]">{m.count}</td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
+      <div className="pb-6 border-b border-[#EBEBF5]">
+        <h3 className="text-base font-bold text-[#242450] mb-1">Team Summary</h3>
+        <p className="text-[11px] text-[#9CA3AF] mb-4">Hours logged per person this period</p>
+        {teamSummary.length === 0 ? (
+          <div className="bg-white border border-[#EBEBF5] rounded-xl px-6 py-12 text-center">
+            <p className="text-sm text-[#5777AB]">No time logged yet — entries will appear here once the team starts logging</p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+            {teamSummary.map(m => {
+              const teamTotal = teamSummary.reduce((s, x) => s + x.totalMin, 0);
+              const pct = teamTotal > 0 ? (m.totalMin / teamTotal) * 100 : 0;
+              const color = MEMBER_COLORS[m.name] || '#9CA3AF';
+              return (
+                <div key={m.name} className={`bg-white border border-[#EBEBF5] rounded-xl p-4 ${m.totalMin === 0 ? 'bg-[#FFFBEB]' : ''}`}>
+                  <div className="flex items-center gap-3 mb-3">
+                    <div className="w-10 h-10 rounded-full flex items-center justify-center text-white text-sm font-bold shrink-0" style={{ backgroundColor: color }}>
+                      {m.name.charAt(0)}
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-sm font-semibold text-[#242450] truncate">{m.name}</p>
+                    </div>
+                  </div>
+                  {m.totalMin === 0 ? (
+                    <p className="text-sm font-semibold text-[#A16207]">No time logged</p>
+                  ) : (
+                    <>
+                      <p className="text-2xl font-bold text-[#242450] mb-1">{fmtHours(m.totalMin)}</p>
+                      <span className="chip chip-purple text-[10px]">{m.topCategory}</span>
+                      <p className="text-[11px] text-[#9CA3AF] mt-2">{m.count} {m.count === 1 ? 'entry' : 'entries'}</p>
+                    </>
+                  )}
+                  <div className="mt-3 bg-[#F6F6FB] rounded-full h-1.5 overflow-hidden">
+                    <div className="h-full rounded-full transition-all duration-500" style={{ width: `${Math.max(pct, m.totalMin > 0 ? 2 : 0)}%`, backgroundColor: color }} />
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
       </div>
 
       {/* Section 2: Time by Category */}
-      <div>
-        <h3 className="text-sm font-bold text-[#242450] mb-3">Time by Category</h3>
+      <div className="pb-6 border-b border-[#EBEBF5]">
+        <h3 className="text-base font-bold text-[#242450] mb-1">Time by Category</h3>
+        <p className="text-[11px] text-[#9CA3AF] mb-4">Where the team's time is going</p>
         <div className="bg-white border border-[#EBEBF5] rounded-xl p-5">
           {categoryBreakdown.length === 0 ? (
-            <p className="text-sm text-[#5777AB] text-center py-8">No data for this period</p>
+            <p className="text-sm text-[#5777AB] text-center py-8">No time logged yet — entries will appear here once the team starts logging</p>
           ) : (
-            <div className="space-y-2.5">
-              {categoryBreakdown.map(c => {
-                const color = CATEGORY_COLORS[c.category] || '#9CA3AF';
-                return (
-                <div key={c.category} className="flex items-center gap-3">
-                  <span className="text-xs font-medium text-[#242450] w-44 shrink-0 truncate">{c.category}</span>
-                  <div className="flex-1 bg-[#F6F6FB] rounded-full h-6 overflow-hidden">
-                    <div className="h-full rounded-full flex items-center justify-end px-2 transition-all duration-500" style={{ width: `${Math.max(c.pct, 2)}%`, backgroundColor: color }}>
-                      <span className="text-[10px] font-bold text-white">{fmtHoursShort(c.minutes)}</span>
+            <>
+              <p className="text-xs font-semibold text-[#5777AB] mb-4">
+                Total team hours this period: {fmtHours(filtered.reduce((s, e) => s + e.durationMinutes, 0))} across {categoryBreakdown.length} {categoryBreakdown.length === 1 ? 'category' : 'categories'}
+              </p>
+              <div className="space-y-3">
+                {categoryBreakdown.map(c => {
+                  const color = BAR_COLORS[c.category] || '#9CA3AF';
+                  const teamTotalMin = filtered.reduce((s, e) => s + e.durationMinutes, 0);
+                  const pctOfTotal = teamTotalMin > 0 ? Math.round((c.minutes / teamTotalMin) * 100) : 0;
+                  const maxMinutes = Math.max(...categoryBreakdown.map(x => x.minutes), 1);
+                  const barWidth = (c.minutes / maxMinutes) * 80;
+                  return (
+                    <div key={c.category} className="flex items-center gap-3">
+                      <span className="text-xs font-medium text-[#242450] w-44 shrink-0 truncate">{c.category}</span>
+                      <div className="flex-1 flex items-center gap-2">
+                        <div className="flex-1 bg-[#F6F6FB] rounded-full h-6 overflow-hidden">
+                          <div className="h-full rounded-full flex items-center px-2.5 transition-all duration-500" style={{ width: `${Math.max(barWidth, 3)}%`, backgroundColor: color }}>
+                            <span className="text-[10px] font-bold text-white whitespace-nowrap">{fmtHoursShort(c.minutes)}</span>
+                          </div>
+                        </div>
+                        <span className="text-[11px] font-medium text-[#9CA3AF] shrink-0 w-9 text-right">{pctOfTotal}%</span>
+                      </div>
                     </div>
-                  </div>
-                </div>
-                );
-              })}
-            </div>
+                  );
+                })}
+              </div>
+            </>
           )}
         </div>
       </div>
 
       {/* Section 3: Bottleneck Signals */}
-      <div>
-        <h3 className="text-sm font-bold text-[#242450] mb-3">Bottleneck Signals</h3>
+      <div className="pb-6 border-b border-[#EBEBF5]">
+        <h3 className="text-base font-bold text-[#242450] mb-1">Bottleneck Signals</h3>
+        <p className="text-[11px] text-[#9CA3AF] mb-1">Categories with uneven distribution</p>
+        <p className="text-[10px] text-[#5777AB] mb-4">Flags appear when one person handles over 70% of a category with 10+ hours logged. No flags = healthy spread.</p>
         <div className="bg-white border border-[#EBEBF5] rounded-xl overflow-hidden">
           <table className="w-full text-sm">
             <thead>
@@ -317,26 +360,44 @@ export default function TeamOverview({ refresh }) {
               </tr>
             </thead>
             <tbody>
-              {bottlenecks.length === 0 ? (
-                <tr><td colSpan={5} className="px-4 py-12 text-center text-sm text-[#5777AB]">No data for this period</td></tr>
+              {bottlenecks.filter(b => b.category).length === 0 ? (
+                <tr><td colSpan={5} className="px-4 py-12 text-center text-sm text-[#5777AB]">No data for this period — entries will appear once the team starts logging</td></tr>
               ) : (
-                bottlenecks.map(b => (
+                bottlenecks.filter(b => b.category).map(b => {
+                  const people = {};
+                  filtered.filter(e => e.category === b.category).forEach(e => { people[e.teamMember] = true; });
+                  const initials = Object.keys(people);
+                  return (
                   <tr key={b.category} className="border-t border-[#F2F2F4] hover:bg-[#F6F6FB] transition-colors">
-                    <td className="px-4 py-2.5 text-xs font-medium text-[#242450]">{b.category}</td>
-                    <td className="px-4 py-2.5 text-xs text-[#242450]">{fmtHoursShort(b.totalMin)}</td>
-                    <td className="px-4 py-2.5 text-xs text-[#5777AB]">{b.numPeople}</td>
-                    <td className="px-4 py-2.5 text-xs text-[#5777AB]">{fmtHoursShort(b.avgMin)}</td>
+                    <td className="px-4 py-2.5 flex items-center gap-2">
+                      <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: BAR_COLORS[b.category] || '#9CA3AF' }} />
+                      <span className="text-xs font-medium text-[#242450]">{b.category}</span>
+                    </td>
+                    <td className="px-4 py-2.5 text-xs font-semibold text-[#242450]">{fmtHoursShort(b.totalMin)}</td>
+                    <td className="px-4 py-2.5">
+                      <div className="flex items-center gap-1">
+                        {initials.map(name => (
+                          <span key={name} className="w-5 h-5 rounded-full flex items-center justify-center text-[9px] font-bold text-white" style={{ backgroundColor: MEMBER_COLORS[name] || '#9CA3AF' }} title={name}>
+                            {name.charAt(0)}
+                          </span>
+                        ))}
+                      </div>
+                    </td>
+                    <td className="px-4 py-2.5 text-xs text-[#5777AB]">{fmtHoursShort(b.avgMin)} each</td>
                     <td className="px-4 py-2.5">
                       {b.concentrationRisk ? (
-                        <span className="text-[10px] font-semibold bg-[#FFFBEB] text-[#A16207] px-2 py-0.5 rounded-full">
-                          {b.concentrationPerson} handles {b.concentrationPct}% — concentration risk
+                        <span className="inline-flex items-center gap-1 text-[10px] font-semibold bg-[#FFFBEB] text-[#A16207] px-2 py-0.5 rounded-full">
+                          <AlertTriangle className="w-3 h-3" /> {b.concentrationPerson}: {b.concentrationPct}% — consider redistributing
                         </span>
                       ) : (
-                        <span className="text-[10px] text-[#9CA3AF]">—</span>
+                        <span className="inline-flex items-center gap-1 text-[10px] font-semibold bg-[#E8F7F2] text-[#1D9E75] px-2 py-0.5 rounded-full">
+                          <CheckCircle2 className="w-3 h-3" /> Distributed
+                        </span>
                       )}
                     </td>
                   </tr>
-                ))
+                  );
+                })
               )}
             </tbody>
           </table>
@@ -345,32 +406,77 @@ export default function TeamOverview({ refresh }) {
 
       {/* Section 4: Project Time Breakdown */}
       <div>
-        <h3 className="text-sm font-bold text-[#242450] mb-3">Project Time Breakdown</h3>
-        <div className="bg-white border border-[#EBEBF5] rounded-xl overflow-hidden">
-          <table className="w-full text-sm">
-            <thead>
-              <tr>
-                {['Category', 'Client', 'Project / Task', 'Total hours'].map(h => (
-                  <th key={h} className="px-4 py-3 text-left text-[11px] font-bold text-[#5777AB] uppercase tracking-[0.08em]">{h}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {projectBreakdown.length === 0 ? (
-                <tr><td colSpan={4} className="px-4 py-12 text-center text-sm text-[#5777AB]">No data for this period</td></tr>
-              ) : (
-                projectBreakdown.map((p, i) => (
-                  <tr key={i} className="border-t border-[#F2F2F4] hover:bg-[#F6F6FB] transition-colors">
-                    <td className="px-4 py-2.5 text-xs text-[#5777AB]">{p.category}</td>
-                    <td className="px-4 py-2.5 text-xs text-[#5777AB]">{p.clientName || '—'}</td>
-                    <td className="px-4 py-2.5 text-xs font-medium text-[#242450] max-w-[300px] truncate">{p.task}</td>
-                    <td className="px-4 py-2.5 text-xs font-semibold text-[#242450]">{fmtHoursShort(p.minutes)}</td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
+        <h3 className="text-base font-bold text-[#242450] mb-1">Project Time Breakdown</h3>
+        <p className="text-[11px] text-[#9CA3AF] mb-4">Time by individual task or project</p>
+        <div className="flex items-center justify-end mb-3">
+          <label className="flex items-center gap-2 cursor-pointer">
+            <input type="checkbox" checked={showUnlinkedOnly} onChange={() => setShowUnlinkedOnly(v => !v)}
+              className="accent-[#8403C5] w-3.5 h-3.5" />
+            <span className="text-xs text-[#5777AB]">No client linked only</span>
+          </label>
         </div>
+        {projectBreakdown.length === 0 ? (
+          <div className="bg-white border border-[#EBEBF5] rounded-xl px-6 py-12 text-center">
+            <p className="text-sm text-[#5777AB]">No data for this period — entries will appear once the team starts logging</p>
+          </div>
+        ) : (
+          (() => {
+            const filteredProjects = showUnlinkedOnly ? projectBreakdown.filter(p => !p.clientName) : projectBreakdown;
+            const byCat = {};
+            filteredProjects.forEach(p => {
+              if (!byCat[p.category]) byCat[p.category] = { totalMin: 0, projects: [] };
+              byCat[p.category].totalMin += p.minutes;
+              byCat[p.category].projects.push(p);
+            });
+            const catMax = Math.max(...Object.values(byCat).map(c => c.totalMin), 1);
+            return (
+              <div className="space-y-3">
+                {Object.entries(byCat).map(([cat, group]) => {
+                  const color = BAR_COLORS[cat] || '#9CA3AF';
+                  const isCollapsed = collapsedCategories[cat];
+                  return (
+                    <div key={cat} className="bg-white border border-[#EBEBF5] rounded-xl overflow-hidden">
+                      <button onClick={() => setCollapsedCategories(prev => ({ ...prev, [cat]: !prev[cat] }))}
+                        className="w-full flex items-center justify-between px-4 py-2.5 hover:bg-[#F6F6FB] transition-colors">
+                        <div className="flex items-center gap-2">
+                          <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: color }} />
+                          <span className="text-xs font-bold text-[#242450]">{cat}</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs font-semibold text-[#5777AB]">{fmtHoursShort(group.totalMin)}</span>
+                          {isCollapsed ? <ChevronRight className="w-3.5 h-3.5 text-[#9CA3AF]" /> : <ChevronDown className="w-3.5 h-3.5 text-[#9CA3AF]" />}
+                        </div>
+                      </button>
+                      {!isCollapsed && (
+                        <div>
+                          {group.projects.map((p, i) => {
+                            const barW = catMax > 0 ? (p.minutes / catMax) * 60 : 0;
+                            return (
+                              <div key={i} className="flex items-center gap-3 px-4 py-2 border-t border-[#F2F2F4] hover:bg-[#F6F6FB] transition-colors">
+                                <div className="flex-1 min-w-0">
+                                  <p className="text-xs font-medium text-[#242450] truncate">{p.task}</p>
+                                  <div className="flex items-center gap-1.5 mt-0.5">
+                                    {p.clientName && <span className="text-[10px] text-[#5777AB] bg-[#EEF2F8] px-1.5 py-0.5 rounded">{p.clientName}</span>}
+                                  </div>
+                                </div>
+                                <div className="flex items-center gap-2 shrink-0">
+                                  <div className="w-16 bg-[#F6F6FB] rounded-full h-1.5 overflow-hidden">
+                                    <div className="h-full rounded-full transition-all duration-500" style={{ width: `${Math.max(barW, 2)}%`, backgroundColor: color }} />
+                                  </div>
+                                  <span className="text-xs font-semibold text-[#242450] w-12 text-right">{fmtHoursShort(p.minutes)}</span>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            );
+          })()
+        )}
       </div>
 
       {/* Section 5: Estimated vs Actual */}
