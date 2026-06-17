@@ -184,11 +184,11 @@ export default function FloatingTimer({ onStopAndLog }) {
       <button
         onClick={() => setExpanded(true)}
         className="fixed bottom-6 right-6 z-50 w-12 h-12 rounded-full bg-[#242450] hover:bg-[#1A1A3A] text-white flex items-center justify-center shadow-lg transition-all hover:scale-105 group"
-        title="Start Timer"
+        title="Start a timer"
       >
         <Clock className="w-5 h-5" />
         <span className="absolute right-full mr-3 px-2.5 py-1.5 bg-[#242450] text-white text-xs font-semibold rounded-lg opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none">
-          Start Timer
+          Start a timer
         </span>
       </button>
     );
@@ -198,10 +198,13 @@ export default function FloatingTimer({ onStopAndLog }) {
     return (
       <button
         onClick={() => setExpanded(true)}
-        className="fixed bottom-6 right-6 z-50 flex items-center gap-2 px-3.5 py-2.5 rounded-full bg-[#FFFBEB] border-2 border-[#E8A020] text-[#A16207] shadow-lg hover:scale-105 transition-all"
+        className="fixed bottom-6 right-6 z-50 flex items-center gap-2 px-3.5 py-2.5 rounded-full bg-[#FFFBEB] border-2 border-[#E8A020] text-[#A16207] shadow-lg hover:scale-105 transition-all group"
       >
         <span className="w-2 h-2 rounded-full bg-[#E8A020] animate-pulse" />
         <span className="font-mono text-sm font-bold tracking-wider">{formatTime(elapsed)}</span>
+        <span className="absolute right-full mr-3 px-2.5 py-1.5 bg-[#242450] text-white text-xs font-semibold rounded-lg opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none">
+          Timer running — click to view
+        </span>
       </button>
     );
   }

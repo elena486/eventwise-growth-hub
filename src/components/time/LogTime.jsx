@@ -610,7 +610,8 @@ export default function LogTime({ onLogged }) {
                   className="w-full px-3 py-2 text-sm border border-[#EBEBF5] rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-[#8403C5]/20 focus:border-[#8403C5]" />
               </div>
               <button onClick={handleStartTimer}
-                className="w-full py-2.5 bg-[#242450] hover:bg-[#1A1A3A] text-white font-semibold text-sm rounded-lg transition-colors flex items-center justify-center gap-2">
+                disabled={!timerCategory || !timerProject.trim()}
+                className="w-full py-2.5 bg-[#242450] hover:bg-[#1A1A3A] disabled:bg-[#D8D8EE] disabled:text-[#9CA3AF] text-white font-semibold text-sm rounded-lg transition-colors flex items-center justify-center gap-2">
                 <Play className="w-4 h-4" fill="white" /> Start Timer
               </button>
             </>

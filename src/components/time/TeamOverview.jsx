@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { base44 } from '@/api/base44Client';
 import { format, parseISO, isWithinInterval, startOfWeek, endOfWeek, startOfMonth, endOfMonth, subMonths } from 'date-fns';
 import { Download, Filter } from 'lucide-react';
+import { CATEGORY_COLORS, CATEGORY_LABELS } from './categoryColors';
 
 const TEAM_MEMBERS = ['Chris', 'Elena', 'George', 'Martinique', 'Sreeja', 'Ramesh'];
 const CATEGORIES = [
@@ -17,6 +18,14 @@ function fmtHours(minutes) {
 
 function fmtDecimal(minutes) {
   return (minutes / 60).toFixed(1);
+}
+
+function fmtHoursShort(minutes) {
+  const h = Math.floor(minutes / 60);
+  const m = minutes % 60;
+  if (h === 0 && m === 0) return '—';
+  if (m === 0) return `${h}h`;
+  return `${h}h ${m}m`;
 }
 
 export default function TeamOverview({ refresh }) {
@@ -110,8 +119,10 @@ export default function TeamOverview({ refresh }) {
       const avgPerPerson = numPeople > 0 ? total / numPeople : 0;
       const maxOne = Math.max(...Object.values(people), 0);
       const pctOne = total > 0 ? Math.round((maxOne / total) * 100) : 0;
-      const concentrationPerson = pctOne > 70 ? Object.entries(people).find(([, v]) => v === maxOne)?.[0] : null;
-      return { category: cat, totalMin: total, numPeople, avgMin: avgPerPerson, concentrationPerson, concentrationRisk: pctOne > 70, concentrationPct: pctOne };
+      // Only flag if: >10h total, >1 contributor, and >70% by one person
+      const hasEnoughData = total > 600 && numPeople >= 2;
+      const concentrationPerson = hasEnoughData && pctOne > 70 ? Object.entries(people).find(([, v]) => v === maxOne)?.[0] : null;
+      return { category: cat, totalMin: total, numPeople, avgMin: avgPerPerson, concentrationPerson, concentrationRisk: !!concentrationPerson, concentrationPct: pctOne };
     }).sort((a, b) => b.totalMin - a.totalMin);
   }, [filtered]);
 
@@ -255,9 +266,9 @@ export default function TeamOverview({ refresh }) {
                 teamSummary.map(m => (
                   <tr key={m.name} className={`border-t border-[#F2F2F4] hover:bg-[#F6F6FB] transition-colors ${m.totalMin === 0 ? 'bg-[#FFFBEB]' : ''}`}>
                     <td className="px-4 py-2.5 text-xs font-semibold text-[#242450]">{m.name}</td>
-                    <td className="px-4 py-2.5 text-xs font-semibold text-[#242450]">{fmtDecimal(m.totalMin)}</td>
+                    <td className="px-4 py-2.5 text-xs font-semibold text-[#242450]">{fmtHoursShort(m.totalMin)}</td>
                     <td className="px-4 py-2.5 text-xs text-[#5777AB]">{m.topCategory}</td>
-                    <td className="px-4 py-2.5 text-xs text-[#242450]">{fmtDecimal(m.billableMin)}</td>
+                    <td className="px-4 py-2.5 text-xs text-[#242450]">{fmtHoursShort(m.billableMin)}</td>
                     <td className="px-4 py-2.5 text-xs text-[#5777AB]">{m.count}</td>
                   </tr>
                 ))
@@ -275,16 +286,19 @@ export default function TeamOverview({ refresh }) {
             <p className="text-sm text-[#5777AB] text-center py-8">No data for this period</p>
           ) : (
             <div className="space-y-2.5">
-              {categoryBreakdown.map(c => (
+              {categoryBreakdown.map(c => {
+                const color = CATEGORY_COLORS[c.category] || '#9CA3AF';
+                return (
                 <div key={c.category} className="flex items-center gap-3">
                   <span className="text-xs font-medium text-[#242450] w-44 shrink-0 truncate">{c.category}</span>
                   <div className="flex-1 bg-[#F6F6FB] rounded-full h-6 overflow-hidden">
-                    <div className="h-full bg-[#8403C5] rounded-full flex items-center justify-end px-2 transition-all duration-500" style={{ width: `${Math.max(c.pct, 2)}%` }}>
-                      <span className="text-[10px] font-bold text-white">{fmtHours(c.minutes)}</span>
+                    <div className="h-full rounded-full flex items-center justify-end px-2 transition-all duration-500" style={{ width: `${Math.max(c.pct, 2)}%`, backgroundColor: color }}>
+                      <span className="text-[10px] font-bold text-white">{fmtHoursShort(c.minutes)}</span>
                     </div>
                   </div>
                 </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </div>
@@ -309,9 +323,9 @@ export default function TeamOverview({ refresh }) {
                 bottlenecks.map(b => (
                   <tr key={b.category} className="border-t border-[#F2F2F4] hover:bg-[#F6F6FB] transition-colors">
                     <td className="px-4 py-2.5 text-xs font-medium text-[#242450]">{b.category}</td>
-                    <td className="px-4 py-2.5 text-xs text-[#242450]">{fmtDecimal(b.totalMin)}</td>
+                    <td className="px-4 py-2.5 text-xs text-[#242450]">{fmtHoursShort(b.totalMin)}</td>
                     <td className="px-4 py-2.5 text-xs text-[#5777AB]">{b.numPeople}</td>
-                    <td className="px-4 py-2.5 text-xs text-[#5777AB]">{fmtDecimal(b.avgMin)}</td>
+                    <td className="px-4 py-2.5 text-xs text-[#5777AB]">{fmtHoursShort(b.avgMin)}</td>
                     <td className="px-4 py-2.5">
                       {b.concentrationRisk ? (
                         <span className="text-[10px] font-semibold bg-[#FFFBEB] text-[#A16207] px-2 py-0.5 rounded-full">
@@ -350,7 +364,7 @@ export default function TeamOverview({ refresh }) {
                     <td className="px-4 py-2.5 text-xs text-[#5777AB]">{p.category}</td>
                     <td className="px-4 py-2.5 text-xs text-[#5777AB]">{p.clientName || '—'}</td>
                     <td className="px-4 py-2.5 text-xs font-medium text-[#242450] max-w-[300px] truncate">{p.task}</td>
-                    <td className="px-4 py-2.5 text-xs font-semibold text-[#242450]">{fmtDecimal(p.minutes)}</td>
+                    <td className="px-4 py-2.5 text-xs font-semibold text-[#242450]">{fmtHoursShort(p.minutes)}</td>
                   </tr>
                 ))
               )}
@@ -376,13 +390,13 @@ export default function TeamOverview({ refresh }) {
                 {estimatedVsActual.map((ev, i) => (
                   <tr key={i} className="border-t border-[#F2F2F4] hover:bg-[#F6F6FB] transition-colors">
                     <td className="px-4 py-2.5 text-xs font-medium text-[#242450] max-w-[250px] truncate">{ev.task}</td>
-                    <td className="px-4 py-2.5 text-xs text-[#5777AB]">{fmtHours(ev.estimated)}</td>
-                    <td className="px-4 py-2.5 text-xs text-[#242450]">{fmtHours(ev.actual)}</td>
+                    <td className="px-4 py-2.5 text-xs text-[#5777AB]">{fmtHoursShort(ev.estimated)}</td>
+                    <td className="px-4 py-2.5 text-xs text-[#242450]">{fmtHoursShort(ev.actual)}</td>
                     <td className="px-4 py-2.5 text-xs font-semibold">
                       {ev.variance > 0 ? (
-                        <span className="text-[#DC2626]">+{fmtHours(ev.variance)} over</span>
+                        <span className="text-[#DC2626]">+{fmtHoursShort(ev.variance)} over</span>
                       ) : ev.variance < 0 ? (
-                        <span className="text-[#1D9E75]">−{fmtHours(Math.abs(ev.variance))} under</span>
+                        <span className="text-[#1D9E75]">−{fmtHoursShort(Math.abs(ev.variance))} under</span>
                       ) : (
                         <span className="text-[#9CA3AF]">On track</span>
                       )}

@@ -1,12 +1,9 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { base44 } from '@/api/base44Client';
-import { format, startOfWeek, endOfWeek, addWeeks, subWeeks, addDays, isSameDay, parseISO, isWithinInterval, startOfMonth, endOfMonth } from 'date-fns';
-import { ChevronLeft, ChevronRight, List, Grid3X3, Calendar, Pencil, Trash2, X, Check } from 'lucide-react';
-
-const CATEGORIES = [
-  'Sales & Outbound', 'Customer Success & Onboarding', 'Marketing & Content',
-  'Operations & Admin', 'Product & Tech', 'Finance', 'Strategy & Planning', 'Other',
-];
+import { format, startOfWeek, endOfWeek, addWeeks, subWeeks, addDays, parseISO, isWithinInterval, startOfMonth, endOfMonth } from 'date-fns';
+import { ChevronLeft, ChevronRight, List, Grid3X3, Calendar, Pencil, Trash2, Plus } from 'lucide-react';
+import { CATEGORY_COLORS, CATEGORY_LABELS } from './categoryColors';
+import QuickEntryModal from './QuickEntryModal';
 
 const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
@@ -28,10 +25,10 @@ export default function MyTimesheet({ refresh }) {
   const [currentUser, setCurrentUser] = useState(null);
   const [view, setView] = useState('grid');
   const [weekOffset, setWeekOffset] = useState(0);
-  const [editId, setEditId] = useState(null);
-  const [editData, setEditData] = useState({});
-  const [deleteId, setDeleteId] = useState(null);
-  const [clients, setClients] = useState([]);
+
+  // Quick‑add/edit modal
+  const [modalOpen, setModalOpen] = useState(false);
+  const [modalInitial, setModalInitial] = useState(null);
 
   const load = async () => {
     setLoading(true);
@@ -39,10 +36,8 @@ export default function MyTimesheet({ refresh }) {
       const me = await base44.auth.me().catch(() => null);
       const firstName = me?.full_name?.split(' ')[0] || '';
       setCurrentUser(firstName);
-
       const data = await base44.entities.TimeEntry.list('-date', 1000);
       setEntries(data.filter(e => e.teamMember === firstName));
-      base44.entities.Client.list().then(c => setClients(c)).catch(() => {});
     } catch {}
     setLoading(false);
   };
@@ -59,7 +54,6 @@ export default function MyTimesheet({ refresh }) {
     }), [entries, weekStart, weekEnd]
   );
 
-  // Summary stats
   const now = new Date();
   const monthStart = startOfMonth(now);
   const monthEnd = endOfMonth(now);
@@ -78,10 +72,10 @@ export default function MyTimesheet({ refresh }) {
   // Grid data
   const gridData = useMemo(() => {
     const data = {};
-    CATEGORIES.forEach(cat => { data[cat] = Array(7).fill(0); });
+    CATEGORY_LABELS.forEach(cat => { data[cat] = Array(7).fill(0); });
     weekEntries.forEach(e => {
-      const day = parseISO(e.date).getDay(); // 0=Sun, 6=Sat
-      const idx = day === 0 ? 6 : day - 1; // Mon=0...Sun=6
+      const day = parseISO(e.date).getDay();
+      const idx = day === 0 ? 6 : day - 1;
       if (idx >= 0 && idx < 7) {
         data[e.category] = data[e.category] || Array(7).fill(0);
         data[e.category][idx] += e.durationMinutes;
@@ -106,33 +100,23 @@ export default function MyTimesheet({ refresh }) {
     return totals;
   }, [gridData]);
 
-  const handleEdit = (entry) => {
-    const h = Math.floor(entry.durationMinutes / 60);
-    const m = entry.durationMinutes % 60;
-    setEditId(entry.id);
-    setEditData({ ...entry, hours: String(h), minutes: String(m) });
-  };
-
-  const handleSaveEdit = async () => {
-    const h = parseInt(editData.hours) || 0;
-    const m = parseInt(editData.minutes) || 0;
-    await base44.entities.TimeEntry.update(editId, {
-      date: editData.date,
-      category: editData.category,
-      projectTask: editData.projectTask,
-      durationMinutes: h * 60 + m,
-      billable: editData.billable,
-      notes: editData.notes || '',
-      ...(editData.clientId ? { clientId: editData.clientId, clientName: editData.clientName } : {}),
+  // Get entries for a specific day index (0=Mon..6=Sun)
+  const getEntriesForDayIdx = (idx) => {
+    return weekEntries.filter(e => {
+      const day = parseISO(e.date).getDay();
+      const eIdx = day === 0 ? 6 : day - 1;
+      return eIdx === idx;
     });
-    setEditId(null);
-    load();
   };
 
-  const handleDelete = async () => {
-    await base44.entities.TimeEntry.delete(deleteId);
-    setDeleteId(null);
-    load();
+  const handleOpenForDate = (dateStr, category) => {
+    setModalInitial({ date: dateStr, category: category || '' });
+    setModalOpen(true);
+  };
+
+  const handleOpenForEntry = (entry) => {
+    setModalInitial(entry);
+    setModalOpen(true);
   };
 
   if (loading) {
@@ -144,15 +128,14 @@ export default function MyTimesheet({ refresh }) {
       {/* Summary chips */}
       <div className="grid grid-cols-4 gap-3 mb-6">
         {[
-          { label: 'This week', value: fmtHours(weekTotal), sub: `${fmtDecimal(weekTotal)}h` },
-          { label: 'This month', value: fmtHours(monthTotal), sub: `${fmtDecimal(monthTotal)}h` },
-          { label: 'Most time on', value: topCategory, sub: null },
-          { label: 'Billable this month', value: fmtHours(billableMonth), sub: `${fmtDecimal(billableMonth)}h` },
+          { label: 'This week', value: fmtHours(weekTotal) },
+          { label: 'This month', value: fmtHours(monthTotal) },
+          { label: 'Most time on', value: topCategory },
+          { label: 'Billable this month', value: fmtHours(billableMonth) },
         ].map((s, i) => (
           <div key={i} className="bg-white border border-[#EBEBF5] rounded-xl p-4">
             <p className="text-[11px] font-bold text-[#9CA3AF] uppercase tracking-[0.08em]">{s.label}</p>
             <p className="text-xl font-bold text-[#242450] mt-0.5">{s.value}</p>
-            {s.sub && <p className="text-[11px] text-[#5777AB]">{s.sub}</p>}
           </div>
         ))}
       </div>
@@ -171,22 +154,32 @@ export default function MyTimesheet({ refresh }) {
           </button>
         </div>
         <div className="flex items-center border border-[#EBEBF5] rounded-lg overflow-hidden bg-white">
-          <button onClick={() => setView('grid')}
-            className={`flex items-center gap-1 px-3 py-1.5 text-xs font-medium transition-colors ${view === 'grid' ? 'bg-[#F3E8FF] text-[#8403C5]' : 'text-[#5777AB] hover:bg-[#F6F6FB]'}`}>
-            <Grid3X3 className="w-3.5 h-3.5" /> Grid
-          </button>
-          <button onClick={() => setView('list')}
-            className={`flex items-center gap-1 px-3 py-1.5 text-xs font-medium transition-colors ${view === 'list' ? 'bg-[#F3E8FF] text-[#8403C5]' : 'text-[#5777AB] hover:bg-[#F6F6FB]'}`}>
-            <List className="w-3.5 h-3.5" /> List
-          </button>
-          <button onClick={() => setView('calendar')}
-            className={`flex items-center gap-1 px-3 py-1.5 text-xs font-medium transition-colors ${view === 'calendar' ? 'bg-[#F3E8FF] text-[#8403C5]' : 'text-[#5777AB] hover:bg-[#F6F6FB]'}`}>
-            <Calendar className="w-3.5 h-3.5" /> Calendar
-          </button>
+          {[
+            { id: 'grid', icon: Grid3X3, label: 'Grid' },
+            { id: 'list', icon: List, label: 'List' },
+            { id: 'calendar', icon: Calendar, label: 'Calendar' },
+          ].map(v => (
+            <button key={v.id} onClick={() => setView(v.id)}
+              className={`flex items-center gap-1 px-3 py-1.5 text-xs font-medium transition-colors ${view === v.id ? 'bg-[#F3E8FF] text-[#8403C5]' : 'text-[#5777AB] hover:bg-[#F6F6FB]'}`}>
+              <v.icon className="w-3.5 h-3.5" /> {v.label}
+            </button>
+          ))}
         </div>
       </div>
 
-      {/* View content */}
+      {/* Category colour legend (shown in calendar + grid views) */}
+      {(view === 'calendar' || view === 'grid') && (
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mb-4">
+          {Object.entries(CATEGORY_COLORS).map(([cat, color]) => (
+            <div key={cat} className="flex items-center gap-1.5">
+              <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: color }} />
+              <span className="text-[10px] font-medium text-[#5777AB]">{cat}</span>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Views */}
       {view === 'grid' ? (
         <div className="bg-white border border-[#EBEBF5] rounded-xl overflow-hidden">
           {Object.values(categoryTotals).every(v => v === 0) ? (
@@ -200,175 +193,118 @@ export default function MyTimesheet({ refresh }) {
                 <tr>
                   <th className="px-4 py-3 text-left text-[11px] font-bold text-[#5777AB] uppercase tracking-[0.08em]">Category</th>
                   {DAYS.map((d, i) => (
-                    <th key={i} className="px-3 py-3 text-center text-[11px] font-bold text-[#5777AB] uppercase tracking-[0.08em]">{d}</th>
+                    <th key={i} className="px-3 py-3 text-center text-[11px] font-bold text-[#5777AB] uppercase tracking-[0.08em] cursor-pointer hover:text-[#8403C5]"
+                      onClick={() => handleOpenForDate(format(addDays(weekStart, i), 'yyyy-MM-dd'))}>
+                      {d}
+                    </th>
                   ))}
                   <th className="px-4 py-3 text-right text-[11px] font-bold text-[#5777AB] uppercase tracking-[0.08em]">Total</th>
                 </tr>
               </thead>
               <tbody>
-                {CATEGORIES.map(cat => {
+                {CATEGORY_LABELS.map(cat => {
                   const days = gridData[cat] || Array(7).fill(0);
                   const total = categoryTotals[cat] || 0;
-                  if (total === 0) return null;
+                  const color = CATEGORY_COLORS[cat] || '#9CA3AF';
                   return (
                     <tr key={cat} className="border-t border-[#F2F2F4] hover:bg-[#F6F6FB] transition-colors">
-                      <td className="px-4 py-2.5 text-xs font-medium text-[#242450]">{cat}</td>
+                      <td className="px-4 py-2.5 text-xs font-medium" style={{ color }}>
+                        {cat}
+                      </td>
                       {days.map((v, i) => (
-                        <td key={i} className="px-3 py-2.5 text-center text-xs text-[#5777AB]">
-                          {v > 0 ? <span className="font-semibold text-[#242450]">{fmtDecimal(v)}</span> : <span className="text-[#D8D8EE]">—</span>}
+                        <td key={i}
+                          onClick={() => {
+                            if (v > 0) {
+                              const entriesForCell = weekEntries.filter(e => {
+                                const d = parseISO(e.date).getDay();
+                                return e.category === cat && (d === 0 ? 6 : d - 1) === i;
+                              });
+                              if (entriesForCell.length === 1) handleOpenForEntry(entriesForCell[0]);
+                              else handleOpenForDate(format(addDays(weekStart, i), 'yyyy-MM-dd'), cat);
+                            } else {
+                              handleOpenForDate(format(addDays(weekStart, i), 'yyyy-MM-dd'), cat);
+                            }
+                          }}
+                          className="px-3 py-2.5 text-center text-xs cursor-pointer hover:bg-[#F3E8FF] transition-colors">
+                          {v > 0 ? <span className="font-semibold text-[#242450]">{fmtHours(v)}</span> : <span className="text-[#D8D8EE]">—</span>}
                         </td>
                       ))}
-                      <td className="px-4 py-2.5 text-right text-xs font-bold text-[#242450]">{fmtDecimal(total)}</td>
+                      <td className="px-4 py-2.5 text-right text-xs font-bold text-[#242450]">{total > 0 ? fmtHours(total) : <span className="text-[#D8D8EE]">—</span>}</td>
                     </tr>
                   );
                 })}
                 <tr className="border-t-2 border-[#EBEBF5] bg-[#FAFAFD] font-bold">
                   <td className="px-4 py-2.5 text-xs font-bold text-[#242450]">Total</td>
                   {dayTotals.map((v, i) => (
-                    <td key={i} className="px-3 py-2.5 text-center text-xs font-bold text-[#242450]">{fmtDecimal(v)}</td>
+                    <td key={i} className="px-3 py-2.5 text-center text-xs font-bold text-[#242450]">{fmtHours(v)}</td>
                   ))}
-                  <td className="px-4 py-2.5 text-right text-xs font-bold text-[#8403C5]">{fmtDecimal(weekTotal)}</td>
+                  <td className="px-4 py-2.5 text-right text-xs font-bold text-[#8403C5]">{fmtHours(weekTotal)}</td>
                 </tr>
               </tbody>
             </table>
           )}
         </div>
       ) : view === 'list' ? (
-        <div className="bg-white border border-[#EBEBF5] rounded-xl overflow-hidden">
-          {weekEntries.length === 0 ? (
-            <div className="px-6 py-16 text-center">
-              <p className="text-sm text-[#5777AB]">No entries this week</p>
-              <p className="text-xs text-[#9CA3AF] mt-1">Add your first entry in the Log Time tab above</p>
-            </div>
-          ) : (
-            <table className="w-full text-sm">
-              <thead>
-                <tr>
-                  {['Date', 'Category', 'Client', 'Project / Task', 'Duration', 'Billable', ''].map(h => (
-                    <th key={h} className="px-3 py-3 text-left text-[11px] font-bold text-[#5777AB] uppercase tracking-[0.08em]">{h}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {weekEntries.map(e => (
-                  <tr key={e.id} className="border-t border-[#F2F2F4] hover:bg-[#F6F6FB] transition-colors group">
-                    <td className="px-3 py-2.5 text-xs text-[#242450]">{format(parseISO(e.date), 'd MMM')}</td>
-                    <td className="px-3 py-2.5 text-xs text-[#5777AB]">{e.category}</td>
-                    <td className="px-3 py-2.5 text-xs text-[#5777AB]">{e.clientName || '—'}</td>
-                    <td className="px-3 py-2.5 text-xs text-[#242450] font-medium max-w-[200px] truncate">{e.projectTask}</td>
-                    <td className="px-3 py-2.5 text-xs font-semibold text-[#242450]">{fmtHours(e.durationMinutes)}</td>
-                    <td className="px-3 py-2.5">{e.billable ? <span className="text-[10px] font-semibold bg-[#E8F7F2] text-[#1D9E75] px-2 py-0.5 rounded-full">Yes</span> : <span className="text-[10px] text-[#9CA3AF]">—</span>}</td>
-                    <td className="px-3 py-2.5 opacity-0 group-hover:opacity-100 transition-opacity">
-                      <div className="flex items-center gap-1">
-                        <button onClick={() => handleEdit(e)} className="p-1 text-[#9CA3AF] hover:text-[#8403C5] rounded"><Pencil className="w-3 h-3" /></button>
-                        <button onClick={() => setDeleteId(e.id)} className="p-1 text-[#9CA3AF] hover:text-[#DC2626] rounded"><Trash2 className="w-3 h-3" /></button>
-                      </div>
-                    </td>
+        <div>
+          <div className="flex justify-end mb-3">
+            <button onClick={() => handleOpenForDate(format(new Date(), 'yyyy-MM-dd'))}
+              className="flex items-center gap-1.5 px-3 py-2 text-xs font-semibold bg-[#8403C5] text-white rounded-lg hover:bg-[#6B02A0] transition-colors">
+              <Plus className="w-3.5 h-3.5" /> Add entry
+            </button>
+          </div>
+          <div className="bg-white border border-[#EBEBF5] rounded-xl overflow-hidden">
+            {weekEntries.length === 0 ? (
+              <div className="px-6 py-16 text-center">
+                <p className="text-sm text-[#5777AB]">No entries this week</p>
+                <p className="text-xs text-[#9CA3AF] mt-1">Click "Add entry" above or use the Log Time tab</p>
+              </div>
+            ) : (
+              <table className="w-full text-sm">
+                <thead>
+                  <tr>
+                    {['Date', 'Category', 'Client', 'Project / Task', 'Duration', 'Billable', ''].map(h => (
+                      <th key={h} className="px-3 py-3 text-left text-[11px] font-bold text-[#5777AB] uppercase tracking-[0.08em]">{h}</th>
+                    ))}
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          )}
+                </thead>
+                <tbody>
+                  {weekEntries.map(e => (
+                    <tr key={e.id} onClick={() => handleOpenForEntry(e)}
+                      className="border-t border-[#F2F2F4] hover:bg-[#F6F6FB] transition-colors cursor-pointer group">
+                      <td className="px-3 py-2.5 text-xs text-[#242450]">{format(parseISO(e.date), 'd MMM')}</td>
+                      <td className="px-3 py-2.5 text-xs text-[#5777AB]">{e.category}</td>
+                      <td className="px-3 py-2.5 text-xs text-[#5777AB]">{e.clientName || '—'}</td>
+                      <td className="px-3 py-2.5 text-xs text-[#242450] font-medium max-w-[200px] truncate">{e.projectTask}</td>
+                      <td className="px-3 py-2.5 text-xs font-semibold text-[#242450]">{fmtHours(e.durationMinutes)}</td>
+                      <td className="px-3 py-2.5">{e.billable ? <span className="chip chip-green">Yes</span> : <span className="text-[10px] text-[#9CA3AF]">—</span>}</td>
+                      <td className="px-3 py-2.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <Pencil className="w-3 h-3 text-[#9CA3AF]" />
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+          </div>
         </div>
       ) : (
-        <CalendarView entries={weekEntries} weekStart={weekStart} DAYS={DAYS} handleEdit={handleEdit} setDeleteId={setDeleteId} fmtHours={fmtHours} />
+        <CalendarView entries={weekEntries} weekStart={weekStart} DAYS={DAYS} onOpenEntry={handleOpenForEntry} onAddForDay={handleOpenForDate} />
       )}
 
-      {/* Edit modal */}
-      {editId && (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4" onClick={() => setEditId(null)}>
-          <div className="bg-white rounded-xl shadow-2xl w-full max-w-md p-6" onClick={e => e.stopPropagation()}>
-            <h3 className="text-base font-bold text-[#242450] mb-4">Edit entry</h3>
-            <div className="space-y-3">
-              <div>
-                <label className="block text-[11px] font-semibold text-[#5777AB] uppercase mb-1">Date</label>
-                <input type="date" value={editData.date} onChange={e => setEditData({ ...editData, date: e.target.value })}
-                  className="w-full px-3 py-2 text-sm border border-[#EBEBF5] rounded-lg" />
-              </div>
-              <div>
-                <label className="block text-[11px] font-semibold text-[#5777AB] uppercase mb-1">Category</label>
-                <select value={editData.category} onChange={e => setEditData({ ...editData, category: e.target.value })}
-                  className="w-full px-3 py-2 text-sm border border-[#EBEBF5] rounded-lg">
-                  {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
-                </select>
-              </div>
-              <div>
-                <label className="block text-[11px] font-semibold text-[#5777AB] uppercase mb-1">Client <span className="font-normal normal-case text-[#9CA3AF]">(optional)</span></label>
-                <select value={editData.clientId || ''} onChange={e => { const c = clients.find(cl => cl.id === e.target.value); setEditData({ ...editData, clientId: e.target.value, clientName: c?.name || '' }); }}
-                  className="w-full px-3 py-2 text-sm border border-[#EBEBF5] rounded-lg">
-                  <option value="">None</option>
-                  {clients.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-                </select>
-              </div>
-              <div>
-                <label className="block text-[11px] font-semibold text-[#5777AB] uppercase mb-1">Project / Task</label>
-                <input type="text" value={editData.projectTask} onChange={e => setEditData({ ...editData, projectTask: e.target.value })}
-                  className="w-full px-3 py-2 text-sm border border-[#EBEBF5] rounded-lg" />
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-[11px] font-semibold text-[#5777AB] uppercase mb-1">Hours</label>
-                  <input type="number" min="0" value={editData.hours} onChange={e => setEditData({ ...editData, hours: e.target.value })}
-                    className="w-full px-3 py-2 text-sm border border-[#EBEBF5] rounded-lg" />
-                </div>
-                <div>
-                  <label className="block text-[11px] font-semibold text-[#5777AB] uppercase mb-1">Minutes</label>
-                  <input type="number" min="0" max="59" value={editData.minutes} onChange={e => setEditData({ ...editData, minutes: e.target.value })}
-                    className="w-full px-3 py-2 text-sm border border-[#EBEBF5] rounded-lg" />
-                </div>
-              </div>
-              <div className="flex items-center gap-3">
-                <label className="text-sm text-[#242450]">Billable?</label>
-                <label className="flex items-center gap-1.5 cursor-pointer">
-                  <input type="radio" name="editBillable" checked={!editData.billable} onChange={() => setEditData({ ...editData, billable: false })}
-                    className="accent-[#8403C5]" />
-                  <span className="text-sm">No</span>
-                </label>
-                <label className="flex items-center gap-1.5 cursor-pointer">
-                  <input type="radio" name="editBillable" checked={editData.billable} onChange={() => setEditData({ ...editData, billable: true })}
-                    className="accent-[#8403C5]" />
-                  <span className="text-sm">Yes</span>
-                </label>
-              </div>
-            </div>
-            <div className="flex justify-end gap-2 mt-5 pt-4 border-t border-[#EBEBF5]">
-              <button onClick={() => setEditId(null)} className="px-4 py-2 text-sm text-[#5777AB] hover:bg-gray-100 rounded-lg">Cancel</button>
-              <button onClick={handleSaveEdit} className="px-4 py-2 text-sm font-semibold bg-[#8403C5] text-white rounded-lg hover:bg-[#6B02A0]">Save</button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Delete confirm */}
-      {deleteId && (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4" onClick={() => setDeleteId(null)}>
-          <div className="bg-white rounded-xl shadow-2xl w-full max-w-sm p-5" onClick={e => e.stopPropagation()}>
-            <p className="text-sm font-semibold text-[#242450] mb-1">Delete this entry?</p>
-            <p className="text-xs text-[#5777AB] mb-4">This cannot be undone.</p>
-            <div className="flex gap-2 justify-end">
-              <button onClick={() => setDeleteId(null)} className="px-3 py-1.5 text-sm text-[#5777AB] hover:bg-gray-100 rounded-lg">Cancel</button>
-              <button onClick={handleDelete} className="px-3 py-1.5 text-sm font-semibold bg-red-600 text-white rounded-lg hover:bg-red-700">Delete</button>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* Quick-add / edit modal */}
+      <QuickEntryModal
+        open={modalOpen}
+        onClose={() => { setModalOpen(false); setModalInitial(null); }}
+        onSaved={load}
+        initial={modalInitial}
+      />
     </div>
   );
 }
 
 // ── Calendar View ──
-const CAT_COLORS = {
-  'Sales & Outbound': '#8403C5',
-  'Customer Success & Onboarding': '#1D9E75',
-  'Marketing & Content': '#E8A020',
-  'Operations & Admin': '#5777AB',
-  'Product & Tech': '#DC2626',
-  'Finance': '#6B02A0',
-  'Strategy & Planning': '#0EA5E9',
-  'Other': '#9CA3AF',
-};
 
-function CalendarView({ entries, weekStart, DAYS, handleEdit, setDeleteId, fmtHours }) {
+function CalendarView({ entries, weekStart, DAYS, onOpenEntry, onAddForDay }) {
   const dayEntries = useMemo(() => {
     const map = {};
     entries.forEach(e => {
@@ -391,15 +327,6 @@ function CalendarView({ entries, weekStart, DAYS, handleEdit, setDeleteId, fmtHo
     return max;
   }, [dayEntries]);
 
-  if (entries.length === 0) {
-    return (
-      <div className="bg-white border border-[#EBEBF5] rounded-xl px-6 py-16 text-center">
-        <p className="text-sm text-[#5777AB]">No entries this week</p>
-        <p className="text-xs text-[#9CA3AF] mt-1">Add your first entry in the Log Time tab above</p>
-      </div>
-    );
-  }
-
   return (
     <div className="bg-white border border-[#EBEBF5] rounded-xl overflow-hidden">
       {/* Day headers */}
@@ -407,8 +334,10 @@ function CalendarView({ entries, weekStart, DAYS, handleEdit, setDeleteId, fmtHo
         {DAYS.map((d, i) => {
           const date = addDays(weekStart, i);
           const dayTotal = (dayEntries[i] || []).reduce((s, e) => s + e.durationMinutes, 0);
+          const dateStr = format(date, 'yyyy-MM-dd');
           return (
-            <div key={i} className="px-2 py-2.5 text-center border-r border-[#EBEBF5] last:border-r-0">
+            <div key={i} className="px-2 py-2.5 text-center border-r border-[#EBEBF5] last:border-r-0 cursor-pointer hover:bg-[#F6F6FB] transition-colors"
+              onClick={() => onAddForDay(dateStr)}>
               <p className="text-[11px] font-bold text-[#5777AB] uppercase tracking-[0.06em]">{d}</p>
               <p className="text-[10px] text-[#9CA3AF]">{format(date, 'd MMM')}</p>
               {dayTotal > 0 && <p className="text-[11px] font-bold text-[#242450] mt-0.5">{fmtHours(dayTotal)}</p>}
@@ -417,32 +346,41 @@ function CalendarView({ entries, weekStart, DAYS, handleEdit, setDeleteId, fmtHo
         })}
       </div>
 
-      {/* Day columns with entries */}
+      {/* Day columns */}
       <div className="grid grid-cols-7 min-h-[300px]">
         {DAYS.map((_, i) => {
           const items = dayEntries[i] || [];
-          const cellHeight = 300 + Math.max(0, items.length - 3) * 80;
+          const cellMinHeight = 300 + Math.max(0, items.length - 3) * 80;
+          const dateStr = format(addDays(weekStart, i), 'yyyy-MM-dd');
           return (
-            <div key={i} className="border-r border-[#EBEBF5] last:border-r-0 p-2 space-y-1.5" style={{ minHeight: cellHeight }}>
+            <div key={i} className="relative border-r border-[#EBEBF5] last:border-r-0 p-2 space-y-1.5"
+              style={{ minHeight: cellMinHeight }}
+              onClick={(e) => {
+                if (e.target === e.currentTarget) onAddForDay(dateStr);
+              }}>
               {items.length === 0 ? (
                 <p className="text-[11px] text-[#D8D8EE] text-center pt-8">—</p>
               ) : (
                 items.map(entry => {
-                  const heightPct = Math.max(8, (entry.durationMinutes / maxDayMin) * 100);
-                  const color = CAT_COLORS[entry.category] || '#9CA3AF';
+                  const color = CATEGORY_COLORS[entry.category] || '#9CA3AF';
+                  const heightPct = Math.max(10, (entry.durationMinutes / maxDayMin) * 100);
                   return (
                     <div key={entry.id}
-                      onClick={() => handleEdit(entry)}
-                      className="relative rounded-md px-2 py-1.5 cursor-pointer hover:ring-2 hover:ring-[#8403C5]/30 transition-all group break-words"
-                      style={{ minHeight: `${Math.max(heightPct * 0.8, 32)}px`, backgroundColor: `${color}15`, borderLeft: `3px solid ${color}` }}>
-                      <p className="text-[11px] font-semibold text-[#242450] leading-tight line-clamp-2">{entry.projectTask}</p>
-                      <p className="text-[10px] text-[#5777AB] mt-0.5">{fmtHours(entry.durationMinutes)}</p>
-                      {entry.clientName && <p className="text-[10px] text-[#5777AB] truncate">{entry.clientName}</p>}
-                      <div className="absolute top-1 right-1 opacity-0 group-hover:opacity-100 transition-opacity flex gap-0.5">
-                        <button onClick={ev => { ev.stopPropagation(); setDeleteId(entry.id); }} className="p-0.5 text-[#9CA3AF] hover:text-[#DC2626] rounded">
-                          <Trash2 className="w-2.5 h-2.5" />
-                        </button>
-                      </div>
+                      onClick={(e) => { e.stopPropagation(); onOpenEntry(entry); }}
+                      className="relative rounded-md px-2 py-1.5 cursor-pointer transition-all group"
+                      style={{
+                        minHeight: `${Math.max(heightPct * 0.8, 36)}px`,
+                        backgroundColor: `${color}18`,
+                        borderLeft: `3px solid ${color}`,
+                      }}>
+                      <p className="text-[10px] font-semibold text-[#5777AB] leading-tight uppercase tracking-[0.04em]" style={{ color }}>
+                        {entry.category}
+                      </p>
+                      {entry.clientName && (
+                        <p className="text-[10px] font-medium text-[#5777AB] truncate mt-0.5">{entry.clientName}</p>
+                      )}
+                      <p className="text-[11px] font-semibold text-[#242450] leading-tight mt-0.5 line-clamp-2">{entry.projectTask}</p>
+                      <p className="text-[10px] font-bold text-[#242450] mt-1">{fmtHours(entry.durationMinutes)}</p>
                     </div>
                   );
                 })
