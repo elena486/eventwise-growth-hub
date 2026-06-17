@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { base44 } from '@/api/base44Client';
 import { format } from 'date-fns';
-import { Play, Pause, ChevronDown, ChevronRight, Square } from 'lucide-react';
+import { Play, Square } from 'lucide-react';
 
 const TEAM_MEMBERS = ['Chris', 'Elena', 'George', 'Martinique', 'Sreeja', 'Ramesh'];
 const CATEGORIES = [
@@ -67,7 +67,6 @@ export default function LogTime({ onLogged }) {
   const [success, setSuccess] = useState(false);
 
   // ── Timer state ──
-  const [timerOpen, setTimerOpen] = useState(true);
   const [timerCategory, setTimerCategory] = useState('');
   const [timerProject, setTimerProject] = useState('');
 
@@ -519,55 +518,49 @@ export default function LogTime({ onLogged }) {
 
       {/* ── Timer section ── */}
       <div className="mt-6 border-t border-[#EBEBF5] pt-4">
-        <button onClick={() => setTimerOpen(o => !o)}
-          className="flex items-center gap-1 text-sm text-[#5777AB] hover:text-[#242450] transition-colors font-medium">
-          {timerOpen ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
-          Or use the timer
-        </button>
+        <p className="text-sm text-[#5777AB] font-medium mb-3">Or use the timer</p>
 
-        {timerOpen && (
-          <div className="mt-3 space-y-3 bg-white border border-[#EBEBF5] rounded-xl p-4">
-            {activeTimerId && !abandonedMode && (
-              <div className="px-3 py-2 bg-[#FEF2F2] text-[#DC2626] text-xs font-semibold rounded-lg border border-[#DC2626]/20">
-                You already have a timer running. Stop it before starting a new one.
-              </div>
-            )}
-
-            <div className="text-center">
-              <span className="text-3xl font-bold text-[#242450] font-mono tracking-wider">
-                {activeTimerId ? formatTime(elapsed) : '00:00:00'}
-              </span>
+        <div className="space-y-3 bg-white border border-[#EBEBF5] rounded-xl p-4">
+          {activeTimerId && !abandonedMode && (
+            <div className="px-3 py-2 bg-[#FEF2F2] text-[#DC2626] text-xs font-semibold rounded-lg border border-[#DC2626]/20">
+              You already have a timer running. Stop it before starting a new one.
             </div>
+          )}
 
-            {!activeTimerId ? (
-              <>
-                <div>
-                  <label className="block text-xs font-semibold text-[#5777AB] uppercase tracking-[0.06em] mb-1">Category</label>
-                  <select value={timerCategory} onChange={e => setTimerCategory(e.target.value)}
-                    className="w-full px-3 py-2 text-sm border border-[#EBEBF5] rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-[#8403C5]/20 focus:border-[#8403C5]">
-                    <option value="">Select…</option>
-                    {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-xs font-semibold text-[#5777AB] uppercase tracking-[0.06em] mb-1">Project / Task</label>
-                  <input type="text" value={timerProject} onChange={e => setTimerProject(e.target.value)}
-                    placeholder="What are you working on?"
-                    className="w-full px-3 py-2 text-sm border border-[#EBEBF5] rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-[#8403C5]/20 focus:border-[#8403C5]" />
-                </div>
-                <button onClick={handleStartTimer}
-                  className="w-full py-2.5 bg-[#242450] hover:bg-[#1A1A3A] text-white font-semibold text-sm rounded-lg transition-colors flex items-center justify-center gap-2">
-                  <Play className="w-4 h-4" fill="white" /> Start Timer
-                </button>
-              </>
-            ) : !abandonedMode ? (
-              <button onClick={handleStopAndLog}
-                className="w-full py-2.5 bg-[#DC2626] hover:bg-[#B91C1C] text-white font-semibold text-sm rounded-lg transition-colors flex items-center justify-center gap-2">
-                <Square className="w-4 h-4" fill="white" /> Stop &amp; Log
-              </button>
-            ) : null}
+          <div className="text-center">
+            <span className="text-3xl font-bold text-[#242450] font-mono tracking-wider">
+              {activeTimerId ? formatTime(elapsed) : '00:00:00'}
+            </span>
           </div>
-        )}
+
+          {!activeTimerId ? (
+            <>
+              <div>
+                <label className="block text-xs font-semibold text-[#5777AB] uppercase tracking-[0.06em] mb-1">Category</label>
+                <select value={timerCategory} onChange={e => setTimerCategory(e.target.value)}
+                  className="w-full px-3 py-2 text-sm border border-[#EBEBF5] rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-[#8403C5]/20 focus:border-[#8403C5]">
+                  <option value="">Select…</option>
+                  {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-[#5777AB] uppercase tracking-[0.06em] mb-1">Project / Task</label>
+                <input type="text" value={timerProject} onChange={e => setTimerProject(e.target.value)}
+                  placeholder="What are you working on?"
+                  className="w-full px-3 py-2 text-sm border border-[#EBEBF5] rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-[#8403C5]/20 focus:border-[#8403C5]" />
+              </div>
+              <button onClick={handleStartTimer}
+                className="w-full py-2.5 bg-[#242450] hover:bg-[#1A1A3A] text-white font-semibold text-sm rounded-lg transition-colors flex items-center justify-center gap-2">
+                <Play className="w-4 h-4" fill="white" /> Start Timer
+              </button>
+            </>
+          ) : !abandonedMode ? (
+            <button onClick={handleStopAndLog}
+              className="w-full py-2.5 bg-[#DC2626] hover:bg-[#B91C1C] text-white font-semibold text-sm rounded-lg transition-colors flex items-center justify-center gap-2">
+              <Square className="w-4 h-4" fill="white" /> Stop &amp; Log
+            </button>
+          ) : null}
+        </div>
       </div>
     </div>
   );
