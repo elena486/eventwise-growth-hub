@@ -120,15 +120,47 @@ export default function TeamOverview({ refresh }) {
       .map(([cat, min]) => ({ category: cat, minutes: min, pct: (min / max) * 100 }));
   }, [filtered]);
 
-  // Capacity Signals
-  const capacitySignals = useMemo(() => {
-    const signals = [];
+  // Team Health — plain English summary
+  const teamHealth = useMemo(() => {
     const now = new Date();
-
-    // Signal 1 — High Load Warning (calendar-month-based, independent of period filter)
     const thisMonthStart = startOfMonth(now);
     const thisMonthEnd = endOfMonth(now);
+    const sentences = [];
+    let signalCount = 0;
+    let critical = false;
+
+    // ── Gather data for summary ──
+
+    // Active members this period
+    const activeInPeriod = new Set();
+    filtered.forEach(e => { activeInPeriod.add(e.teamMember); });
+    const activeCount = activeInPeriod.size;
+    const totalMembers = TEAM_MEMBERS.length;
+
+    // Inactive members (have history but nothing this period)
+    const inactiveMembers = [];
     TEAM_MEMBERS.forEach(name => {
+      const hasHistory = entries.some(e => e.teamMember === name);
+      if (!hasHistory) return;
+      if (!activeInPeriod.has(name)) inactiveMembers.push(name);
+    });
+
+    // Top category
+    let topCat = '', topCatMin = 0;
+    const catMap = {};
+    filtered.forEach(e => { catMap[e.category] = (catMap[e.category] || 0) + e.durationMinutes; });
+    Object.entries(catMap).forEach(([cat, min]) => { if (min > topCatMin) { topCat = cat; topCatMin = min; } });
+
+    // Category dominance (>60% of total)
+    const teamTotal = filtered.reduce((s, e) => s + e.durationMinutes, 0);
+
+    // Per-person signals
+    const highLoadNames = [];
+    const spikes = [];
+    const streakNames = [];
+
+    TEAM_MEMBERS.forEach(name => {
+      // High load check
       const monthlyHours = [];
       for (let i = 0; i < 4; i++) {
         const mStart = startOfMonth(subMonths(now, i));
@@ -136,91 +168,114 @@ export default function TeamOverview({ refresh }) {
         const min = entries
           .filter(e => e.teamMember === name && isWithinInterval(parseISO(e.date), { start: mStart, end: mEnd }))
           .reduce((s, e) => s + e.durationMinutes, 0);
-        monthlyHours.unshift(min); // oldest first at index 0
+        monthlyHours.unshift(min);
       }
-      // monthlyHours[0..2] = last 3 complete months, monthlyHours[3] = current month
       const prevMonths = monthlyHours.slice(0, 3);
       const monthsWithData = prevMonths.filter(m => m > 0).length;
-      if (monthsWithData >= 3) {
-        const avg = prevMonths.reduce((s, m) => s + m, 0) / 3;
-        const current = monthlyHours[3];
-        if (current > avg * 1.2 && current > 600) {
-          signals.push({ type: 'high_load', label: `⚠ ${name} is logging significantly more hours than usual — possible overload` });
-        }
+      if (monthsWithData >= 3 && monthlyHours[3] > prevMonths.reduce((s, m) => s + m, 0) / 3 * 1.2 && monthlyHours[3] > 600) {
+        highLoadNames.push(name);
       }
-    });
 
-    // Signal 2 — Inactive Member (zero in current period, but has history)
-    TEAM_MEMBERS.forEach(name => {
-      const hasAnyHistory = entries.some(e => e.teamMember === name);
-      if (!hasAnyHistory) return;
-      const inPeriod = entries.filter(e => {
-        if (e.teamMember !== name) return false;
-        try { return isWithinInterval(parseISO(e.date), { start: dateRange.start, end: dateRange.end }); } catch { return false; }
-      });
-      const totalMin = inPeriod.reduce((s, e) => s + e.durationMinutes, 0);
-      if (totalMin === 0) {
-        signals.push({ type: 'inactive', label: `⚠ ${name} has not logged any time this period` });
-      }
-    });
-
-    // Signal 3 — Category Spike (this month vs last month, per person)
-    TEAM_MEMBERS.forEach(name => {
+      // Category spike (this month vs last month per person)
       const lastMonthStart = startOfMonth(subMonths(now, 1));
       const lastMonthEnd = endOfMonth(subMonths(now, 1));
-
-      const catThisMonth = {};
-      const catLastMonth = {};
-
+      const catThis = {}, catLast = {};
       entries.forEach(e => {
         if (e.teamMember !== name) return;
         const d = parseISO(e.date);
-        if (isWithinInterval(d, { start: thisMonthStart, end: thisMonthEnd })) {
-          catThisMonth[e.category] = (catThisMonth[e.category] || 0) + e.durationMinutes;
-        } else if (isWithinInterval(d, { start: lastMonthStart, end: lastMonthEnd })) {
-          catLastMonth[e.category] = (catLastMonth[e.category] || 0) + e.durationMinutes;
+        if (isWithinInterval(d, { start: thisMonthStart, end: thisMonthEnd })) catThis[e.category] = (catThis[e.category] || 0) + e.durationMinutes;
+        else if (isWithinInterval(d, { start: lastMonthStart, end: lastMonthEnd })) catLast[e.category] = (catLast[e.category] || 0) + e.durationMinutes;
+      });
+      Object.entries(catThis).forEach(([cat, thisMin]) => {
+        const lastMin = catLast[cat] || 0;
+        if (lastMin > 0 && thisMin > lastMin * 1.3 && thisMin > 300) {
+          const pctUp = Math.round(((thisMin - lastMin) / lastMin) * 100);
+          spikes.push(`${name}'s ${cat.toLowerCase()} activity is up ${pctUp}% vs last month`);
         }
       });
 
-      Object.entries(catThisMonth).forEach(([cat, thisMin]) => {
-        const lastMin = catLastMonth[cat] || 0;
-        if (lastMin > 0 && thisMin > lastMin * 1.5 && thisMin > 300) {
-          signals.push({ type: 'category_spike', label: `⚠ ${name} spent significantly more time on ${cat} this month vs last — worth reviewing` });
-        }
-      });
-    });
-
-    // Signal 4 — No Logging Streak (5+ consecutive working days)
-    TEAM_MEMBERS.forEach(name => {
+      // No-log streak
       const personEntries = entries.filter(e => e.teamMember === name);
-      if (personEntries.length === 0) return;
-      const loggedDays = new Set();
-      personEntries.forEach(e => {
-        try { loggedDays.add(e.date); } catch {}
-      });
-
-      // Walk backwards from today (or last entry date) counting consecutive working days with no log
-      let streak = 0;
-      let cursor = new Date(now);
-      // Don't count today if it's still early — check from yesterday
-      cursor = addDays(cursor, -1);
-
-      while (streak < 90) { // safety cap
-        const dateStr = format(cursor, 'yyyy-MM-dd');
-        if (!isWeekend(cursor)) {
-          if (loggedDays.has(dateStr)) break;
-          streak++;
+      if (personEntries.length > 0) {
+        const loggedDays = new Set();
+        personEntries.forEach(e => { try { loggedDays.add(e.date); } catch {} });
+        let streak = 0, cursor = addDays(now, -1);
+        while (streak < 90) {
+          const ds = format(cursor, 'yyyy-MM-dd');
+          if (!isWeekend(cursor)) { if (loggedDays.has(ds)) break; streak++; }
+          cursor = addDays(cursor, -1);
         }
-        cursor = addDays(cursor, -1);
-      }
-
-      if (streak >= 5) {
-        signals.push({ type: 'no_log_streak', label: `⚠ ${name} hasn't logged time in ${streak} days — reminder may be needed` });
+        if (streak >= 5) streakNames.push({ name, days: streak });
       }
     });
 
-    return signals;
-  }, [entries, dateRange]);
+    // Client-linked time
+    const clientMin = filtered.filter(e => e.clientId).reduce((s, e) => s + e.durationMinutes, 0);
+
+    // ── Build sentences ──
+    const periodLabel = period === 'this_week' ? 'this week' : period === 'this_month' ? 'this month' : period === 'last_month' ? 'last month' : 'this period';
+
+    // SENTENCE 1: How many are logging
+    if (inactiveMembers.length === 0 && teamTotal === 0) {
+      sentences.push(`No time logged yet ${periodLabel} — entries will appear once the team starts.`);
+    } else if (inactiveMembers.length === 0) {
+      sentences.push(`All ${activeCount} team members logged time ${periodLabel}.`);
+    } else if (inactiveMembers.length >= totalMembers / 2) {
+      critical = true;
+      const actives = TEAM_MEMBERS.filter(m => activeInPeriod.has(m));
+      sentences.push(`Only ${activeCount} of ${totalMembers} team members have logged time ${periodLabel}${actives.length > 0 ? ` (${actives.join(', ')})` : ''}.`);
+    } else {
+      sentences.push(`${inactiveMembers.join(' and ')} ${inactiveMembers.length === 1 ? "hasn't" : "haven't"} logged any time ${periodLabel}.`);
+      signalCount += inactiveMembers.length;
+    }
+
+    // SENTENCE 2: Top category or dominance
+    if (teamTotal > 0 && topCat) {
+      const topPct = Math.round((topCatMin / teamTotal) * 100);
+      if (topPct > 60) {
+        sentences.push(`${topCat} is taking up ${topPct}% of total team time ${periodLabel}.`);
+      } else {
+        sentences.push(`${topCat} had the most hours (${fmtHoursShort(topCatMin)}).`);
+      }
+    }
+
+    // SENTENCE 3: High load
+    if (highLoadNames.length > 0) {
+      highLoadNames.forEach(n => {
+        sentences.push(`${n}'s hours are significantly higher than their monthly average — worth checking in.`);
+      });
+      signalCount += highLoadNames.length;
+    }
+
+    // SENTENCE 4: Category spikes
+    if (spikes.length > 0) {
+      sentences.push(spikes[0] + '.');
+      signalCount += 1;
+    }
+
+    // SENTENCE 5: No-log streaks
+    if (streakNames.length > 0) {
+      const s = streakNames[0];
+      sentences.push(`${s.name} has not logged time in ${s.days} days.`);
+      signalCount += streakNames.length;
+    }
+
+    // SENTENCE 6: Client-linked time
+    if (teamTotal > 0 && clientMin === 0) {
+      sentences.push('No time has been logged against any client this month.');
+      signalCount += 1;
+    }
+
+    // Trim to max 5
+    const finalSentences = sentences.slice(0, 5);
+
+    // Status
+    let status = 'green';
+    if (signalCount >= 3 || critical) status = 'red';
+    else if (signalCount >= 1) status = 'amber';
+
+    return { status, sentences: finalSentences };
+  }, [entries, filtered, dateRange, period]);
 
   // Project breakdown
   const projectBreakdown = useMemo(() => {
@@ -343,6 +398,28 @@ export default function TeamOverview({ refresh }) {
         </div>
       </div>
 
+      {/* Team Health Card */}
+      <div className={`rounded-xl border px-5 py-4 ${teamHealth.status === 'green' ? 'bg-[#E8F7F2] border-[#1D9E75]/30' : teamHealth.status === 'amber' ? 'bg-[#FFFBEB] border-[#E8A020]/30' : 'bg-[#FEF2F2] border-[#DC2626]/30'}`}>
+        <div className="flex items-center gap-2 mb-3">
+          <span className={`w-8 h-8 rounded-full flex items-center justify-center text-lg ${teamHealth.status === 'green' ? 'bg-[#1D9E75]/20 text-[#1D9E75]' : teamHealth.status === 'amber' ? 'bg-[#E8A020]/20 text-[#E8A020]' : 'bg-[#DC2626]/20 text-[#DC2626]'}`}>
+            {teamHealth.status === 'green' ? '✓' : teamHealth.status === 'amber' ? '⚠' : '🔴'}
+          </span>
+          <div>
+            <h3 className="text-sm font-bold text-[#242450]">Team Health</h3>
+            <p className="text-[10px] text-[#5777AB]">
+              {teamHealth.status === 'green' ? 'All clear' : teamHealth.status === 'amber' ? 'Some signals — worth a look' : 'Action needed'}
+            </p>
+          </div>
+        </div>
+        {teamHealth.sentences.length > 0 && (
+          <div className="space-y-1.5">
+            {teamHealth.sentences.map((s, i) => (
+              <p key={i} className="text-sm text-[#242450] leading-relaxed">{s}</p>
+            ))}
+          </div>
+        )}
+      </div>
+
       {/* Section 1: Team Summary */}
       <div className="pb-6 border-b border-[#EBEBF5]">
         <h3 className="text-base font-bold text-[#242450] mb-1">Team Summary</h3>
@@ -425,44 +502,7 @@ export default function TeamOverview({ refresh }) {
         </div>
       </div>
 
-      {/* Section 3: Capacity Signals */}
-      <div className="pb-6 border-b border-[#EBEBF5]">
-        <h3 className="text-base font-bold text-[#242450] mb-1">Capacity Signals</h3>
-        <p className="text-[11px] text-[#9CA3AF] mb-4">Flags appear when unusual patterns are detected. Green = all clear.</p>
-        {capacitySignals.length === 0 ? (
-          <div className="bg-white border border-[#EBEBF5] rounded-xl px-6 py-8 text-center">
-            <CheckCircle2 className="w-8 h-8 text-[#1D9E75] mx-auto mb-2" />
-            <p className="text-sm font-semibold text-[#1D9E75]">✓ No capacity concerns this period</p>
-          </div>
-        ) : (
-          <div className="bg-white border border-[#EBEBF5] rounded-xl overflow-hidden">
-            <table className="w-full text-sm">
-              <thead>
-                <tr>
-                  {['Signal', 'Detail'].map(h => (
-                    <th key={h} className="px-4 py-3 text-left text-[11px] font-bold text-[#5777AB] uppercase tracking-[0.08em]">{h}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {capacitySignals.map((s, i) => (
-                  <tr key={i} className="border-t border-[#F2F2F4] hover:bg-[#F6F6FB] transition-colors">
-                    <td className="px-4 py-2.5">
-                      <span className="inline-flex items-center gap-1 text-[10px] font-semibold bg-[#FFFBEB] text-[#A16207] px-2 py-0.5 rounded-full">
-                        <AlertTriangle className="w-3 h-3" />
-                        {s.type === 'high_load' ? 'High load' : s.type === 'inactive' ? 'Inactive' : s.type === 'category_spike' ? 'Category spike' : 'No logging streak'}
-                      </span>
-                    </td>
-                    <td className="px-4 py-2.5 text-xs text-[#242450] leading-relaxed">{s.label}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </div>
-
-      {/* Section 4: Project Time Breakdown */}
+      {/* Section 3: Project Time Breakdown */}
       <div>
         <h3 className="text-base font-bold text-[#242450] mb-1">Project Time Breakdown</h3>
         <p className="text-[11px] text-[#9CA3AF] mb-4">Time by individual task or project</p>
