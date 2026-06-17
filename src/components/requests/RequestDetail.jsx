@@ -1,13 +1,9 @@
 import React, { useState, useRef, useCallback } from 'react';
 import { format } from 'date-fns';
-import { ArrowLeft, Upload, FileText, Image, Film, FileSpreadsheet, File, X, Download, AlertCircle } from 'lucide-react';
-import { PRIORITY_STYLES, STATUS_STYLES, CATEGORY_STYLES } from './requestStyles';
+import { ArrowLeft, Upload, FileText, Image, Film, FileSpreadsheet, File, X, Download, AlertCircle, Trash2, MoreHorizontal } from 'lucide-react';
+import { PRIORITY_STYLES, STATUS_STYLES, CATEGORY_STYLES, BOARD_STATUSES, NEW_CATEGORIES, PRIORITIES, TEAM_MEMBERS } from './requestStyles';
 import InlineCell from '@/components/shared/InlineCell';
 import { base44 } from '@/api/base44Client';
-
-const STATUSES = ['New', 'In Progress', 'Waiting', 'Done', 'Cancelled'];
-const CATEGORIES = ['Marketing', 'Design', 'Content', 'Ops', 'Tech', 'Other', 'Self'];
-const PRIORITIES = ['Low', 'Medium', 'High', 'Urgent'];
 
 const ACCEPTED = '.pdf,.doc,.docx,.png,.jpg,.jpeg,.mp4,.mov,.zip,.csv,.xls,.xlsx';
 const MAX_MB = 50;
@@ -166,10 +162,27 @@ function AttachmentZone({ request, onUpdate }) {
   );
 }
 
-export default function RequestDetail({ request, onBack, onUpdate }) {
+export default function RequestDetail({ request, onBack, onUpdate, onDelete }) {
+  const [showDeleteConfirm, setShowDeleteConfirm] = React.useState(false);
+  const [overflowOpen, setOverflowOpen] = React.useState(false);
+  const overflowRef = React.useRef(null);
+
+  React.useEffect(() => {
+    const handler = (e) => {
+      if (overflowRef.current && !overflowRef.current.contains(e.target)) setOverflowOpen(false);
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, []);
+
   const save = (field) => async (value) => {
     await base44.entities.Request.update(request.id, { [field]: value });
     onUpdate({ ...request, [field]: value });
+  };
+
+  const handleDelete = async () => {
+    await base44.entities.Request.delete(request.id);
+    onDelete?.(request.id);
   };
 
   return (
@@ -181,19 +194,39 @@ export default function RequestDetail({ request, onBack, onUpdate }) {
       <div className="flex items-start justify-between mb-6">
         <div>
           <p className="text-xs text-ew-muted font-medium mb-1">#{request.requestNumber}</p>
-          <h2 className="text-xl font-bold text-navy">{request.title}</h2>
+          <InlineCell value={request.title} onSave={save('title')} className="text-xl font-bold text-navy" placeholder="Untitled" />
         </div>
         <div className="flex items-center gap-2 flex-wrap justify-end">
           <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${PRIORITY_STYLES[request.priority]}`}>{request.priority}</span>
-          <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${STATUS_STYLES[request.status]}`}>{request.status}</span>
+          <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${STATUS_STYLES[request.status] || 'bg-gray-100 text-gray-600'}`}>{request.status}</span>
+          {/* Overflow menu */}
+          <div className="relative" ref={overflowRef}>
+            <button onClick={() => setOverflowOpen(o => !o)} className="p-1.5 rounded-lg text-ew-muted hover:text-navy hover:bg-gray-100 transition-colors">
+              <MoreHorizontal className="w-4 h-4" />
+            </button>
+            {overflowOpen && (
+              <div className="absolute right-0 top-full mt-1 bg-white border border-ew-border rounded-lg shadow-lg z-50 w-40 py-1">
+                <button onClick={() => { setOverflowOpen(false); setShowDeleteConfirm(true); }}
+                  className="w-full flex items-center gap-2 px-3 py-2 text-sm text-red-600 hover:bg-red-50 transition-colors">
+                  <Trash2 className="w-3.5 h-3.5" /> Delete task
+                </button>
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
       <div className="bg-white border border-ew-border rounded-xl divide-y divide-ew-border mb-6">
-        <Row label="Title"><InlineCell value={request.title} onSave={save('title')} className="text-sm text-navy font-semibold" /></Row>
-        <Row label="Requested by"><InlineCell value={request.requestedBy} onSave={save('requestedBy')} className="text-sm text-ew-body" /></Row>
+        <Row label="Assigned to">
+          <InlineCell value={request.assignedTo || ''} onSave={save('assignedTo')} type="select" options={TEAM_MEMBERS}
+            displayEl={<span className="text-sm text-ew-body">{request.assignedTo || <span className="text-ew-muted italic">Unassigned</span>}</span>} />
+        </Row>
+        <Row label="Requested by">
+          <InlineCell value={request.requestedBy || ''} onSave={save('requestedBy')} type="select" options={TEAM_MEMBERS}
+            displayEl={<span className="text-sm text-ew-body">{request.requestedBy || <span className="text-ew-muted italic">—</span>}</span>} />
+        </Row>
         <Row label="Category">
-          <InlineCell value={request.category} onSave={save('category')} type="select" options={CATEGORIES}
+          <InlineCell value={request.category} onSave={save('category')} type="select" options={NEW_CATEGORIES}
             displayEl={<span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${CATEGORY_STYLES[request.category] || 'bg-gray-100 text-gray-600'}`}>{request.category}</span>} />
         </Row>
         <Row label="Priority">
@@ -201,30 +234,55 @@ export default function RequestDetail({ request, onBack, onUpdate }) {
             displayEl={<span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${PRIORITY_STYLES[request.priority]}`}>{request.priority}</span>} />
         </Row>
         <Row label="Status">
-          <InlineCell value={request.status} onSave={save('status')} type="select" options={STATUSES}
-            displayEl={<span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${STATUS_STYLES[request.status]}`}>{request.status}</span>} />
+          <InlineCell value={request.status} onSave={save('status')} type="select" options={BOARD_STATUSES}
+            displayEl={<span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${STATUS_STYLES[request.status] || 'bg-gray-100 text-gray-600'}`}>{request.status}</span>} />
         </Row>
-        <Row label="Deadline"><InlineCell value={request.deadline || ''} onSave={save('deadline')} type="date" displayEl={<span className="text-sm text-ew-body">{request.deadline ? format(new Date(request.deadline), 'd MMM yyyy') : '—'}</span>} /></Row>
-        <Row label="Submitted">{request.submittedAt ? format(new Date(request.submittedAt), 'd MMM yyyy, HH:mm') : '—'}</Row>
+        <Row label="Deadline">
+          <InlineCell value={request.deadline || ''} onSave={save('deadline')} type="date"
+            displayEl={<span className="text-sm text-ew-body">{request.deadline ? format(new Date(request.deadline), 'd MMM yyyy') : <span className="text-ew-muted italic">—</span>}</span>} />
+        </Row>
+        <Row label="Submitted">
+          <span className="text-sm text-ew-body">{request.submittedAt ? format(new Date(request.submittedAt), 'd MMM yyyy, HH:mm') : '—'}</span>
+        </Row>
         <Row label="Description">
-          <InlineCell value={request.description} onSave={save('description')} type="textarea"
+          <InlineCell value={request.description || ''} onSave={save('description')} type="textarea"
             displayEl={<p className="text-sm text-ew-body whitespace-pre-wrap">{request.description || <span className="text-ew-muted italic">No description</span>}</p>} />
         </Row>
         <Row label="Extra context">
-          <InlineCell value={request.extraNotes} onSave={save('extraNotes')} type="textarea"
+          <InlineCell value={request.extraNotes || ''} onSave={save('extraNotes')} type="textarea"
             displayEl={<p className="text-sm text-ew-body whitespace-pre-wrap">{request.extraNotes || <span className="text-ew-muted italic">None</span>}</p>} />
         </Row>
         <Row label="Notes">
-          <InlineCell value={request.notes} onSave={save('notes')} type="textarea" placeholder="Add notes…"
-            displayEl={request.notes ? <p className="text-sm text-ew-body whitespace-pre-wrap">{request.notes}</p> : null} />
+          <InlineCell value={request.notes || ''} onSave={save('notes')} type="textarea" placeholder="Add notes…"
+            displayEl={request.notes ? <p className="text-sm text-ew-body whitespace-pre-wrap">{request.notes}</p> : <span className="text-ew-muted italic">—</span>} />
         </Row>
       </div>
 
       {/* Attachments */}
-      <div className="bg-white border border-ew-border rounded-xl p-5">
+      <div className="bg-white border border-ew-border rounded-xl p-5 mb-6">
         <p className="text-xs font-semibold text-ew-muted uppercase tracking-wide mb-3">Attachments</p>
         <AttachmentZone request={request} onUpdate={onUpdate} />
       </div>
+
+      {/* Delete button */}
+      <button onClick={() => setShowDeleteConfirm(true)}
+        className="flex items-center gap-2 px-4 py-2.5 text-sm font-medium text-red-600 border border-red-200 rounded-lg hover:bg-red-50 transition-colors">
+        <Trash2 className="w-4 h-4" /> Delete task
+      </button>
+
+      {/* Delete confirmation */}
+      {showDeleteConfirm && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4" onClick={() => setShowDeleteConfirm(false)}>
+          <div className="bg-white rounded-xl shadow-2xl w-full max-w-sm p-6" onClick={e => e.stopPropagation()}>
+            <p className="text-base font-semibold text-navy mb-1">Delete this task?</p>
+            <p className="text-sm text-ew-muted mb-5">Are you sure you want to delete this task? This cannot be undone.</p>
+            <div className="flex gap-2 justify-end">
+              <button onClick={() => setShowDeleteConfirm(false)} className="px-4 py-2 text-sm font-medium text-ew-muted hover:bg-gray-100 rounded-lg transition-colors">Cancel</button>
+              <button onClick={handleDelete} className="px-4 py-2 text-sm font-semibold bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors">Delete</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

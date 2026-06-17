@@ -249,7 +249,7 @@ export default function RequestBoard({ refresh }) {
   };
 
   if (selectedReq) {
-    return <RequestDetail request={selectedReq} onBack={() => setSelectedReq(null)} onUpdate={handleDetailUpdate} />;
+    return <RequestDetail request={selectedReq} onBack={() => setSelectedReq(null)} onUpdate={handleDetailUpdate} onDelete={(id) => { setRequests(prev => prev.filter(r => r.id !== id)); setSelectedReq(null); }} />;
   }
 
   return (
