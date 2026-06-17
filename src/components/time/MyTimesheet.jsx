@@ -143,27 +143,30 @@ export default function MyTimesheet({ refresh }) {
       {/* Week nav + view toggle */}
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-3">
-          <button onClick={() => setWeekOffset(o => o - 1)} className="p-1.5 rounded-lg hover:bg-[#EBEBF5] transition-colors">
-            <ChevronLeft className="w-4 h-4 text-[#5777AB]" />
+          <button onClick={() => setWeekOffset(o => o - 1)} className="p-2 rounded-lg hover:bg-[#EBEBF5] transition-colors">
+            <ChevronLeft className="w-5 h-5 text-[#5777AB]" />
           </button>
           <span className="text-sm font-semibold text-[#242450]">
             {format(weekStart, 'd MMM')} — {format(weekEnd, 'd MMM yyyy')}
           </span>
-          <button onClick={() => setWeekOffset(o => o + 1)} className="p-1.5 rounded-lg hover:bg-[#EBEBF5] transition-colors">
-            <ChevronRight className="w-4 h-4 text-[#5777AB]" />
+          <button onClick={() => setWeekOffset(o => o + 1)} className="p-2 rounded-lg hover:bg-[#EBEBF5] transition-colors">
+            <ChevronRight className="w-5 h-5 text-[#5777AB]" />
           </button>
         </div>
-        <div className="flex items-center border border-[#EBEBF5] rounded-lg overflow-hidden bg-white">
-          {[
-            { id: 'grid', icon: Grid3X3, label: 'Grid' },
-            { id: 'list', icon: List, label: 'List' },
-            { id: 'calendar', icon: Calendar, label: 'Calendar' },
-          ].map(v => (
-            <button key={v.id} onClick={() => setView(v.id)}
-              className={`flex items-center gap-1 px-3 py-1.5 text-xs font-medium transition-colors ${view === v.id ? 'bg-[#F3E8FF] text-[#8403C5]' : 'text-[#5777AB] hover:bg-[#F6F6FB]'}`}>
-              <v.icon className="w-3.5 h-3.5" /> {v.label}
-            </button>
-          ))}
+        <div className="flex items-center gap-2.5">
+          <span className="text-[11px] font-bold text-[#9CA3AF] uppercase tracking-[0.08em]">View:</span>
+          <div className="flex border-2 border-[#EBEBF5] rounded-lg overflow-hidden bg-white">
+            {[
+              { id: 'grid', icon: Grid3X3, label: 'Grid' },
+              { id: 'list', icon: List, label: 'List' },
+              { id: 'calendar', icon: Calendar, label: 'Calendar' },
+            ].map(v => (
+              <button key={v.id} onClick={() => setView(v.id)}
+                className={`flex items-center gap-1.5 px-4 py-2.5 text-sm font-semibold transition-colors ${view === v.id ? 'bg-[#242450] text-white' : 'text-[#5777AB] hover:bg-[#F6F6FB]'}`}>
+                <v.icon className="w-4 h-4" /> {v.label}
+              </button>
+            ))}
+          </div>
         </div>
       </div>
 
