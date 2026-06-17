@@ -7,6 +7,7 @@ import { Plus, Search, Filter, Columns, List, Users, ArrowUpDown, ChevronDown, C
 import AddTaskModal from './AddTaskModal';
 import RequestDetail from './RequestDetail';
 import { PRIORITY_STYLES, STATUS_STYLES, CATEGORY_STYLES, PRIORITY_ORDER, BOARD_STATUSES, PRIORITIES, TEAM_MEMBERS, NEW_CATEGORIES, STATUS_MAP } from './requestStyles';
+import { logActivity } from '@/lib/logActivity';
 
 const COLUMN_LABELS = { 'To Do': 'To Do', 'In Progress': 'In Progress', 'Done': 'Done', 'Blocked': 'Blocked' };
 const COLUMN_ICONS = { 'To Do': '📋', 'In Progress': '🔄', 'Done': '✅', 'Blocked': '🚫' };
@@ -176,6 +177,7 @@ export default function RequestBoard({ refresh }) {
     const newReq = await base44.entities.Request.create({ ...data, requestNumber: nextNum });
     setRequests(prev => [newReq, ...prev]);
     base44.functions.invoke('notifyNewRequest', { ...data, submittedAt: data.submittedAt }).catch(() => {});
+    logActivity({ teamMember: currentUser || data.requestedBy || '', actionType: 'Created a task', section: 'To-Do Board', recordName: data.title || '' });
   };
 
   const handleDragEnd = async (result) => {
@@ -183,8 +185,10 @@ export default function RequestBoard({ refresh }) {
     const newStatus = result.destination.droppableId;
     if (newStatus === result.source.droppableId) return;
     const reqId = result.draggableId;
+    const task = requests.find(r => r.id === reqId);
     setRequests(prev => prev.map(r => r.id === reqId ? { ...r, status: newStatus } : r));
     await base44.entities.Request.update(reqId, { status: newStatus });
+    if (task) logActivity({ teamMember: currentUser || '', actionType: 'Updated a task status', section: 'To-Do Board', recordName: task.title || '', details: `→ ${newStatus}` });
   };
 
   const handleDetailUpdate = (updated) => {
@@ -200,8 +204,10 @@ export default function RequestBoard({ refresh }) {
   const handleSetView = (v) => { setView(v); localStorage.setItem('request-board-view', v); };
 
   const handleStatusChange = async (id, newStatus) => {
+    const task = requests.find(r => r.id === id);
     setRequests(prev => prev.map(r => r.id === id ? { ...r, status: newStatus } : r));
     await base44.entities.Request.update(id, { status: newStatus });
+    if (task) logActivity({ teamMember: currentUser || '', actionType: 'Updated a task status', section: 'To-Do Board', recordName: task.title || '', details: `→ ${newStatus}` });
   };
 
   const hasAnyFilter = myTasks || filterAssignee.length > 0 || filterStatus.length > 0 || filterPriority.length > 0 || filterCategory.length > 0 || search;

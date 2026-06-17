@@ -4,6 +4,7 @@ import { format, parseISO, startOfWeek, endOfWeek, isWithinInterval, isToday, is
 import { Play, Square, Pause, DollarSign, MoreVertical, RotateCw, Copy, Pencil, Trash2 } from 'lucide-react';
 import StopTimerModal from './StopTimerModal';
 import { CATEGORY_COLORS, CATEGORY_LABELS } from './categoryColors';
+import { logActivity } from '@/lib/logActivity';
 
 const TEAM_MEMBERS = ['Chris', 'Elena', 'George', 'Martinique', 'Sreeja', 'Ramesh'];
 const CATEGORIES = CATEGORY_LABELS;
@@ -301,6 +302,7 @@ export default function LogTime({ onLogged }) {
       }, 500);
 
       saveTimerToLS(me.id, { startedAt: now, category: timerCategory, projectDescription: timerProject.trim() || '(Untitled session)', clientId: timerClientId, clientName: timerClientName, status: 'running', totalPausedMs: 0, pauseIntervals: [], recordId: record.id });
+      logActivity({ teamMember: firstName, actionType: 'Started a timer', section: 'Time & Capacity', recordName: timerProject.trim() || '(Untitled session)' });
     } catch {}
   };
 
@@ -391,6 +393,7 @@ export default function LogTime({ onLogged }) {
     if (modalData?.mode === 'stop' && userIdRef.current) clearTimerLS(userIdRef.current);
     loadEntries();
     onLogged?.();
+    logActivity({ teamMember, actionType: 'Stopped & logged a timer', section: 'Time & Capacity', recordName: formData.projectTask || '', details: `${formData.category || ''} — ${formatDuration(formData.durationMinutes)}` });
   };
 
   // ── Quick Log ──
@@ -414,6 +417,7 @@ export default function LogTime({ onLogged }) {
       setQuickDesc(''); setQuickH('0'); setQuickM('0');
       loadEntries();
       onLogged?.();
+      logActivity({ teamMember, actionType: 'Logged a time entry', section: 'Time & Capacity', recordName: quickDesc.trim(), details: `${quickCat || 'Other'} — ${formatDuration(totalMin)}` });
     } catch {}
   };
 

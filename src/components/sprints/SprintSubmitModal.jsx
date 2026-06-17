@@ -3,6 +3,7 @@ import { base44 } from '@/api/base44Client';
 import { MEMBERS, currentWeekStart, getWeekNumber } from '@/lib/sprintConfig';
 import { X, Copy, Check, ChevronRight } from 'lucide-react';
 import { format } from 'date-fns';
+import { logActivity } from '@/lib/logActivity';
 
 export default function SprintSubmitModal({ onClose, onSaved }) {
   const [selectedMemberId, setSelectedMemberId] = useState('');
@@ -56,6 +57,7 @@ export default function SprintSubmitModal({ onClose, onSaved }) {
     };
     if (existingId) await base44.entities.SprintSubmission.update(existingId, payload);
     else await base44.entities.SprintSubmission.create(payload);
+    logActivity({ teamMember: member.name, actionType: existingId ? 'Edited a sprint update' : 'Submitted a sprint update', section: 'Sprints', recordName: `Week of ${format(new Date(weekStart), 'd MMM')}` });
     setSaving(false);
     setSubmitted(true);
   };

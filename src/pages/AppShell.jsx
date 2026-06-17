@@ -24,6 +24,7 @@ import TimeCapacity from './TimeCapacity';
 import LinkSpace from './LinkSpace';
 import ChangelogAdmin from './ChangelogAdmin';
 import ChangelogView from './ChangelogView';
+import HubActivity from './HubActivity';
 import { LOGO_BLACK, LOGO_WHITE } from '@/lib/proposalData';
 import ClientDetailPanel from '@/components/clients/ClientDetailPanel';
 import ClientFullPanel from '@/components/clients/ClientFullPanel';
@@ -67,6 +68,7 @@ const GROUPS = [
     { id: 'time-log', label: 'Today' },
     { id: 'time-timesheet', label: 'My History' },
     { id: 'time-overview', label: 'Team Overview' },
+    { id: 'time-activity', label: 'Hub Activity' },
   ]},
   { id: 'links', label: '🔗 Links', tabs: [
     { id: 'links', label: 'Link Space' },
@@ -511,6 +513,7 @@ export default function AppShell() {
         {tab === 'time-log' && <TimeCapacity subTab="log" onSubTabChange={(id) => setSearchParams({ tab: id })} />}
         {tab === 'time-timesheet' && <TimeCapacity subTab="timesheet" onSubTabChange={(id) => setSearchParams({ tab: id })} />}
         {tab === 'time-overview' && <TimeCapacity subTab="overview" onSubTabChange={(id) => setSearchParams({ tab: id })} />}
+        {tab === 'time-activity' && <HubActivity />}
         {tab === 'marketing' && <Marketing focusContentId={searchFocus?.focusType === 'content' ? searchFocus.focusId : null} onFocusConsumed={() => setSearchFocus(null)} />}
         {tab === 'mql' && <MQLTracker />}
         {tab === 'handbook' && <Handbook onNavigate={(t) => setTab(t)} focusWikiPage={searchFocus?.focusType === 'wiki' ? { pageId: searchFocus.focusId, sectionId: searchFocus.sectionId } : null} onFocusConsumed={() => setSearchFocus(null)} />}

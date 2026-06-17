@@ -1,0 +1,44 @@
+{
+  "name": "ActivityLog",
+  "type": "object",
+  "properties": {
+    "teamMember": {
+      "type": "string",
+      "enum": [
+        "Chris",
+        "Elena",
+        "George",
+        "Martinique",
+        "Sreeja",
+        "Ramesh"
+      ]
+    },
+    "actionType": {
+      "type": "string"
+    },
+    "section": {
+      "type": "string",
+      "enum": [
+        "Sprints",
+        "Time & Capacity",
+        "To-Do Board",
+        "Customer Success",
+        "Sales",
+        "Competitors",
+        "Time Off",
+        "Authentication"
+      ]
+    },
+    "recordName": {
+      "type": "string"
+    },
+    "details": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "teamMember",
+    "actionType",
+    "section"
+  ]
+}

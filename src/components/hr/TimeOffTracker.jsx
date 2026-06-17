@@ -5,6 +5,7 @@ import { format, parseISO } from 'date-fns';
 import TimeOffModal from './TimeOffModal';
 import DeclineModal from './DeclineModal';
 import TimeOffSidePanel from './TimeOffSidePanel';
+import { logActivity } from '@/lib/logActivity';
 
 const MEMBERS = ['All', 'Chris', 'Elena', 'Martinique', 'George', 'Ramesh', 'Sreeja', 'David'];
 const ANNUAL_ALLOWANCE = 25;
@@ -83,6 +84,7 @@ export default function TimeOffTracker() {
       const exists = prev.find(r => r.id === saved.id);
       return exists ? prev.map(r => r.id === saved.id ? saved : r) : [saved, ...prev];
     });
+    logActivity({ teamMember: saved.teamMember || '', actionType: 'Submitted a time off request', section: 'Time Off', recordName: `${saved.type || 'Leave'} — ${fmtDate(saved.startDate)}`, details: `${saved.workingDays || 0} day(s)` });
   };
 
   const handleDelete = async (r) => {

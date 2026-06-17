@@ -4,6 +4,7 @@ import { ArrowLeft, Upload, FileText, Image, Film, FileSpreadsheet, File, X, Dow
 import { PRIORITY_STYLES, STATUS_STYLES, CATEGORY_STYLES, BOARD_STATUSES, NEW_CATEGORIES, PRIORITIES, TEAM_MEMBERS } from './requestStyles';
 import InlineCell from '@/components/shared/InlineCell';
 import { base44 } from '@/api/base44Client';
+import { logActivity } from '@/lib/logActivity';
 
 const ACCEPTED = '.pdf,.doc,.docx,.png,.jpg,.jpeg,.mp4,.mov,.zip,.csv,.xls,.xlsx';
 const MAX_MB = 50;
@@ -178,10 +179,14 @@ export default function RequestDetail({ request, onBack, onUpdate, onDelete }) {
   const save = (field) => async (value) => {
     await base44.entities.Request.update(request.id, { [field]: value });
     onUpdate({ ...request, [field]: value });
+    if (['status', 'assignedTo', 'priority'].includes(field)) {
+      logActivity({ teamMember: '', actionType: field === 'assignedTo' ? 'Assigned a task' : 'Updated a task', section: 'To-Do Board', recordName: request.title || '', details: field === 'assignedTo' ? `→ ${value}` : field === 'status' ? `→ ${value}` : `${field}: ${value}` });
+    }
   };
 
   const handleDelete = async () => {
     await base44.entities.Request.delete(request.id);
+    logActivity({ teamMember: '', actionType: 'Deleted a task', section: 'To-Do Board', recordName: request.title || '' });
     onDelete?.(request.id);
   };
 
