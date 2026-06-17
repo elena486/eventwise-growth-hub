@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { base44 } from '@/api/base44Client';
-import { Clock, Play, Square, Pause, X } from 'lucide-react';
+import { Clock, Play, Square, Pause, ChevronDown } from 'lucide-react';
 
 const TEAM_MEMBERS = ['Chris', 'Elena', 'George', 'Martinique', 'Sreeja', 'Ramesh'];
 const CATEGORIES = [
@@ -372,8 +372,11 @@ export default function FloatingTimer({ onStopAndLog }) {
           <Clock className="w-4 h-4" />
           <span className="text-sm font-bold">⏱ Timer</span>
         </div>
-        <button onClick={() => setExpanded(false)} className="p-1 hover:bg-white/10 rounded" title="Collapse">
-          <X className="w-4 h-4" />
+        <button onClick={() => setExpanded(false)} className="p-1 hover:bg-white/10 rounded group/min" title="Minimise — timer keeps running">
+          <ChevronDown className="w-4 h-4" />
+          <span className="absolute right-0 top-full mt-1 px-2 py-1 bg-[#242450] text-white text-[10px] font-semibold rounded-md opacity-0 group-hover/min:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-50">
+            Minimise — timer keeps running
+          </span>
         </button>
       </div>
 
@@ -438,30 +441,40 @@ export default function FloatingTimer({ onStopAndLog }) {
 
         {/* RUNNING: Pause + Stop */}
         {timerStatus === 'running' && (
-          <div className="flex gap-2">
-            <button onClick={handlePause}
-              className="flex-1 py-2.5 bg-white border border-[#EBEBF5] text-[#5777AB] hover:bg-[#F6F6FB] font-semibold text-sm rounded-lg transition-colors flex items-center justify-center gap-1.5">
-              <Pause className="w-3.5 h-3.5" /> Pause
+          <>
+            <div className="flex gap-2">
+              <button onClick={handlePause}
+                className="flex-1 py-2.5 bg-white border border-[#EBEBF5] text-[#5777AB] hover:bg-[#F6F6FB] font-semibold text-sm rounded-lg transition-colors flex items-center justify-center gap-1.5">
+                <Pause className="w-3.5 h-3.5" /> Pause
+              </button>
+              <button onClick={handleStopAndLog}
+                className="flex-1 py-2.5 bg-[#DC2626] hover:bg-[#B91C1C] text-white font-semibold text-sm rounded-lg transition-colors flex items-center justify-center gap-1.5">
+                <Square className="w-3.5 h-3.5" fill="white" /> Stop &amp; Log
+              </button>
+            </div>
+            <button onClick={() => setExpanded(false)} className="w-full text-center text-[11px] text-[#9CA3AF] hover:text-[#5777AB] transition-colors py-0.5">
+              Hide panel
             </button>
-            <button onClick={handleStopAndLog}
-              className="flex-1 py-2.5 bg-[#DC2626] hover:bg-[#B91C1C] text-white font-semibold text-sm rounded-lg transition-colors flex items-center justify-center gap-1.5">
-              <Square className="w-3.5 h-3.5" fill="white" /> Stop &amp; Log
-            </button>
-          </div>
+          </>
         )}
 
         {/* PAUSED: Resume + Stop */}
         {timerStatus === 'paused' && (
-          <div className="flex gap-2">
-            <button onClick={handleResume}
-              className="flex-1 py-2.5 bg-[#242450] hover:bg-[#1A1A3A] text-white font-semibold text-sm rounded-lg transition-colors flex items-center justify-center gap-1.5">
-              <Play className="w-3.5 h-3.5" fill="white" /> Resume
+          <>
+            <div className="flex gap-2">
+              <button onClick={handleResume}
+                className="flex-1 py-2.5 bg-[#242450] hover:bg-[#1A1A3A] text-white font-semibold text-sm rounded-lg transition-colors flex items-center justify-center gap-1.5">
+                <Play className="w-3.5 h-3.5" fill="white" /> Resume
+              </button>
+              <button onClick={handleStopAndLog}
+                className="flex-1 py-2.5 bg-white border border-[#EBEBF5] text-[#5777AB] hover:bg-[#F6F6FB] font-semibold text-sm rounded-lg transition-colors flex items-center justify-center gap-1.5">
+                <Square className="w-3.5 h-3.5" /> Stop &amp; Log
+              </button>
+            </div>
+            <button onClick={() => setExpanded(false)} className="w-full text-center text-[11px] text-[#9CA3AF] hover:text-[#5777AB] transition-colors py-0.5">
+              Hide panel
             </button>
-            <button onClick={handleStopAndLog}
-              className="flex-1 py-2.5 bg-white border border-[#EBEBF5] text-[#5777AB] hover:bg-[#F6F6FB] font-semibold text-sm rounded-lg transition-colors flex items-center justify-center gap-1.5">
-              <Square className="w-3.5 h-3.5" /> Stop &amp; Log
-            </button>
-          </div>
+          </>
         )}
 
         {timerStatus !== 'idle' && (
