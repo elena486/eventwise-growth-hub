@@ -64,8 +64,8 @@ const GROUPS = [
     { id: 'competitors', label: 'Competitors' },
   ]},
   { id: 'time', label: 'Time & Capacity', tabs: [
-    { id: 'time-log', label: 'Log Time' },
-    { id: 'time-timesheet', label: 'My Timesheet' },
+    { id: 'time-log', label: 'Today' },
+    { id: 'time-timesheet', label: 'My History' },
     { id: 'time-overview', label: 'Team Overview' },
   ]},
   { id: 'links', label: '🔗 Links', tabs: [

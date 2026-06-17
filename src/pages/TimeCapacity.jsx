@@ -5,8 +5,8 @@ import MyTimesheet from '@/components/time/MyTimesheet';
 import TeamOverview from '@/components/time/TeamOverview';
 
 const SUB_TABS = [
-  { id: 'log', label: 'Log Time' },
-  { id: 'timesheet', label: 'My Timesheet' },
+  { id: 'log', label: 'Today' },
+  { id: 'timesheet', label: 'My History' },
   { id: 'overview', label: 'Team Overview' },
 ];
 
@@ -17,7 +17,6 @@ export default function TimeCapacity({ subTab, onSubTabChange }) {
 
   const active = subTab || 'log';
 
-  // Redirect non-admins away from overview
   useEffect(() => {
     if (!isAdmin && active === 'overview') {
       onSubTabChange?.('log');
