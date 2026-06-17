@@ -9,6 +9,7 @@ import {
 import MultiFileUpload from '@/components/shared/MultiFileUpload';
 import TranscriptSection from '@/components/shared/TranscriptSection';
 import StageBadge from './Stagebadge';
+import { logActivity } from '@/lib/logActivity';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -434,7 +435,7 @@ export default function LeadDetailPanel({ lead, onClose, onUpdate, onDelete, onC
   const isDirty = useRef(false);
   const dataRef = useRef(data);
 
-  useEffect(() => { setData(lead); }, [lead.id]);
+  useEffect(() => { setData(lead); if (!isNew) logActivity({ teamMember: '', actionType: 'Viewed a lead', section: 'Sales', recordName: lead.companyName }); }, [lead.id]);
 
   const extLinks = (() => { try { return JSON.parse(data.externalLinks || '[]'); } catch { return []; } })();
   const leadFiles = (() => { try { const p = JSON.parse(data.fileUrl || '[]'); return Array.isArray(p) ? p : []; } catch { return data.fileUrl ? [{ name: data.fileName || data.fileUrl, url: data.fileUrl }] : []; } })();
@@ -491,6 +492,7 @@ export default function LeadDetailPanel({ lead, onClose, onUpdate, onDelete, onC
     const now = new Date().toISOString();
     const created = await base44.entities.Lead.create({ ...current, stage: current.stage || 'New Lead', lastActivity: now });
     setSaving(false);
+    logActivity({ teamMember: '', actionType: 'Added a lead', section: 'Sales', recordName: created.companyName, details: created.plan || '' });
     onSaved(created);
   };
 

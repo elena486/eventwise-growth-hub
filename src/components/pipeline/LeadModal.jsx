@@ -6,6 +6,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Textarea } from '@/components/ui/textarea';
 import { X } from 'lucide-react';
 import { format } from 'date-fns';
+import { logActivity } from '@/lib/logActivity';
 
 const STAGES = ['Contacted', 'Discovery Call', 'Proposal Sent', 'In Negotiation', 'Closed Won', 'Closed Lost'];
 const PLANS = ['Starter', 'Professional', 'Business'];
@@ -30,6 +31,7 @@ export default function LeadModal({ lead, onSave, onClose }) {
     e.preventDefault();
     if (!form.companyName.trim()) return;
     onSave({ ...form, dealValueMonthly: form.dealValueMonthly ? parseFloat(form.dealValueMonthly) : 0 });
+    logActivity({ teamMember: '', actionType: lead ? 'Edited a lead' : 'Added a lead', section: 'Sales', recordName: form.companyName.trim(), details: form.plan || '' });
   };
 
   return (

@@ -9,6 +9,7 @@ import {
 import { STATUS_STYLES, HEALTH_DOT, OWNER_INITIALS, OWNER_COLORS, ONBOARDING_PHASES, calcHealth, initTasks } from '@/lib/csData';
 import { useToast } from '@/lib/toast';
 import TranscriptSection from '@/components/shared/TranscriptSection';
+import { logActivity } from '@/lib/logActivity';
 import {
   LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, ReferenceLine
 } from 'recharts';
@@ -169,6 +170,7 @@ function NewBugForm({ client, onClose, onCreated }) {
       clientName: client.name,
     });
     setSaving(false);
+    logActivity({ teamMember: form.reportedBy || '', actionType: 'Logged a bug', section: 'Customer Success', recordName: form.title, details: client.name });
     onCreated(newBug);
     onClose();
   };
@@ -252,6 +254,7 @@ export default function ClientFullPanel({ client: initialClient, onClose, onUpda
   useEffect(() => {
     setClient(initialClient);
     setNotes(initialClient.notes || '');
+    logActivity({ teamMember: '', actionType: 'Viewed a client', section: 'Customer Success', recordName: initialClient.name });
   }, [initialClient.id]);
 
   useEffect(() => {

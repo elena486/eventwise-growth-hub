@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { X } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
 import { format } from 'date-fns';
+import { logActivity } from '@/lib/logActivity';
 
 const inputCls = 'w-full text-sm border border-ew-border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-navy/20 bg-white';
 const labelCls = 'block text-xs font-medium text-ew-body mb-1';
@@ -34,6 +35,7 @@ export default function CompetitorModal({ competitor, onClose, onSaved }) {
     }
     setSaving(false);
     onSaved(saved);
+    logActivity({ teamMember: '', actionType: competitor?.id ? 'Edited a competitor' : 'Added a competitor', section: 'Competitors', recordName: saved.companyName });
     onClose();
   };
 
