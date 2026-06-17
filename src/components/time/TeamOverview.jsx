@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { base44 } from '@/api/base44Client';
-import { format, parseISO, isWithinInterval, startOfWeek, endOfWeek, startOfMonth, endOfMonth, subMonths } from 'date-fns';
+import { format, parseISO, isWithinInterval, startOfWeek, endOfWeek, startOfMonth, endOfMonth, subMonths, addDays, isWeekend } from 'date-fns';
 import { Download, Filter, AlertTriangle, CheckCircle2, ChevronDown, ChevronRight } from 'lucide-react';
 import { CATEGORY_COLORS, CATEGORY_LABELS } from './categoryColors';
 
@@ -120,27 +120,107 @@ export default function TeamOverview({ refresh }) {
       .map(([cat, min]) => ({ category: cat, minutes: min, pct: (min / max) * 100 }));
   }, [filtered]);
 
-  // Bottleneck signals
-  const bottlenecks = useMemo(() => {
-    const catPeople = {};
-    const catTotal = {};
-    filtered.forEach(e => {
-      catTotal[e.category] = (catTotal[e.category] || 0) + e.durationMinutes;
-      if (!catPeople[e.category]) catPeople[e.category] = {};
-      catPeople[e.category][e.teamMember] = (catPeople[e.category][e.teamMember] || 0) + e.durationMinutes;
+  // Capacity Signals
+  const capacitySignals = useMemo(() => {
+    const signals = [];
+    const now = new Date();
+
+    // Signal 1 — High Load Warning (calendar-month-based, independent of period filter)
+    const thisMonthStart = startOfMonth(now);
+    const thisMonthEnd = endOfMonth(now);
+    TEAM_MEMBERS.forEach(name => {
+      const monthlyHours = [];
+      for (let i = 0; i < 4; i++) {
+        const mStart = startOfMonth(subMonths(now, i));
+        const mEnd = endOfMonth(subMonths(now, i));
+        const min = entries
+          .filter(e => e.teamMember === name && isWithinInterval(parseISO(e.date), { start: mStart, end: mEnd }))
+          .reduce((s, e) => s + e.durationMinutes, 0);
+        monthlyHours.unshift(min); // oldest first at index 0
+      }
+      // monthlyHours[0..2] = last 3 complete months, monthlyHours[3] = current month
+      const prevMonths = monthlyHours.slice(0, 3);
+      const monthsWithData = prevMonths.filter(m => m > 0).length;
+      if (monthsWithData >= 3) {
+        const avg = prevMonths.reduce((s, m) => s + m, 0) / 3;
+        const current = monthlyHours[3];
+        if (current > avg * 1.2 && current > 600) {
+          signals.push({ type: 'high_load', label: `⚠ ${name} is logging significantly more hours than usual — possible overload` });
+        }
+      }
     });
-    return Object.entries(catTotal).map(([cat, total]) => {
-      const people = catPeople[cat] || {};
-      const numPeople = Object.keys(people).length;
-      const avgPerPerson = numPeople > 0 ? total / numPeople : 0;
-      const maxOne = Math.max(...Object.values(people), 0);
-      const pctOne = total > 0 ? Math.round((maxOne / total) * 100) : 0;
-      // Only flag if: >10h total, >1 contributor, and >70% by one person
-      const hasEnoughData = total > 600 && numPeople >= 2;
-      const concentrationPerson = hasEnoughData && pctOne > 70 ? Object.entries(people).find(([, v]) => v === maxOne)?.[0] : null;
-      return { category: cat, totalMin: total, numPeople, avgMin: avgPerPerson, concentrationPerson, concentrationRisk: !!concentrationPerson, concentrationPct: pctOne };
-    }).sort((a, b) => b.totalMin - a.totalMin);
-  }, [filtered]);
+
+    // Signal 2 — Inactive Member (zero in current period, but has history)
+    TEAM_MEMBERS.forEach(name => {
+      const hasAnyHistory = entries.some(e => e.teamMember === name);
+      if (!hasAnyHistory) return;
+      const inPeriod = entries.filter(e => {
+        if (e.teamMember !== name) return false;
+        try { return isWithinInterval(parseISO(e.date), { start: dateRange.start, end: dateRange.end }); } catch { return false; }
+      });
+      const totalMin = inPeriod.reduce((s, e) => s + e.durationMinutes, 0);
+      if (totalMin === 0) {
+        signals.push({ type: 'inactive', label: `⚠ ${name} has not logged any time this period` });
+      }
+    });
+
+    // Signal 3 — Category Spike (this month vs last month, per person)
+    TEAM_MEMBERS.forEach(name => {
+      const lastMonthStart = startOfMonth(subMonths(now, 1));
+      const lastMonthEnd = endOfMonth(subMonths(now, 1));
+
+      const catThisMonth = {};
+      const catLastMonth = {};
+
+      entries.forEach(e => {
+        if (e.teamMember !== name) return;
+        const d = parseISO(e.date);
+        if (isWithinInterval(d, { start: thisMonthStart, end: thisMonthEnd })) {
+          catThisMonth[e.category] = (catThisMonth[e.category] || 0) + e.durationMinutes;
+        } else if (isWithinInterval(d, { start: lastMonthStart, end: lastMonthEnd })) {
+          catLastMonth[e.category] = (catLastMonth[e.category] || 0) + e.durationMinutes;
+        }
+      });
+
+      Object.entries(catThisMonth).forEach(([cat, thisMin]) => {
+        const lastMin = catLastMonth[cat] || 0;
+        if (lastMin > 0 && thisMin > lastMin * 1.5 && thisMin > 300) {
+          signals.push({ type: 'category_spike', label: `⚠ ${name} spent significantly more time on ${cat} this month vs last — worth reviewing` });
+        }
+      });
+    });
+
+    // Signal 4 — No Logging Streak (5+ consecutive working days)
+    TEAM_MEMBERS.forEach(name => {
+      const personEntries = entries.filter(e => e.teamMember === name);
+      if (personEntries.length === 0) return;
+      const loggedDays = new Set();
+      personEntries.forEach(e => {
+        try { loggedDays.add(e.date); } catch {}
+      });
+
+      // Walk backwards from today (or last entry date) counting consecutive working days with no log
+      let streak = 0;
+      let cursor = new Date(now);
+      // Don't count today if it's still early — check from yesterday
+      cursor = addDays(cursor, -1);
+
+      while (streak < 90) { // safety cap
+        const dateStr = format(cursor, 'yyyy-MM-dd');
+        if (!isWeekend(cursor)) {
+          if (loggedDays.has(dateStr)) break;
+          streak++;
+        }
+        cursor = addDays(cursor, -1);
+      }
+
+      if (streak >= 5) {
+        signals.push({ type: 'no_log_streak', label: `⚠ ${name} hasn't logged time in ${streak} days — reminder may be needed` });
+      }
+    });
+
+    return signals;
+  }, [entries, dateRange]);
 
   // Project breakdown
   const projectBreakdown = useMemo(() => {
@@ -345,63 +425,41 @@ export default function TeamOverview({ refresh }) {
         </div>
       </div>
 
-      {/* Section 3: Bottleneck Signals */}
+      {/* Section 3: Capacity Signals */}
       <div className="pb-6 border-b border-[#EBEBF5]">
-        <h3 className="text-base font-bold text-[#242450] mb-1">Bottleneck Signals</h3>
-        <p className="text-[11px] text-[#9CA3AF] mb-1">Categories with uneven distribution</p>
-        <p className="text-[10px] text-[#5777AB] mb-4">Flags appear when one person handles over 70% of a category with 10+ hours logged. No flags = healthy spread.</p>
-        <div className="bg-white border border-[#EBEBF5] rounded-xl overflow-hidden">
-          <table className="w-full text-sm">
-            <thead>
-              <tr>
-                {['Category', 'Total hours', 'Contributors', 'Avg / person', 'Flag'].map(h => (
-                  <th key={h} className="px-4 py-3 text-left text-[11px] font-bold text-[#5777AB] uppercase tracking-[0.08em]">{h}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {bottlenecks.filter(b => b.category).length === 0 ? (
-                <tr><td colSpan={5} className="px-4 py-12 text-center text-sm text-[#5777AB]">No data for this period — entries will appear once the team starts logging</td></tr>
-              ) : (
-                bottlenecks.filter(b => b.category).map(b => {
-                  const people = {};
-                  filtered.filter(e => e.category === b.category).forEach(e => { people[e.teamMember] = true; });
-                  const initials = Object.keys(people);
-                  return (
-                  <tr key={b.category} className="border-t border-[#F2F2F4] hover:bg-[#F6F6FB] transition-colors">
-                    <td className="px-4 py-2.5 flex items-center gap-2">
-                      <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: BAR_COLORS[b.category] || '#9CA3AF' }} />
-                      <span className="text-xs font-medium text-[#242450]">{b.category}</span>
-                    </td>
-                    <td className="px-4 py-2.5 text-xs font-semibold text-[#242450]">{fmtHoursShort(b.totalMin)}</td>
+        <h3 className="text-base font-bold text-[#242450] mb-1">Capacity Signals</h3>
+        <p className="text-[11px] text-[#9CA3AF] mb-4">Flags appear when unusual patterns are detected. Green = all clear.</p>
+        {capacitySignals.length === 0 ? (
+          <div className="bg-white border border-[#EBEBF5] rounded-xl px-6 py-8 text-center">
+            <CheckCircle2 className="w-8 h-8 text-[#1D9E75] mx-auto mb-2" />
+            <p className="text-sm font-semibold text-[#1D9E75]">✓ No capacity concerns this period</p>
+          </div>
+        ) : (
+          <div className="bg-white border border-[#EBEBF5] rounded-xl overflow-hidden">
+            <table className="w-full text-sm">
+              <thead>
+                <tr>
+                  {['Signal', 'Detail'].map(h => (
+                    <th key={h} className="px-4 py-3 text-left text-[11px] font-bold text-[#5777AB] uppercase tracking-[0.08em]">{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {capacitySignals.map((s, i) => (
+                  <tr key={i} className="border-t border-[#F2F2F4] hover:bg-[#F6F6FB] transition-colors">
                     <td className="px-4 py-2.5">
-                      <div className="flex items-center gap-1">
-                        {initials.map(name => (
-                          <span key={name} className="w-5 h-5 rounded-full flex items-center justify-center text-[9px] font-bold text-white" style={{ backgroundColor: MEMBER_COLORS[name] || '#9CA3AF' }} title={name}>
-                            {name.charAt(0)}
-                          </span>
-                        ))}
-                      </div>
+                      <span className="inline-flex items-center gap-1 text-[10px] font-semibold bg-[#FFFBEB] text-[#A16207] px-2 py-0.5 rounded-full">
+                        <AlertTriangle className="w-3 h-3" />
+                        {s.type === 'high_load' ? 'High load' : s.type === 'inactive' ? 'Inactive' : s.type === 'category_spike' ? 'Category spike' : 'No logging streak'}
+                      </span>
                     </td>
-                    <td className="px-4 py-2.5 text-xs text-[#5777AB]">{fmtHoursShort(b.avgMin)} each</td>
-                    <td className="px-4 py-2.5">
-                      {b.concentrationRisk ? (
-                        <span className="inline-flex items-center gap-1 text-[10px] font-semibold bg-[#FFFBEB] text-[#A16207] px-2 py-0.5 rounded-full">
-                          <AlertTriangle className="w-3 h-3" /> {b.concentrationPerson}: {b.concentrationPct}% — consider redistributing
-                        </span>
-                      ) : (
-                        <span className="inline-flex items-center gap-1 text-[10px] font-semibold bg-[#E8F7F2] text-[#1D9E75] px-2 py-0.5 rounded-full">
-                          <CheckCircle2 className="w-3 h-3" /> Distributed
-                        </span>
-                      )}
-                    </td>
+                    <td className="px-4 py-2.5 text-xs text-[#242450] leading-relaxed">{s.label}</td>
                   </tr>
-                  );
-                })
-              )}
-            </tbody>
-          </table>
-        </div>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
 
       {/* Section 4: Project Time Breakdown */}
