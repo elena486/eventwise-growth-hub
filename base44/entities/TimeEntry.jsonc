@@ -1,0 +1,59 @@
+{
+  "name": "TimeEntry",
+  "type": "object",
+  "properties": {
+    "date": {
+      "type": "string",
+      "format": "date"
+    },
+    "teamMember": {
+      "type": "string",
+      "enum": [
+        "Chris",
+        "Elena",
+        "George",
+        "Martinique",
+        "Sreeja",
+        "Ramesh"
+      ]
+    },
+    "category": {
+      "type": "string",
+      "enum": [
+        "Sales & Outbound",
+        "Customer Success & Onboarding",
+        "Marketing & Content",
+        "Operations & Admin",
+        "Product & Tech",
+        "Finance",
+        "Strategy & Planning",
+        "Other"
+      ]
+    },
+    "projectTask": {
+      "type": "string"
+    },
+    "durationMinutes": {
+      "type": "number",
+      "description": "Total duration in minutes"
+    },
+    "billable": {
+      "type": "boolean",
+      "default": false
+    },
+    "notes": {
+      "type": "string"
+    },
+    "estimatedMinutes": {
+      "type": "number",
+      "description": "Optional estimated duration in minutes"
+    }
+  },
+  "required": [
+    "date",
+    "teamMember",
+    "category",
+    "projectTask",
+    "durationMinutes"
+  ]
+}

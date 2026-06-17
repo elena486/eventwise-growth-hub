@@ -20,6 +20,7 @@ import SalesAssets from './SalesAssets';
 import MQLTracker from './MQLTracker';
 import OutreachAnalytics from './OutreachAnalytics';
 import Competitors from './Competitors';
+import TimeCapacity from './TimeCapacity';
 import LinkSpace from './LinkSpace';
 import ChangelogAdmin from './ChangelogAdmin';
 import ChangelogView from './ChangelogView';
@@ -60,6 +61,11 @@ const GROUPS = [
     { id: 'sprints', label: 'Sprints' },
     { id: 'time-off', label: 'Time Off' },
     { id: 'competitors', label: 'Competitors' },
+  ]},
+  { id: 'time', label: 'Time & Capacity', tabs: [
+    { id: 'time-log', label: 'Log Time' },
+    { id: 'time-timesheet', label: 'My Timesheet' },
+    { id: 'time-overview', label: 'Team Overview' },
   ]},
   { id: 'links', label: '🔗 Links', tabs: [
     { id: 'links', label: 'Link Space' },
@@ -501,6 +507,9 @@ export default function AppShell() {
         {tab === 'sprints' && <Sprints />}
         {tab === 'time-off' && <TimeOffTracker />}
         {tab === 'competitors' && <Competitors focusCompetitorId={searchFocus?.focusType === 'competitor' ? searchFocus.focusId : null} onFocusConsumed={() => setSearchFocus(null)} />}
+        {tab === 'time-log' && <TimeCapacity subTab="log" onSubTabChange={(id) => setSearchParams({ tab: id })} />}
+        {tab === 'time-timesheet' && <TimeCapacity subTab="timesheet" onSubTabChange={(id) => setSearchParams({ tab: id })} />}
+        {tab === 'time-overview' && <TimeCapacity subTab="overview" onSubTabChange={(id) => setSearchParams({ tab: id })} />}
         {tab === 'marketing' && <Marketing focusContentId={searchFocus?.focusType === 'content' ? searchFocus.focusId : null} onFocusConsumed={() => setSearchFocus(null)} />}
         {tab === 'mql' && <MQLTracker />}
         {tab === 'handbook' && <Handbook onNavigate={(t) => setTab(t)} focusWikiPage={searchFocus?.focusType === 'wiki' ? { pageId: searchFocus.focusId, sectionId: searchFocus.sectionId } : null} onFocusConsumed={() => setSearchFocus(null)} />}
