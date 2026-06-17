@@ -3,7 +3,7 @@ import { base44 } from '@/api/base44Client';
 import { addRecentlyViewed } from '@/utils/recentlyViewed';
 import { format } from 'date-fns';
 import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
-import { Plus, Search, X, ChevronDown, Filter } from 'lucide-react';
+import { Plus, Search, X, Filter } from 'lucide-react';
 import AddTaskModal from './AddTaskModal';
 import RequestDetail from './RequestDetail';
 import { PRIORITY_STYLES, STATUS_STYLES, CATEGORY_STYLES, PRIORITY_ORDER, BOARD_STATUSES, PRIORITIES, TEAM_MEMBERS, NEW_CATEGORIES, STATUS_MAP } from './requestStyles';
@@ -86,7 +86,6 @@ export default function RequestBoard({ refresh }) {
   // Normalize status for display
   const normalizeStatus = (status) => STATUS_MAP[status] || status;
 
-  // Map old data statuses to new board statuses in memory (don't persist unless moved)
   const displayRequests = useMemo(() => {
     return requests.filter(r => !r.archived).map(r => ({
       ...r,
@@ -133,7 +132,6 @@ export default function RequestBoard({ refresh }) {
       const col = BOARD_STATUSES.includes(r._displayStatus) ? r._displayStatus : 'To Do';
       if (grouped[col]) grouped[col].push(r);
     });
-    // Sort each column by priority then date
     Object.keys(grouped).forEach(col => {
       grouped[col].sort((a, b) => {
         const pd = (PRIORITY_ORDER[a.priority] ?? 4) - (PRIORITY_ORDER[b.priority] ?? 4);
@@ -144,20 +142,6 @@ export default function RequestBoard({ refresh }) {
     return grouped;
   }, [filtered]);
 
-  // Stats
-  const stats = useMemo(() => {
-    const all = displayRequests.filter(r => r._displayStatus !== 'Cancelled');
-    const urgent = all.filter(r => r.priority === 'Urgent');
-    const done = all.filter(r => r._displayStatus === 'Done');
-    const blocked = all.filter(r => r._displayStatus === 'Blocked');
-    return [
-      { label: 'Open tasks', value: all.length, color: '#8403C5', accent: 'purple' },
-      { label: 'Urgent', value: urgent.length, color: '#DC2626', accent: 'red' },
-      { label: 'Done', value: done.length, color: '#1D9E75', accent: 'green' },
-      { label: 'Blocked', value: blocked.length, color: '#E8A020', accent: 'amber' },
-    ];
-  }, [displayRequests]);
-
   const handleAddTask = async (data) => {
     const existing = requests;
     const nextNum = existing.length > 0 ? Math.max(...existing.map(r => r.requestNumber || 0)) + 1 : 1;
@@ -167,7 +151,6 @@ export default function RequestBoard({ refresh }) {
     });
     setRequests(prev => [newReq, ...prev]);
 
-    // Notify
     base44.functions.invoke('notifyNewRequest', {
       requestedBy: data.requestedBy,
       recipient: data.recipient,
@@ -244,6 +227,9 @@ export default function RequestBoard({ refresh }) {
     </div>
   );
 
+  // Only show category tag if it's one of the valid categories
+  const isValidCategory = (cat) => NEW_CATEGORIES.includes(cat);
+
   if (selectedReq) {
     return (
       <RequestDetail
@@ -256,13 +242,10 @@ export default function RequestBoard({ refresh }) {
 
   return (
     <div className="flex-1 bg-[#F6F6FB] overflow-hidden flex flex-col font-dm">
-      {/* Header */}
-      <div className="shrink-0 px-8 pt-8 pb-4">
-        <div className="flex items-start justify-between mb-5">
-          <div>
-            <h1 className="text-2xl font-bold text-[#242450]">Company To-Do Board</h1>
-            <p className="text-sm text-[#5777AB] mt-0.5">Track and manage team tasks and requests</p>
-          </div>
+      {/* Filter bar */}
+      <div className="shrink-0 px-8 pt-5 pb-3">
+        <div className="flex items-center justify-between mb-0.5">
+          <h1 className="text-2xl font-bold text-[#242450]">Company To-Do Board</h1>
           <button
             onClick={() => setShowModal(true)}
             className="h-9 px-4 bg-[#8403C5] hover:bg-[#6B02A0] text-white font-semibold text-sm rounded-lg flex items-center gap-1.5 transition-colors shrink-0"
@@ -270,20 +253,7 @@ export default function RequestBoard({ refresh }) {
             <Plus className="w-4 h-4" /> Add Task
           </button>
         </div>
-
-        {/* Stats */}
-        <div className="grid grid-cols-4 gap-4 mb-5">
-          {stats.map(s => (
-            <div key={s.label} className="bg-white rounded-xl p-5 border border-[#EBEBF5] relative overflow-hidden">
-              <div className="absolute left-0 top-0 bottom-0 w-0.5" style={{ background: s.color }} />
-              <p className="text-[11px] font-semibold text-[#5777AB] uppercase tracking-[0.06em] mb-1">{s.label}</p>
-              <p className="text-2xl font-bold text-[#242450]">{s.value}</p>
-            </div>
-          ))}
-        </div>
-
-        {/* Filter bar */}
-        <div className="flex items-center gap-2 flex-wrap">
+        <div className="flex items-center gap-2 flex-wrap mt-3">
           {/* Search */}
           <div className="relative min-w-[160px]">
             <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-[#9CA3AF]" />
@@ -382,7 +352,7 @@ export default function RequestBoard({ refresh }) {
                                       {req.priority}
                                     </span>
                                   )}
-                                  {req.category && (
+                                  {req.category && isValidCategory(req.category) && (
                                     <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${CATEGORY_STYLES[req.category] || 'bg-[#EBEBF5] text-[#242450]'}`}>
                                       {req.category}
                                     </span>

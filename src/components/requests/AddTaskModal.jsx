@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, ChevronDown, ChevronRight } from 'lucide-react';
+import { X } from 'lucide-react';
 import { TEAM_MEMBERS, NEW_CATEGORIES, PRIORITIES } from './requestStyles';
 
 const PRIORITY_PILL_STYLES = {
@@ -17,7 +17,6 @@ export default function AddTaskModal({ onClose, onSubmit }) {
   const [priority, setPriority] = useState('Medium');
   const [deadline, setDeadline] = useState('');
   const [description, setDescription] = useState('');
-  const [descOpen, setDescOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
   const handleSubmit = async (e) => {
@@ -94,25 +93,16 @@ export default function AddTaskModal({ onClose, onSubmit }) {
               </select>
             </div>
 
-            {/* Description — expandable */}
+            {/* Description */}
             <div className="flex flex-col gap-1.5">
-              <button
-                type="button"
-                onClick={() => setDescOpen(o => !o)}
-                className="flex items-center gap-1.5 text-sm font-semibold text-[#5777AB] hover:text-[#242450] transition-colors"
-              >
-                {descOpen ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
-                Add description +
-              </button>
-              {descOpen && (
-                <textarea
-                  value={description}
-                  onChange={e => setDescription(e.target.value)}
-                  placeholder="Describe what you need and any relevant context..."
-                  rows={4}
-                  className={inputCls + ' h-auto py-2.5 resize-none'}
-                />
-              )}
+              <label className="text-sm font-semibold text-[#242450]">Description</label>
+              <textarea
+                value={description}
+                onChange={e => setDescription(e.target.value)}
+                placeholder="Describe what you need and any relevant context"
+                rows={4}
+                className={inputCls + ' h-auto py-2.5 resize-none'}
+              />
             </div>
 
             {/* Priority — pill selector */}
@@ -134,7 +124,7 @@ export default function AddTaskModal({ onClose, onSubmit }) {
 
             {/* Due date */}
             <div className="flex flex-col gap-1.5">
-              <label className="text-sm font-semibold text-[#242450]">Due date <span className="font-normal text-[#5777AB]">(optional)</span></label>
+              <label className="text-sm font-semibold text-[#242450]">Do you need this by a specific date? <span className="font-normal text-[#5777AB]">(optional)</span></label>
               <input type="date" value={deadline} onChange={e => setDeadline(e.target.value)} className={inputCls} />
             </div>
           </div>
