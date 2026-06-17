@@ -90,15 +90,17 @@ export default function TeamOverview({ refresh }) {
     });
   }, [entries, dateRange, memberFilter, categoryFilter, billableOnly]);
 
-  // Team summary
+  // Team summary — always includes all 6 members
   const teamSummary = useMemo(() => {
     const map = {};
+    // Initialise all team members with zeros
+    TEAM_MEMBERS.forEach(name => { map[name] = { totalMin: 0, billableMin: 0, count: 0, catMap: {} }; });
     filtered.forEach(e => {
       if (!map[e.teamMember]) map[e.teamMember] = { totalMin: 0, billableMin: 0, count: 0, catMap: {} };
       map[e.teamMember].totalMin += e.durationMinutes;
       if (e.billable) map[e.teamMember].billableMin += e.durationMinutes;
       map[e.teamMember].count++;
-      map[e.teamMember].catMap[e.category] = (map[e.teamMember].catMap[e.category] || 0) + e.durationMinutes;
+      map[e.teamMember].catMap[e.category || 'Uncategorised'] = (map[e.teamMember].catMap[e.category || 'Uncategorised'] || 0) + e.durationMinutes;
     });
     return Object.entries(map)
       .map(([name, d]) => {
@@ -112,7 +114,8 @@ export default function TeamOverview({ refresh }) {
   const categoryBreakdown = useMemo(() => {
     const map = {};
     filtered.forEach(e => {
-      map[e.category] = (map[e.category] || 0) + e.durationMinutes;
+      const cat = e.category || 'Uncategorised';
+      map[cat] = (map[cat] || 0) + e.durationMinutes;
     });
     const max = Math.max(...Object.values(map), 1);
     return Object.entries(map)
@@ -220,17 +223,12 @@ export default function TeamOverview({ refresh }) {
     // ── Build sentences ──
     const periodLabel = period === 'this_week' ? 'this week' : period === 'this_month' ? 'this month' : period === 'last_month' ? 'last month' : 'this period';
 
-    // SENTENCE 1: How many are logging
-    if (inactiveMembers.length === 0 && teamTotal === 0) {
-      sentences.push(`No time logged yet ${periodLabel} — entries will appear once the team starts.`);
-    } else if (inactiveMembers.length === 0) {
-      sentences.push(`All ${activeCount} team members logged time ${periodLabel}.`);
-    } else if (inactiveMembers.length >= totalMembers / 2) {
-      critical = true;
-      const actives = TEAM_MEMBERS.filter(m => activeMemberNames.has(m));
-      sentences.push(`Only ${activeCount} of ${totalMembers} team members have logged time ${periodLabel}${actives.length > 0 ? ` (${actives.join(', ')})` : ''}.`);
+    // SENTENCE 1: Always "X of 6 team members have logged time"
+    if (teamTotal === 0) {
+      sentences.push(`0 of ${totalMembers} team members have logged time ${periodLabel} — entries will appear once the team starts.`);
     } else {
-      sentences.push(`${inactiveMembers.join(' and ')} ${inactiveMembers.length === 1 ? "hasn't" : "haven't"} logged any time ${periodLabel}.`);
+      sentences.push(`${activeCount} of ${totalMembers} team members have logged time ${periodLabel}.`);
+      if (inactiveMembers.length >= totalMembers / 2) critical = true;
       signalCount += inactiveMembers.length;
     }
 
