@@ -34,6 +34,11 @@
       "type": "string",
       "enum": [
         "Marketing",
+        "Sales",
+        "Operations",
+        "Customer Success",
+        "Tech/Product",
+        "Admin",
         "Design",
         "Content",
         "Ops",
@@ -54,12 +59,15 @@
     "status": {
       "type": "string",
       "enum": [
-        "New",
+        "To Do",
         "In Progress",
-        "Waiting",
         "Done",
+        "Blocked",
+        "New",
+        "Waiting",
         "Cancelled"
-      ]
+      ],
+      "default": "To Do"
     },
     "description": {
       "type": "string"

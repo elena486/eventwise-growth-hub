@@ -1,56 +1,16 @@
 import React, { useState, useEffect } from 'react';
-import RequestForm from '@/components/requests/RequestForm';
 import RequestBoard from '@/components/requests/RequestBoard';
 
-const TABS = [
-  { id: 'form', label: 'Submit a Request' },
-  { id: 'board', label: 'Company To-Do Board' },
-];
-
 export default function Requests({ focusRequestId, onFocusConsumed }) {
-  const [tab, setTab] = useState('form');
   const [boardRefresh, setBoardRefresh] = useState(0);
 
   // Focus request from global search
   useEffect(() => {
     if (!focusRequestId) return;
-    setTab('board');
     setBoardRefresh(n => n + 1);
-    // Store the focused request ID so RequestBoard can pick it up
     sessionStorage.setItem('focus_request_id', focusRequestId);
     onFocusConsumed?.();
   }, [focusRequestId]);
 
-  // Keyboard shortcut: Cmd+N to open request form
-  useEffect(() => {
-    const onNew = () => setTab('form');
-    window.addEventListener('ew-new-entry', onNew);
-    return () => window.removeEventListener('ew-new-entry', onNew);
-  }, []);
-
-  const handleSubmitted = () => {
-    setBoardRefresh(n => n + 1);
-    setTab('board');
-  };
-
-  return (
-    <div className="flex flex-col flex-1 overflow-hidden font-dm">
-      {/* Sub-tab header */}
-      <div className="bg-white border-b border-[#EBEBEB] shrink-0 px-8 flex items-center gap-1 h-10">
-        {TABS.map(t => (
-          <button key={t.id} onClick={() => setTab(t.id)}
-            className={`px-4 py-1.5 text-[13px] font-medium transition-all duration-150 relative ${tab === t.id ? 'text-[#111827]' : 'text-[#6B7280] hover:text-[#111827]'}`}>
-            {t.label}
-            {tab === t.id && <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-[#8403C5] rounded-t-full" />}
-          </button>
-        ))}
-      </div>
-
-      {/* Content */}
-      <div className="flex-1 overflow-y-auto bg-[#F7F7F8]">
-        {tab === 'form' && <RequestForm onSubmitted={handleSubmitted} />}
-        {tab === 'board' && <RequestBoard refresh={boardRefresh} />}
-      </div>
-    </div>
-  );
+  return <RequestBoard refresh={boardRefresh} />;
 }

@@ -1,37 +1,63 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { base44 } from '@/api/base44Client';
 import { addRecentlyViewed } from '@/utils/recentlyViewed';
-import { format, isThisWeek, isThisMonth } from 'date-fns';
-import { Plus, Trash2, Check, X, LayoutList, Columns, Archive, Eye } from 'lucide-react';
-import InlineCell from '@/components/shared/InlineCell';
-import ConfirmDialog from '@/components/shared/ConfirmDialog';
+import { format } from 'date-fns';
+import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
+import { Plus, Search, X, ChevronDown, Filter } from 'lucide-react';
+import AddTaskModal from './AddTaskModal';
 import RequestDetail from './RequestDetail';
-import RequestKanban from './RequestKanban';
-import { PRIORITY_STYLES, STATUS_STYLES, CATEGORY_STYLES, PRIORITY_ORDER, STATUSES, CATEGORIES, PRIORITIES, REQUESTERS } from './requestStyles';
+import { PRIORITY_STYLES, STATUS_STYLES, CATEGORY_STYLES, PRIORITY_ORDER, BOARD_STATUSES, PRIORITIES, TEAM_MEMBERS, NEW_CATEGORIES, STATUS_MAP } from './requestStyles';
 
-const PERSON_FILTERS = ['All', 'Elena', 'George', 'Chris', 'Martinique', 'Sreeja', 'Ramesh', 'David'];
+const COLUMN_LABELS = {
+  'To Do': 'To Do',
+  'In Progress': 'In Progress',
+  'Done': 'Done',
+  'Blocked': 'Blocked',
+};
 
-const ASSIGNEES = ['Elena', 'George', 'Chris', 'Martinique', 'Sreeja', 'Ramesh'];
+const COLUMN_ICONS = {
+  'To Do': '📋',
+  'In Progress': '🔄',
+  'Done': '✅',
+  'Blocked': '🚫',
+};
 
 export default function RequestBoard({ refresh }) {
   const [requests, setRequests] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [statusFilter, setStatusFilter] = useState('All');
-  const [personFilter, setPersonFilter] = useState('All');
-  const [showArchived, setShowArchived] = useState(false);
-  const [view, setView] = useState('table');
+  const [showModal, setShowModal] = useState(false);
   const [selectedReq, setSelectedReq] = useState(null);
-  const [deleteId, setDeleteId] = useState(null);
+  const [currentUser, setCurrentUser] = useState(null);
+
+  // Filters
+  const [myTasks, setMyTasks] = useState(false);
+  const [filterAssignee, setFilterAssignee] = useState([]);
+  const [filterStatus, setFilterStatus] = useState([]);
+  const [filterPriority, setFilterPriority] = useState([]);
+  const [filterCategory, setFilterCategory] = useState([]);
+  const [search, setSearch] = useState('');
+
+  // Dropdown open states
+  const [openDropdown, setOpenDropdown] = useState(null);
 
   const load = async () => {
-    const data = await base44.entities.Request.list('-created_date', 500);
-    setRequests(data);
+    try {
+      const [data, me] = await Promise.all([
+        base44.entities.Request.list('-created_date', 500),
+        base44.auth.me().catch(() => null),
+      ]);
+      setRequests(data);
+      if (me) {
+        const name = me.full_name?.split(' ')[0] || me.email?.split('@')[0] || '';
+        setCurrentUser(name);
+      }
+    } catch {}
     setLoading(false);
   };
 
   useEffect(() => { load(); }, [refresh]);
 
-  // Track recently viewed when request detail opens
+  // Track recently viewed
   useEffect(() => {
     if (selectedReq) {
       addRecentlyViewed({
@@ -51,51 +77,118 @@ export default function RequestBoard({ refresh }) {
     sessionStorage.removeItem('focus_request_id');
     base44.entities.Request.get(focusId).then(req => {
       if (req) {
-        setRequests(prev => {
-          const exists = prev.find(r => r.id === req.id);
-          return exists ? prev : [req, ...prev];
-        });
+        setRequests(prev => { const exists = prev.find(r => r.id === req.id); return exists ? prev : [req, ...prev]; });
         setSelectedReq(req);
       }
     }).catch(() => {});
   }, [refresh]);
 
-  const handleUpdate = async (id, field, value) => {
-    setRequests(prev => prev.map(r => r.id === id ? { ...r, [field]: value } : r));
-    await base44.entities.Request.update(id, { [field]: value });
-  };
+  // Normalize status for display
+  const normalizeStatus = (status) => STATUS_MAP[status] || status;
 
-  const handleDelete = async (id) => {
-    await base44.entities.Request.delete(id);
-    setRequests(prev => prev.filter(r => r.id !== id));
-    setDeleteId(null);
-  };
+  // Map old data statuses to new board statuses in memory (don't persist unless moved)
+  const displayRequests = useMemo(() => {
+    return requests.filter(r => !r.archived).map(r => ({
+      ...r,
+      _displayStatus: normalizeStatus(r.status),
+    }));
+  }, [requests]);
 
-  const handleArchiveDone = async () => {
-    const done = requests.filter(r => r.status === 'Done' && !r.archived);
-    await Promise.all(done.map(r => base44.entities.Request.update(r.id, { archived: true })));
-    setRequests(prev => prev.map(r => r.status === 'Done' && !r.archived ? { ...r, archived: true } : r));
-  };
+  // Filtered requests
+  const filtered = useMemo(() => {
+    let result = displayRequests.filter(r => r._displayStatus !== 'Cancelled');
 
-  const handleAddTask = async () => {
+    if (myTasks && currentUser) {
+      result = result.filter(r => r.assignedTo === currentUser || r.requestedBy === currentUser);
+    }
+
+    if (search) {
+      const q = search.toLowerCase();
+      result = result.filter(r => (r.title || '').toLowerCase().includes(q));
+    }
+
+    if (filterAssignee.length > 0) {
+      result = result.filter(r => filterAssignee.includes(r.assignedTo));
+    }
+
+    if (filterStatus.length > 0) {
+      result = result.filter(r => filterStatus.includes(r._displayStatus));
+    }
+
+    if (filterPriority.length > 0) {
+      result = result.filter(r => filterPriority.includes(r.priority));
+    }
+
+    if (filterCategory.length > 0) {
+      result = result.filter(r => filterCategory.includes(r.category));
+    }
+
+    return result;
+  }, [displayRequests, myTasks, currentUser, search, filterAssignee, filterStatus, filterPriority, filterCategory]);
+
+  // Group by board status columns
+  const columns = useMemo(() => {
+    const grouped = BOARD_STATUSES.reduce((acc, s) => { acc[s] = []; return acc; }, {});
+    filtered.forEach(r => {
+      const col = BOARD_STATUSES.includes(r._displayStatus) ? r._displayStatus : 'To Do';
+      if (grouped[col]) grouped[col].push(r);
+    });
+    // Sort each column by priority then date
+    Object.keys(grouped).forEach(col => {
+      grouped[col].sort((a, b) => {
+        const pd = (PRIORITY_ORDER[a.priority] ?? 4) - (PRIORITY_ORDER[b.priority] ?? 4);
+        if (pd !== 0) return pd;
+        return new Date(b.submittedAt || 0) - new Date(a.submittedAt || 0);
+      });
+    });
+    return grouped;
+  }, [filtered]);
+
+  // Stats
+  const stats = useMemo(() => {
+    const all = displayRequests.filter(r => r._displayStatus !== 'Cancelled');
+    const urgent = all.filter(r => r.priority === 'Urgent');
+    const done = all.filter(r => r._displayStatus === 'Done');
+    const blocked = all.filter(r => r._displayStatus === 'Blocked');
+    return [
+      { label: 'Open tasks', value: all.length, color: '#8403C5', accent: 'purple' },
+      { label: 'Urgent', value: urgent.length, color: '#DC2626', accent: 'red' },
+      { label: 'Done', value: done.length, color: '#1D9E75', accent: 'green' },
+      { label: 'Blocked', value: blocked.length, color: '#E8A020', accent: 'amber' },
+    ];
+  }, [displayRequests]);
+
+  const handleAddTask = async (data) => {
     const existing = requests;
     const nextNum = existing.length > 0 ? Math.max(...existing.map(r => r.requestNumber || 0)) + 1 : 1;
     const newReq = await base44.entities.Request.create({
+      ...data,
       requestNumber: nextNum,
-      title: '',
-      requestedBy: 'Elena',
-      category: 'Self',
-      priority: 'Medium',
-      status: 'New',
-      submittedAt: new Date().toISOString(),
-      archived: false,
     });
     setRequests(prev => [newReq, ...prev]);
+
+    // Notify
+    base44.functions.invoke('notifyNewRequest', {
+      requestedBy: data.requestedBy,
+      recipient: data.recipient,
+      title: data.title,
+      category: data.category,
+      priority: data.priority,
+      deadline: data.deadline,
+      description: data.description,
+      submittedAt: data.submittedAt,
+    }).catch(() => {});
   };
 
-  const handleKanbanStatusChange = async (id, newStatus) => {
-    setRequests(prev => prev.map(r => r.id === id ? { ...r, status: newStatus } : r));
-    await base44.entities.Request.update(id, { status: newStatus });
+  const handleDragEnd = async (result) => {
+    if (!result.destination) return;
+    const newStatus = result.destination.droppableId;
+    const oldStatus = result.source.droppableId;
+    if (newStatus === oldStatus) return;
+
+    const reqId = result.draggableId;
+    setRequests(prev => prev.map(r => r.id === reqId ? { ...r, status: newStatus } : r));
+    await base44.entities.Request.update(reqId, { status: newStatus });
   };
 
   const handleDetailUpdate = (updated) => {
@@ -103,27 +196,53 @@ export default function RequestBoard({ refresh }) {
     setSelectedReq(updated);
   };
 
-  // Stats
-  const open = requests.filter(r => r.status !== 'Done' && r.status !== 'Cancelled' && !r.archived);
-  const urgent = open.filter(r => r.priority === 'Urgent');
-  const dueThisWeek = open.filter(r => r.deadline && isThisWeek(new Date(r.deadline), { weekStartsOn: 1 }));
-  const completedThisMonth = requests.filter(r => r.status === 'Done' && r.submittedAt && isThisMonth(new Date(r.submittedAt)));
+  const hasAnyFilter = myTasks || filterAssignee.length > 0 || filterStatus.length > 0 || filterPriority.length > 0 || filterCategory.length > 0 || search;
+  const clearFilters = () => {
+    setMyTasks(false);
+    setFilterAssignee([]);
+    setFilterStatus([]);
+    setFilterPriority([]);
+    setFilterCategory([]);
+    setSearch('');
+  };
 
-  // Filtered list
-  let filtered = requests.filter(r => showArchived ? r.archived : !r.archived);
-  if (statusFilter === 'Urgent') filtered = filtered.filter(r => r.priority === 'Urgent');
-  else if (statusFilter === 'My tasks') filtered = filtered.filter(r => r.requestedBy === 'Elena' || r.category === 'Self');
-  else if (statusFilter !== 'All') filtered = filtered.filter(r => r.status === statusFilter);
-  if (personFilter !== 'All') filtered = filtered.filter(r => r.assignedTo === personFilter);
+  const toggleFilter = (setter, arr, val) => {
+    setter(arr.includes(val) ? arr.filter(v => v !== val) : [...arr, val]);
+    setOpenDropdown(null);
+  };
 
-  // Sort: priority then date
-  filtered = [...filtered].sort((a, b) => {
-    const pd = (PRIORITY_ORDER[a.priority] ?? 4) - (PRIORITY_ORDER[b.priority] ?? 4);
-    if (pd !== 0) return pd;
-    return new Date(b.submittedAt || 0) - new Date(a.submittedAt || 0);
-  });
-
-  const save = (id, field) => (value) => handleUpdate(id, field, value);
+  const FilterDropdown = ({ label, options, selected, setter, styleMap }) => (
+    <div className="relative">
+      <button
+        onClick={() => setOpenDropdown(openDropdown === label ? null : label)}
+        className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg border transition-colors ${
+          selected.length > 0 ? 'bg-[#F3E8FF] text-[#8403C5] border-[#8403C5]/30' : 'bg-white text-[#5777AB] border-[#EBEBF5] hover:border-[#D8D8EE]'
+        }`}
+      >
+        <Filter className="w-3 h-3" />
+        {label}
+        {selected.length > 0 && <span className="bg-[#8403C5] text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full leading-none">{selected.length}</span>}
+      </button>
+      {openDropdown === label && (
+        <div className="absolute top-full left-0 mt-1 bg-white border border-[#EBEBF5] rounded-lg shadow-lg z-50 w-48 py-1 max-h-52 overflow-y-auto">
+          {options.map(opt => (
+            <button
+              key={opt}
+              onClick={() => toggleFilter(setter, selected, opt)}
+              className="w-full flex items-center gap-2 px-3 py-1.5 text-xs text-[#242450] hover:bg-[#F6F6FB] transition-colors text-left"
+            >
+              <span className={`w-3.5 h-3.5 rounded border flex items-center justify-center shrink-0 ${
+                selected.includes(opt) ? 'bg-[#8403C5] border-[#8403C5]' : 'border-[#D8D8EE]'
+              }`}>
+                {selected.includes(opt) && <span className="text-white text-[9px]">✓</span>}
+              </span>
+              {styleMap ? <span className={`text-[11px] font-semibold px-1.5 py-0.5 rounded-full ${styleMap[opt] || ''}`}>{opt}</span> : opt}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
 
   if (selectedReq) {
     return (
@@ -136,150 +255,177 @@ export default function RequestBoard({ refresh }) {
   }
 
   return (
-    <div className="flex-1 bg-[#F7F7F8] overflow-y-auto p-8 font-dm">
-      {/* Stats bar */}
-      <div className="grid grid-cols-4 gap-4 mb-6">
-        {[
-          { label: 'Open requests', value: open.length, color: '#8403C5' },
-          { label: 'Urgent', value: urgent.length, color: '#B91C1C' },
-          { label: 'Due this week', value: dueThisWeek.length, color: '#A16207' },
-          { label: 'Completed this month', value: completedThisMonth.length, color: '#15803D' },
-        ].map(s => (
-          <div key={s.label} className="bg-white rounded-xl p-6" style={{ boxShadow: '0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04)', borderLeft: `4px solid ${s.color}` }}>
-            <p className="text-[11px] font-bold text-[#9CA3AF] uppercase tracking-[0.08em] mb-1">{s.label}</p>
-            <p className="text-3xl font-bold text-[#111827]">{s.value}</p>
+    <div className="flex-1 bg-[#F6F6FB] overflow-hidden flex flex-col font-dm">
+      {/* Header */}
+      <div className="shrink-0 px-8 pt-8 pb-4">
+        <div className="flex items-start justify-between mb-5">
+          <div>
+            <h1 className="text-2xl font-bold text-[#242450]">Company To-Do Board</h1>
+            <p className="text-sm text-[#5777AB] mt-0.5">Track and manage team tasks and requests</p>
           </div>
-        ))}
-      </div>
-
-      {/* Toolbar */}
-      <div className="flex items-center justify-between gap-3 mb-4 flex-wrap">
-        <div className="flex items-center gap-1.5 flex-wrap">
-          {['All', 'New', 'In Progress', 'Urgent', 'My tasks'].map(f => (
-            <button key={f} onClick={() => setStatusFilter(f)}
-              className={`px-3.5 py-2 text-xs font-medium rounded-lg transition-colors ${statusFilter === f ? 'bg-[#242450] text-white' : 'bg-white text-[#374151] hover:bg-[#F9FAFB]'}`}
-              style={statusFilter !== f ? { border: '1.5px solid #E5E7EB' } : {}}>
-              {f}
-            </button>
-          ))}
-          <span className="w-px h-5 bg-[#EBEBEB] mx-1" />
-          {PERSON_FILTERS.map(p => (
-            <button key={p} onClick={() => setPersonFilter(p)}
-              className={`px-3.5 py-2 text-xs font-medium rounded-lg transition-colors ${personFilter === p ? 'bg-[#8403C5] text-white' : 'bg-white text-[#374151] hover:bg-[#F9FAFB]'}`}
-              style={personFilter !== p ? { border: '1.5px solid #E5E7EB' } : {}}>
-              {p}
-            </button>
-          ))}
-        </div>
-        <div className="flex items-center gap-2">
-          <button onClick={() => setShowArchived(v => !v)}
-            className="flex items-center gap-1.5 px-3.5 py-2 text-xs font-medium bg-white text-[#374151] hover:bg-[#F9FAFB] rounded-lg transition-colors"
-            style={{ border: '1.5px solid #E5E7EB' }}>
-            {showArchived ? <><Eye className="w-3.5 h-3.5" /> Hide archived</> : <><Archive className="w-3.5 h-3.5" /> Show archived</>}
-          </button>
-          <button onClick={handleArchiveDone}
-            className="flex items-center gap-1.5 px-3.5 py-2 text-xs font-medium bg-white text-[#374151] hover:bg-[#F9FAFB] rounded-lg transition-colors"
-            style={{ border: '1.5px solid #E5E7EB' }}>
-            <Archive className="w-3.5 h-3.5" /> Archive done
-          </button>
-          <button onClick={() => setView(v => v === 'table' ? 'kanban' : 'table')}
-            className="flex items-center gap-1.5 px-3.5 py-2 text-xs font-medium bg-white text-[#374151] hover:bg-[#F9FAFB] rounded-lg transition-colors"
-            style={{ border: '1.5px solid #E5E7EB' }}>
-            {view === 'table' ? <><Columns className="w-3.5 h-3.5" /> Kanban</> : <><LayoutList className="w-3.5 h-3.5" /> Table</>}
-          </button>
-          <button onClick={handleAddTask}
-            className="flex items-center gap-1.5 px-4 py-2 text-xs font-semibold bg-[#8403C5] text-white rounded-lg hover:bg-[#6e02a3] transition-colors">
-            <Plus className="w-3.5 h-3.5" /> Add Task
+          <button
+            onClick={() => setShowModal(true)}
+            className="h-9 px-4 bg-[#8403C5] hover:bg-[#6B02A0] text-white font-semibold text-sm rounded-lg flex items-center gap-1.5 transition-colors shrink-0"
+          >
+            <Plus className="w-4 h-4" /> Add Task
           </button>
         </div>
+
+        {/* Stats */}
+        <div className="grid grid-cols-4 gap-4 mb-5">
+          {stats.map(s => (
+            <div key={s.label} className="bg-white rounded-xl p-5 border border-[#EBEBF5] relative overflow-hidden">
+              <div className="absolute left-0 top-0 bottom-0 w-0.5" style={{ background: s.color }} />
+              <p className="text-[11px] font-semibold text-[#5777AB] uppercase tracking-[0.06em] mb-1">{s.label}</p>
+              <p className="text-2xl font-bold text-[#242450]">{s.value}</p>
+            </div>
+          ))}
+        </div>
+
+        {/* Filter bar */}
+        <div className="flex items-center gap-2 flex-wrap">
+          {/* Search */}
+          <div className="relative min-w-[160px]">
+            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-[#9CA3AF]" />
+            <input
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              placeholder="Search tasks…"
+              className="w-full pl-8 pr-3 py-1.5 text-sm border border-[#EBEBF5] rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-[#8403C5]/20 focus:border-[#8403C5] transition-colors"
+            />
+          </div>
+
+          {/* My Tasks toggle */}
+          <button
+            onClick={() => setMyTasks(m => !m)}
+            className={`px-3 py-1.5 text-xs font-medium rounded-lg border transition-colors ${
+              myTasks ? 'bg-[#242450] text-white border-[#242450]' : 'bg-white text-[#5777AB] border-[#EBEBF5] hover:border-[#D8D8EE]'
+            }`}
+          >
+            My Tasks
+          </button>
+
+          <FilterDropdown label="Assignee" options={TEAM_MEMBERS} selected={filterAssignee} setter={setFilterAssignee} />
+          <FilterDropdown label="Status" options={BOARD_STATUSES} selected={filterStatus} setter={setFilterStatus} styleMap={STATUS_STYLES} />
+          <FilterDropdown label="Priority" options={PRIORITIES} selected={filterPriority} setter={setFilterPriority} styleMap={PRIORITY_STYLES} />
+          <FilterDropdown label="Category" options={NEW_CATEGORIES} selected={filterCategory} setter={setFilterCategory} styleMap={CATEGORY_STYLES} />
+
+          {hasAnyFilter && (
+            <button onClick={clearFilters} className="px-3 py-1.5 text-xs font-medium text-[#DC2626] hover:underline">
+              Clear all filters
+            </button>
+          )}
+        </div>
       </div>
 
-      {/* View */}
-      {loading ? (
-        <div className="flex items-center justify-center h-48"><div className="w-6 h-6 border-2 border-[#8403C5]/20 border-t-[#8403C5] rounded-full animate-spin" /></div>
-      ) : view === 'kanban' ? (
-        <RequestKanban requests={filtered} onStatusChange={handleKanbanStatusChange} onSelect={setSelectedReq} />
-      ) : (
-        <div className="bg-white rounded-xl overflow-x-auto" style={{ boxShadow: '0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04)' }}>
-          <table className="w-full text-sm min-w-[900px]">
-            <thead>
-              <tr className="border-b border-[#EBEBEB]">
-                {['#', 'Title', 'By', 'Assigned to', 'Category', 'Priority', 'Status', 'Deadline', 'Submitted', 'Notes', ''].map(h => (
-                  <th key={h} className="px-3 py-3.5 text-left text-[11px] font-bold text-[#9CA3AF] uppercase tracking-[0.08em]">{h}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {filtered.map((req) => (
-                <tr key={req.id} className="border-b border-[#F2F2F4] last:border-0 hover:bg-[#F9FAFB] transition-colors cursor-pointer group"
-                  onClick={() => setSelectedReq(req)}>
-                  <td className="px-3 py-3 text-[#9CA3AF] text-xs w-8">{req.requestNumber}</td>
-                  <td className="px-3 py-3 min-w-[160px] max-w-[220px]" onClick={e => e.stopPropagation()}>
-                    <InlineCell value={req.title} onSave={save(req.id, 'title')} placeholder="Task title" className="font-medium text-[#111827] text-sm" />
-                  </td>
-                  <td className="px-3 py-3 min-w-[90px]" onClick={e => e.stopPropagation()}>
-                    <InlineCell value={req.requestedBy} onSave={save(req.id, 'requestedBy')} type="select" options={REQUESTERS}
-                      displayEl={req.requestedBy ? <span className="text-xs font-medium bg-[#F3F4F6] text-[#374151] px-2 py-0.5 rounded-md">{req.requestedBy}</span> : null} />
-                  </td>
-                  <td className="px-3 py-3 min-w-[90px]" onClick={e => e.stopPropagation()}>
-                    <InlineCell value={req.assignedTo} onSave={save(req.id, 'assignedTo')} type="select" options={ASSIGNEES}
-                      displayEl={req.assignedTo ? <span className="text-xs font-medium bg-[#F3E8FF] text-[#7E22CE] px-2 py-0.5 rounded-md">{req.assignedTo}</span> : <span className="text-xs text-[#9CA3AF]">—</span>} />
-                  </td>
-                  <td className="px-3 py-3" onClick={e => e.stopPropagation()}>
-                    <InlineCell value={req.category} onSave={save(req.id, 'category')} type="select" options={CATEGORIES}
-                      displayEl={req.category ? <span className={`text-[11px] font-semibold px-2 py-0.5 rounded-md ${CATEGORY_STYLES[req.category] || 'bg-[#F3F4F6] text-[#6B7280]'}`}>{req.category}</span> : null} />
-                  </td>
-                  <td className="px-3 py-3" onClick={e => e.stopPropagation()}>
-                    <InlineCell value={req.priority} onSave={save(req.id, 'priority')} type="select" options={PRIORITIES}
-                      displayEl={req.priority ? <span className={`text-[11px] font-semibold px-2 py-0.5 rounded-md ${PRIORITY_STYLES[req.priority]}`}>{req.priority}</span> : null} />
-                  </td>
-                  <td className="px-3 py-3 min-w-[110px]" onClick={e => e.stopPropagation()}>
-                    <InlineCell value={req.status} onSave={save(req.id, 'status')} type="select" options={STATUSES}
-                      displayEl={req.status ? <span className={`text-[11px] font-semibold px-2 py-0.5 rounded-md ${STATUS_STYLES[req.status]}`}>{req.status}</span> : null} />
-                  </td>
-                  <td className="px-3 py-3 min-w-[110px]" onClick={e => e.stopPropagation()}>
-                    <InlineCell value={req.deadline || ''} onSave={save(req.id, 'deadline')} type="date"
-                      displayEl={<span className="text-xs text-[#374151]">{req.deadline ? format(new Date(req.deadline), 'd MMM yy') : '—'}</span>} />
-                  </td>
-                  <td className="px-3 py-3 text-xs text-[#9CA3AF] whitespace-nowrap">
-                    {req.submittedAt ? format(new Date(req.submittedAt), 'd MMM yy') : '—'}
-                  </td>
-                  <td className="px-3 py-3 max-w-[160px]" onClick={e => e.stopPropagation()}>
-                    <InlineCell value={req.notes} onSave={save(req.id, 'notes')} type="textarea" placeholder="Add notes…"
-                      displayEl={req.notes ? <p className="text-xs text-[#374151] truncate max-w-[140px]" title={req.notes}>{req.notes}</p> : null} />
-                  </td>
-                  <td className="px-3 py-3 opacity-0 group-hover:opacity-100 transition-opacity" onClick={e => e.stopPropagation()}>
-                    {deleteId === req.id ? (
-                      <div className="flex items-center gap-1">
-                        <button onClick={() => handleDelete(req.id)} className="p-1.5 text-white bg-[#EF4444] hover:bg-[#DC2626] rounded-lg"><Check className="w-3 h-3" /></button>
-                        <button onClick={() => setDeleteId(null)} className="p-1.5 text-[#9CA3AF] hover:bg-[#F9FAFB] rounded-lg"><X className="w-3 h-3" /></button>
+      {/* Board */}
+      <div className="flex-1 overflow-hidden px-8 pb-8">
+        {loading ? (
+          <div className="flex items-center justify-center h-48">
+            <div className="w-6 h-6 border-2 border-[#8403C5]/20 border-t-[#8403C5] rounded-full animate-spin" />
+          </div>
+        ) : (
+          <DragDropContext onDragEnd={handleDragEnd}>
+            <div className="flex gap-4 h-full overflow-x-auto pb-2">
+              {BOARD_STATUSES.map(status => (
+                <div key={status} className="flex-shrink-0 w-72 flex flex-col">
+                  {/* Column header */}
+                  <div className="flex items-center justify-between mb-3 shrink-0">
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-sm">{COLUMN_ICONS[status]}</span>
+                      <span className="text-xs font-bold text-[#5777AB] uppercase tracking-[0.06em]">{COLUMN_LABELS[status]}</span>
+                    </div>
+                    <span className="text-xs font-medium text-[#9CA3AF] bg-[#EBEBF5] px-2 py-0.5 rounded-full">{columns[status].length}</span>
+                  </div>
+
+                  {/* Droppable column */}
+                  <Droppable droppableId={status}>
+                    {(provided, snapshot) => (
+                      <div
+                        ref={provided.innerRef}
+                        {...provided.droppableProps}
+                        className={`flex-1 rounded-xl flex flex-col gap-2 p-2 transition-colors min-h-[200px] ${
+                          snapshot.isDraggingOver ? 'bg-[#8403C5]/5 border border-dashed border-[#8403C5]/30' : 'bg-[#F6F6FB]/60'
+                        }`}
+                      >
+                        {columns[status].map((req, index) => (
+                          <Draggable key={req.id} draggableId={req.id} index={index}>
+                            {(provided, snapshot) => (
+                              <div
+                                ref={provided.innerRef}
+                                {...provided.draggableProps}
+                                {...provided.dragHandleProps}
+                                onClick={() => setSelectedReq(req)}
+                                className={`bg-white border rounded-xl p-3.5 cursor-pointer hover:border-[#8403C5]/30 transition-all ${
+                                  snapshot.isDragging ? 'shadow-lg border-[#8403C5]/40 rotate-1' : 'border-[#EBEBF5]'
+                                }`}
+                              >
+                                {/* Title */}
+                                <p className="text-sm font-semibold text-[#242450] mb-2.5 leading-snug">{req.title || <span className="text-[#9CA3AF] italic">Untitled</span>}</p>
+
+                                {/* Meta row */}
+                                <div className="flex items-center gap-2 flex-wrap mb-2">
+                                  {req.assignedTo && (
+                                    <div className="flex items-center gap-1.5">
+                                      <div className="w-5 h-5 rounded-full bg-[#F3E8FF] text-[#8403C5] text-[10px] font-bold flex items-center justify-center shrink-0">
+                                        {req.assignedTo.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase()}
+                                      </div>
+                                      <span className="text-[11px] font-medium text-[#5777AB]">{req.assignedTo}</span>
+                                    </div>
+                                  )}
+                                </div>
+
+                                {/* Badges */}
+                                <div className="flex items-center gap-1.5 flex-wrap">
+                                  {req.priority && (
+                                    <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${PRIORITY_STYLES[req.priority] || ''}`}>
+                                      {req.priority}
+                                    </span>
+                                  )}
+                                  {req.category && (
+                                    <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${CATEGORY_STYLES[req.category] || 'bg-[#EBEBF5] text-[#242450]'}`}>
+                                      {req.category}
+                                    </span>
+                                  )}
+                                </div>
+
+                                {/* Due date */}
+                                {req.deadline && (
+                                  <p className="text-[11px] text-[#5777AB] mt-2">
+                                    Due {format(new Date(req.deadline), 'd MMM yyyy')}
+                                  </p>
+                                )}
+                              </div>
+                            )}
+                          </Draggable>
+                        ))}
+                        {provided.placeholder}
+                        {columns[status].length === 0 && !snapshot.isDraggingOver && (
+                          <div className="flex-1 flex items-center justify-center">
+                            <p className="text-xs text-[#9CA3AF] italic">No tasks</p>
+                          </div>
+                        )}
                       </div>
-                    ) : (
-                      <button onClick={() => setDeleteId(req.id)} className="p-1.5 text-[#9CA3AF] hover:text-[#EF4444] hover:bg-[#FEE2E2] rounded-lg transition-colors">
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </button>
                     )}
-                  </td>
-                </tr>
+                  </Droppable>
+                </div>
               ))}
-              {filtered.length === 0 && (
-                <tr>
-                  <td colSpan={11} className="px-4 py-16 text-center">
-                    <p className="text-sm text-[#6B7280]">No open requests. Enjoy it while it lasts.</p>
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
+            </div>
+          </DragDropContext>
+        )}
+      </div>
+
+      {/* Add Task Modal */}
+      {showModal && (
+        <AddTaskModal
+          onClose={() => setShowModal(false)}
+          onSubmit={handleAddTask}
+        />
       )}
 
-      {deleteId && (
-        <ConfirmDialog
-          message="Are you sure you want to delete this request? This cannot be undone."
-          onConfirm={() => handleDelete(deleteId)}
-          onCancel={() => setDeleteId(null)}
-        />
+      {/* Close dropdowns on outside click */}
+      {openDropdown && (
+        <div className="fixed inset-0 z-40" onClick={() => setOpenDropdown(null)} />
       )}
     </div>
   );
