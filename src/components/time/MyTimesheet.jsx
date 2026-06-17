@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { base44 } from '@/api/base44Client';
-import { format, startOfWeek, endOfWeek, addWeeks, subWeeks, isSameDay, parseISO, isWithinInterval, startOfMonth, endOfMonth } from 'date-fns';
+import { format, startOfWeek, endOfWeek, addWeeks, subWeeks, addDays, isSameDay, parseISO, isWithinInterval, startOfMonth, endOfMonth } from 'date-fns';
 import { ChevronLeft, ChevronRight, List, Grid3X3, Calendar, Pencil, Trash2, X, Check } from 'lucide-react';
 
 const CATEGORIES = [
@@ -233,7 +233,7 @@ export default function MyTimesheet({ refresh }) {
             </table>
           )}
         </div>
-      ) : (
+      ) : view === 'list' ? (
         <div className="bg-white border border-[#EBEBF5] rounded-xl overflow-hidden">
           {weekEntries.length === 0 ? (
             <div className="px-6 py-16 text-center">
@@ -270,6 +270,8 @@ export default function MyTimesheet({ refresh }) {
             </table>
           )}
         </div>
+      ) : (
+        <CalendarView entries={weekEntries} weekStart={weekStart} DAYS={DAYS} handleEdit={handleEdit} setDeleteId={setDeleteId} fmtHours={fmtHours} />
       )}
 
       {/* Edit modal */}
@@ -288,6 +290,14 @@ export default function MyTimesheet({ refresh }) {
                 <select value={editData.category} onChange={e => setEditData({ ...editData, category: e.target.value })}
                   className="w-full px-3 py-2 text-sm border border-[#EBEBF5] rounded-lg">
                   {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="block text-[11px] font-semibold text-[#5777AB] uppercase mb-1">Client <span className="font-normal normal-case text-[#9CA3AF]">(optional)</span></label>
+                <select value={editData.clientId || ''} onChange={e => { const c = clients.find(cl => cl.id === e.target.value); setEditData({ ...editData, clientId: e.target.value, clientName: c?.name || '' }); }}
+                  className="w-full px-3 py-2 text-sm border border-[#EBEBF5] rounded-lg">
+                  <option value="">None</option>
+                  {clients.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
                 </select>
               </div>
               <div>
@@ -342,6 +352,105 @@ export default function MyTimesheet({ refresh }) {
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+// ── Calendar View ──
+const CAT_COLORS = {
+  'Sales & Outbound': '#8403C5',
+  'Customer Success & Onboarding': '#1D9E75',
+  'Marketing & Content': '#E8A020',
+  'Operations & Admin': '#5777AB',
+  'Product & Tech': '#DC2626',
+  'Finance': '#6B02A0',
+  'Strategy & Planning': '#0EA5E9',
+  'Other': '#9CA3AF',
+};
+
+function CalendarView({ entries, weekStart, DAYS, handleEdit, setDeleteId, fmtHours }) {
+  const dayEntries = useMemo(() => {
+    const map = {};
+    entries.forEach(e => {
+      const day = parseISO(e.date).getDay();
+      const idx = day === 0 ? 6 : day - 1;
+      if (idx >= 0 && idx < 7) {
+        if (!map[idx]) map[idx] = [];
+        map[idx].push(e);
+      }
+    });
+    return map;
+  }, [entries]);
+
+  const maxDayMin = useMemo(() => {
+    let max = 60;
+    DAYS.forEach((_, i) => {
+      const total = (dayEntries[i] || []).reduce((s, e) => s + e.durationMinutes, 0);
+      if (total > max) max = total;
+    });
+    return max;
+  }, [dayEntries]);
+
+  if (entries.length === 0) {
+    return (
+      <div className="bg-white border border-[#EBEBF5] rounded-xl px-6 py-16 text-center">
+        <p className="text-sm text-[#5777AB]">No entries this week</p>
+        <p className="text-xs text-[#9CA3AF] mt-1">Add your first entry in the Log Time tab above</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="bg-white border border-[#EBEBF5] rounded-xl overflow-hidden">
+      {/* Day headers */}
+      <div className="grid grid-cols-7 border-b border-[#EBEBF5]">
+        {DAYS.map((d, i) => {
+          const date = addDays(weekStart, i);
+          const dayTotal = (dayEntries[i] || []).reduce((s, e) => s + e.durationMinutes, 0);
+          return (
+            <div key={i} className="px-2 py-2.5 text-center border-r border-[#EBEBF5] last:border-r-0">
+              <p className="text-[11px] font-bold text-[#5777AB] uppercase tracking-[0.06em]">{d}</p>
+              <p className="text-[10px] text-[#9CA3AF]">{format(date, 'd MMM')}</p>
+              {dayTotal > 0 && <p className="text-[11px] font-bold text-[#242450] mt-0.5">{fmtHours(dayTotal)}</p>}
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Day columns with entries */}
+      <div className="grid grid-cols-7 min-h-[300px]">
+        {DAYS.map((_, i) => {
+          const items = dayEntries[i] || [];
+          const cellHeight = 300 + Math.max(0, items.length - 3) * 80;
+          return (
+            <div key={i} className="border-r border-[#EBEBF5] last:border-r-0 p-2 space-y-1.5" style={{ minHeight: cellHeight }}>
+              {items.length === 0 ? (
+                <p className="text-[11px] text-[#D8D8EE] text-center pt-8">—</p>
+              ) : (
+                items.map(entry => {
+                  const heightPct = Math.max(8, (entry.durationMinutes / maxDayMin) * 100);
+                  const color = CAT_COLORS[entry.category] || '#9CA3AF';
+                  return (
+                    <div key={entry.id}
+                      onClick={() => handleEdit(entry)}
+                      className="relative rounded-md px-2 py-1.5 cursor-pointer hover:ring-2 hover:ring-[#8403C5]/30 transition-all group break-words"
+                      style={{ minHeight: `${Math.max(heightPct * 0.8, 32)}px`, backgroundColor: `${color}15`, borderLeft: `3px solid ${color}` }}>
+                      <p className="text-[11px] font-semibold text-[#242450] leading-tight line-clamp-2">{entry.projectTask}</p>
+                      <p className="text-[10px] text-[#5777AB] mt-0.5">{fmtHours(entry.durationMinutes)}</p>
+                      {entry.clientName && <p className="text-[10px] text-[#5777AB] truncate">{entry.clientName}</p>}
+                      <div className="absolute top-1 right-1 opacity-0 group-hover:opacity-100 transition-opacity flex gap-0.5">
+                        <button onClick={ev => { ev.stopPropagation(); setDeleteId(entry.id); }} className="p-0.5 text-[#9CA3AF] hover:text-[#DC2626] rounded">
+                          <Trash2 className="w-2.5 h-2.5" />
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })
+              )}
+            </div>
+          );
+        })}
+      </div>
     </div>
   );
 }

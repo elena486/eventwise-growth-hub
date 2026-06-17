@@ -39,6 +39,7 @@ import KeyboardShortcutsModal from '@/components/KeyboardShortcutsModal';
 import useKeyboardShortcuts from '@/hooks/useKeyboardShortcuts';
 import { base44 } from '@/api/base44Client';
 import { getRecentlyViewed, addRecentlyViewed, clearRecentlyViewed, TYPE_META, formatRelativeTime } from '@/utils/recentlyViewed';
+import FloatingTimer from '@/components/time/FloatingTimer';
 
 const GROUPS = [
   { id: 'sales', label: 'Sales', tabs: [
@@ -575,6 +576,9 @@ export default function AppShell() {
           onViewOnboarding={handleViewOnboarding}
         />
       )}
+
+      {/* Floating Timer — global across all tabs */}
+      <FloatingTimer onStopAndLog={() => setSearchParams({ tab: 'time-log' })} />
     </div>
   );
 }
