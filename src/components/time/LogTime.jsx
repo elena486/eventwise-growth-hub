@@ -1,7 +1,7 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { base44 } from '@/api/base44Client';
 import { format } from 'date-fns';
-import { Play, Pause, ChevronDown, ChevronRight } from 'lucide-react';
+import { Play, Pause, ChevronDown, ChevronRight, Square } from 'lucide-react';
 
 const TEAM_MEMBERS = ['Chris', 'Elena', 'George', 'Martinique', 'Sreeja', 'Ramesh'];
 const CATEGORIES = [
@@ -15,7 +15,24 @@ const CATEGORIES = [
   'Other',
 ];
 
+function formatTime(ms) {
+  const totalSec = Math.floor(ms / 1000);
+  const h = Math.floor(totalSec / 3600);
+  const m = Math.floor((totalSec % 3600) / 60);
+  const s = totalSec % 60;
+  return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+}
+
+function formatTimeOfDay(iso) {
+  try { return format(new Date(iso), 'hh:mm aa'); } catch { return iso; }
+}
+
+function formatDateTime(iso) {
+  try { return format(new Date(iso), 'd MMM yyyy, hh:mm aa'); } catch { return iso; }
+}
+
 export default function LogTime({ onLogged }) {
+  // ── Manual entry form ──
   const [date, setDate] = useState(format(new Date(), 'yyyy-MM-dd'));
   const [teamMember, setTeamMember] = useState('');
   const [category, setCategory] = useState('');
@@ -27,15 +44,25 @@ export default function LogTime({ onLogged }) {
   const [saving, setSaving] = useState(false);
   const [success, setSuccess] = useState(false);
 
-  // Timer state
+  // ── Timer state ──
   const [timerOpen, setTimerOpen] = useState(false);
-  const [timerRunning, setTimerRunning] = useState(false);
   const [timerCategory, setTimerCategory] = useState('');
   const [timerProject, setTimerProject] = useState('');
+
+  // Active timer (from DB)
+  const [activeTimerRecord, setActiveTimerRecord] = useState(null); // the saved DB record
+  const [activeTimerId, setActiveTimerId] = useState(null);
   const [elapsed, setElapsed] = useState(0);
+  const [bannerVisible, setBannerVisible] = useState(true);
   const intervalRef = useRef(null);
   const startTimeRef = useRef(null);
 
+  // Abandoned mode (>8h)
+  const [abandonedMode, setAbandonedMode] = useState(false);
+  const [manualDurationH, setManualDurationH] = useState('');
+  const [manualDurationM, setManualDurationM] = useState('');
+
+  // Resolve team member
   useEffect(() => {
     base44.auth.me().then(me => {
       if (me?.full_name) {
@@ -45,38 +72,167 @@ export default function LogTime({ onLogged }) {
     }).catch(() => {});
   }, []);
 
-  // Timer tick
+  // ── Load running timer on mount ──
+  const loadRunningTimer = useCallback(async () => {
+    try {
+      const me = await base44.auth.me();
+      if (!me?.full_name) return;
+      const firstName = me.full_name.split(' ')[0];
+      if (!TEAM_MEMBERS.includes(firstName)) return;
+
+      const all = await base44.entities.TimeEntry.filter({ teamMember: firstName, timerStatus: 'running' }, '-created_date', 10);
+      if (all.length === 0) return;
+
+      const record = all[0];
+      const startedAt = record.timerStartedAt;
+      if (!startedAt) return;
+
+      const startMs = new Date(startedAt).getTime();
+      const now = Date.now();
+      const eightHours = 8 * 60 * 60 * 1000;
+
+      setActiveTimerRecord(record);
+      setActiveTimerId(record.id);
+
+      if (now - startMs > eightHours) {
+        // Abandoned timer
+        setAbandonedMode(true);
+      } else {
+        // Active timer — start counting
+        setAbandonedMode(false);
+        startTimeRef.current = startMs;
+        setElapsed(now - startMs);
+        setBannerVisible(true);
+        intervalRef.current = setInterval(() => {
+          setElapsed(Date.now() - startMs);
+        }, 500);
+      }
+    } catch {}
+  }, []);
+
   useEffect(() => {
-    if (timerRunning) {
-      startTimeRef.current = Date.now() - elapsed;
+    loadRunningTimer();
+    return () => clearInterval(intervalRef.current);
+  }, [loadRunningTimer]);
+
+  // ── Start Timer → save to DB immediately ──
+  const handleStartTimer = async () => {
+    if (!timerCategory || !timerProject.trim()) return;
+
+    // Check for existing running timer
+    if (activeTimerId) {
+      // Already have one — scroll to banner
+      setBannerVisible(true);
+      return;
+    }
+
+    try {
+      const me = await base44.auth.me();
+      const firstName = me?.full_name?.split(' ')[0] || '';
+      const now = new Date().toISOString();
+
+      const record = await base44.entities.TimeEntry.create({
+        date: format(new Date(), 'yyyy-MM-dd'),
+        teamMember: firstName,
+        category: timerCategory,
+        projectTask: timerProject.trim(),
+        durationMinutes: 0, // placeholder, will update on stop
+        timerStatus: 'running',
+        timerStartedAt: now,
+      });
+
+      setActiveTimerRecord(record);
+      setActiveTimerId(record.id);
+      setAbandonedMode(false);
+      setBannerVisible(true);
+      setElapsed(0);
+
+      startTimeRef.current = new Date(now).getTime();
       intervalRef.current = setInterval(() => {
         setElapsed(Date.now() - startTimeRef.current);
-      }, 200);
-    } else {
-      clearInterval(intervalRef.current);
-    }
-    return () => clearInterval(intervalRef.current);
-  }, [timerRunning]);
-
-  const formatElapsed = (ms) => {
-    const totalSec = Math.floor(ms / 1000);
-    const h = Math.floor(totalSec / 3600);
-    const m = Math.floor((totalSec % 3600) / 60);
-    const s = totalSec % 60;
-    return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+      }, 500);
+    } catch {}
   };
 
-  const stopTimer = () => {
-    setTimerRunning(false);
+  // ── Stop & Log ──
+  const handleStopAndLog = async () => {
+    clearInterval(intervalRef.current);
+
+    const now = new Date();
+    const nowISO = now.toISOString();
     const totalMin = Math.round(elapsed / 60000);
+
     const h = Math.floor(totalMin / 60);
     const m = totalMin % 60;
     setHours(String(h));
     setMinutes(String(m));
-    if (timerCategory) setCategory(timerCategory);
-    if (timerProject) setProjectTask(timerProject);
+
+    if (activeTimerRecord) {
+      setCategory(activeTimerRecord.category || '');
+      setProjectTask(activeTimerRecord.projectTask || '');
+    }
+
+    // Update DB record
+    if (activeTimerId) {
+      try {
+        await base44.entities.TimeEntry.update(activeTimerId, {
+          timerStatus: 'stopped',
+          timerStoppedAt: nowISO,
+          durationMinutes: totalMin,
+        });
+      } catch {}
+    }
+
+    // Clear banner
+    setActiveTimerId(null);
+    setActiveTimerRecord(null);
+    setBannerVisible(false);
+    setAbandonedMode(false);
   };
 
+  // ── Discard abandoned timer ──
+  const handleDiscardTimer = async () => {
+    if (activeTimerId) {
+      try { await base44.entities.TimeEntry.delete(activeTimerId); } catch {}
+    }
+    setActiveTimerId(null);
+    setActiveTimerRecord(null);
+    setBannerVisible(false);
+    setAbandonedMode(false);
+    clearInterval(intervalRef.current);
+  };
+
+  // ── Enter duration manually (abandoned timer) ──
+  const handleEnterManualDuration = () => {
+    const h = parseInt(manualDurationH) || 0;
+    const m = parseInt(manualDurationM) || 0;
+    const totalMin = h * 60 + m;
+    if (totalMin <= 0) return;
+
+    setHours(String(h));
+    setMinutes(String(m));
+    if (activeTimerRecord) {
+      setCategory(activeTimerRecord.category || '');
+      setProjectTask(activeTimerRecord.projectTask || '');
+    }
+
+    // Update record
+    if (activeTimerId) {
+      base44.entities.TimeEntry.update(activeTimerId, {
+        timerStatus: 'stopped',
+        timerStoppedAt: new Date().toISOString(),
+        durationMinutes: totalMin,
+      }).catch(() => {});
+    }
+
+    setActiveTimerId(null);
+    setActiveTimerRecord(null);
+    setBannerVisible(false);
+    setAbandonedMode(false);
+    clearInterval(intervalRef.current);
+  };
+
+  // ── Manual form submit ──
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!teamMember || !category || !projectTask.trim()) return;
@@ -88,15 +244,34 @@ export default function LogTime({ onLogged }) {
 
     setSaving(true);
     try {
-      await base44.entities.TimeEntry.create({
-        date,
-        teamMember,
-        category,
-        projectTask: projectTask.trim(),
-        durationMinutes: totalMin,
-        billable,
-        notes: notes.trim() || undefined,
-      });
+      if (activeTimerId) {
+        // Update the existing timer record to "logged"
+        await base44.entities.TimeEntry.update(activeTimerId, {
+          date,
+          teamMember,
+          category,
+          projectTask: projectTask.trim(),
+          durationMinutes: totalMin,
+          billable,
+          notes: notes.trim() || undefined,
+          timerStatus: 'logged',
+        });
+        setActiveTimerId(null);
+        setActiveTimerRecord(null);
+        setBannerVisible(false);
+      } else {
+        // Create fresh entry
+        await base44.entities.TimeEntry.create({
+          date,
+          teamMember,
+          category,
+          projectTask: projectTask.trim(),
+          durationMinutes: totalMin,
+          billable,
+          notes: notes.trim() || undefined,
+        });
+      }
+
       setDate(format(new Date(), 'yyyy-MM-dd'));
       setCategory('');
       setProjectTask('');
@@ -105,7 +280,8 @@ export default function LogTime({ onLogged }) {
       setBillable(false);
       setNotes('');
       setElapsed(0);
-      setTimerRunning(false);
+      setTimerCategory('');
+      setTimerProject('');
       setSuccess(true);
       setTimeout(() => setSuccess(false), 2500);
       onLogged?.();
@@ -118,7 +294,61 @@ export default function LogTime({ onLogged }) {
 
   return (
     <div className="max-w-lg mx-auto pt-6">
-      {/* Success toast */}
+      {/* ── Active timer banner ── */}
+      {bannerVisible && activeTimerRecord && !abandonedMode && (
+        <div className="mb-5 px-4 py-3 bg-[#FFFBEB] border border-[#E8A020]/30 rounded-xl">
+          <div className="flex items-start justify-between gap-3">
+            <div className="flex-1 min-w-0">
+              <p className="text-xs font-semibold text-[#A16207] flex items-center gap-1.5">
+                ⏱ Timer running since {formatTimeOfDay(activeTimerRecord.timerStartedAt)}
+              </p>
+              <p className="text-sm font-medium text-[#242450] mt-0.5">
+                {activeTimerRecord.category} · {activeTimerRecord.projectTask}
+              </p>
+              <p className="text-2xl font-bold text-[#242450] font-mono tracking-wider mt-1">
+                {formatTime(elapsed)}
+              </p>
+            </div>
+            <button onClick={handleStopAndLog}
+              className="shrink-0 flex items-center gap-1.5 px-3.5 py-2 bg-[#DC2626] hover:bg-[#B91C1C] text-white text-xs font-semibold rounded-lg transition-colors">
+              <Square className="w-3.5 h-3.5" fill="white" /> Stop &amp; Log
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* ── Abandoned timer banner ── */}
+      {bannerVisible && activeTimerRecord && abandonedMode && (
+        <div className="mb-5 px-4 py-3 bg-[#FEE2E2] border border-[#DC2626]/20 rounded-xl">
+          <p className="text-xs font-semibold text-[#DC2626] flex items-center gap-1.5 mb-2">
+            ⚠ Timer was still running from {formatDateTime(activeTimerRecord.timerStartedAt)}. Did you forget to stop it?
+          </p>
+          <p className="text-sm text-[#242450] mb-1">
+            {activeTimerRecord.category} · {activeTimerRecord.projectTask}
+          </p>
+          <p className="text-sm text-[#5777AB] mb-3">Enter the actual time you spent or discard this entry.</p>
+          <div className="flex items-center gap-2 flex-wrap">
+            <div className="flex items-center gap-1.5">
+              <input type="number" min="0" value={manualDurationH} onChange={e => setManualDurationH(e.target.value)}
+                placeholder="0" className="w-14 px-2 py-1.5 text-sm text-center border border-[#EBEBF5] rounded-lg bg-white" />
+              <span className="text-xs text-[#5777AB]">h</span>
+              <input type="number" min="0" max="59" value={manualDurationM} onChange={e => setManualDurationM(e.target.value)}
+                placeholder="0" className="w-14 px-2 py-1.5 text-sm text-center border border-[#EBEBF5] rounded-lg bg-white" />
+              <span className="text-xs text-[#5777AB]">m</span>
+            </div>
+            <button onClick={handleEnterManualDuration}
+              className="px-3 py-1.5 bg-[#8403C5] hover:bg-[#6B02A0] text-white text-xs font-semibold rounded-lg transition-colors">
+              Enter duration
+            </button>
+            <button onClick={handleDiscardTimer}
+              className="px-3 py-1.5 bg-white border border-[#EBEBF5] text-[#DC2626] text-xs font-semibold rounded-lg hover:bg-[#FEF2F2] transition-colors">
+              Discard timer
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* ── Success toast ── */}
       {success && (
         <div className="mb-4 px-4 py-2.5 bg-[#E8F7F2] text-[#1D9E75] text-sm font-semibold rounded-lg border border-[#1D9E75]/20">
           ✓ Time entry logged
@@ -193,13 +423,19 @@ export default function LogTime({ onLogged }) {
             className="w-full px-3 py-2 text-sm border border-[#EBEBF5] rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-[#8403C5]/20 focus:border-[#8403C5] resize-none" />
         </div>
 
+        {activeTimerId && !abandonedMode && (
+          <div className="px-3 py-2 bg-[#FFFBEB] text-[#A16207] text-xs font-semibold rounded-lg border border-[#E8A020]/30 text-center">
+            Timer stopped — review the details above before logging
+          </div>
+        )}
+
         <button type="submit" disabled={!isValid || saving}
           className="w-full py-2.5 bg-[#8403C5] hover:bg-[#6B02A0] disabled:bg-[#D8D8EE] disabled:text-[#9CA3AF] text-white font-semibold text-sm rounded-lg transition-colors">
           {saving ? 'Logging…' : 'Log Time'}
         </button>
       </form>
 
-      {/* Timer section */}
+      {/* ── Timer section ── */}
       <div className="mt-6 border-t border-[#EBEBF5] pt-4">
         <button onClick={() => setTimerOpen(o => !o)}
           className="flex items-center gap-1 text-sm text-[#5777AB] hover:text-[#242450] transition-colors font-medium">
@@ -209,19 +445,19 @@ export default function LogTime({ onLogged }) {
 
         {timerOpen && (
           <div className="mt-3 space-y-3 bg-white border border-[#EBEBF5] rounded-xl p-4">
-            {timerRunning && (
-              <div className="px-3 py-2 bg-[#FFFBEB] text-[#A16207] text-xs font-semibold rounded-lg border border-[#E8A020]/30">
-                ⏱ Timer is running — do not close this tab or time will be lost
+            {activeTimerId && !abandonedMode && (
+              <div className="px-3 py-2 bg-[#FEF2F2] text-[#DC2626] text-xs font-semibold rounded-lg border border-[#DC2626]/20">
+                You already have a timer running. Stop it before starting a new one.
               </div>
             )}
 
             <div className="text-center">
               <span className="text-3xl font-bold text-[#242450] font-mono tracking-wider">
-                {formatElapsed(elapsed)}
+                {activeTimerId ? formatTime(elapsed) : '00:00:00'}
               </span>
             </div>
 
-            {!timerRunning ? (
+            {!activeTimerId ? (
               <>
                 <div>
                   <label className="block text-xs font-semibold text-[#5777AB] uppercase tracking-[0.06em] mb-1">Category</label>
@@ -237,17 +473,17 @@ export default function LogTime({ onLogged }) {
                     placeholder="What are you working on?"
                     className="w-full px-3 py-2 text-sm border border-[#EBEBF5] rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-[#8403C5]/20 focus:border-[#8403C5]" />
                 </div>
-                <button onClick={() => { setElapsed(0); setTimerRunning(true); }}
+                <button onClick={handleStartTimer}
                   className="w-full py-2.5 bg-[#242450] hover:bg-[#1A1A3A] text-white font-semibold text-sm rounded-lg transition-colors flex items-center justify-center gap-2">
                   <Play className="w-4 h-4" fill="white" /> Start Timer
                 </button>
               </>
-            ) : (
-              <button onClick={stopTimer}
+            ) : !abandonedMode ? (
+              <button onClick={handleStopAndLog}
                 className="w-full py-2.5 bg-[#DC2626] hover:bg-[#B91C1C] text-white font-semibold text-sm rounded-lg transition-colors flex items-center justify-center gap-2">
-                <Pause className="w-4 h-4" fill="white" /> Stop & Log
+                <Square className="w-4 h-4" fill="white" /> Stop &amp; Log
               </button>
-            )}
+            ) : null}
           </div>
         )}
       </div>

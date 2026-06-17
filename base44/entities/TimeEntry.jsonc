@@ -47,6 +47,23 @@
     "estimatedMinutes": {
       "type": "number",
       "description": "Optional estimated duration in minutes"
+    },
+    "timerStatus": {
+      "type": "string",
+      "enum": [
+        "running",
+        "stopped",
+        "logged"
+      ],
+      "description": "Timer state: running, stopped (awaiting form review), logged (finalised)"
+    },
+    "timerStartedAt": {
+      "type": "string",
+      "description": "ISO timestamp when the timer was started"
+    },
+    "timerStoppedAt": {
+      "type": "string",
+      "description": "ISO timestamp when the timer was stopped"
     }
   },
   "required": [
