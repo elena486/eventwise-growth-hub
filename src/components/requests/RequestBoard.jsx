@@ -82,7 +82,7 @@ export default function RequestBoard({ refresh }) {
     if (selectedReq) {
       addRecentlyViewed({
         type: 'request', name: selectedReq.title || `Request #${selectedReq.requestNumber || '—'}`,
-        section: 'Operations → Team To Do', tab: 'requests', recordId: selectedReq.id,
+        section: 'Operations → Team Board', tab: 'team-board', recordId: selectedReq.id,
       });
     }
   }, [selectedReq]);

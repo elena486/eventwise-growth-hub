@@ -20,7 +20,7 @@ function addRecent(item) {
 const QUICK_LINKS = [
   { label: 'Pipeline', tab: 'pipeline', emoji: '📊' },
   { label: 'Clients', tab: 'clients', emoji: '🏢' },
-  { label: 'Requests', tab: 'requests', emoji: '✅' },
+  { label: 'Team Board', tab: 'team-board', emoji: '✅' },
   { label: 'Wiki', tab: 'handbook', emoji: '📄' },
 ];
 
@@ -407,7 +407,7 @@ export default function GlobalSearch({ open, onClose, onNavigate }) {
       type: 'request',
       navigate: () => {
         addRecent({ type: 'request', id: r.id, title: r.title, category: 'tasks' });
-        onNavigate({ tab: 'requests', focusType: 'request', focusId: r.id });
+        onNavigate({ tab: 'team-board', focusType: 'request', focusId: r.id });
       },
     }));
     if (matchedTasks.length) {
@@ -416,8 +416,8 @@ export default function GlobalSearch({ open, onClose, onNavigate }) {
         label: '✅ Tasks',
         items: matchedTasks,
         total: allData.requests.filter(r => (r.title || '').toLowerCase().includes(q)).length,
-        seeAllTab: 'requests',
-        seeAllLabel: 'To-Do Board',
+        seeAllTab: 'team-board',
+        seeAllLabel: 'Team Board',
       });
     }
 
@@ -649,7 +649,7 @@ export default function GlobalSearch({ open, onClose, onNavigate }) {
                           type === 'client' ? 'clients' :
                           type === 'asset' ? 'assets' :
                           type === 'bug' ? 'bugs' :
-                          type === 'request' ? 'requests' :
+                          type === 'request' ? 'team-board' :
                           type === 'competitor' ? 'competitors' :
                           type === 'content' ? 'marketing' :
                           type === 'wiki' ? 'handbook' :

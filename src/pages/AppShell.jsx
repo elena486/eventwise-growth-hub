@@ -13,8 +13,9 @@ import Deals from './Deals';
 import Sprints from './Sprints';
 import Marketing from './Marketing';
 import Handbook from './Handbook';
-import Requests from './Requests';
-import HR from './HR';
+import RequestBoard from '@/components/requests/RequestBoard';
+import SubmitRequestForm from '@/components/requests/SubmitRequestForm';
+import TimeOffTracker from '@/components/hr/TimeOffTracker';
 import SalesAssets from './SalesAssets';
 import MQLTracker from './MQLTracker';
 import OutreachAnalytics from './OutreachAnalytics';
@@ -54,9 +55,10 @@ const GROUPS = [
     { id: 'bugs', label: 'Bug Tracker' },
   ]},
   { id: 'ops', label: 'Operations', tabs: [
+    { id: 'team-board', label: 'Team Board' },
+    { id: 'submit-request', label: 'Submit a Request' },
     { id: 'sprints', label: 'Sprints' },
-    { id: 'requests', label: 'Team To Do Requests' },
-    { id: 'hr', label: 'Time Off Requests' },
+    { id: 'time-off', label: 'Time Off' },
     { id: 'competitors', label: 'Competitors' },
   ]},
   { id: 'links', label: '🔗 Links', tabs: [
@@ -207,6 +209,17 @@ export default function AppShell() {
     }
   }, [fullPanelClient]);
 
+  // Focus request from search — write to sessionStorage for RequestBoard to pick up
+  useEffect(() => {
+    if (searchFocus?.focusType === 'request' && searchFocus.focusId && tab === 'team-board') {
+      sessionStorage.setItem('focus_request_id', searchFocus.focusId);
+      setTeamBoardRefresh(n => n + 1);
+      setSearchFocus(null);
+    }
+  }, [searchFocus, tab]);
+
+  const [teamBoardRefresh, setTeamBoardRefresh] = useState(0);
+
   // Keyboard shortcuts
   const { shortcutsModalOpen, setShortcutsModalOpen } = useKeyboardShortcuts({
     searchOpen,
@@ -260,7 +273,7 @@ export default function AppShell() {
   }, [tab]);
 
   useEffect(() => {
-    const keyMap = { '1': 'pipeline', '2': 'proposal', '3': 'deals', '4': 'clients', '5': 'onboarding', '6': 'health', '7': 'renewals', '8': 'sprints', '9': 'requests' };
+    const keyMap = { '1': 'pipeline', '2': 'proposal', '3': 'deals', '4': 'clients', '5': 'onboarding', '6': 'health', '7': 'renewals', '8': 'sprints', '9': 'team-board' };
     const handler = (e) => {
       if (['INPUT', 'TEXTAREA'].includes(e.target.tagName)) return;
       if (keyMap[e.key]) setTab(keyMap[e.key]);
@@ -483,13 +496,14 @@ export default function AppShell() {
         {tab === 'health' && <HealthRenewals focusClientId={focusClientId} />}
         {tab === 'renewals' && <Renewals />}
         {tab === 'deals' && <Deals onRenewalProposal={(data) => { handleProposalHandoff(data); }} onViewClient={(clientId) => { setTab('clients'); }} onNavigate={setTab} focusDealId={searchFocus?.focusType === 'deal' ? searchFocus.focusId : null} onFocusConsumed={() => setSearchFocus(null)} />}
+        {tab === 'team-board' && <RequestBoard refresh={teamBoardRefresh} />}
+        {tab === 'submit-request' && <SubmitRequestForm onSubmitted={() => { setTeamBoardRefresh(n => n + 1); setTab('team-board'); }} />}
         {tab === 'sprints' && <Sprints />}
+        {tab === 'time-off' && <TimeOffTracker />}
+        {tab === 'competitors' && <Competitors focusCompetitorId={searchFocus?.focusType === 'competitor' ? searchFocus.focusId : null} onFocusConsumed={() => setSearchFocus(null)} />}
         {tab === 'marketing' && <Marketing focusContentId={searchFocus?.focusType === 'content' ? searchFocus.focusId : null} onFocusConsumed={() => setSearchFocus(null)} />}
         {tab === 'mql' && <MQLTracker />}
         {tab === 'handbook' && <Handbook onNavigate={(t) => setTab(t)} focusWikiPage={searchFocus?.focusType === 'wiki' ? { pageId: searchFocus.focusId, sectionId: searchFocus.sectionId } : null} onFocusConsumed={() => setSearchFocus(null)} />}
-        {tab === 'requests' && <Requests focusRequestId={searchFocus?.focusType === 'request' ? searchFocus.focusId : null} onFocusConsumed={() => setSearchFocus(null)} />}
-        {tab === 'hr' && <HR />}
-        {tab === 'competitors' && <Competitors focusCompetitorId={searchFocus?.focusType === 'competitor' ? searchFocus.focusId : null} onFocusConsumed={() => setSearchFocus(null)} />}
         {tab === 'bugs' && <BugTracker focusBugId={searchFocus?.focusType === 'bug' ? searchFocus.focusId : null} onFocusConsumed={() => setSearchFocus(null)} />}
         {tab === 'assets' && <SalesAssets focusAssetId={searchFocus?.focusType === 'asset' ? searchFocus.focusId : null} onFocusConsumed={() => setSearchFocus(null)} />}
         {tab === 'outreach' && <OutreachAnalytics />}
