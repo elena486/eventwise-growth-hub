@@ -64,6 +64,14 @@
     "timerStoppedAt": {
       "type": "string",
       "description": "ISO timestamp when the timer was stopped"
+    },
+    "clientId": {
+      "type": "string",
+      "description": "Optional linked client ID"
+    },
+    "clientName": {
+      "type": "string",
+      "description": "Denormalised client name for display"
     }
   },
   "required": [

@@ -58,6 +58,8 @@ export default function LogTime({ onLogged }) {
   const [date, setDate] = useState(format(new Date(), 'yyyy-MM-dd'));
   const [teamMember, setTeamMember] = useState('');
   const [category, setCategory] = useState('');
+  const [clientId, setClientId] = useState('');
+  const [clientName, setClientName] = useState('');
   const [projectTask, setProjectTask] = useState('');
   const [hours, setHours] = useState('');
   const [minutes, setMinutes] = useState('');
@@ -65,9 +67,12 @@ export default function LogTime({ onLogged }) {
   const [notes, setNotes] = useState('');
   const [saving, setSaving] = useState(false);
   const [success, setSuccess] = useState(false);
+  const [clients, setClients] = useState([]);
 
   // ── Timer state ──
   const [timerCategory, setTimerCategory] = useState('');
+  const [timerClientId, setTimerClientId] = useState('');
+  const [timerClientName, setTimerClientName] = useState('');
   const [timerProject, setTimerProject] = useState('');
 
   // Active timer (from DB)
@@ -84,7 +89,7 @@ export default function LogTime({ onLogged }) {
   const [manualDurationH, setManualDurationH] = useState('');
   const [manualDurationM, setManualDurationM] = useState('');
 
-  // Resolve team member
+  // Resolve team member & load clients
   useEffect(() => {
     base44.auth.me().then(me => {
       if (me) userIdRef.current = me.id;
@@ -93,6 +98,7 @@ export default function LogTime({ onLogged }) {
         if (TEAM_MEMBERS.includes(first)) setTeamMember(first);
       }
     }).catch(() => {});
+    base44.entities.Client.list().then(c => setClients(c)).catch(() => {});
   }, []);
 
   // ── Load running timer on mount ──
@@ -204,6 +210,7 @@ export default function LogTime({ onLogged }) {
         durationMinutes: 0, // placeholder, will update on stop
         timerStatus: 'running',
         timerStartedAt: now,
+        ...(timerClientId ? { clientId: timerClientId, clientName: timerClientName } : {}),
       });
 
       setActiveTimerRecord(record);
@@ -222,6 +229,8 @@ export default function LogTime({ onLogged }) {
         startedAt: now,
         category: timerCategory,
         projectDescription: timerProject.trim(),
+        clientId: timerClientId,
+        clientName: timerClientName,
         status: 'running',
       });
     } catch {}
@@ -243,6 +252,8 @@ export default function LogTime({ onLogged }) {
     if (activeTimerRecord) {
       setCategory(activeTimerRecord.category || '');
       setProjectTask(activeTimerRecord.projectTask || '');
+      setClientId(activeTimerRecord.clientId || '');
+      setClientName(activeTimerRecord.clientName || '');
     }
 
     // Update DB record
@@ -292,6 +303,8 @@ export default function LogTime({ onLogged }) {
     if (activeTimerRecord) {
       setCategory(activeTimerRecord.category || '');
       setProjectTask(activeTimerRecord.projectTask || '');
+      setClientId(activeTimerRecord.clientId || '');
+      setClientName(activeTimerRecord.clientName || '');
     }
 
     // Update record
@@ -335,6 +348,7 @@ export default function LogTime({ onLogged }) {
           billable,
           notes: notes.trim() || undefined,
           timerStatus: 'logged',
+          ...(clientId ? { clientId, clientName } : {}),
         });
         setActiveTimerId(null);
         setActiveTimerRecord(null);
@@ -350,11 +364,38 @@ export default function LogTime({ onLogged }) {
           durationMinutes: totalMin,
           billable,
           notes: notes.trim() || undefined,
+          ...(clientId ? { clientId, clientName } : {}),
         });
+      }
+
+      // Append activity log on linked client
+      if (clientId) {
+        try {
+          const client = await base44.entities.Client.get(clientId);
+          if (client) {
+            const currentLog = (() => { try { return JSON.parse(client.activityLog || '[]'); } catch { return []; } })();
+            const durH = Math.floor(totalMin / 60);
+            const durM = totalMin % 60;
+            const durStr = durM === 0 ? `${durH}h` : `${durH}h ${durM}m`;
+            currentLog.push({
+              date: new Date().toISOString(),
+              type: 'Time logged',
+              label: `Time logged: ${durStr} — ${category}`,
+              category,
+              duration: durStr,
+              description: projectTask.trim(),
+              teamMember,
+              notes: notes.trim() || '',
+            });
+            await base44.entities.Client.update(clientId, { activityLog: JSON.stringify(currentLog) });
+          }
+        } catch {}
       }
 
       setDate(format(new Date(), 'yyyy-MM-dd'));
       setCategory('');
+      setClientId('');
+      setClientName('');
       setProjectTask('');
       setHours('');
       setMinutes('');
@@ -362,6 +403,8 @@ export default function LogTime({ onLogged }) {
       setNotes('');
       setElapsed(0);
       setTimerCategory('');
+      setTimerClientId('');
+      setTimerClientName('');
       setTimerProject('');
       setSuccess(true);
       setTimeout(() => setSuccess(false), 2500);
@@ -463,6 +506,15 @@ export default function LogTime({ onLogged }) {
         </div>
 
         <div>
+          <label className="block text-xs font-semibold text-[#5777AB] uppercase tracking-[0.06em] mb-1.5">Client <span className="font-normal normal-case">(optional)</span></label>
+          <select value={clientId} onChange={e => { setClientId(e.target.value); const c = clients.find(cl => cl.id === e.target.value); setClientName(c?.name || ''); }}
+            className="w-full px-3 py-2 text-sm border border-[#EBEBF5] rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-[#8403C5]/20 focus:border-[#8403C5]">
+            <option value="">None</option>
+            {clients.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+          </select>
+        </div>
+
+        <div>
           <label className="block text-xs font-semibold text-[#5777AB] uppercase tracking-[0.06em] mb-1.5">Project / Task description</label>
           <input type="text" value={projectTask} onChange={e => setProjectTask(e.target.value)}
             placeholder="e.g. Onboarding call with Noisily, Apollo sequence setup, Q2 board report"
@@ -541,6 +593,14 @@ export default function LogTime({ onLogged }) {
                   className="w-full px-3 py-2 text-sm border border-[#EBEBF5] rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-[#8403C5]/20 focus:border-[#8403C5]">
                   <option value="">Select…</option>
                   {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-[#5777AB] uppercase tracking-[0.06em] mb-1">Client <span className="font-normal normal-case">(optional)</span></label>
+                <select value={timerClientId} onChange={e => { setTimerClientId(e.target.value); const c = clients.find(cl => cl.id === e.target.value); setTimerClientName(c?.name || ''); }}
+                  className="w-full px-3 py-2 text-sm border border-[#EBEBF5] rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-[#8403C5]/20 focus:border-[#8403C5]">
+                  <option value="">None</option>
+                  {clients.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
                 </select>
               </div>
               <div>

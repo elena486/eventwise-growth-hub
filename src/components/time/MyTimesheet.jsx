@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { base44 } from '@/api/base44Client';
 import { format, startOfWeek, endOfWeek, addWeeks, subWeeks, isSameDay, parseISO, isWithinInterval, startOfMonth, endOfMonth } from 'date-fns';
-import { ChevronLeft, ChevronRight, List, Grid3X3, Pencil, Trash2, X, Check } from 'lucide-react';
+import { ChevronLeft, ChevronRight, List, Grid3X3, Calendar, Pencil, Trash2, X, Check } from 'lucide-react';
 
 const CATEGORIES = [
   'Sales & Outbound', 'Customer Success & Onboarding', 'Marketing & Content',
@@ -31,6 +31,7 @@ export default function MyTimesheet({ refresh }) {
   const [editId, setEditId] = useState(null);
   const [editData, setEditData] = useState({});
   const [deleteId, setDeleteId] = useState(null);
+  const [clients, setClients] = useState([]);
 
   const load = async () => {
     setLoading(true);
@@ -41,6 +42,7 @@ export default function MyTimesheet({ refresh }) {
 
       const data = await base44.entities.TimeEntry.list('-date', 1000);
       setEntries(data.filter(e => e.teamMember === firstName));
+      base44.entities.Client.list().then(c => setClients(c)).catch(() => {});
     } catch {}
     setLoading(false);
   };
@@ -121,6 +123,7 @@ export default function MyTimesheet({ refresh }) {
       durationMinutes: h * 60 + m,
       billable: editData.billable,
       notes: editData.notes || '',
+      ...(editData.clientId ? { clientId: editData.clientId, clientName: editData.clientName } : {}),
     });
     setEditId(null);
     load();
@@ -175,6 +178,10 @@ export default function MyTimesheet({ refresh }) {
           <button onClick={() => setView('list')}
             className={`flex items-center gap-1 px-3 py-1.5 text-xs font-medium transition-colors ${view === 'list' ? 'bg-[#F3E8FF] text-[#8403C5]' : 'text-[#5777AB] hover:bg-[#F6F6FB]'}`}>
             <List className="w-3.5 h-3.5" /> List
+          </button>
+          <button onClick={() => setView('calendar')}
+            className={`flex items-center gap-1 px-3 py-1.5 text-xs font-medium transition-colors ${view === 'calendar' ? 'bg-[#F3E8FF] text-[#8403C5]' : 'text-[#5777AB] hover:bg-[#F6F6FB]'}`}>
+            <Calendar className="w-3.5 h-3.5" /> Calendar
           </button>
         </div>
       </div>
@@ -237,7 +244,7 @@ export default function MyTimesheet({ refresh }) {
             <table className="w-full text-sm">
               <thead>
                 <tr>
-                  {['Date', 'Category', 'Project / Task', 'Duration', 'Billable', ''].map(h => (
+                  {['Date', 'Category', 'Client', 'Project / Task', 'Duration', 'Billable', ''].map(h => (
                     <th key={h} className="px-3 py-3 text-left text-[11px] font-bold text-[#5777AB] uppercase tracking-[0.08em]">{h}</th>
                   ))}
                 </tr>
@@ -247,6 +254,7 @@ export default function MyTimesheet({ refresh }) {
                   <tr key={e.id} className="border-t border-[#F2F2F4] hover:bg-[#F6F6FB] transition-colors group">
                     <td className="px-3 py-2.5 text-xs text-[#242450]">{format(parseISO(e.date), 'd MMM')}</td>
                     <td className="px-3 py-2.5 text-xs text-[#5777AB]">{e.category}</td>
+                    <td className="px-3 py-2.5 text-xs text-[#5777AB]">{e.clientName || '—'}</td>
                     <td className="px-3 py-2.5 text-xs text-[#242450] font-medium max-w-[200px] truncate">{e.projectTask}</td>
                     <td className="px-3 py-2.5 text-xs font-semibold text-[#242450]">{fmtHours(e.durationMinutes)}</td>
                     <td className="px-3 py-2.5">{e.billable ? <span className="text-[10px] font-semibold bg-[#E8F7F2] text-[#1D9E75] px-2 py-0.5 rounded-full">Yes</span> : <span className="text-[10px] text-[#9CA3AF]">—</span>}</td>
