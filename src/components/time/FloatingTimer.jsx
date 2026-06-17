@@ -372,7 +372,7 @@ export default function FloatingTimer({ onStopAndLog }) {
           <Clock className="w-4 h-4" />
           <span className="text-sm font-bold">⏱ Timer</span>
         </div>
-        <button onClick={() => timerStatus === 'idle' ? setExpanded(false) : null} className="p-1 hover:bg-white/10 rounded">
+        <button onClick={() => setExpanded(false)} className="p-1 hover:bg-white/10 rounded" title="Collapse">
           <X className="w-4 h-4" />
         </button>
       </div>
