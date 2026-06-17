@@ -31,6 +31,28 @@ function formatDateTime(iso) {
   try { return format(new Date(iso), 'd MMM yyyy, hh:mm aa'); } catch { return iso; }
 }
 
+const LS_KEY_PREFIX = 'eventwise_timer_';
+
+function getTimerLSKey(userId) {
+  return `${LS_KEY_PREFIX}${userId}`;
+}
+
+function saveTimerToLS(userId, data) {
+  try { localStorage.setItem(getTimerLSKey(userId), JSON.stringify(data)); } catch {}
+}
+
+function clearTimerLS(userId) {
+  try { localStorage.removeItem(getTimerLSKey(userId)); } catch {}
+}
+
+function getTimerFromLS(userId) {
+  try {
+    const raw = localStorage.getItem(getTimerLSKey(userId));
+    if (!raw) return null;
+    return JSON.parse(raw);
+  } catch { return null; }
+}
+
 export default function LogTime({ onLogged }) {
   // ── Manual entry form ──
   const [date, setDate] = useState(format(new Date(), 'yyyy-MM-dd'));
@@ -56,6 +78,7 @@ export default function LogTime({ onLogged }) {
   const [bannerVisible, setBannerVisible] = useState(true);
   const intervalRef = useRef(null);
   const startTimeRef = useRef(null);
+  const userIdRef = useRef(null);
 
   // Abandoned mode (>8h)
   const [abandonedMode, setAbandonedMode] = useState(false);
@@ -65,6 +88,7 @@ export default function LogTime({ onLogged }) {
   // Resolve team member
   useEffect(() => {
     base44.auth.me().then(me => {
+      if (me) userIdRef.current = me.id;
       if (me?.full_name) {
         const first = me.full_name.split(' ')[0];
         if (TEAM_MEMBERS.includes(first)) setTeamMember(first);
@@ -79,33 +103,75 @@ export default function LogTime({ onLogged }) {
       if (!me?.full_name) return;
       const firstName = me.full_name.split(' ')[0];
       if (!TEAM_MEMBERS.includes(firstName)) return;
+      const uid = me.id;
+      userIdRef.current = uid;
 
-      const all = await base44.entities.TimeEntry.filter({ teamMember: firstName, timerStatus: 'running' }, '-created_date', 10);
-      if (all.length === 0) return;
+      // 1. Check localStorage first — instant display
+      const lsData = getTimerFromLS(uid);
+      if (lsData && lsData.status === 'running' && lsData.startedAt) {
+        const startMs = new Date(lsData.startedAt).getTime();
+        const now = Date.now();
+        const eightHours = 8 * 60 * 60 * 1000;
 
-      const record = all[0];
-      const startedAt = record.timerStartedAt;
-      if (!startedAt) return;
-
-      const startMs = new Date(startedAt).getTime();
-      const now = Date.now();
-      const eightHours = 8 * 60 * 60 * 1000;
-
-      setActiveTimerRecord(record);
-      setActiveTimerId(record.id);
-
-      if (now - startMs > eightHours) {
-        // Abandoned timer
-        setAbandonedMode(true);
-      } else {
-        // Active timer — start counting
-        setAbandonedMode(false);
-        startTimeRef.current = startMs;
-        setElapsed(now - startMs);
+        // Use localStorage data immediately for the banner (before DB responds)
         setBannerVisible(true);
-        intervalRef.current = setInterval(() => {
-          setElapsed(Date.now() - startMs);
-        }, 500);
+        setActiveTimerRecord({
+          timerStartedAt: lsData.startedAt,
+          category: lsData.category || '',
+          projectTask: lsData.projectDescription || '',
+        });
+
+        if (now - startMs > eightHours) {
+          setAbandonedMode(true);
+        } else {
+          setAbandonedMode(false);
+          startTimeRef.current = startMs;
+          setElapsed(now - startMs);
+          clearInterval(intervalRef.current);
+          intervalRef.current = setInterval(() => {
+            setElapsed(Date.now() - startMs);
+          }, 500);
+        }
+      }
+
+      // 2. Also check DB for the actual record (id, etc.)
+      const all = await base44.entities.TimeEntry.filter({ teamMember: firstName, timerStatus: 'running' }, '-created_date', 10);
+      if (all.length > 0) {
+        const record = all[0];
+        setActiveTimerId(record.id);
+        setActiveTimerRecord(record);
+        const startedAt = record.timerStartedAt;
+        if (startedAt) {
+          const startMs = new Date(startedAt).getTime();
+          const now = Date.now();
+          const eightHours = 8 * 60 * 60 * 1000;
+          if (now - startMs > eightHours) {
+            setAbandonedMode(true);
+            clearInterval(intervalRef.current);
+          } else if (!lsData || lsData.status !== 'running') {
+            // DB has a running timer but localStorage didn't — sync
+            setAbandonedMode(false);
+            startTimeRef.current = startMs;
+            setElapsed(now - startMs);
+            setBannerVisible(true);
+            clearInterval(intervalRef.current);
+            intervalRef.current = setInterval(() => {
+              setElapsed(Date.now() - startMs);
+            }, 500);
+            // Also restore to localStorage
+            saveTimerToLS(uid, {
+              startedAt: record.timerStartedAt,
+              category: record.category || '',
+              projectDescription: record.projectTask || '',
+              status: 'running',
+            });
+          }
+        }
+      } else if (lsData && lsData.status === 'running') {
+        // localStorage has a running timer but DB doesn't — clear stale LS
+        clearTimerLS(uid);
+        setBannerVisible(false);
+        setActiveTimerRecord(null);
       }
     } catch {}
   }, []);
@@ -151,6 +217,14 @@ export default function LogTime({ onLogged }) {
       intervalRef.current = setInterval(() => {
         setElapsed(Date.now() - startTimeRef.current);
       }, 500);
+
+      // Save to localStorage for instant recovery
+      saveTimerToLS(me.id, {
+        startedAt: now,
+        category: timerCategory,
+        projectDescription: timerProject.trim(),
+        status: 'running',
+      });
     } catch {}
   };
 
@@ -188,6 +262,9 @@ export default function LogTime({ onLogged }) {
     setActiveTimerRecord(null);
     setBannerVisible(false);
     setAbandonedMode(false);
+
+    // Clear localStorage
+    if (userIdRef.current) clearTimerLS(userIdRef.current);
   };
 
   // ── Discard abandoned timer ──
@@ -200,6 +277,8 @@ export default function LogTime({ onLogged }) {
     setBannerVisible(false);
     setAbandonedMode(false);
     clearInterval(intervalRef.current);
+
+    if (userIdRef.current) clearTimerLS(userIdRef.current);
   };
 
   // ── Enter duration manually (abandoned timer) ──
@@ -230,6 +309,8 @@ export default function LogTime({ onLogged }) {
     setBannerVisible(false);
     setAbandonedMode(false);
     clearInterval(intervalRef.current);
+
+    if (userIdRef.current) clearTimerLS(userIdRef.current);
   };
 
   // ── Manual form submit ──
@@ -259,6 +340,7 @@ export default function LogTime({ onLogged }) {
         setActiveTimerId(null);
         setActiveTimerRecord(null);
         setBannerVisible(false);
+        if (userIdRef.current) clearTimerLS(userIdRef.current);
       } else {
         // Create fresh entry
         await base44.entities.TimeEntry.create({
