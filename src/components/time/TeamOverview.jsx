@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { base44 } from '@/api/base44Client';
 import { format, parseISO, isWithinInterval, startOfWeek, endOfWeek, startOfMonth, endOfMonth, subMonths, addDays, isWeekend } from 'date-fns';
-import { Download, Filter, AlertTriangle, CheckCircle2, ChevronDown, ChevronRight } from 'lucide-react';
+import { Download, Filter, ChevronDown, ChevronRight } from 'lucide-react';
 import { CATEGORY_COLORS, CATEGORY_LABELS } from './categoryColors';
 
 const TEAM_MEMBERS = ['Chris', 'Elena', 'George', 'Martinique', 'Sreeja', 'Ramesh'];
@@ -129,38 +129,34 @@ export default function TeamOverview({ refresh }) {
     let signalCount = 0;
     let critical = false;
 
-    // ── Gather data for summary ──
-
-    // Active members this period
-    const activeInPeriod = new Set();
-    filtered.forEach(e => { activeInPeriod.add(e.teamMember); });
-    const activeCount = activeInPeriod.size;
+    // ── Active / inactive: derive from teamSummary (EXACT same data the cards use) ──
+    const activeMemberNames = new Set(teamSummary.filter(m => m.count > 0).map(m => m.name));
+    const activeCount = activeMemberNames.size;
     const totalMembers = TEAM_MEMBERS.length;
 
-    // Inactive members (have history but nothing this period)
     const inactiveMembers = [];
     TEAM_MEMBERS.forEach(name => {
+      // Only flag as inactive if they have ever logged time AND are absent from teamSummary
       const hasHistory = entries.some(e => e.teamMember === name);
       if (!hasHistory) return;
-      if (!activeInPeriod.has(name)) inactiveMembers.push(name);
+      if (!activeMemberNames.has(name)) inactiveMembers.push(name);
     });
 
-    // Top category
+    // ── Top category ──
     let topCat = '', topCatMin = 0;
     const catMap = {};
     filtered.forEach(e => { catMap[e.category] = (catMap[e.category] || 0) + e.durationMinutes; });
     Object.entries(catMap).forEach(([cat, min]) => { if (min > topCatMin) { topCat = cat; topCatMin = min; } });
 
-    // Category dominance (>60% of total)
     const teamTotal = filtered.reduce((s, e) => s + e.durationMinutes, 0);
 
-    // Per-person signals
+    // ── Per-person signals (use ALL entries, not filtered period) ──
     const highLoadNames = [];
     const spikes = [];
     const streakNames = [];
 
     TEAM_MEMBERS.forEach(name => {
-      // High load check
+      // High load check (always uses all entries across months)
       const monthlyHours = [];
       for (let i = 0; i < 4; i++) {
         const mStart = startOfMonth(subMonths(now, i));
@@ -176,7 +172,7 @@ export default function TeamOverview({ refresh }) {
         highLoadNames.push(name);
       }
 
-      // Category spike (this month vs last month per person)
+      // Category spike (this month vs last month — uses all entries)
       const lastMonthStart = startOfMonth(subMonths(now, 1));
       const lastMonthEnd = endOfMonth(subMonths(now, 1));
       const catThis = {}, catLast = {};
@@ -194,22 +190,30 @@ export default function TeamOverview({ refresh }) {
         }
       });
 
-      // No-log streak
-      const personEntries = entries.filter(e => e.teamMember === name);
-      if (personEntries.length > 0) {
+      // No-log streak: find most recent entry date across ALL time
+      let mostRecentDateStr = '';
+      entries.forEach(e => {
+        if (e.teamMember === name && e.date > mostRecentDateStr) mostRecentDateStr = e.date;
+      });
+      if (mostRecentDateStr) {
         const loggedDays = new Set();
-        personEntries.forEach(e => { try { loggedDays.add(e.date); } catch {} });
-        let streak = 0, cursor = addDays(now, -1);
+        entries.filter(e => e.teamMember === name).forEach(e => { try { loggedDays.add(e.date); } catch {} });
+        // Walk backwards from the day before the most recent entry date, counting gaps
+        let streak = 0;
+        let cursor = addDays(now, -1);
         while (streak < 90) {
           const ds = format(cursor, 'yyyy-MM-dd');
-          if (!isWeekend(cursor)) { if (loggedDays.has(ds)) break; streak++; }
+          if (!isWeekend(cursor)) {
+            if (loggedDays.has(ds)) break;
+            streak++;
+          }
           cursor = addDays(cursor, -1);
         }
         if (streak >= 5) streakNames.push({ name, days: streak });
       }
     });
 
-    // Client-linked time
+    // ── Client-linked time ──
     const clientMin = filtered.filter(e => e.clientId).reduce((s, e) => s + e.durationMinutes, 0);
 
     // ── Build sentences ──
@@ -222,7 +226,7 @@ export default function TeamOverview({ refresh }) {
       sentences.push(`All ${activeCount} team members logged time ${periodLabel}.`);
     } else if (inactiveMembers.length >= totalMembers / 2) {
       critical = true;
-      const actives = TEAM_MEMBERS.filter(m => activeInPeriod.has(m));
+      const actives = TEAM_MEMBERS.filter(m => activeMemberNames.has(m));
       sentences.push(`Only ${activeCount} of ${totalMembers} team members have logged time ${periodLabel}${actives.length > 0 ? ` (${actives.join(', ')})` : ''}.`);
     } else {
       sentences.push(`${inactiveMembers.join(' and ')} ${inactiveMembers.length === 1 ? "hasn't" : "haven't"} logged any time ${periodLabel}.`);
@@ -275,7 +279,7 @@ export default function TeamOverview({ refresh }) {
     else if (signalCount >= 1) status = 'amber';
 
     return { status, sentences: finalSentences };
-  }, [entries, filtered, dateRange, period]);
+  }, [entries, filtered, teamSummary, dateRange, period]);
 
   // Project breakdown
   const projectBreakdown = useMemo(() => {
