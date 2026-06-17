@@ -66,6 +66,7 @@ export default function Competitors({ focusCompetitorId, onFocusConsumed }) {
   const [selectedIds, setSelectedIds] = useState([]);
   const [showCompare, setShowCompare] = useState(false);
   const [expandedRow, setExpandedRow] = useState(null);
+  const [bulkDeleteConfirm, setBulkDeleteConfirm] = useState(false);
 
   const load = async () => {
     const data = await base44.entities.Competitor.list('-created_date');
@@ -182,7 +183,6 @@ export default function Competitors({ focusCompetitorId, onFocusConsumed }) {
   };
 
   const selectedCompetitors = competitors.filter(c => selectedIds.includes(c.id));
-  const [bulkDeleteConfirm, setBulkDeleteConfirm] = useState(false);
 
   const needsResearch = (c) => !c.keyFeatures || !c.pricing || !c.targetAudience || !c.mainDifferences;
 
