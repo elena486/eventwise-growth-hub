@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { X } from 'lucide-react';
+import TaskPresetSelect from './TaskPresetSelect';
 
 const CATEGORIES = [
   'Sales & Outbound', 'Customer Success & Onboarding', 'Marketing & Content',
@@ -97,8 +98,13 @@ export default function StopTimerModal({ open, onClose, onSave, data, clients })
 
           <div>
             <label className="block text-xs font-semibold text-[#5777AB] uppercase tracking-[0.06em] mb-1">Project / Task <span className="text-[#DC2626]">*</span></label>
-            <input type="text" value={projectTask} onChange={e => setProjectTask(e.target.value)}
-              className={`w-full px-3 py-2 text-sm border rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-[#8403C5]/20 ${!projectTask.trim() ? 'border-[#DC2626]' : 'border-[#EBEBF5]'}`} />
+            <TaskPresetSelect
+              category={category}
+              value={projectTask}
+              onChange={setProjectTask}
+              placeholder="What are you working on?"
+              className={`w-full px-3 py-2 text-sm border rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-[#8403C5]/20 ${!projectTask.trim() ? 'border-[#DC2626]' : 'border-[#EBEBF5]'}`}
+            />
           </div>
 
           <div className="grid grid-cols-2 gap-4">

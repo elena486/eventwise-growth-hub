@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { base44 } from '@/api/base44Client';
 import { format, parseISO, startOfWeek, endOfWeek, isWithinInterval, isToday, isYesterday } from 'date-fns';
-import { Play, Square, Pause, DollarSign, MoreVertical, RotateCw, Copy, Pencil, Trash2 } from 'lucide-react';
+import { Play, Square, Pause, PoundSterling, MoreVertical, RotateCw, Copy, Pencil, Trash2 } from 'lucide-react';
+import TaskPresetSelect from './TaskPresetSelect';
 import StopTimerModal from './StopTimerModal';
 import { CATEGORY_COLORS, CATEGORY_LABELS } from './categoryColors';
 import { logActivity } from '@/lib/logActivity';
@@ -535,12 +536,20 @@ export default function LogTime({ onLogged }) {
           ══════════════════════════════════ */}
       <div className="bg-white border border-[#EBEBF5] rounded-xl px-4 py-3">
         <div className="flex items-center gap-2 flex-wrap">
+          {/* Team Member */}
+          <select value={teamMember} onChange={e => setTeamMember(e.target.value)}
+            className="px-2.5 py-2 text-xs border border-[#EBEBF5] rounded-lg bg-white text-[#242450] shrink-0">
+            <option value="">Team member</option>
+            {TEAM_MEMBERS.map(m => <option key={m} value={m}>{m}</option>)}
+          </select>
+
           {/* What are you working on? */}
-          <input
-            type="text" value={quickDesc} onChange={e => setQuickDesc(e.target.value)}
+          <TaskPresetSelect
+            category={quickCat}
+            value={quickDesc}
+            onChange={setQuickDesc}
             placeholder="What are you working on?"
             className="flex-1 min-w-[160px] px-3 py-2 text-sm border border-[#EBEBF5] rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-[#8403C5]/20"
-            onKeyDown={e => { if (e.key === 'Enter') handleQuickLog(); }}
           />
 
           {/* Category */}
@@ -560,7 +569,7 @@ export default function LogTime({ onLogged }) {
           {/* Billable toggle */}
           <button onClick={() => setQuickBillable(b => !b)} title="Billable"
             className={`p-2 rounded-lg border transition-colors shrink-0 ${quickBillable ? 'bg-[#E8F7F2] border-[#1D9E75] text-[#1D9E75]' : 'border-[#EBEBF5] text-[#9CA3AF] hover:border-[#D8D8EE]'}`}>
-            <DollarSign className="w-4 h-4" />
+            <PoundSterling className="w-4 h-4" />
           </button>
 
           {/* Duration */}

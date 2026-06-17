@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
 import { CATEGORY_COLORS, CATEGORY_LABELS } from './categoryColors';
+import TaskPresetSelect from './TaskPresetSelect';
 
 const TEAM_MEMBERS = ['Chris', 'Elena', 'George', 'Martinique', 'Sreeja', 'Ramesh'];
 
@@ -11,6 +12,7 @@ export default function QuickEntryModal({ open, onClose, onSaved, initial }) {
   const [clientId, setClientId] = useState('');
   const [clientName, setClientName] = useState('');
   const [projectTask, setProjectTask] = useState('');
+  const [startTime, setStartTime] = useState('');
   const [hours, setHours] = useState('');
   const [minutes, setMinutes] = useState('');
   const [billable, setBillable] = useState(false);
@@ -39,6 +41,7 @@ export default function QuickEntryModal({ open, onClose, onSaved, initial }) {
       setClientId(initial.clientId || '');
       setClientName(initial.clientName || '');
       setProjectTask(initial.projectTask || '');
+      setStartTime(initial.startTime || '');
       setHours(String(h));
       setMinutes(String(m));
       setBillable(initial.billable || false);
@@ -49,6 +52,7 @@ export default function QuickEntryModal({ open, onClose, onSaved, initial }) {
       setClientId('');
       setClientName('');
       setProjectTask('');
+      setStartTime(initial?.startTime || '');
       setHours('');
       setMinutes('');
       setBillable(false);
@@ -164,9 +168,21 @@ export default function QuickEntryModal({ open, onClose, onSaved, initial }) {
           </div>
           <div>
             <label className="block text-[11px] font-semibold text-[#5777AB] uppercase mb-1">Project / Task</label>
-            <input type="text" value={projectTask} onChange={e => setProjectTask(e.target.value)}
-              className="w-full px-3 py-2 text-sm border border-[#EBEBF5] rounded-lg" />
+            <TaskPresetSelect
+              category={category}
+              value={projectTask}
+              onChange={setProjectTask}
+              placeholder="What are you working on?"
+              className="w-full px-3 py-2 text-sm border border-[#EBEBF5] rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-[#8403C5]/20"
+            />
           </div>
+          {startTime && (
+            <div>
+              <label className="block text-[11px] font-semibold text-[#5777AB] uppercase mb-1">Start time</label>
+              <input type="time" value={startTime} onChange={e => setStartTime(e.target.value)}
+                className="w-full px-3 py-2 text-sm border border-[#EBEBF5] rounded-lg" />
+            </div>
+          )}
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="block text-[11px] font-semibold text-[#5777AB] uppercase mb-1">Hours</label>

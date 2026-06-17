@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { base44 } from '@/api/base44Client';
 import { Clock, Play, Square, Pause, ChevronDown } from 'lucide-react';
+import TaskPresetSelect from './TaskPresetSelect';
 
 const TEAM_MEMBERS = ['Chris', 'Elena', 'George', 'Martinique', 'Sreeja', 'Ramesh'];
 const CATEGORIES = [
@@ -405,8 +406,11 @@ export default function FloatingTimer({ onStopAndLog }) {
       <div className="px-4 py-3 space-y-3">
         <div>
           <label className="text-[10px] font-bold text-[#5777AB] uppercase tracking-[0.06em] block mb-1">Team member</label>
-          <input type="text" value={teamMember} readOnly
-            className="w-full px-3 py-1.5 text-sm border border-[#EBEBF5] rounded-lg bg-[#F6F6FB] text-[#5777AB]" />
+          <select value={teamMember} onChange={e => setTeamMember(e.target.value)}
+            className="w-full px-3 py-1.5 text-sm border border-[#EBEBF5] rounded-lg bg-white text-[#242450]">
+            <option value="">Select…</option>
+            {TEAM_MEMBERS.map(m => <option key={m} value={m}>{m}</option>)}
+          </select>
         </div>
         <div>
           <label className="text-[10px] font-bold text-[#5777AB] uppercase tracking-[0.06em] block mb-1">Category</label>
@@ -426,9 +430,13 @@ export default function FloatingTimer({ onStopAndLog }) {
         </div>
         <div>
           <label className="text-[10px] font-bold text-[#5777AB] uppercase tracking-[0.06em] block mb-1">Project / Task</label>
-          <input type="text" value={projectTask} onChange={e => setProjectTask(e.target.value)}
+          <TaskPresetSelect
+            category={category}
+            value={projectTask}
+            onChange={setProjectTask}
             placeholder="What are you working on?"
-            className="w-full px-3 py-1.5 text-sm border border-[#EBEBF5] rounded-lg bg-white" />
+            className="w-full px-3 py-1.5 text-sm border border-[#EBEBF5] rounded-lg bg-white"
+          />
         </div>
 
         {/* IDLE: Start button */}
