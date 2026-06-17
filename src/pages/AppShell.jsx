@@ -55,7 +55,7 @@ const GROUPS = [
     { id: 'bugs', label: 'Bug Tracker' },
   ]},
   { id: 'ops', label: 'Operations', tabs: [
-    { id: 'team-board', label: 'Team Board' },
+    { id: 'team-board', label: "Team To Do's" },
     { id: 'submit-request', label: 'Submit a Request' },
     { id: 'sprints', label: 'Sprints' },
     { id: 'time-off', label: 'Time Off' },

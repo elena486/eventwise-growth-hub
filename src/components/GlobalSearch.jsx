@@ -20,7 +20,7 @@ function addRecent(item) {
 const QUICK_LINKS = [
   { label: 'Pipeline', tab: 'pipeline', emoji: '📊' },
   { label: 'Clients', tab: 'clients', emoji: '🏢' },
-  { label: 'Team Board', tab: 'team-board', emoji: '✅' },
+  { label: "Team To Do's", tab: 'team-board', emoji: '✅' },
   { label: 'Wiki', tab: 'handbook', emoji: '📄' },
 ];
 
