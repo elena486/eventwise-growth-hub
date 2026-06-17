@@ -67,7 +67,7 @@ export default function LogTime({ onLogged }) {
   const [success, setSuccess] = useState(false);
 
   // ── Timer state ──
-  const [timerOpen, setTimerOpen] = useState(false);
+  const [timerOpen, setTimerOpen] = useState(true);
   const [timerCategory, setTimerCategory] = useState('');
   const [timerProject, setTimerProject] = useState('');
 
