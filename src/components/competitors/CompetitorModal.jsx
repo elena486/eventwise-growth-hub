@@ -17,8 +17,14 @@ const EMPTY = {
   customerSupport: '', notes: '', lastUpdated: format(new Date(), 'yyyy-MM-dd'), needsResearch: false,
 };
 
+function extractTrustpilotScore(text) {
+  const m = text?.match(/(\d+\.?\d*)\s+on\s+Trustpilot/i);
+  return m ? m[1] : '';
+}
+
 export default function CompetitorModal({ competitor, onClose, onSaved }) {
   const [form, setForm] = useState(competitor ? { ...EMPTY, ...competitor } : { ...EMPTY });
+  const [trustScore, setTrustScore] = useState(() => extractTrustpilotScore(competitor?.customerSatisfaction || ''));
   const [saving, setSaving] = useState(false);
 
   const up = (k, v) => setForm(prev => ({ ...prev, [k]: v }));
@@ -26,12 +32,27 @@ export default function CompetitorModal({ competitor, onClose, onSaved }) {
   const handleSave = async () => {
     if (!form.companyName.trim()) return;
     setSaving(true);
+    // Embed Trustpilot score into customerSatisfaction
+    let custSat = form.customerSatisfaction || '';
+    if (trustScore) {
+      // Replace existing score or prepend
+      if (custSat.match(/\d+\.?\d*\s+on\s+Trustpilot/i)) {
+        custSat = custSat.replace(/\d+\.?\d*\s+on\s+Trustpilot/i, `${trustScore} on Trustpilot`);
+      } else {
+        custSat = custSat ? `${trustScore} on Trustpilot. ${custSat}` : `${trustScore} on Trustpilot`;
+      }
+    } else {
+      // Remove any existing score if cleared
+      custSat = custSat.replace(/\d+\.?\d*\s+on\s+Trustpilot\.?\s*/i, '').trim();
+    }
+    const finalForm = { ...form, customerSatisfaction: custSat };
+
     let saved;
     if (competitor?.id) {
-      await base44.entities.Competitor.update(competitor.id, form);
-      saved = { ...competitor, ...form };
+      await base44.entities.Competitor.update(competitor.id, finalForm);
+      saved = { ...competitor, ...finalForm };
     } else {
-      saved = await base44.entities.Competitor.create(form);
+      saved = await base44.entities.Competitor.create(finalForm);
     }
     setSaving(false);
     onSaved(saved);
@@ -92,7 +113,11 @@ export default function CompetitorModal({ competitor, onClose, onSaved }) {
           <Field label="Target Audience" field="targetAudience" />
           <Field label="Platform Adaptability" field="platformAdaptability" type="textarea" rows={3} />
           <Field label="Main Differences vs Eventwise" field="mainDifferences" type="textarea" rows={3} />
-          <Field label="Customer Satisfaction" field="customerSatisfaction" type="textarea" rows={3} />
+          <div>
+            <label className={labelCls}>Trustpilot Score <span className="font-normal text-ew-muted">(e.g. 4.5)</span></label>
+            <input type="number" min="0" max="5" step="0.1" className={inputCls} value={trustScore} onChange={e => setTrustScore(e.target.value)} placeholder="e.g. 4.5" />
+          </div>
+          <Field label="Customer Satisfaction (notes)" field="customerSatisfaction" type="textarea" rows={3} />
           <Field label="Customer Support" field="customerSupport" />
           <Field label="Notes (internal)" field="notes" type="textarea" rows={2} />
 
