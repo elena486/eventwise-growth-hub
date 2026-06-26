@@ -15,6 +15,7 @@ import { logActivity } from '@/lib/logActivity';
 
 const STAGES = ['New Lead', 'Contacted', 'Discovery Call', 'Demo Booked', 'Proposal Sent', 'Negotiation', 'Closed Won', 'Closed Lost', 'On Hold'];
 const PLANS = ['Starter', 'Growth', 'Scale', 'Professional', 'Custom'];
+const LEAD_OWNERS = ['Chris', 'Ramesh', 'Elena', 'George', 'Martinique', 'Sreeja'];
 const CONTRACT_LENGTHS = ['Monthly rolling', '6 months', '12 months', '24 months'];
 const INDUSTRIES = ['Festival', 'Event Organiser', 'Event Agency', 'Corporate Events', 'Venue', 'Accountancy', 'Other'];
 const HEARD_ABOUT = ['LinkedIn', 'Referral', 'Inbound', 'Outbound', 'Event', 'EPS (Event Production Show)', 'EBL (Event Buyers Live)', 'AAA (Access All Areas)', 'Other'];
@@ -422,6 +423,7 @@ function showToast(msg, color = 'bg-emerald-600') {
 export default function LeadDetailPanel({ lead, onClose, onUpdate, onDelete, onClosedWon, isNew = false, onSaved }) {
   const [data, setData] = useState(lead);
   const [activeTab, setActiveTab] = useState('contacts');
+  const [currentUserFirst, setCurrentUserFirst] = useState('');
   const [lostPrompt, setLostPrompt] = useState(false);
   const [lostReason, setLostReason] = useState('');
   const [deleteConfirm, setDeleteConfirm] = useState(false);
@@ -436,6 +438,12 @@ export default function LeadDetailPanel({ lead, onClose, onUpdate, onDelete, onC
   const dataRef = useRef(data);
 
   useEffect(() => { setData(lead); if (!isNew) logActivity({ teamMember: '', actionType: 'Viewed a lead', section: 'Sales', recordName: lead.companyName }); }, [lead.id]);
+
+  useEffect(() => {
+    base44.auth.me().then(me => {
+      if (me?.full_name) setCurrentUserFirst(me.full_name.split(' ')[0]);
+    }).catch(() => {});
+  }, []);
 
   const extLinks = (() => { try { return JSON.parse(data.externalLinks || '[]'); } catch { return []; } })();
   const leadFiles = (() => { try { const p = JSON.parse(data.fileUrl || '[]'); return Array.isArray(p) ? p : []; } catch { return data.fileUrl ? [{ name: data.fileName || data.fileUrl, url: data.fileUrl }] : []; } })();
@@ -590,6 +598,27 @@ export default function LeadDetailPanel({ lead, onClose, onUpdate, onDelete, onC
             <button onClick={() => onClosedWon({ ...data, stage: 'Closed Won' })} className="px-3 py-1 text-xs font-semibold bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors">🎉 Closed Won</button>
           )}
           {data.lastActivity && <span className="text-[11px] text-ew-muted ml-auto">Updated {fmtDateTime(data.lastActivity)}</span>}
+        </div>
+
+        {/* Assigned To — visible on both new and existing leads */}
+        <div className="flex items-center gap-2 mb-3">
+          <label className="text-[11px] font-medium text-ew-muted whitespace-nowrap">Assigned to</label>
+          <select
+            className="flex-1 text-sm border border-ew-border rounded-lg px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-[#8403C5]/20 bg-white"
+            value={data.leadOwner || ''}
+            onChange={e => autoSave({ leadOwner: e.target.value })}
+          >
+            <option value="">Unassigned</option>
+            {LEAD_OWNERS.map(o => <option key={o} value={o}>{o}</option>)}
+          </select>
+          {currentUserFirst && LEAD_OWNERS.includes(currentUserFirst) && data.leadOwner !== currentUserFirst && (
+            <button
+              onClick={() => autoSave({ leadOwner: currentUserFirst })}
+              className="px-2.5 py-1.5 text-xs font-semibold text-[#8403C5] border border-[#8403C5]/30 bg-[#F3E8FF] hover:bg-[#E9D5FF] rounded-lg transition-colors whitespace-nowrap"
+            >
+              Assign to me
+            </button>
+          )}
         </div>
 
         {/* Quick note bar */}
