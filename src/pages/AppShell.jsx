@@ -40,7 +40,7 @@ import KeyboardShortcutsModal from '@/components/KeyboardShortcutsModal';
 import useKeyboardShortcuts from '@/hooks/useKeyboardShortcuts';
 import { base44 } from '@/api/base44Client';
 import { getRecentlyViewed, addRecentlyViewed, clearRecentlyViewed, TYPE_META, formatRelativeTime } from '@/utils/recentlyViewed';
-import FloatingTimer from '@/components/time/FloatingTimer';
+import NavTimer from '@/components/time/NavTimer';
 import LogTimeSidebar from '@/components/time/LogTimeSidebar';
 import PasswordModal from '@/components/activity/PasswordModal';
 
@@ -407,6 +407,7 @@ export default function AppShell() {
 
         {/* Right: user + utilities */}
         <div className="flex items-center gap-2 shrink-0 ml-4">
+          <NavTimer onStopAndLog={() => setSearchParams({ tab: 'time-log' })} />
           <NotificationBell
             unreadCount={unreadCount}
             entries={changelogEntries}
@@ -610,9 +611,6 @@ export default function AppShell() {
           onViewOnboarding={handleViewOnboarding}
         />
       )}
-
-      {/* Floating Timer — global across all tabs */}
-      <FloatingTimer onStopAndLog={() => setSearchParams({ tab: 'time-log' })} />
 
       {/* Log Time Sidebar — persistent quick-access from any tab */}
       <LogTimeSidebar />

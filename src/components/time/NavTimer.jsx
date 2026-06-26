@@ -1,0 +1,364 @@
+import React, { useState, useEffect, useRef } from 'react';
+import { base44 } from '@/api/base44Client';
+import { Clock, Play, Square, Pause } from 'lucide-react';
+import TaskPresetSelect from './TaskPresetSelect';
+
+const TEAM_MEMBERS = ['Chris', 'Elena', 'George', 'Martinique', 'Sreeja', 'Ramesh'];
+const CATEGORIES = [
+  'Sales & Outbound', 'Customer Success & Onboarding', 'Marketing & Content',
+  'Operations & Admin', 'Product & Tech', 'Finance', 'Strategy & Planning', 'Other',
+];
+const LS_KEY = 'eventwise_floating_timer';
+
+function saveToLS(data) { try { localStorage.setItem(LS_KEY, JSON.stringify(data)); } catch {} }
+function getFromLS() { try { const raw = localStorage.getItem(LS_KEY); return raw ? JSON.parse(raw) : null; } catch { return null; } }
+function clearLS() { try { localStorage.removeItem(LS_KEY); } catch {} }
+
+function formatTime(ms) {
+  const sec = Math.floor(ms / 1000);
+  const h = Math.floor(sec / 3600);
+  const m = Math.floor((sec % 3600) / 60);
+  const s = sec % 60;
+  return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+}
+
+export default function NavTimer({ onStopAndLog }) {
+  const [open, setOpen] = useState(false);
+  const [elapsed, setElapsed] = useState(0);
+  const [timerStatus, setTimerStatus] = useState('idle');
+  const [dbId, setDbId] = useState(null);
+  const [teamMember, setTeamMember] = useState('');
+  const [category, setCategory] = useState('');
+  const [clientId, setClientId] = useState('');
+  const [clientName, setClientName] = useState('');
+  const [projectTask, setProjectTask] = useState('');
+  const [clients, setClients] = useState([]);
+  const startRef = useRef(null);
+  const intervalRef = useRef(null);
+  const pauseStartRef = useRef(null);
+  const totalPausedMsRef = useRef(0);
+  const panelRef = useRef(null);
+
+  // Resolve current user + clients
+  useEffect(() => {
+    base44.auth.me().then(me => {
+      if (me?.full_name) {
+        const first = me.full_name.split(' ')[0];
+        if (TEAM_MEMBERS.includes(first)) setTeamMember(first);
+      }
+    }).catch(() => {});
+    base44.entities.Client.list().then(c => setClients(c)).catch(() => {});
+  }, []);
+
+  // Load running/paused timer from DB on mount
+  useEffect(() => {
+    const init = async () => {
+      const me = await base44.auth.me().catch(() => null);
+      if (!me) return;
+      const firstName = me.full_name?.split(' ')[0] || '';
+
+      const all = await base44.entities.TimeEntry.filter(
+        { teamMember: firstName, timerStatus: { $in: ['running', 'paused'] } },
+        '-created_date', 10
+      );
+
+      if (all.length > 0) {
+        const record = all[0];
+        setDbId(record.id);
+        setCategory(record.category === '(Untitled session)' ? '' : record.category || '');
+        setClientId(record.clientId || '');
+        setClientName(record.clientName || '');
+        setProjectTask(record.projectTask === '(Untitled session)' ? '' : record.projectTask || '');
+
+        const startedAt = record.timerStartedAt;
+        const intervals = JSON.parse(record.timerPauseIntervals || '[]');
+        if (startedAt) {
+          const startMs = new Date(startedAt).getTime();
+          startRef.current = startMs;
+          let totalPaused = 0;
+          intervals.forEach(iv => {
+            if (iv.pausedAt) {
+              const pausedMs = new Date(iv.pausedAt).getTime();
+              const resumedMs = iv.resumedAt ? new Date(iv.resumedAt).getTime() : Date.now();
+              totalPaused += resumedMs - pausedMs;
+            }
+          });
+          totalPausedMsRef.current = totalPaused;
+
+          if (record.timerStatus === 'running') {
+            setTimerStatus('running');
+            intervalRef.current = setInterval(() => {
+              setElapsed(Date.now() - startRef.current - totalPausedMsRef.current);
+            }, 500);
+            setElapsed(Date.now() - startMs - totalPaused);
+          } else if (record.timerStatus === 'paused') {
+            setTimerStatus('paused');
+            const lastInterval = intervals[intervals.length - 1];
+            if (lastInterval && !lastInterval.resumedAt && lastInterval.pausedAt) {
+              pauseStartRef.current = new Date(lastInterval.pausedAt).getTime();
+            }
+            setElapsed(Date.now() - startMs - totalPaused);
+          }
+        }
+      } else {
+        const lsData = getFromLS();
+        if (lsData && (lsData.status === 'running' || lsData.status === 'paused')) clearLS();
+      }
+    };
+    init();
+    return () => clearInterval(intervalRef.current);
+  }, []);
+
+  // Sync DB when fields change during active session
+  useEffect(() => {
+    if (!dbId || timerStatus === 'idle') return;
+    const debounce = setTimeout(async () => {
+      try {
+        await base44.entities.TimeEntry.update(dbId, {
+          category: category || '',
+          projectTask: projectTask.trim() || '(Untitled session)',
+          ...(clientId ? { clientId, clientName } : { clientId: '', clientName: '' }),
+        });
+      } catch {}
+    }, 600);
+    return () => clearTimeout(debounce);
+  }, [category, clientId, projectTask]);
+
+  // Close panel on outside click
+  useEffect(() => {
+    if (!open) return;
+    const handler = (e) => {
+      if (panelRef.current && !panelRef.current.contains(e.target)) setOpen(false);
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [open]);
+
+  const handleStart = async () => {
+    const me = await base44.auth.me().catch(() => null);
+    if (!me) return;
+    const firstName = me.full_name?.split(' ')[0] || '';
+    const now = new Date().toISOString();
+    const nowMs = new Date(now).getTime();
+
+    const record = await base44.entities.TimeEntry.create({
+      date: new Date().toISOString().slice(0, 10),
+      teamMember: firstName,
+      category: category || '',
+      projectTask: projectTask.trim() || '(Untitled session)',
+      durationMinutes: 0,
+      timerStatus: 'running',
+      timerStartedAt: now,
+      timerPauseIntervals: '[]',
+      ...(clientId ? { clientId, clientName } : {}),
+    });
+
+    setDbId(record.id);
+    setTimerStatus('running');
+    startRef.current = nowMs;
+    setElapsed(0);
+    totalPausedMsRef.current = 0;
+    pauseStartRef.current = null;
+    intervalRef.current = setInterval(() => {
+      setElapsed(Date.now() - startRef.current - totalPausedMsRef.current);
+    }, 500);
+    saveToLS({ startedAt: now, category, projectDescription: projectTask.trim() || '(Untitled session)', clientId, clientName, status: 'running', totalPausedMs: 0, pauseIntervals: [], recordId: record.id });
+  };
+
+  const handlePause = async () => {
+    const pauseTime = new Date().toISOString();
+    pauseStartRef.current = new Date(pauseTime).getTime();
+    clearInterval(intervalRef.current);
+    setTimerStatus('paused');
+    const lsData = getFromLS();
+    if (lsData) { lsData.status = 'paused'; lsData.pauseStartedAt = pauseTime; saveToLS(lsData); }
+    if (dbId) {
+      try {
+        const record = await base44.entities.TimeEntry.get(dbId);
+        const intervals = JSON.parse(record.timerPauseIntervals || '[]');
+        intervals.push({ pausedAt: pauseTime, resumedAt: null });
+        await base44.entities.TimeEntry.update(dbId, { timerStatus: 'paused', timerPauseIntervals: JSON.stringify(intervals) });
+      } catch {}
+    }
+  };
+
+  const handleResume = async () => {
+    const resumeTime = new Date().toISOString();
+    const resumeMs = new Date(resumeTime).getTime();
+    if (pauseStartRef.current) { totalPausedMsRef.current += resumeMs - pauseStartRef.current; pauseStartRef.current = null; }
+    setTimerStatus('running');
+    intervalRef.current = setInterval(() => { setElapsed(Date.now() - startRef.current - totalPausedMsRef.current); }, 500);
+    const lsData = getFromLS();
+    if (lsData) { lsData.status = 'running'; lsData.totalPausedMs = totalPausedMsRef.current; delete lsData.pauseStartedAt; saveToLS(lsData); }
+    if (dbId) {
+      try {
+        const record = await base44.entities.TimeEntry.get(dbId);
+        const intervals = JSON.parse(record.timerPauseIntervals || '[]');
+        if (intervals.length > 0 && intervals[intervals.length - 1].resumedAt === null) intervals[intervals.length - 1].resumedAt = resumeTime;
+        await base44.entities.TimeEntry.update(dbId, { timerStatus: 'running', timerPauseIntervals: JSON.stringify(intervals) });
+      } catch {}
+    }
+  };
+
+  const handleStopAndLog = async () => {
+    clearInterval(intervalRef.current);
+    if (timerStatus === 'paused' && pauseStartRef.current) { totalPausedMsRef.current += Date.now() - pauseStartRef.current; pauseStartRef.current = null; }
+    const totalActiveMs = Date.now() - startRef.current - totalPausedMsRef.current;
+    const totalMin = Math.max(1, Math.round(totalActiveMs / 60000));
+    if (dbId) {
+      await base44.entities.TimeEntry.update(dbId, {
+        timerStatus: 'stopped', timerStoppedAt: new Date().toISOString(), durationMinutes: totalMin,
+        category: category || '', projectTask: projectTask.trim() || '',
+        ...(clientId ? { clientId, clientName } : {}), timerPauseIntervals: JSON.stringify([]),
+      }).catch(() => {});
+    }
+    try {
+      sessionStorage.setItem('timer_review_data', JSON.stringify({ category: category || '', projectTask: projectTask.trim() || '', clientId: clientId || '', clientName: clientName || '', durationMinutes: totalMin, recordId: dbId }));
+    } catch {}
+    clearLS();
+    setTimerStatus('idle');
+    setDbId(null);
+    totalPausedMsRef.current = 0;
+    pauseStartRef.current = null;
+    setOpen(false);
+    window.dispatchEvent(new CustomEvent('timer-review-available'));
+    onStopAndLog?.();
+  };
+
+  const handleDiscard = async () => {
+    clearInterval(intervalRef.current);
+    if (dbId) await base44.entities.TimeEntry.delete(dbId).catch(() => {});
+    clearLS();
+    setTimerStatus('idle');
+    setDbId(null);
+    totalPausedMsRef.current = 0;
+    pauseStartRef.current = null;
+    setOpen(false);
+  };
+
+  // ── Nav bar button ──
+  const navButton = (
+    <button
+      onClick={() => setOpen(o => !o)}
+      className={`flex items-center gap-1.5 px-2 py-1.5 rounded-lg transition-all ${
+        timerStatus === 'running'
+          ? 'text-[#E8A020] hover:bg-white/10'
+          : timerStatus === 'paused'
+          ? 'text-[#8B8FA8] hover:bg-white/10'
+          : 'text-[#8B8FA8] hover:text-[#C4C6D4] hover:bg-white/5'
+      }`}
+      title="Timer"
+    >
+      <div className="relative">
+        <Clock className="w-4 h-4" />
+        {timerStatus === 'running' && (
+          <span className="absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full bg-[#E8A020] animate-pulse" />
+        )}
+        {timerStatus === 'paused' && (
+          <span className="absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full bg-[#9CA3AF]" />
+        )}
+      </div>
+      {timerStatus !== 'idle' && (
+        <span className={`font-mono text-xs font-bold tracking-wider ${timerStatus === 'running' ? 'text-[#E8A020]' : 'text-[#8B8FA8]'}`}>
+          {formatTime(elapsed)}
+        </span>
+      )}
+    </button>
+  );
+
+  // ── Dropdown panel ──
+  const panel = open && (
+    <div
+      ref={panelRef}
+      className="absolute top-full right-0 mt-2 w-72 bg-white border border-[#EBEBF5] rounded-xl shadow-2xl overflow-hidden z-50"
+    >
+      {/* Header */}
+      <div className="flex items-center justify-between px-4 py-2.5 bg-[#242450] text-white">
+        <div className="flex items-center gap-2">
+          <Clock className="w-3.5 h-3.5" />
+          <span className="text-sm font-bold">Timer</span>
+        </div>
+        {timerStatus !== 'idle' && (
+          <span className={`font-mono text-sm font-bold tracking-wider ${timerStatus === 'running' ? 'text-[#E8A020]' : 'text-[#9CA3AF]'}`}>
+            {formatTime(elapsed)}
+          </span>
+        )}
+      </div>
+
+      {/* Form */}
+      <div className="px-4 py-3 space-y-2.5">
+        <div>
+          <label className="text-[10px] font-bold text-[#5777AB] uppercase tracking-[0.06em] block mb-1">Category</label>
+          <select value={category} onChange={e => setCategory(e.target.value)}
+            className="w-full px-2.5 py-1.5 text-sm border border-[#EBEBF5] rounded-lg bg-white text-[#242450]">
+            <option value="">Select…</option>
+            {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
+          </select>
+        </div>
+        <div>
+          <label className="text-[10px] font-bold text-[#5777AB] uppercase tracking-[0.06em] block mb-1">Project / Task</label>
+          <TaskPresetSelect
+            category={category}
+            value={projectTask}
+            onChange={setProjectTask}
+            placeholder="What are you working on?"
+            className="w-full px-2.5 py-1.5 text-sm border border-[#EBEBF5] rounded-lg bg-white"
+          />
+        </div>
+        <div>
+          <label className="text-[10px] font-bold text-[#5777AB] uppercase tracking-[0.06em] block mb-1">Client <span className="font-normal normal-case text-[#9CA3AF]">(optional)</span></label>
+          <select value={clientId} onChange={e => { setClientId(e.target.value); const c = clients.find(cl => cl.id === e.target.value); setClientName(c?.name || ''); }}
+            className="w-full px-2.5 py-1.5 text-sm border border-[#EBEBF5] rounded-lg bg-white text-[#242450]">
+            <option value="">None</option>
+            {clients.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+          </select>
+        </div>
+
+        {/* Controls */}
+        {timerStatus === 'idle' && (
+          <button onClick={handleStart}
+            className="w-full py-2 bg-[#242450] hover:bg-[#1A1A3A] text-white font-semibold text-sm rounded-lg transition-colors flex items-center justify-center gap-2">
+            <Play className="w-4 h-4" fill="white" /> Start Timer
+          </button>
+        )}
+        {timerStatus === 'running' && (
+          <div className="flex gap-2">
+            <button onClick={handlePause}
+              className="flex-1 py-2 bg-white border border-[#EBEBF5] text-[#5777AB] hover:bg-[#F6F6FB] font-semibold text-sm rounded-lg transition-colors flex items-center justify-center gap-1.5">
+              <Pause className="w-3.5 h-3.5" /> Pause
+            </button>
+            <button onClick={handleStopAndLog}
+              className="flex-1 py-2 bg-[#DC2626] hover:bg-[#B91C1C] text-white font-semibold text-sm rounded-lg transition-colors flex items-center justify-center gap-1.5">
+              <Square className="w-3.5 h-3.5" fill="white" /> Stop &amp; Log
+            </button>
+          </div>
+        )}
+        {timerStatus === 'paused' && (
+          <div className="flex gap-2">
+            <button onClick={handleResume}
+              className="flex-1 py-2 bg-[#242450] hover:bg-[#1A1A3A] text-white font-semibold text-sm rounded-lg transition-colors flex items-center justify-center gap-1.5">
+              <Play className="w-3.5 h-3.5" fill="white" /> Resume
+            </button>
+            <button onClick={handleStopAndLog}
+              className="flex-1 py-2 bg-white border border-[#EBEBF5] text-[#5777AB] hover:bg-[#F6F6FB] font-semibold text-sm rounded-lg transition-colors flex items-center justify-center gap-1.5">
+              <Square className="w-3.5 h-3.5" /> Stop &amp; Log
+            </button>
+          </div>
+        )}
+        {timerStatus !== 'idle' && (
+          <button onClick={handleDiscard}
+            className="w-full py-1 text-xs text-[#DC2626] hover:bg-[#FEF2F2] rounded-lg transition-colors">
+            Discard timer
+          </button>
+        )}
+      </div>
+    </div>
+  );
+
+  return (
+    <div className="relative">
+      {navButton}
+      {panel}
+    </div>
+  );
+}
