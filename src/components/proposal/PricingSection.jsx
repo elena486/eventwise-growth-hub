@@ -10,7 +10,8 @@ function CheckItem({ text }) {
 }
 
 export default function PricingSection({ data }) {
-  const { planName, displayPrice, planFeatures, includeAccounting, accountingPrice, accountingServices } = data;
+  const { planName, displayPrice, planFeatures, includeAccounting, accountingPrice, accountingServices, accountingServiceType, accountingServiceLabel } = data;
+  const showAccountingPrice = accountingServiceType === 'separate_fee' || accountingServiceType === 'included_in_fee';
 
   return (
     <div className="px-10 py-10">
@@ -38,10 +39,14 @@ export default function PricingSection({ data }) {
           <div className="border border-ew-border rounded-xl overflow-hidden">
             <div className="bg-ew-footer p-6" style={{ printColorAdjust: 'exact', WebkitPrintColorAdjust: 'exact' }}>
               <p className="text-[10px] font-semibold text-ew-muted uppercase tracking-[0.15em] mb-3">Accounting Service</p>
-              <div className="flex items-baseline gap-1">
-                <span className="text-3xl font-bold text-navy">£{accountingPrice?.toLocaleString() || '7,100'}</span>
-                <span className="text-ew-muted text-sm">/yr</span>
-              </div>
+              {showAccountingPrice ? (
+                <div className="flex items-baseline gap-1">
+                  <span className="text-3xl font-bold text-navy">£{accountingPrice?.toLocaleString() || '7,100'}</span>
+                  <span className="text-ew-muted text-sm">/yr</span>
+                </div>
+              ) : (
+                <p className="text-2xl font-bold text-navy">{accountingServiceLabel}</p>
+              )}
               <p className="text-ew-muted text-xs mt-2">Full-service financial management</p>
             </div>
             <div className="p-6">

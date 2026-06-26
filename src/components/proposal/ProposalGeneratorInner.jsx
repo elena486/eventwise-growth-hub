@@ -146,6 +146,11 @@ export function buildProposalHTML(proposalData) {
   const formattedDate = pd.date ? format(new Date(pd.date + '-01'), 'MMMM yyyy') : '';
   const formattedValidUntil = pd.validUntil ? format(new Date(pd.validUntil), 'd MMM yyyy') : '';
 
+  const showAccountingPrice = pd.accountingServiceType === 'separate_fee' || pd.accountingServiceType === 'included_in_fee';
+  const accountingPriceDisplay = showAccountingPrice
+    ? `<div><span style="font-size:28px;font-weight:700;color:#1B2A52;">£${pd.accountingPriceFormatted}</span><span style="color:#8B92A9;font-size:13px;">/yr</span></div>`
+    : `<p style="font-size:22px;font-weight:700;color:#1B2A52;">${pd.accountingServiceLabel}</p>`;
+
   const pricingCards = pd.includeAccounting ? `
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;">
       <div style="border:2px solid #1B2A52;border-radius:12px;overflow:hidden;">
@@ -159,7 +164,7 @@ export function buildProposalHTML(proposalData) {
       <div style="border:1px solid #E2E5F0;border-radius:12px;overflow:hidden;">
         <div style="background:#F7F8FC;padding:24px;-webkit-print-color-adjust:exact;print-color-adjust:exact;">
           <p style="font-size:10px;font-weight:600;color:#8B92A9;text-transform:uppercase;letter-spacing:0.15em;margin-bottom:12px;">Accounting Service</p>
-          <div><span style="font-size:28px;font-weight:700;color:#1B2A52;">£${pd.accountingPriceFormatted}</span><span style="color:#8B92A9;font-size:13px;">/yr</span></div>
+          ${accountingPriceDisplay}
           <p style="color:#8B92A9;font-size:11px;margin-top:6px;">Full-service financial management</p>
         </div>
         <div style="padding:20px;">${accountingServicesHTML}</div>
