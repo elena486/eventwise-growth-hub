@@ -37,12 +37,12 @@
       "type": "number",
       "description": "Total duration in minutes"
     },
-    "billable": {
-      "type": "boolean",
-      "default": false
-    },
     "notes": {
       "type": "string"
+    },
+    "transcriptLink": {
+      "type": "string",
+      "description": "Optional URL link to a meeting transcript (Fireflies, Otter, Google Doc, etc.)"
     },
     "estimatedMinutes": {
       "type": "number",
@@ -56,7 +56,7 @@
         "stopped",
         "logged"
       ],
-      "description": "Timer state: running, paused, stopped (awaiting form review), logged (finalised)"
+      "description": "Timer state"
     },
     "timerStartedAt": {
       "type": "string",

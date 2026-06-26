@@ -1,0 +1,22 @@
+{
+  "name": "TaskTemplate",
+  "type": "object",
+  "properties": {
+    "category": {
+      "type": "string",
+      "description": "The time-tracking category this task belongs to"
+    },
+    "taskName": {
+      "type": "string",
+      "description": "The preset task name shown in the dropdown"
+    },
+    "sortOrder": {
+      "type": "number",
+      "description": "Optional sort order within category"
+    }
+  },
+  "required": [
+    "category",
+    "taskName"
+  ]
+}

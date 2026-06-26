@@ -69,6 +69,7 @@ const GROUPS = [
     { id: 'time-log', label: 'Today' },
     { id: 'time-timesheet', label: 'My History' },
     { id: 'time-overview', label: 'Team Overview' },
+    { id: 'time-templates', label: 'Task Templates' },
   ]},
   { id: 'links', label: '🔗 Links', tabs: [
     { id: 'links', label: 'Link Space' },
@@ -503,7 +504,12 @@ export default function AppShell() {
       {/* Sub-nav — skip for dashboard */}
       {tab !== 'dashboard' && activeGroup.tabs.length > 1 && (
         <div className="bg-white border-b border-[#F0F0F0] shrink-0 px-6 flex items-center gap-1 h-10">
-          {activeGroup.tabs.map(t => (
+          {activeGroup.tabs.filter(t => {
+            const isAdmin = (user?.email || '').toLowerCase().includes('elena') || (user?.email || '').toLowerCase().includes('chris');
+            if (t.id === 'time-templates' && !isAdmin) return false;
+            if (t.id === 'time-overview' && !isAdmin) return false;
+            return true;
+          }).map(t => (
             <button
               key={t.id}
               onClick={() => setTab(t.id)}
@@ -536,6 +542,7 @@ export default function AppShell() {
         {tab === 'time-log' && <TimeCapacity subTab="log" onSubTabChange={(id) => setSearchParams({ tab: id })} />}
         {tab === 'time-timesheet' && <TimeCapacity subTab="timesheet" onSubTabChange={(id) => setSearchParams({ tab: id })} />}
         {tab === 'time-overview' && <TimeCapacity subTab="overview" onSubTabChange={(id) => setSearchParams({ tab: id })} />}
+        {tab === 'time-templates' && <TimeCapacity subTab="templates" onSubTabChange={(id) => setSearchParams({ tab: id })} />}
         {tab === 'time-activity' && <HubActivity />}
         {tab === 'marketing' && <Marketing focusContentId={searchFocus?.focusType === 'content' ? searchFocus.focusId : null} onFocusConsumed={() => setSearchFocus(null)} />}
         {tab === 'mql' && <MQLTracker />}

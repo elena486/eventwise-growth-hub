@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
-import { CATEGORY_COLORS, CATEGORY_LABELS } from './categoryColors';
+import { CATEGORY_LABELS } from './categoryColors';
 import TaskPresetSelect from './TaskPresetSelect';
+import { Link } from 'lucide-react';
 
 const TEAM_MEMBERS = ['Chris', 'Elena', 'George', 'Martinique', 'Sreeja', 'Ramesh'];
 
@@ -15,8 +16,8 @@ export default function QuickEntryModal({ open, onClose, onSaved, initial }) {
   const [startTime, setStartTime] = useState('');
   const [hours, setHours] = useState('');
   const [minutes, setMinutes] = useState('');
-  const [billable, setBillable] = useState(false);
   const [notes, setNotes] = useState('');
+  const [transcriptLink, setTranscriptLink] = useState('');
   const [clients, setClients] = useState([]);
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
@@ -44,8 +45,8 @@ export default function QuickEntryModal({ open, onClose, onSaved, initial }) {
       setStartTime(initial.startTime || '');
       setHours(String(h));
       setMinutes(String(m));
-      setBillable(initial.billable || false);
       setNotes(initial.notes || '');
+      setTranscriptLink(initial.transcriptLink || '');
     } else {
       setDate(initial?.date || new Date().toISOString().slice(0, 10));
       setCategory(initial?.category || '');
@@ -55,8 +56,8 @@ export default function QuickEntryModal({ open, onClose, onSaved, initial }) {
       setStartTime(initial?.startTime || '');
       setHours('');
       setMinutes('');
-      setBillable(false);
       setNotes('');
+      setTranscriptLink('');
     }
   }, [open, initial]);
 
@@ -74,8 +75,8 @@ export default function QuickEntryModal({ open, onClose, onSaved, initial }) {
         category,
         projectTask: projectTask.trim(),
         durationMinutes: totalMin,
-        billable,
         notes: notes.trim() || undefined,
+        transcriptLink: transcriptLink.trim() || undefined,
         ...(clientId ? { clientId, clientName } : {}),
       };
 
@@ -85,7 +86,7 @@ export default function QuickEntryModal({ open, onClose, onSaved, initial }) {
         await base44.entities.TimeEntry.create(payload);
       }
 
-      // Activity log
+      // Activity log for client
       if (clientId) {
         try {
           const client = await base44.entities.Client.get(clientId);
@@ -103,6 +104,7 @@ export default function QuickEntryModal({ open, onClose, onSaved, initial }) {
               description: projectTask.trim(),
               teamMember: initial?.teamMember || teamMember,
               notes: notes.trim() || '',
+              transcriptLink: transcriptLink.trim() || '',
             });
             await base44.entities.Client.update(clientId, { activityLog: JSON.stringify(currentLog) });
           }
@@ -152,7 +154,7 @@ export default function QuickEntryModal({ open, onClose, onSaved, initial }) {
           </div>
           <div>
             <label className="block text-[11px] font-semibold text-[#5777AB] uppercase mb-1">Category</label>
-            <select value={category} onChange={e => setCategory(e.target.value)}
+            <select value={category} onChange={e => { setCategory(e.target.value); setProjectTask(''); }}
               className="w-full px-3 py-2 text-sm border border-[#EBEBF5] rounded-lg">
               <option value="">Select…</option>
               {CATEGORY_LABELS.map(c => <option key={c} value={c}>{c}</option>)}
@@ -172,7 +174,7 @@ export default function QuickEntryModal({ open, onClose, onSaved, initial }) {
               category={category}
               value={projectTask}
               onChange={setProjectTask}
-              placeholder="What are you working on?"
+              placeholder="Select a task…"
               className="w-full px-3 py-2 text-sm border border-[#EBEBF5] rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-[#8403C5]/20"
             />
           </div>
@@ -199,6 +201,18 @@ export default function QuickEntryModal({ open, onClose, onSaved, initial }) {
             <label className="block text-[11px] font-semibold text-[#5777AB] uppercase mb-1">Notes <span className="font-normal normal-case text-[#9CA3AF]">(optional)</span></label>
             <textarea value={notes} onChange={e => setNotes(e.target.value)} rows={2}
               className="w-full px-3 py-2 text-sm border border-[#EBEBF5] rounded-lg resize-none" />
+          </div>
+          <div>
+            <label className="block text-[11px] font-semibold text-[#5777AB] uppercase mb-1 flex items-center gap-1">
+              <Link className="w-3 h-3" /> Transcript link <span className="font-normal normal-case text-[#9CA3AF] ml-1">(optional)</span>
+            </label>
+            <input
+              type="url"
+              value={transcriptLink}
+              onChange={e => setTranscriptLink(e.target.value)}
+              placeholder="Paste meeting transcript link (e.g. Fireflies, Otter, Google Doc)"
+              className="w-full px-3 py-2 text-sm border border-[#EBEBF5] rounded-lg"
+            />
           </div>
         </div>
         <div className="flex justify-end gap-2 mt-5 pt-4 border-t border-[#EBEBF5]">

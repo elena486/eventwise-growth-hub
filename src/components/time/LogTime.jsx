@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { base44 } from '@/api/base44Client';
 import { format, parseISO, startOfWeek, endOfWeek, isWithinInterval, isToday, isYesterday } from 'date-fns';
-import { Play, Square, Pause, PoundSterling, MoreVertical, RotateCw, Copy, Pencil, Trash2, CalendarDays } from 'lucide-react';
+import { Play, Square, Pause, Link, MoreVertical, RotateCw, Copy, Pencil, Trash2, CalendarDays } from 'lucide-react';
 import TaskPresetSelect from './TaskPresetSelect';
 import StopTimerModal from './StopTimerModal';
 import { CATEGORY_COLORS, CATEGORY_LABELS } from './categoryColors';
@@ -63,7 +63,7 @@ export default function LogTime({ onLogged }) {
   const [quickClientName, setQuickClientName] = useState('');
   const [quickH, setQuickH] = useState('0');
   const [quickM, setQuickM] = useState('0');
-  const [quickBillable, setQuickBillable] = useState(false);
+  const [quickTranscriptLink, setQuickTranscriptLink] = useState('');
 
   // ── Stop/edit modal ──
   const [modalOpen, setModalOpen] = useState(false);
@@ -377,6 +377,7 @@ export default function LogTime({ onLogged }) {
     if (recordId) {
       await base44.entities.TimeEntry.update(recordId, {
         ...formData, timerStatus: 'logged', teamMember,
+        transcriptLink: formData.transcriptLink || '',
         ...(formData.clientId ? {} : { clientId: '', clientName: '' }),
       });
     }
@@ -403,10 +404,10 @@ export default function LogTime({ onLogged }) {
         category: quickCat || 'Other',
         projectTask: quickDesc.trim(),
         durationMinutes: totalMin,
-        billable: quickBillable,
+        transcriptLink: quickTranscriptLink.trim() || undefined,
         ...(quickClientId ? { clientId: quickClientId, clientName: quickClientName } : {}),
       });
-      setQuickDesc(''); setQuickH('0'); setQuickM('0');
+      setQuickDesc(''); setQuickH('0'); setQuickM('0'); setQuickTranscriptLink('');
       loadEntries();
       onLogged?.();
       logActivity({ teamMember, actionType: 'Logged a time entry', section: 'Time & Capacity', recordName: quickDesc.trim(), details: `${quickCat || 'Other'} — ${formatDuration(totalMin)}` });
@@ -419,7 +420,6 @@ export default function LogTime({ onLogged }) {
     setQuickCat(entry.category || '');
     setQuickClientId(entry.clientId || '');
     setQuickClientName(entry.clientName || '');
-    setQuickBillable(entry.billable || false);
     const h = Math.floor((entry.durationMinutes || 0) / 60);
     const m = (entry.durationMinutes || 0) % 60;
     setQuickH(String(h));
@@ -483,6 +483,12 @@ export default function LogTime({ onLogged }) {
             {entry.clientName && (
               <span className="text-[11px] text-[#4A5568] border border-[#D8D8EE] rounded-full px-2 py-0.5">{entry.clientName}</span>
             )}
+            {entry.transcriptLink && (
+              <a href={entry.transcriptLink} target="_blank" rel="noopener noreferrer"
+                className="flex items-center gap-1 text-[11px] text-[#5777AB] hover:text-[#8403C5] transition-colors" title="View transcript">
+                <Link className="w-3 h-3" /> Transcript
+              </a>
+            )}
           </div>
         </div>
         <div className="shrink-0 flex flex-col items-end gap-0.5">
@@ -536,6 +542,7 @@ export default function LogTime({ onLogged }) {
           SECTION 1 — QUICK ENTRY BAR
           ══════════════════════════════════ */}
       <div className="bg-white rounded-xl shadow-[0_2px_12px_rgba(0,0,0,0.06)] border-l-4 border-l-[#8403C5] px-7 py-6">
+        <div className="space-y-3">
         <div className="flex items-end gap-3 flex-wrap">
           {/* Team Member */}
           <div className="shrink-0">
@@ -550,7 +557,7 @@ export default function LogTime({ onLogged }) {
           {/* Category */}
           <div className="shrink-0">
             <label className="block text-[10px] font-semibold text-[#242450] uppercase tracking-[0.06em] mb-1">Category</label>
-            <select value={quickCat} onChange={e => setQuickCat(e.target.value)}
+            <select value={quickCat} onChange={e => { setQuickCat(e.target.value); setQuickDesc(''); }}
               className="px-3 py-2 text-sm border border-[#E2E8F0] rounded-lg bg-[#F8FAFC] text-[#242450] w-[180px] focus:outline-none focus:border-[#8403C5] focus:ring-2 focus:ring-[#8403C5]/10 transition-all">
               <option value="">Select…</option>
               {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
@@ -581,15 +588,6 @@ export default function LogTime({ onLogged }) {
             </select>
           </div>
 
-          {/* Billable toggle */}
-          <div className="shrink-0">
-            <label className="block text-[10px] font-semibold text-[#242450] uppercase tracking-[0.06em] mb-1">&nbsp;</label>
-            <button onClick={() => setQuickBillable(b => !b)} title="Billable"
-              className={`h-[38px] px-4 rounded-lg border transition-colors ${quickBillable ? 'bg-[#E8F7F2] border-[#1D9E75] text-[#1D9E75]' : 'border-[#E2E8F0] text-[#9CA3AF] hover:border-[#D8D8EE]'}`}>
-              <PoundSterling className="w-4 h-4" />
-            </button>
-          </div>
-
           {/* Duration */}
           <div className="shrink-0">
             <label className="block text-[10px] font-semibold text-[#242450] uppercase tracking-[0.06em] mb-1">Duration</label>
@@ -607,7 +605,7 @@ export default function LogTime({ onLogged }) {
           <div className="shrink-0">
             <label className="block text-[10px] font-semibold text-[#242450] uppercase tracking-[0.06em] mb-1">&nbsp;</label>
             <button onClick={handleQuickLog}
-              disabled={!quickDesc.trim() || ((parseInt(quickH) || 0) + (parseInt(quickM) || 0)) <= 0}
+              disabled={!quickDesc || ((parseInt(quickH) || 0) + (parseInt(quickM) || 0)) <= 0}
               className="h-[38px] px-4 text-sm font-semibold border-2 border-[#8403C5] text-[#8403C5] bg-transparent hover:bg-[#F3E8FF] disabled:border-[#D8D8EE] disabled:text-[#D8D8EE] disabled:hover:bg-transparent rounded-lg transition-all shrink-0">
               Log
             </button>
@@ -645,6 +643,18 @@ export default function LogTime({ onLogged }) {
               )}
             </div>
           </div>
+        </div>
+        {/* Transcript link */}
+        <div className="flex items-center gap-2">
+          <Link className="w-3.5 h-3.5 text-[#9CA3AF] shrink-0" />
+          <input
+            type="url"
+            value={quickTranscriptLink}
+            onChange={e => setQuickTranscriptLink(e.target.value)}
+            placeholder="Transcript link (optional — Fireflies, Otter, Google Doc…)"
+            className="flex-1 px-3 py-1.5 text-sm border border-[#E2E8F0] rounded-lg bg-[#F8FAFC] focus:outline-none focus:border-[#8403C5] focus:ring-2 focus:ring-[#8403C5]/10 transition-all"
+          />
+        </div>
         </div>
       </div>
 

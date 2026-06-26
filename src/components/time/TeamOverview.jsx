@@ -50,7 +50,6 @@ export default function TeamOverview({ refresh }) {
   const [customEnd, setCustomEnd] = useState('');
   const [memberFilter, setMemberFilter] = useState([]);
   const [categoryFilter, setCategoryFilter] = useState([]);
-  const [billableOnly, setBillableOnly] = useState(false);
   const [filterOpen, setFilterOpen] = useState(false);
   const [showUnlinkedOnly, setShowUnlinkedOnly] = useState(false);
   const [collapsedCategories, setCollapsedCategories] = useState({});
@@ -85,27 +84,25 @@ export default function TeamOverview({ refresh }) {
       if (!isWithinInterval(d, { start: dateRange.start, end: dateRange.end })) return false;
       if (memberFilter.length > 0 && !memberFilter.includes(e.teamMember)) return false;
       if (categoryFilter.length > 0 && !categoryFilter.includes(e.category)) return false;
-      if (billableOnly && !e.billable) return false;
       return true;
     });
-  }, [entries, dateRange, memberFilter, categoryFilter, billableOnly]);
+  }, [entries, dateRange, memberFilter, categoryFilter]);
 
   // Team summary — always includes all 6 members
   const teamSummary = useMemo(() => {
     const map = {};
     // Initialise all team members with zeros
-    TEAM_MEMBERS.forEach(name => { map[name] = { totalMin: 0, billableMin: 0, count: 0, catMap: {} }; });
+    TEAM_MEMBERS.forEach(name => { map[name] = { totalMin: 0, count: 0, catMap: {} }; });
     filtered.forEach(e => {
-      if (!map[e.teamMember]) map[e.teamMember] = { totalMin: 0, billableMin: 0, count: 0, catMap: {} };
+      if (!map[e.teamMember]) map[e.teamMember] = { totalMin: 0, count: 0, catMap: {} };
       map[e.teamMember].totalMin += e.durationMinutes;
-      if (e.billable) map[e.teamMember].billableMin += e.durationMinutes;
       map[e.teamMember].count++;
       map[e.teamMember].catMap[e.category || 'Uncategorised'] = (map[e.teamMember].catMap[e.category || 'Uncategorised'] || 0) + e.durationMinutes;
     });
     return Object.entries(map)
       .map(([name, d]) => {
         const topCat = Object.entries(d.catMap).sort((a, b) => b[1] - a[1])[0]?.[0] || '—';
-        return { name, totalMin: d.totalMin, billableMin: d.billableMin, count: d.count, topCategory: topCat };
+        return { name, totalMin: d.totalMin, count: d.count, topCategory: topCat };
       })
       .sort((a, b) => b.totalMin - a.totalMin);
   }, [filtered]);
@@ -305,9 +302,9 @@ export default function TeamOverview({ refresh }) {
 
   // CSV export
   const exportCSV = () => {
-    const header = 'Date,Team Member,Category,Client,Project/Task,Duration (hours),Billable,Notes';
+    const header = 'Date,Team Member,Category,Client,Project/Task,Duration (hours),Notes,Transcript Link';
     const rows = filtered.map(e =>
-      `"${e.date}","${e.teamMember}","${e.category}","${(e.clientName || '').replace(/"/g, '""')}","${(e.projectTask || '').replace(/"/g, '""')}","${fmtDecimal(e.durationMinutes)}","${e.billable ? 'Yes' : 'No'}","${(e.notes || '').replace(/"/g, '""')}"`
+      `"${e.date}","${e.teamMember}","${e.category}","${(e.clientName || '').replace(/"/g, '""')}","${(e.projectTask || '').replace(/"/g, '""')}","${fmtDecimal(e.durationMinutes)}","${(e.notes || '').replace(/"/g, '""')}","${(e.transcriptLink || '').replace(/"/g, '""')}"`
     );
     const csv = [header, ...rows].join('\n');
     const blob = new Blob([csv], { type: 'text/csv' });
@@ -352,11 +349,11 @@ export default function TeamOverview({ refresh }) {
         <div className="flex items-center gap-2">
           <div className="relative">
             <button onClick={() => setFilterOpen(o => !o)}
-              className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg border transition-colors ${(memberFilter.length > 0 || categoryFilter.length > 0 || billableOnly) ? 'bg-[#F3E8FF] text-[#8403C5] border-[#8403C5]/30' : 'bg-white text-[#5777AB] border-[#EBEBF5] hover:border-[#D8D8EE]'}`}>
+              className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg border transition-colors ${(memberFilter.length > 0 || categoryFilter.length > 0) ? 'bg-[#F3E8FF] text-[#8403C5] border-[#8403C5]/30' : 'bg-white text-[#5777AB] border-[#EBEBF5] hover:border-[#D8D8EE]'}`}>
               <Filter className="w-3 h-3" /> Filters
-              {(memberFilter.length + categoryFilter.length + (billableOnly ? 1 : 0)) > 0 && (
+              {(memberFilter.length + categoryFilter.length) > 0 && (
                 <span className="bg-[#8403C5] text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full leading-none">
-                  {memberFilter.length + categoryFilter.length + (billableOnly ? 1 : 0)}
+                  {memberFilter.length + categoryFilter.length}
                 </span>
               )}
             </button>
@@ -386,11 +383,6 @@ export default function TeamOverview({ refresh }) {
                     ))}
                   </div>
                 </div>
-                <label className="flex items-center gap-2 cursor-pointer pt-2 border-t border-[#EBEBF5]">
-                  <input type="checkbox" checked={billableOnly} onChange={() => setBillableOnly(b => !b)}
-                    className="accent-[#8403C5] w-3.5 h-3.5" />
-                  <span className="text-xs text-[#242450] font-medium">Billable only</span>
-                </label>
               </div>
             )}
           </div>
