@@ -1,9 +1,17 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { base44 } from '@/api/base44Client';
 import { format, startOfWeek, endOfWeek, addWeeks, subWeeks, addDays, parseISO, isWithinInterval, startOfMonth, endOfMonth } from 'date-fns';
-import { ChevronLeft, ChevronRight, List, Grid3X3, Calendar, Pencil, Trash2, Plus } from 'lucide-react';
+import { ChevronLeft, ChevronRight, List, Grid3X3, Calendar, Pencil, Trash2, Plus, CalendarDays } from 'lucide-react';
 import { CATEGORY_COLORS, CATEGORY_LABELS } from './categoryColors';
 import QuickEntryModal from './QuickEntryModal';
+
+const PERIOD_OPTIONS = [
+  { id: 'this_week', label: 'This week' },
+  { id: 'last_week', label: 'Last week' },
+  { id: 'this_month', label: 'This month' },
+  { id: 'last_month', label: 'Last month' },
+  { id: 'custom', label: 'Custom' },
+];
 
 const CALENDAR_HOURS = Array.from({ length: 16 }, (_, i) => i + 7);
 
@@ -27,6 +35,9 @@ export default function MyTimesheet({ refresh }) {
   const [currentUser, setCurrentUser] = useState(null);
   const [view, setView] = useState('grid');
   const [weekOffset, setWeekOffset] = useState(0);
+  const [period, setPeriod] = useState('this_week');
+  const [customStart, setCustomStart] = useState('');
+  const [customEnd, setCustomEnd] = useState('');
 
   // Quick‑add/edit modal
   const [modalOpen, setModalOpen] = useState(false);
@@ -46,17 +57,47 @@ export default function MyTimesheet({ refresh }) {
 
   useEffect(() => { load(); }, [refresh]);
 
-  const weekStart = useMemo(() => startOfWeek(addWeeks(new Date(), weekOffset), { weekStartsOn: 1 }), [weekOffset]);
-  const weekEnd = useMemo(() => endOfWeek(addWeeks(new Date(), weekOffset), { weekStartsOn: 1 }), [weekOffset]);
+  const now = new Date();
+
+  // Period-aware date range (week nav only used for this_week/last_week)
+  const { rangeStart, rangeEnd } = useMemo(() => {
+    switch (period) {
+      case 'this_week': {
+        const s = startOfWeek(addWeeks(now, weekOffset), { weekStartsOn: 1 });
+        return { rangeStart: s, rangeEnd: endOfWeek(addWeeks(now, weekOffset), { weekStartsOn: 1 }) };
+      }
+      case 'last_week': {
+        const s = startOfWeek(addWeeks(now, -1 + weekOffset), { weekStartsOn: 1 });
+        return { rangeStart: s, rangeEnd: endOfWeek(addWeeks(now, -1 + weekOffset), { weekStartsOn: 1 }) };
+      }
+      case 'this_month': return { rangeStart: startOfMonth(now), rangeEnd: endOfMonth(now) };
+      case 'last_month': {
+        const lm = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+        return { rangeStart: startOfMonth(lm), rangeEnd: endOfMonth(lm) };
+      }
+      case 'custom': {
+        const s = customStart ? parseISO(customStart) : startOfMonth(now);
+        const e = customEnd ? parseISO(customEnd) : endOfMonth(now);
+        return { rangeStart: s, rangeEnd: e };
+      }
+      default: {
+        const s = startOfWeek(addWeeks(now, weekOffset), { weekStartsOn: 1 });
+        return { rangeStart: s, rangeEnd: endOfWeek(addWeeks(now, weekOffset), { weekStartsOn: 1 }) };
+      }
+    }
+  }, [period, weekOffset, customStart, customEnd]);
+
+  // For backward compat (calendar/grid use these)
+  const weekStart = rangeStart;
+  const weekEnd = rangeEnd;
 
   const weekEntries = useMemo(() =>
     entries.filter(e => {
       const d = parseISO(e.date);
-      return isWithinInterval(d, { start: weekStart, end: weekEnd });
-    }), [entries, weekStart, weekEnd]
+      return isWithinInterval(d, { start: rangeStart, end: rangeEnd });
+    }), [entries, rangeStart, rangeEnd]
   );
 
-  const now = new Date();
   const monthStart = startOfMonth(now);
   const monthEnd = endOfMonth(now);
   const weekTotal = weekEntries.reduce((s, e) => s + e.durationMinutes, 0);
@@ -140,32 +181,60 @@ export default function MyTimesheet({ refresh }) {
         ))}
       </div>
 
-      {/* Week nav + view toggle */}
-      <div className="flex items-center justify-between mb-4">
-        <div className="flex items-center gap-3">
-          <button onClick={() => setWeekOffset(o => o - 1)} className="p-2 rounded-lg hover:bg-[#EBEBF5] transition-colors">
-            <ChevronLeft className="w-5 h-5 text-[#5777AB]" />
-          </button>
-          <span className="text-sm font-semibold text-[#242450]">
-            {format(weekStart, 'd MMM')} — {format(weekEnd, 'd MMM yyyy')}
-          </span>
-          <button onClick={() => setWeekOffset(o => o + 1)} className="p-2 rounded-lg hover:bg-[#EBEBF5] transition-colors">
-            <ChevronRight className="w-5 h-5 text-[#5777AB]" />
-          </button>
+      {/* Period selector + nav + view toggle */}
+      <div className="space-y-3 mb-4">
+        {/* Period pills */}
+        <div className="flex items-center gap-1.5 flex-wrap">
+          {PERIOD_OPTIONS.map(p => (
+            <button key={p.id} onClick={() => { setPeriod(p.id); setWeekOffset(0); }}
+              className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-colors ${period === p.id ? 'bg-[#242450] text-white' : 'bg-white text-[#5777AB] border border-[#EBEBF5] hover:border-[#D8D8EE]'}`}>
+              {p.label}
+            </button>
+          ))}
+          {period === 'custom' && (
+            <div className="flex items-center gap-2 ml-1">
+              <input type="date" value={customStart} onChange={e => setCustomStart(e.target.value)} className="px-2 py-1.5 text-xs border border-[#EBEBF5] rounded-lg" />
+              <span className="text-xs text-[#5777AB]">to</span>
+              <input type="date" value={customEnd} onChange={e => setCustomEnd(e.target.value)} className="px-2 py-1.5 text-xs border border-[#EBEBF5] rounded-lg" />
+            </div>
+          )}
         </div>
-        <div className="flex items-center gap-2.5">
-          <span className="text-[11px] font-bold text-[#9CA3AF] uppercase tracking-[0.08em]">View:</span>
-          <div className="flex border-2 border-[#EBEBF5] rounded-lg overflow-hidden bg-white">
-            {[
-              { id: 'grid', icon: Grid3X3, label: 'Grid' },
-              { id: 'list', icon: List, label: 'List' },
-              { id: 'calendar', icon: Calendar, label: 'Calendar' },
-            ].map(v => (
-              <button key={v.id} onClick={() => setView(v.id)}
-                className={`flex items-center gap-1.5 px-4 py-2.5 text-sm font-semibold transition-colors ${view === v.id ? 'bg-[#242450] text-white' : 'text-[#5777AB] hover:bg-[#F6F6FB]'}`}>
-                <v.icon className="w-4 h-4" /> {v.label}
-              </button>
-            ))}
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            {(period === 'this_week' || period === 'last_week') && (
+              <>
+                <button onClick={() => setWeekOffset(o => o - 1)} className="p-1.5 rounded-lg hover:bg-[#EBEBF5] transition-colors">
+                  <ChevronLeft className="w-4 h-4 text-[#5777AB]" />
+                </button>
+                <span className="text-sm font-semibold text-[#242450]">
+                  {format(rangeStart, 'd MMM')} — {format(rangeEnd, 'd MMM yyyy')}
+                </span>
+                <button onClick={() => setWeekOffset(o => o + 1)} className="p-1.5 rounded-lg hover:bg-[#EBEBF5] transition-colors">
+                  <ChevronRight className="w-4 h-4 text-[#5777AB]" />
+                </button>
+              </>
+            )}
+            {(period === 'this_month' || period === 'last_month') && (
+              <span className="text-sm font-semibold text-[#242450]">{format(rangeStart, 'MMMM yyyy')}</span>
+            )}
+            {period === 'custom' && customStart && customEnd && (
+              <span className="text-sm font-semibold text-[#242450]">{format(rangeStart, 'd MMM')} — {format(rangeEnd, 'd MMM yyyy')}</span>
+            )}
+          </div>
+          <div className="flex items-center gap-2.5">
+            <span className="text-[11px] font-bold text-[#9CA3AF] uppercase tracking-[0.08em]">View:</span>
+            <div className="flex border-2 border-[#EBEBF5] rounded-lg overflow-hidden bg-white">
+              {[
+                { id: 'grid', icon: Grid3X3, label: 'Grid' },
+                { id: 'list', icon: List, label: 'List' },
+                { id: 'calendar', icon: Calendar, label: 'Calendar' },
+              ].map(v => (
+                <button key={v.id} onClick={() => setView(v.id)}
+                  className={`flex items-center gap-1.5 px-4 py-2.5 text-sm font-semibold transition-colors ${view === v.id ? 'bg-[#242450] text-white' : 'text-[#5777AB] hover:bg-[#F6F6FB]'}`}>
+                  <v.icon className="w-4 h-4" /> {v.label}
+                </button>
+              ))}
+            </div>
           </div>
         </div>
       </div>

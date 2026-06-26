@@ -1,11 +1,37 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { base44 } from '@/api/base44Client';
 import { format, parseISO, startOfWeek, endOfWeek, isWithinInterval, isToday, isYesterday } from 'date-fns';
-import { Play, Square, Pause, Link, MoreVertical, RotateCw, Copy, Pencil, Trash2, CalendarDays } from 'lucide-react';
+import { Play, Square, Pause, Link, MoreVertical, RotateCw, Copy, Pencil, Trash2, CalendarDays, List, Calendar } from 'lucide-react';
 import TaskPresetSelect from './TaskPresetSelect';
 import StopTimerModal from './StopTimerModal';
 import { CATEGORY_COLORS, CATEGORY_LABELS } from './categoryColors';
 import { logActivity } from '@/lib/logActivity';
+
+const CALENDAR_HOURS = Array.from({ length: 16 }, (_, i) => i + 7);
+
+async function writeClientActivityLog({ clientId, clientName, teamMember, category, projectTask, durationMinutes, notes, transcriptLink }) {
+  if (!clientId) return;
+  try {
+    const client = await base44.entities.Client.get(clientId);
+    if (!client) return;
+    const currentLog = (() => { try { return JSON.parse(client.activityLog || '[]'); } catch { return []; } })();
+    const h = Math.floor(durationMinutes / 60);
+    const m = durationMinutes % 60;
+    const durStr = m === 0 ? `${h}h` : `${h}h ${m}m`;
+    currentLog.push({
+      date: new Date().toISOString(),
+      type: 'Time logged',
+      label: `Time logged: ${durStr} — ${category}`,
+      category,
+      duration: durStr,
+      description: projectTask,
+      teamMember,
+      notes: notes || '',
+      transcriptLink: transcriptLink || '',
+    });
+    await base44.entities.Client.update(clientId, { activityLog: JSON.stringify(currentLog) });
+  } catch {}
+}
 
 const TEAM_MEMBERS = ['Chris', 'Elena', 'George', 'Martinique', 'Sreeja', 'Ramesh'];
 const CATEGORIES = CATEGORY_LABELS;
@@ -76,6 +102,9 @@ export default function LogTime({ onLogged }) {
 
   // ── Overflow menu ──
   const [menuOpenId, setMenuOpenId] = useState(null);
+
+  // ── Today view toggle ──
+  const [todayView, setTodayView] = useState('list');
 
   // Resolve user & clients
   useEffect(() => {
@@ -381,6 +410,7 @@ export default function LogTime({ onLogged }) {
         ...(formData.clientId ? {} : { clientId: '', clientName: '' }),
       });
     }
+    await writeClientActivityLog({ clientId: formData.clientId, clientName: formData.clientName, teamMember, category: formData.category, projectTask: formData.projectTask, durationMinutes: formData.durationMinutes, notes: formData.notes, transcriptLink: formData.transcriptLink });
     setModalOpen(false);
     setActiveTimerId(null);
     if (modalData?.mode === 'stop' && userIdRef.current) clearTimerLS(userIdRef.current);
@@ -407,6 +437,7 @@ export default function LogTime({ onLogged }) {
         transcriptLink: quickTranscriptLink.trim() || undefined,
         ...(quickClientId ? { clientId: quickClientId, clientName: quickClientName } : {}),
       });
+      await writeClientActivityLog({ clientId: quickClientId, clientName: quickClientName, teamMember, category: quickCat || 'Other', projectTask: quickDesc.trim(), durationMinutes: totalMin, notes: '', transcriptLink: quickTranscriptLink.trim() });
       setQuickDesc(''); setQuickH('0'); setQuickM('0'); setQuickTranscriptLink('');
       loadEntries();
       onLogged?.();
@@ -666,19 +697,31 @@ export default function LogTime({ onLogged }) {
           <div className="flex items-center gap-3">
             <div className="w-1 h-6 bg-[#8403C5] rounded-full" />
             <h2 className="text-[18px] font-bold text-[#242450]">Today</h2>
+            <span className="px-3 py-1 text-xs font-bold bg-[#8403C5] text-white rounded-full">{formatDuration(todayTotal)}</span>
           </div>
-          <span className="px-3 py-1 text-xs font-bold bg-[#8403C5] text-white rounded-full">{formatDuration(todayTotal)}</span>
+          <div className="flex border-2 border-[#EBEBF5] rounded-lg overflow-hidden bg-white">
+            {[{ id: 'list', icon: List, label: 'List' }, { id: 'calendar', icon: Calendar, label: 'Calendar' }].map(v => (
+              <button key={v.id} onClick={() => setTodayView(v.id)}
+                className={`flex items-center gap-1.5 px-3 py-2 text-xs font-semibold transition-colors ${todayView === v.id ? 'bg-[#242450] text-white' : 'text-[#5777AB] hover:bg-[#F6F6FB]'}`}>
+                <v.icon className="w-3.5 h-3.5" /> {v.label}
+              </button>
+            ))}
+          </div>
         </div>
-        <div className="bg-white border border-[#EBEBF5] rounded-xl shadow-[0_1px_4px_rgba(0,0,0,0.03)]">
-          {todayEntries.length === 0 ? (
-            <div className="px-5 py-12 text-center">
-              <p className="text-[15px] font-medium text-[#4A5568]">No time logged today</p>
-              <p className="text-[13px] text-[#9CA3AF] mt-1">Use the entry bar above to start tracking</p>
-            </div>
-          ) : (
-            todayEntries.map((e, i) => <EntryRow key={e.id} entry={e} idx={i} />)
-          )}
-        </div>
+        {todayView === 'list' ? (
+          <div className="bg-white border border-[#EBEBF5] rounded-xl shadow-[0_1px_4px_rgba(0,0,0,0.03)]">
+            {todayEntries.length === 0 ? (
+              <div className="px-5 py-12 text-center">
+                <p className="text-[15px] font-medium text-[#4A5568]">No time logged today</p>
+                <p className="text-[13px] text-[#9CA3AF] mt-1">Use the entry bar above to start tracking</p>
+              </div>
+            ) : (
+              todayEntries.map((e, i) => <EntryRow key={e.id} entry={e} idx={i} />)
+            )}
+          </div>
+        ) : (
+          <TodayCalendarView entries={todayEntries} />
+        )}
       </div>
 
       {/* ══════════════════════════════════════
@@ -713,6 +756,96 @@ export default function LogTime({ onLogged }) {
           MODAL
           ══════════════════════════════════ */}
       <StopTimerModal open={modalOpen} onClose={() => setModalOpen(false)} onSave={handleModalSave} data={modalData} clients={clients} />
+    </div>
+  );
+}
+
+// ── Today Calendar View ──
+function TodayCalendarView({ entries }) {
+  const now = new Date();
+  const todayStr = format(now, 'yyyy-MM-dd');
+  const currentHourDecimal = now.getHours() + now.getMinutes() / 60;
+  const showCurrentLine = currentHourDecimal >= 7 && currentHourDecimal <= 22;
+  const totalHeight = CALENDAR_HOURS.length * 60;
+
+  const positioned = useMemo(() => entries.filter(e => e.timerStartedAt && e.timerStoppedAt).map(e => {
+    try {
+      const startH = new Date(e.timerStartedAt).getHours() + new Date(e.timerStartedAt).getMinutes() / 60;
+      const endH = new Date(e.timerStoppedAt).getHours() + new Date(e.timerStoppedAt).getMinutes() / 60;
+      if (startH < 7 || startH > 22) return null;
+      return { entry: e, top: (startH - 7) * 60, height: Math.max(24, (endH - startH) * 60) };
+    } catch { return null; }
+  }).filter(Boolean), [entries]);
+
+  const untimed = useMemo(() => entries.filter(e => !e.timerStartedAt || !e.timerStoppedAt), [entries]);
+
+  function fmtHoursLocal(minutes) {
+    const h = Math.floor(minutes / 60);
+    const m = minutes % 60;
+    if (h === 0 && m === 0) return '—';
+    if (m === 0) return `${h}h`;
+    return `${h}h ${m}m`;
+  }
+
+  return (
+    <div className="bg-white border border-[#EBEBF5] rounded-xl overflow-hidden">
+      {/* Header */}
+      <div className="grid grid-cols-[60px_1fr] border-b border-[#EBEBF5]">
+        <div className="border-r border-[#EBEBF5]" />
+        <div className="px-3 py-2.5 text-center">
+          <p className="text-[11px] font-bold text-[#5777AB] uppercase tracking-[0.06em]">{format(now, 'EEEE')}</p>
+          <p className="text-[10px] text-[#9CA3AF]">{format(now, 'd MMM yyyy')}</p>
+        </div>
+      </div>
+      {/* Time grid */}
+      <div className="overflow-auto" style={{ maxHeight: 'calc(100vh - 400px)' }}>
+        <div className="relative" style={{ height: `${totalHeight}px` }}>
+          {CALENDAR_HOURS.map(hour => {
+            const top = (hour - 7) * 60;
+            return (
+              <div key={hour} className="absolute left-0 right-0" style={{ top: `${top}px`, height: '60px' }}>
+                <div className="absolute left-0 top-0 w-[60px] h-full border-r border-[#EBEBF5] flex items-start justify-end pr-2">
+                  <span className="text-[10px] font-bold text-[#5777AB] leading-none">{String(hour).padStart(2, '0')}:00</span>
+                </div>
+                <div className="absolute left-[60px] right-0 top-0 border-t border-[#EBEBF5] h-px" />
+                <div className="absolute left-[60px] right-0 top-[30px] border-t border-dashed border-[#D8D8EE] h-px" />
+              </div>
+            );
+          })}
+          {/* Positioned entries */}
+          {positioned.map(({ entry, top, height }) => {
+            const color = CATEGORY_COLORS[entry.category] || '#9CA3AF';
+            return (
+              <div key={entry.id} className="absolute rounded-md px-2 py-1 overflow-hidden z-10"
+                style={{ left: '64px', right: '4px', top: `${top}px`, height: `${Math.min(height, totalHeight - top)}px`, backgroundColor: `${color}18`, borderLeft: `3px solid ${color}` }}>
+                <p className="text-[10px] font-semibold leading-tight" style={{ color }}>{entry.category}</p>
+                <p className="text-[10px] font-medium text-[#242450] leading-tight mt-0.5 truncate">{entry.projectTask}</p>
+                <p className="text-[9px] font-bold text-[#242450] mt-0.5">{fmtHoursLocal(entry.durationMinutes)}</p>
+              </div>
+            );
+          })}
+          {/* Untimed entries at top */}
+          {untimed.map((e, ci) => {
+            const color = CATEGORY_COLORS[e.category] || '#9CA3AF';
+            return (
+              <div key={e.id} className="absolute px-1.5 py-0.5 rounded z-10"
+                style={{ left: '64px', right: '4px', top: `${ci * 26}px`, backgroundColor: `${color}12`, borderLeft: `2px solid ${color}` }}>
+                <p className="text-[9px] font-medium text-[#242450] truncate">{e.projectTask || '—'}</p>
+                <p className="text-[8px] text-[#5777AB]">{fmtHoursLocal(e.durationMinutes)}</p>
+              </div>
+            );
+          })}
+          {/* Current time line */}
+          {showCurrentLine && (
+            <div className="absolute left-0 right-0 z-20 pointer-events-none" style={{ top: `${(currentHourDecimal - 7) * 60}px` }}>
+              <div className="absolute left-[60px] right-0 h-px bg-[#DC2626]" />
+              <div className="absolute left-0 w-[60px] flex items-center justify-end pr-2" style={{ marginTop: '-9px' }}>
+                <span className="text-[10px] font-bold text-[#DC2626] bg-white px-1 rounded">{format(now, 'HH:mm')}</span>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
     </div>
   );
 }

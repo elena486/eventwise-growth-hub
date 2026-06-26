@@ -41,6 +41,7 @@ import useKeyboardShortcuts from '@/hooks/useKeyboardShortcuts';
 import { base44 } from '@/api/base44Client';
 import { getRecentlyViewed, addRecentlyViewed, clearRecentlyViewed, TYPE_META, formatRelativeTime } from '@/utils/recentlyViewed';
 import FloatingTimer from '@/components/time/FloatingTimer';
+import LogTimeSidebar from '@/components/time/LogTimeSidebar';
 import PasswordModal from '@/components/activity/PasswordModal';
 
 const GROUPS = [
@@ -612,6 +613,9 @@ export default function AppShell() {
 
       {/* Floating Timer — global across all tabs */}
       <FloatingTimer onStopAndLog={() => setSearchParams({ tab: 'time-log' })} />
+
+      {/* Log Time Sidebar — persistent quick-access from any tab */}
+      <LogTimeSidebar />
 
       {/* Password modal for Hub Insights */}
       {passwordModalOpen && (
