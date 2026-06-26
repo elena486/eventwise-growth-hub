@@ -98,6 +98,10 @@
     "activityLog": {
       "type": "string",
       "description": "JSON array of activity log entries [{date, type, label, category, duration, description, teamMember, notes}]"
+    },
+    "contractDocuments": {
+      "type": "string",
+      "description": "JSON array of uploaded contract/document objects [{id, name, url, uploadedAt, uploadedBy}]"
     }
   },
   "required": [

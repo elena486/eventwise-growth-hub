@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import ReactDOM from 'react-dom';
 import HealthScoreChip from '@/components/health/HealthScoreChip';
+import ContractDocuments from './ContractDocuments';
 import { base44 } from '@/api/base44Client';
 import { format, differenceInDays } from 'date-fns';
 import {
@@ -67,6 +68,7 @@ const TABS = [
   { id: 'health', label: 'Health' },
   { id: 'notes', label: 'Notes' },
   { id: 'bugs', label: 'Bugs' },
+  { id: 'documents', label: 'Documents' },
 ];
 
 function fmtDate(d) {
@@ -674,6 +676,14 @@ export default function ClientFullPanel({ client: initialClient, onClose, onUpda
               loading={bugsLoading}
               onLogBug={() => setShowNewBugForm(true)}
               onBugCreated={newBug => setBugs(prev => [newBug, ...prev])}
+            />
+          )}
+
+          {/* DOCUMENTS TAB */}
+          {activeTab === 'documents' && (
+            <ContractDocuments
+              client={client}
+              onUpdated={(updated) => { setClient(updated); onUpdated(updated); }}
             />
           )}
         </div>
