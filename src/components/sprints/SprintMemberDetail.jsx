@@ -2,11 +2,17 @@ import React, { useState } from 'react';
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ReferenceLine, ResponsiveContainer
 } from 'recharts';
-import { ArrowLeft, Trash2, Sparkles } from 'lucide-react';
+import { ArrowLeft, Trash2, Sparkles, AlertTriangle } from 'lucide-react';
 import { ragColor, RAG_STYLES, formatKpiValue } from '@/lib/sprintConfig';
 import { base44 } from '@/api/base44Client';
 import ConfirmDialog from '@/components/shared/ConfirmDialog';
 import { format } from 'date-fns';
+
+const SELF_RATING_CONFIG = {
+  on_track:  { label: 'On track',  emoji: '🟢', color: 'text-green-700', bg: 'bg-green-50', border: 'border-green-200' },
+  at_risk:   { label: 'At risk',   emoji: '🟡', color: 'text-amber-700', bg: 'bg-amber-50', border: 'border-amber-200' },
+  off_track: { label: 'Off track', emoji: '🔴', color: 'text-red-600',   bg: 'bg-red-50',   border: 'border-red-200' },
+};
 
 function calcTrend(vals) {
   const v = vals.filter(x => x != null);
@@ -17,13 +23,11 @@ function calcTrend(vals) {
   return 'stable';
 }
 
-function weeksOnTrack(subs, member, n = 8) {
-  return subs.slice(-n).filter(s => {
-    const r1 = s.kpi1Value != null ? ragColor(s.kpi1Value, member.kpi1.target) : null;
-    const r2 = s.kpi2Value != null ? ragColor(s.kpi2Value, member.kpi2.target) : null;
-    const worst = [r1, r2].includes('red') ? 'red' : [r1, r2].includes('amber') ? 'amber' : 'green';
-    return worst === 'green';
-  }).length;
+// Count weeks where self-rating = on_track; only count rows that have a selfRating
+function weeksOnTrackSelfRated(subs, n = 8) {
+  const rated = subs.slice(-n).filter(s => s.selfRating);
+  const onTrack = rated.filter(s => s.selfRating === 'on_track').length;
+  return { onTrack, total: rated.length, hasUnrated: subs.slice(-n).length > rated.length };
 }
 
 const TREND_CONFIG = {
@@ -31,6 +35,16 @@ const TREND_CONFIG = {
   stable:    { label: '→ Stable',    color: 'text-amber-600', bg: 'bg-amber-50' },
   declining: { label: '↓ Declining', color: 'text-red-600',   bg: 'bg-red-50' },
 };
+
+// Per-metric hit/miss indicator
+function MetricStatus({ value, target }) {
+  if (value == null) return <span className="flex items-center gap-1 text-[10px] text-gray-400"><span className="w-2 h-2 rounded-full bg-gray-300 inline-block" /> No data</span>;
+  if (target == null) return <span className="flex items-center gap-1 text-[10px] text-gray-400"><span className="w-2 h-2 rounded-full bg-gray-300 inline-block" /> No target</span>;
+  const hit = target === 0 ? value === 0 : value >= target;
+  return hit
+    ? <span className="flex items-center gap-1 text-[10px] font-semibold text-green-700"><span className="w-2 h-2 rounded-full bg-green-500 inline-block" /> Hit target</span>
+    : <span className="flex items-center gap-1 text-[10px] font-semibold text-red-600"><span className="w-2 h-2 rounded-full bg-red-500 inline-block" /> Missed target</span>;
+}
 
 function KpiChart({ data, kpiKey, target, label }) {
   if (!data || data.length < 2) {
@@ -94,20 +108,27 @@ export default function SprintMemberDetail({ member, history, allHistory, onBack
 
   const kpi1Vals = last8.map(s => s.kpi1Value ?? null);
   const kpi2Vals = last8.map(s => s.kpi2Value ?? null);
-  const trend1 = calcTrend(kpi1Vals);
   const trendOverall = calcTrend(kpi1Vals) === 'improving' || calcTrend(kpi2Vals) === 'improving' ? 'improving'
     : calcTrend(kpi1Vals) === 'declining' || calcTrend(kpi2Vals) === 'declining' ? 'declining' : 'stable';
   const trendCfg = TREND_CONFIG[trendOverall];
-  const onTrackCount = weeksOnTrack(all, member, 8);
-  const outOf = Math.min(all.length, 8);
 
-  // RAG for latest
+  // On track count — self-rated only
+  const { onTrack: onTrackCount, total: ratedTotal, hasUnrated } = weeksOnTrackSelfRated(all, 8);
+
+  // Per-metric status for latest
   const rag1 = latest?.kpi1Value != null ? ragColor(latest.kpi1Value, member.kpi1.target) : null;
   const rag2 = latest?.kpi2Value != null ? ragColor(latest.kpi2Value, member.kpi2.target) : null;
-  const overallRag = [rag1, rag2].includes('red') ? 'red' : [rag1, rag2].includes('amber') ? 'amber' : rag1 || rag2 ? 'green' : null;
-  const ragStyle = overallRag ? RAG_STYLES[overallRag] : null;
 
-  // Qualitative: all history chronological
+  // Self-assessment for latest
+  const selfRatingCfg = latest?.selfRating ? SELF_RATING_CONFIG[latest.selfRating] : null;
+
+  // Contradiction flag: self-assessed on_track but metric(s) missed
+  const kpi1Missed = latest?.kpi1Value != null && rag1 && rag1 !== 'green';
+  const kpi2Missed = latest?.kpi2Value != null && rag2 && rag2 !== 'green';
+  const missedCount = [kpi1Missed, kpi2Missed].filter(Boolean).length;
+  const showContradiction = latest?.selfRating === 'on_track' && missedCount > 0;
+
+  // Qualitative history
   const qualHistoryItems = [...all].reverse().map(s => {
     let answers = {};
     try { answers = JSON.parse(s.answers || '{}'); } catch {}
@@ -167,21 +188,40 @@ Be specific and actionable. Reference actual numbers and targets. Use a direct, 
           <ArrowLeft className="w-4 h-4" /> Back to Dashboard
         </button>
 
-        {/* Page header */}
-        <div className="flex items-start justify-between mb-6 gap-4">
-          <div>
-            <h2 className="text-2xl font-bold text-gray-900 dark:text-white">{member.name}</h2>
-            <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">{member.role}</p>
-            {latest && (
-              <p className="text-xs text-gray-400 mt-1">
-                Last submitted: {format(new Date(latest.weekStart), 'd MMM yyyy')}
-              </p>
-            )}
+        {/* Page header — name, role, self-assessment */}
+        <div className="mb-6">
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <h2 className="text-2xl font-bold text-gray-900 dark:text-white">{member.name}</h2>
+              <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">{member.role}</p>
+              {latest && (
+                <p className="text-xs text-gray-400 mt-1">
+                  Last submitted: {format(new Date(latest.weekStart), 'd MMM yyyy')}
+                </p>
+              )}
+            </div>
           </div>
-          {ragStyle && (
-            <span className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-bold ${ragStyle.bg} ${ragStyle.text} shrink-0`}>
-              <span className={`w-2.5 h-2.5 rounded-full ${ragStyle.dot}`} />{ragStyle.label}
-            </span>
+
+          {/* Self-assessment panel */}
+          {selfRatingCfg && (
+            <div className={`mt-4 inline-flex flex-col gap-1 px-4 py-3 rounded-xl border ${selfRatingCfg.bg} ${selfRatingCfg.border}`}>
+              <span className={`text-sm font-bold ${selfRatingCfg.color}`}>
+                This week: {selfRatingCfg.emoji} {selfRatingCfg.label}
+              </span>
+              {latest.selfRatingReason && (
+                <span className="text-xs text-gray-500 italic">{latest.selfRatingReason}</span>
+              )}
+            </div>
+          )}
+
+          {/* Contradiction flag */}
+          {showContradiction && (
+            <div className="mt-2 flex items-start gap-2 px-3 py-2.5 bg-amber-50 border border-amber-200 rounded-lg max-w-lg">
+              <AlertTriangle className="w-3.5 h-3.5 text-amber-500 shrink-0 mt-0.5" />
+              <p className="text-xs text-amber-700">
+                Self-assessed as on track, but {missedCount} metric{missedCount > 1 ? 's' : ''} missed target this week.
+              </p>
+            </div>
           )}
         </div>
 
@@ -192,12 +232,18 @@ Be specific and actionable. Reference actual numbers and targets. Use a direct, 
             <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-wide mb-1">{member.kpi1.label}</p>
             <p className="text-2xl font-bold text-gray-900 dark:text-white">{latest ? formatKpiValue(latest.kpi1Value, member.kpi1) : '—'}</p>
             <p className="text-xs text-gray-400 mt-0.5">Target: {formatKpiValue(member.kpi1.target, member.kpi1)}</p>
+            <div className="mt-2">
+              <MetricStatus value={latest?.kpi1Value} target={member.kpi1.target} />
+            </div>
           </div>
           {/* KPI 2 */}
           <div className={`bg-white dark:bg-[#1E1E2E] rounded-xl p-4 border ${rag2 ? RAG_STYLES[rag2].border : 'border-gray-200 dark:border-gray-700'}`}>
             <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-wide mb-1">{member.kpi2.label}</p>
             <p className="text-2xl font-bold text-gray-900 dark:text-white">{latest ? formatKpiValue(latest.kpi2Value, member.kpi2) : '—'}</p>
             <p className="text-xs text-gray-400 mt-0.5">Target: {formatKpiValue(member.kpi2.target, member.kpi2)}</p>
+            <div className="mt-2">
+              <MetricStatus value={latest?.kpi2Value} target={member.kpi2.target} />
+            </div>
           </div>
           {/* Trend */}
           <div className={`${trendCfg.bg} rounded-xl p-4 border border-gray-100 dark:border-gray-700`}>
@@ -205,28 +251,23 @@ Be specific and actionable. Reference actual numbers and targets. Use a direct, 
             <p className={`text-xl font-bold ${trendCfg.color}`}>{trendCfg.label}</p>
             <p className="text-xs text-gray-400 mt-0.5">Based on last 4 weeks</p>
           </div>
-          {/* Weeks on track */}
+          {/* Weeks on track — self-rated */}
           <div className="bg-white dark:bg-[#1E1E2E] rounded-xl p-4 border border-gray-200 dark:border-gray-700">
             <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-wide mb-1">On Track</p>
-            <p className="text-2xl font-bold text-gray-900 dark:text-white">{onTrackCount}<span className="text-base font-normal text-gray-400">/{outOf}</span></p>
-            <p className="text-xs text-gray-400 mt-0.5">weeks (last 8)</p>
+            <p className="text-2xl font-bold text-gray-900 dark:text-white">
+              {onTrackCount}<span className="text-base font-normal text-gray-400">/{ratedTotal}</span>
+            </p>
+            <p className="text-xs text-gray-400 mt-0.5">weeks (self-rated)</p>
+            {hasUnrated && (
+              <p className="text-[10px] text-gray-400 mt-1 italic">Earlier weeks predate self-assessment tracking.</p>
+            )}
           </div>
         </div>
 
         {/* SECTION 2 — Trend charts */}
         <div className="grid grid-cols-2 gap-4 mb-6">
-          <KpiChart
-            data={chartData}
-            kpiKey={member.kpi1.label}
-            target={member.kpi1.target}
-            label={member.kpi1.label}
-          />
-          <KpiChart
-            data={chartData}
-            kpiKey={member.kpi2.label}
-            target={member.kpi2.target}
-            label={member.kpi2.label}
-          />
+          <KpiChart data={chartData} kpiKey={member.kpi1.label} target={member.kpi1.target} label={member.kpi1.label} />
+          <KpiChart data={chartData} kpiKey={member.kpi2.label} target={member.kpi2.target} label={member.kpi2.label} />
         </div>
 
         {/* SECTION 3 — All metrics history table */}
@@ -244,7 +285,7 @@ Be specific and actionable. Reference actual numbers and targets. Use a direct, 
                   {member.questions.filter(q => q.type === 'number' && q.id !== member.kpi1.questionId && q.id !== member.kpi2.questionId).map(q => (
                     <th key={q.id} className="text-left text-xs font-semibold text-gray-400 px-4 py-2.5">{q.label}</th>
                   ))}
-                  <th className="text-left text-xs font-semibold text-gray-400 px-4 py-2.5">Status</th>
+                  <th className="text-left text-xs font-semibold text-gray-400 px-4 py-2.5">Self-rated</th>
                   <th />
                 </tr>
               </thead>
@@ -252,10 +293,7 @@ Be specific and actionable. Reference actual numbers and targets. Use a direct, 
                 {[...all].reverse().map(sub => {
                   let answers = {};
                   try { answers = JSON.parse(sub.answers || '{}'); } catch {}
-                  const r1 = sub.kpi1Value != null ? ragColor(sub.kpi1Value, member.kpi1.target) : null;
-                  const r2 = sub.kpi2Value != null ? ragColor(sub.kpi2Value, member.kpi2.target) : null;
-                  const overall = [r1, r2].includes('red') ? 'red' : [r1, r2].includes('amber') ? 'amber' : r1 || r2 ? 'green' : null;
-                  const s = overall ? RAG_STYLES[overall] : null;
+                  const srCfg = sub.selfRating ? SELF_RATING_CONFIG[sub.selfRating] : null;
                   return (
                     <tr key={sub.id} className="border-b border-gray-50 dark:border-gray-700 last:border-0 hover:bg-gray-50 dark:hover:bg-[#252535] transition-colors">
                       <td className="px-4 py-2.5 font-medium text-gray-800 dark:text-gray-200 whitespace-nowrap">
@@ -267,7 +305,13 @@ Be specific and actionable. Reference actual numbers and targets. Use a direct, 
                         <td key={q.id} className="px-4 py-2.5 text-gray-600 dark:text-gray-300">{answers[q.id] ?? '—'}</td>
                       ))}
                       <td className="px-4 py-2.5">
-                        {s && <span className={`inline-flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded-full ${s.bg} ${s.text}`}><span className={`w-1.5 h-1.5 rounded-full ${s.dot}`} />{s.label}</span>}
+                        {srCfg ? (
+                          <span className={`inline-flex items-center gap-1.5 text-xs font-semibold px-2 py-0.5 rounded-full ${srCfg.bg} ${srCfg.color} border ${srCfg.border}`}>
+                            {srCfg.emoji} {srCfg.label}
+                          </span>
+                        ) : (
+                          <span className="text-xs text-gray-400">—</span>
+                        )}
                       </td>
                       <td className="px-4 py-2.5 text-right">
                         <button onClick={() => setConfirmId(sub.id)} className="text-gray-300 hover:text-red-500 p-1 transition-colors">

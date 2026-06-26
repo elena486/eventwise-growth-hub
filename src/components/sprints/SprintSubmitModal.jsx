@@ -5,9 +5,17 @@ import { X, Copy, Check, ChevronRight } from 'lucide-react';
 import { format } from 'date-fns';
 import { logActivity } from '@/lib/logActivity';
 
+const SELF_RATINGS = [
+  { value: 'on_track',  label: 'On track',  emoji: '🟢', color: 'border-green-400 bg-green-50 text-green-700' },
+  { value: 'at_risk',   label: 'At risk',   emoji: '🟡', color: 'border-amber-400 bg-amber-50 text-amber-700' },
+  { value: 'off_track', label: 'Off track', emoji: '🔴', color: 'border-red-400 bg-red-50 text-red-700' },
+];
+
 export default function SprintSubmitModal({ onClose, onSaved }) {
   const [selectedMemberId, setSelectedMemberId] = useState('');
   const [answers, setAnswers] = useState({});
+  const [selfRating, setSelfRating] = useState('');
+  const [selfRatingReason, setSelfRatingReason] = useState('');
   const [saving, setSaving] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [existingId, setExistingId] = useState(null);
@@ -24,16 +32,18 @@ export default function SprintSubmitModal({ onClose, onSaved }) {
     setAnswers({});
     setExistingId(null);
     setSubmitted(false);
+    setSelfRating('');
+    setSelfRatingReason('');
 
-    // Check for existing submission this week
     base44.entities.SprintSubmission.filter({ memberName: member.name, weekStart }).then(results => {
       if (results.length > 0) {
         setExistingId(results[0].id);
         try { setAnswers(JSON.parse(results[0].answers || '{}')); } catch {}
+        setSelfRating(results[0].selfRating || '');
+        setSelfRatingReason(results[0].selfRatingReason || '');
       }
     });
 
-    // Load last submission for duplicate
     base44.entities.SprintSubmission.filter({ memberName: member.name }).then(all => {
       const sorted = all.filter(s => s.weekStart < weekStart).sort((a, b) => b.weekStart.localeCompare(a.weekStart));
       setLastSubmission(sorted[0] || null);
@@ -45,8 +55,11 @@ export default function SprintSubmitModal({ onClose, onSaved }) {
     setDraftSaved(false);
   };
 
+  const needsReason = selfRating === 'at_risk' || selfRating === 'off_track';
+  const canSubmit = member && selfRating && (!needsReason || selfRatingReason.trim());
+
   const handleSubmit = async () => {
-    if (!member) return;
+    if (!canSubmit) return;
     setSaving(true);
     const kpi1 = answers[member.kpi1.questionId];
     const kpi2 = answers[member.kpi2.questionId];
@@ -54,6 +67,8 @@ export default function SprintSubmitModal({ onClose, onSaved }) {
       memberName: member.name, weekStart, answers: JSON.stringify(answers),
       kpi1Value: kpi1 != null ? Number(kpi1) : undefined,
       kpi2Value: kpi2 != null ? Number(kpi2) : undefined,
+      selfRating,
+      selfRatingReason: needsReason ? selfRatingReason.trim() : '',
     };
     if (existingId) await base44.entities.SprintSubmission.update(existingId, payload);
     else await base44.entities.SprintSubmission.create(payload);
@@ -63,9 +78,8 @@ export default function SprintSubmitModal({ onClose, onSaved }) {
   };
 
   const handleSaveDraft = () => {
-    // Save to localStorage as a draft
     if (!member) return;
-    localStorage.setItem(`sprint_draft_${member.id}_${weekStart}`, JSON.stringify(answers));
+    localStorage.setItem(`sprint_draft_${member.id}_${weekStart}`, JSON.stringify({ answers, selfRating, selfRatingReason }));
     setDraftSaved(true);
     setTimeout(() => setDraftSaved(false), 2000);
   };
@@ -78,17 +92,20 @@ export default function SprintSubmitModal({ onClose, onSaved }) {
   const sections = member ? [...new Set(member.questions.map(q => q.section).filter(Boolean))] : [];
   const hasSections = sections.length > 0;
 
-  // Load draft on member change
   useEffect(() => {
     if (!member) return;
     const draft = localStorage.getItem(`sprint_draft_${member.id}_${weekStart}`);
     if (draft && !existingId) {
-      try { setAnswers(JSON.parse(draft)); } catch {}
+      try {
+        const parsed = JSON.parse(draft);
+        setAnswers(parsed.answers || {});
+        setSelfRating(parsed.selfRating || '');
+        setSelfRatingReason(parsed.selfRatingReason || '');
+      } catch {}
     }
   }, [selectedMemberId, existingId]);
 
   const renderQuestion = (q) => {
-    // Find target for number fields
     const isKpi1 = q.id === member?.kpi1?.questionId;
     const isKpi2 = q.id === member?.kpi2?.questionId;
     const target = isKpi1 ? member.kpi1.target : isKpi2 ? member.kpi2.target : null;
@@ -172,7 +189,6 @@ export default function SprintSubmitModal({ onClose, onSaved }) {
             </button>
           </div>
 
-          {/* Existing submission warning */}
           {existingId && (
             <div className="mt-3 px-3 py-2.5 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg">
               <p className="text-xs text-amber-700 dark:text-amber-400 font-semibold">
@@ -197,8 +213,40 @@ export default function SprintSubmitModal({ onClose, onSaved }) {
 
           {member && (
             <>
+              {/* ── Self-assessment — required, shown first ── */}
+              <div className="mb-5 p-4 bg-gray-50 dark:bg-[#252535] rounded-xl border border-gray-200 dark:border-gray-600">
+                <label className="block text-sm font-bold text-gray-800 dark:text-gray-200 mb-3">
+                  How would you rate this week? <span className="text-red-500">*</span>
+                </label>
+                <div className="flex gap-2">
+                  {SELF_RATINGS.map(r => (
+                    <button key={r.value} type="button" onClick={() => setSelfRating(r.value)}
+                      className={`flex-1 flex flex-col items-center gap-1 px-3 py-3 rounded-xl border-2 text-sm font-semibold transition-all ${
+                        selfRating === r.value
+                          ? r.color + ' border-opacity-100'
+                          : 'border-gray-200 dark:border-gray-600 text-gray-500 dark:text-gray-400 hover:border-gray-300 dark:hover:border-gray-500'
+                      }`}>
+                      <span className="text-xl">{r.emoji}</span>
+                      <span>{r.label}</span>
+                    </button>
+                  ))}
+                </div>
+
+                {needsReason && (
+                  <div className="mt-3">
+                    <label className="block text-xs font-semibold text-gray-600 dark:text-gray-400 mb-1.5">
+                      What's the reason? <span className="text-red-500">*</span>
+                      <span className="font-normal text-gray-400 ml-1">(1–2 sentences)</span>
+                    </label>
+                    <textarea rows={2} placeholder="Briefly explain what's causing this…"
+                      className="w-full border border-gray-300 dark:border-gray-600 dark:bg-[#2A2A3E] dark:text-gray-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-[#8403C5] resize-none transition-colors"
+                      value={selfRatingReason} onChange={e => setSelfRatingReason(e.target.value)} />
+                  </div>
+                )}
+              </div>
+
               {/* Duplicate last entry button */}
-              {(member.duplicateLastMonth || true) && lastSubmission && (
+              {lastSubmission && (
                 <button onClick={handleDuplicate}
                   className="flex items-center gap-1.5 text-xs text-gray-500 border border-gray-200 dark:border-gray-600 rounded-lg px-3 py-1.5 hover:bg-gray-50 dark:hover:bg-[#252535] mb-4 transition-colors">
                   <Copy className="w-3.5 h-3.5" /> Duplicate last entry ({format(new Date(lastSubmission.weekStart), 'd MMM')})
@@ -223,11 +271,17 @@ export default function SprintSubmitModal({ onClose, onSaved }) {
                 {draftSaved ? <span className="flex items-center gap-1"><Check className="w-3.5 h-3.5" /> Draft saved</span> : 'Save draft'}
               </button>
             )}
-            <button onClick={handleSubmit} disabled={saving || !member}
+            <button onClick={handleSubmit} disabled={saving || !canSubmit}
               className="flex-1 py-2.5 rounded-xl text-sm font-bold text-white transition-colors flex items-center justify-center gap-2 disabled:opacity-50 bg-[#8403C5] hover:bg-[#6d02a3]">
               {saving ? 'Saving…' : 'Submit Update'}
             </button>
           </div>
+          {member && !selfRating && (
+            <p className="text-xs text-center text-gray-400 mt-2">Please rate your week before submitting</p>
+          )}
+          {member && needsReason && !selfRatingReason.trim() && (
+            <p className="text-xs text-center text-amber-600 mt-2">Please add a reason for your rating</p>
+          )}
         </div>
       </div>
     </div>

@@ -1,12 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
-import { MEMBERS, ragColor, RAG_STYLES, formatKpiValue, currentWeekStart } from '@/lib/sprintConfig';
+import { MEMBERS, formatKpiValue, currentWeekStart } from '@/lib/sprintConfig';
 import SprintMemberDetail from './SprintMemberDetail';
 
-function RagDot({ color }) {
-  const s = RAG_STYLES[color] || RAG_STYLES.red;
-  return <span className={`inline-block w-2.5 h-2.5 rounded-full ${s.dot}`} />;
-}
+const SELF_RATING_CONFIG = {
+  on_track:  { label: 'On track',  emoji: '🟢', color: 'text-green-700', bg: 'bg-green-50' },
+  at_risk:   { label: 'At risk',   emoji: '🟡', color: 'text-amber-700', bg: 'bg-amber-50' },
+  off_track: { label: 'Off track', emoji: '🔴', color: 'text-red-600',   bg: 'bg-red-50' },
+};
 
 export default function SprintDashboard() {
   const [submissions, setSubmissions] = useState([]);
@@ -48,7 +49,7 @@ export default function SprintDashboard() {
     <div className="p-8 flex-1 overflow-y-auto">
       <div className="mb-1">
         <h2 className="text-xl font-bold text-navy">Team Sprint Dashboard</h2>
-        <p className="text-xs text-ew-muted mt-1">Each team member submits a weekly update every Monday. RAG status is calculated automatically based on % of target achieved.</p>
+        <p className="text-xs text-ew-muted mt-1">Each team member submits a weekly self-assessment and metrics update.</p>
       </div>
 
       {/* Date range filter */}
@@ -66,16 +67,8 @@ export default function SprintDashboard() {
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
         {MEMBERS.map(member => {
           const latest = getLatest(member);
-          let answers = {};
-          if (latest) { try { answers = JSON.parse(latest.answers || '{}'); } catch {} }
-
-          const kpi1Val = latest?.kpi1Value ?? null;
-          const kpi2Val = latest?.kpi2Value ?? null;
-          const rag1 = kpi1Val != null ? ragColor(kpi1Val, member.kpi1.target) : null;
-          const rag2 = kpi2Val != null ? ragColor(kpi2Val, member.kpi2.target) : null;
-          const overallRag = !rag1 && !rag2 ? null : ['red', 'amber', 'green'].find(c => [rag1, rag2].includes(c));
-
           const isThisWeek = latest?.weekStart === weekStart;
+          const srCfg = latest?.selfRating ? SELF_RATING_CONFIG[latest.selfRating] : null;
 
           return (
             <button
@@ -88,9 +81,9 @@ export default function SprintDashboard() {
                   <p className="font-bold text-navy text-sm">{member.name}</p>
                   <p className="text-xs text-ew-muted">{member.role}</p>
                 </div>
-                {overallRag ? (
-                  <span className={`flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-full ${RAG_STYLES[overallRag].bg} ${RAG_STYLES[overallRag].text}`}>
-                    <RagDot color={overallRag} /> {RAG_STYLES[overallRag].label}
+                {srCfg ? (
+                  <span className={`flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-full ${srCfg.bg} ${srCfg.color}`}>
+                    {srCfg.emoji} {srCfg.label}
                   </span>
                 ) : (
                   <span className="text-xs text-ew-muted italic">No data</span>
@@ -101,19 +94,15 @@ export default function SprintDashboard() {
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
                     <span className="text-xs text-ew-muted">{member.kpi1.label}</span>
-                    <div className="flex items-center gap-1.5">
-                      {rag1 && <RagDot color={rag1} />}
-                      <span className="text-sm font-semibold text-navy">{formatKpiValue(kpi1Val, member.kpi1)}</span>
-                      <span className="text-xs text-ew-muted">/ {formatKpiValue(member.kpi1.target, member.kpi1)}</span>
-                    </div>
+                    <span className="text-sm font-semibold text-navy">{formatKpiValue(latest.kpi1Value, member.kpi1)}
+                      <span className="text-xs font-normal text-ew-muted ml-1">/ {formatKpiValue(member.kpi1.target, member.kpi1)}</span>
+                    </span>
                   </div>
                   <div className="flex items-center justify-between">
                     <span className="text-xs text-ew-muted">{member.kpi2.label}</span>
-                    <div className="flex items-center gap-1.5">
-                      {rag2 && <RagDot color={rag2} />}
-                      <span className="text-sm font-semibold text-navy">{formatKpiValue(kpi2Val, member.kpi2)}</span>
-                      <span className="text-xs text-ew-muted">/ {formatKpiValue(member.kpi2.target, member.kpi2)}</span>
-                    </div>
+                    <span className="text-sm font-semibold text-navy">{formatKpiValue(latest.kpi2Value, member.kpi2)}
+                      <span className="text-xs font-normal text-ew-muted ml-1">/ {formatKpiValue(member.kpi2.target, member.kpi2)}</span>
+                    </span>
                   </div>
                   <p className={`text-xs mt-2 ${isThisWeek ? 'text-green-600 font-medium' : 'text-ew-muted'}`}>
                     {isThisWeek ? '✓ Submitted this week' : `Last: ${latest.weekStart}`}

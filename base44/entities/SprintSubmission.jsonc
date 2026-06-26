@@ -18,6 +18,19 @@
     },
     "kpi2Value": {
       "type": "number"
+    },
+    "selfRating": {
+      "type": "string",
+      "enum": [
+        "on_track",
+        "at_risk",
+        "off_track"
+      ],
+      "description": "Self-assessed status for the week"
+    },
+    "selfRatingReason": {
+      "type": "string",
+      "description": "Required reason if selfRating is at_risk or off_track"
     }
   },
   "required": [
