@@ -42,7 +42,15 @@
     },
     "transcriptLink": {
       "type": "string",
-      "description": "Optional URL link to a meeting transcript (Fireflies, Otter, Google Doc, etc.)"
+      "description": "Optional URL link to a meeting transcript"
+    },
+    "transcriptFileUrl": {
+      "type": "string",
+      "description": "Optional uploaded transcript file URL"
+    },
+    "transcriptFileName": {
+      "type": "string",
+      "description": "Original filename of the uploaded transcript"
     },
     "estimatedMinutes": {
       "type": "number",

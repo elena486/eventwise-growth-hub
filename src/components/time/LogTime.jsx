@@ -104,7 +104,7 @@ export default function LogTime({ onLogged }) {
   const [menuOpenId, setMenuOpenId] = useState(null);
 
   // ── Today view toggle ──
-  const [todayView, setTodayView] = useState('list');
+  const [todayView, setTodayView] = useState('calendar');
 
   // Resolve user & clients
   useEffect(() => {
@@ -697,7 +697,7 @@ export default function LogTime({ onLogged }) {
           <div className="flex items-center gap-3">
             <div className="w-1 h-6 bg-[#8403C5] rounded-full" />
             <h2 className="text-[18px] font-bold text-[#242450]">Today</h2>
-            <span className="px-3 py-1 text-xs font-bold bg-[#8403C5] text-white rounded-full">{formatDuration(todayTotal)}</span>
+            {todayTotal > 0 && <span className="px-3 py-1 text-xs font-bold bg-[#8403C5] text-white rounded-full">{formatDuration(todayTotal)}</span>}
           </div>
           <div className="flex border-2 border-[#EBEBF5] rounded-lg overflow-hidden bg-white">
             {[{ id: 'list', icon: List, label: 'List' }, { id: 'calendar', icon: Calendar, label: 'Calendar' }].map(v => (

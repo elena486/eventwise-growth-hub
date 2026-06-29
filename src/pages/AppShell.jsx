@@ -117,6 +117,7 @@ export default function AppShell() {
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchFocus, setSearchFocus] = useState(null);
   const [passwordModalOpen, setPasswordModalOpen] = useState(false);
+  const [logTimeTrigger, setLogTimeTrigger] = useState(0);
 
   const LAST_READ_KEY = 'changelog_last_read';
 
@@ -408,6 +409,14 @@ export default function AppShell() {
         {/* Right: user + utilities */}
         <div className="flex items-center gap-2 shrink-0 ml-4">
           <NavTimer onStopAndLog={() => setSearchParams({ tab: 'time-log' })} />
+          <button
+            onClick={() => setLogTimeTrigger(n => n + 1)}
+            className="flex items-center gap-1.5 px-2 py-1.5 rounded-lg text-[#8B8FA8] hover:text-[#C4C6D4] hover:bg-white/5 transition-all"
+            title="Log Time"
+          >
+            <Clock className="w-4 h-4" />
+            <span className="hidden sm:inline text-xs font-medium">Log Time</span>
+          </button>
           <NotificationBell
             unreadCount={unreadCount}
             entries={changelogEntries}
@@ -613,7 +622,7 @@ export default function AppShell() {
       )}
 
       {/* Log Time Sidebar — persistent quick-access from any tab */}
-      <LogTimeSidebar />
+      <LogTimeSidebar triggerOpen={logTimeTrigger} onTriggerConsumed={() => setLogTimeTrigger(0)} />
 
       {/* Password modal for Hub Insights */}
       {passwordModalOpen && (

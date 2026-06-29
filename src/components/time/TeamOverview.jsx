@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { base44 } from '@/api/base44Client';
 import { format, parseISO, isWithinInterval, startOfWeek, endOfWeek, startOfMonth, endOfMonth, subMonths, addDays, isWeekend } from 'date-fns';
-import { Download, Filter, ChevronDown, ChevronRight } from 'lucide-react';
+import { Download, Filter, ChevronDown, ChevronRight, Clock, Users, Hash, Building2 } from 'lucide-react';
 import { CATEGORY_COLORS, CATEGORY_LABELS } from './categoryColors';
 
 const TEAM_MEMBERS = ['Chris', 'Elena', 'George', 'Martinique', 'Sreeja', 'Ramesh'];
@@ -322,8 +322,37 @@ export default function TeamOverview({ refresh }) {
     return <div className="flex items-center justify-center h-48"><div className="w-6 h-6 border-2 border-[#8403C5]/20 border-t-[#8403C5] rounded-full animate-spin" /></div>;
   }
 
+  // Stat card data
+  const today = new Date();
+  const todayStr = format(today, 'yyyy-MM-dd');
+  const todayTotal = entries.filter(e => e.date === todayStr).reduce((s, e) => s + e.durationMinutes, 0);
+  const weekStart = startOfWeek(today, { weekStartsOn: 1 });
+  const weekEnd = endOfWeek(today, { weekStartsOn: 1 });
+  const weekTotal = entries.filter(e => { try { const d = parseISO(e.date); return isWithinInterval(d, { start: weekStart, end: weekEnd }); } catch { return false; } }).reduce((s, e) => s + e.durationMinutes, 0);
+  const activeClients = new Set(filtered.filter(e => e.clientId).map(e => e.clientId)).size;
+
   return (
     <div className="pt-6 space-y-8">
+      {/* Top stat cards */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        {[
+          { icon: Clock, label: 'Today (team)', value: fmtHours(todayTotal), color: '#8403C5' },
+          { icon: Clock, label: 'This week (team)', value: fmtHours(weekTotal), color: '#1D9E75' },
+          { icon: Hash, label: 'Entries this period', value: filtered.length, color: '#5777AB' },
+          { icon: Building2, label: 'Active clients', value: activeClients, color: '#E8A020' },
+        ].map((s, i) => (
+          <div key={i} className="bg-white border border-[#EBEBF5] rounded-xl px-4 py-3.5 flex items-center gap-3">
+            <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0" style={{ backgroundColor: `${s.color}15` }}>
+              <s.icon className="w-4 h-4" style={{ color: s.color }} />
+            </div>
+            <div className="min-w-0">
+              <p className="text-[10px] font-semibold text-[#9CA3AF] uppercase tracking-[0.06em] truncate">{s.label}</p>
+              <p className="text-xl font-bold text-[#242450]">{s.value}</p>
+            </div>
+          </div>
+        ))}
+      </div>
+
       {/* Toolbar */}
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div className="flex items-center gap-1.5 flex-wrap">

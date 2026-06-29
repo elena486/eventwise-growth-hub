@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { base44 } from '@/api/base44Client';
 import { format } from 'date-fns';
-import { X, Play, Square, Pause, Link, Clock } from 'lucide-react';
+import { X, Play, Square, Pause, Clock } from 'lucide-react';
+import TranscriptField from './TranscriptField';
 import TaskPresetSelect from './TaskPresetSelect';
 import StopTimerModal from './StopTimerModal';
 import { CATEGORY_LABELS } from './categoryColors';
@@ -56,8 +57,12 @@ async function writeClientActivityLog({ clientId, clientName, teamMember, catego
   } catch {}
 }
 
-export default function LogTimeSidebar() {
+export default function LogTimeSidebar({ triggerOpen, onTriggerConsumed }) {
   const [open, setOpen] = useState(false);
+
+  useEffect(() => {
+    if (triggerOpen) { setOpen(true); onTriggerConsumed?.(); }
+  }, [triggerOpen]);
 
   // Form fields — persist in state so they survive close/reopen
   const [teamMember, setTeamMember] = useState('');
@@ -69,6 +74,8 @@ export default function LogTimeSidebar() {
   const [mins, setMins] = useState('0');
   const [notes, setNotes] = useState('');
   const [transcriptLink, setTranscriptLink] = useState('');
+  const [transcriptFileUrl, setTranscriptFileUrl] = useState('');
+  const [transcriptFileName, setTranscriptFileName] = useState('');
   const [clients, setClients] = useState([]);
   const [logging, setLogging] = useState(false);
   const [logged, setLogged] = useState(false);
@@ -188,7 +195,7 @@ export default function LogTimeSidebar() {
         category: cat, projectTask: task, ...(cId ? { clientId: cId, clientName: cName } : {}),
       }).catch(() => {});
     }
-    setModalData({ mode: 'stop', category: cat, clientId: cId, clientName: cName, projectTask: task, durationMs: totalActiveMs, durationMinutes: totalMin, timerId: activeTimerId, date: format(new Date(), 'yyyy-MM-dd'), notes: '' });
+    setModalData({ mode: 'stop', category: cat, clientId: cId, clientName: cName, projectTask: task, durationMs: totalActiveMs, durationMinutes: totalMin, timerId: activeTimerId, date: format(new Date(), 'yyyy-MM-dd'), notes: notes || '', transcriptLink: transcriptLink || '', transcriptFileUrl: transcriptFileUrl || '', transcriptFileName: transcriptFileName || '' });
     setModalOpen(true);
     setTimerStatus('idle');
     setActiveTimerRecord(null);
@@ -227,12 +234,14 @@ export default function LogTimeSidebar() {
         durationMinutes: totalMin,
         notes: notes.trim() || undefined,
         transcriptLink: transcriptLink.trim() || undefined,
+        transcriptFileUrl: transcriptFileUrl || undefined,
+        transcriptFileName: transcriptFileName || undefined,
         ...(clientId ? { clientId, clientName } : {}),
       });
       await writeClientActivityLog({ clientId, clientName, teamMember, category: category || 'Other', projectTask: projectTask.trim(), durationMinutes: totalMin, notes: notes.trim(), transcriptLink: transcriptLink.trim() });
       logActivity({ teamMember, actionType: 'Logged a time entry via sidebar', section: 'Time & Capacity', recordName: projectTask.trim(), details: `${category || 'Other'} — ${formatDuration(totalMin)}` });
       // Reset form after log
-      setProjectTask(''); setHours('0'); setMins('0'); setNotes(''); setTranscriptLink(''); setCategory(''); setClientId(''); setClientName('');
+      setProjectTask(''); setHours('0'); setMins('0'); setNotes(''); setTranscriptLink(''); setTranscriptFileUrl(''); setTranscriptFileName(''); setCategory(''); setClientId(''); setClientName('');
       setLogged(true);
       setTimeout(() => setLogged(false), 2000);
     } catch {}
@@ -243,18 +252,6 @@ export default function LogTimeSidebar() {
 
   return (
     <>
-      {/* Tab handle */}
-      <div
-        onClick={() => setOpen(o => !o)}
-        className="fixed right-0 top-1/2 -translate-y-1/2 z-50 cursor-pointer"
-        title="Log Time"
-      >
-        <div className={`flex flex-col items-center justify-center gap-1.5 w-8 py-5 rounded-l-xl transition-all duration-200 ${open ? 'bg-[#6B02A0]' : 'bg-[#8403C5] hover:bg-[#6B02A0]'} shadow-lg`}>
-          <Clock className="w-4 h-4 text-white" />
-          {['L','o','g'].map((c, i) => <span key={i} className="text-white text-[10px] font-bold leading-none">{c}</span>)}
-        </div>
-      </div>
-
       {/* Backdrop */}
       {open && <div className="fixed inset-0 z-40 bg-black/20" onClick={() => setOpen(false)} />}
 
@@ -336,15 +333,14 @@ export default function LogTimeSidebar() {
               className="w-full px-3 py-2 text-sm border border-[#EBEBF5] rounded-lg bg-white resize-none focus:outline-none focus:border-[#8403C5]" />
           </div>
 
-          {/* Transcript link */}
-          <div>
-            <label className="block text-[10px] font-semibold text-[#5777AB] uppercase tracking-[0.06em] mb-1 flex items-center gap-1">
-              <Link className="w-3 h-3" /> Transcript link <span className="font-normal normal-case text-[#9CA3AF] ml-1">(optional)</span>
-            </label>
-            <input type="url" value={transcriptLink} onChange={e => setTranscriptLink(e.target.value)}
-              placeholder="Fireflies, Otter, Google Doc…"
-              className="w-full px-3 py-2 text-sm border border-[#EBEBF5] rounded-lg bg-white focus:outline-none focus:border-[#8403C5]" />
-          </div>
+          {/* Transcript */}
+          <TranscriptField
+            transcriptLink={transcriptLink}
+            onTranscriptLinkChange={setTranscriptLink}
+            transcriptFileUrl={transcriptFileUrl}
+            transcriptFileName={transcriptFileName}
+            onTranscriptFileChange={({ url, name }) => { setTranscriptFileUrl(url); setTranscriptFileName(name); }}
+          />
 
           {/* Divider */}
           <div className="border-t border-[#EBEBF5]" />
