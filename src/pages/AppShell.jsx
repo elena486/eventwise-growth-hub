@@ -414,7 +414,6 @@ export default function AppShell() {
             className="flex items-center gap-1.5 px-2 py-1.5 rounded-lg text-[#8B8FA8] hover:text-[#C4C6D4] hover:bg-white/5 transition-all"
             title="Log Time"
           >
-            <Clock className="w-4 h-4" />
             <span className="hidden sm:inline text-xs font-medium">Log Time</span>
           </button>
           <NotificationBell
