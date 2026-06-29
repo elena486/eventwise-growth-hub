@@ -322,24 +322,21 @@ export default function TeamOverview({ refresh }) {
     return <div className="flex items-center justify-center h-48"><div className="w-6 h-6 border-2 border-[#8403C5]/20 border-t-[#8403C5] rounded-full animate-spin" /></div>;
   }
 
-  // Stat card data
-  const today = new Date();
-  const todayStr = format(today, 'yyyy-MM-dd');
-  const todayTotal = entries.filter(e => e.date === todayStr).reduce((s, e) => s + e.durationMinutes, 0);
-  const weekStart = startOfWeek(today, { weekStartsOn: 1 });
-  const weekEnd = endOfWeek(today, { weekStartsOn: 1 });
-  const weekTotal = entries.filter(e => { try { const d = parseISO(e.date); return isWithinInterval(d, { start: weekStart, end: weekEnd }); } catch { return false; } }).reduce((s, e) => s + e.durationMinutes, 0);
+  // ── Dynamic stat cards — derived from filtered (respects period + member + category filters) ──
+  const filteredTotal = filtered.reduce((s, e) => s + e.durationMinutes, 0);
   const activeClients = new Set(filtered.filter(e => e.clientId).map(e => e.clientId)).size;
+  const periodLabel = period === 'this_week' ? 'This Week' : period === 'this_month' ? 'This Month' : period === 'last_month' ? 'Last Month' : 'This Period';
+  const memberLabel = memberFilter.length === 1 ? `${memberFilter[0]}'s` : 'Total';
 
   return (
     <div className="pt-6 space-y-8">
-      {/* Top stat cards */}
+      {/* Top stat cards — filter-aware */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         {[
-          { icon: Clock, label: 'Today (team)', value: fmtHours(todayTotal), color: '#8403C5' },
-          { icon: Clock, label: 'This week (team)', value: fmtHours(weekTotal), color: '#1D9E75' },
-          { icon: Hash, label: 'Entries this period', value: filtered.length, color: '#5777AB' },
-          { icon: Building2, label: 'Active clients', value: activeClients, color: '#E8A020' },
+          { icon: Clock, label: `${memberLabel} Hours (${periodLabel})`, value: fmtHours(filteredTotal), color: '#8403C5' },
+          { icon: Users, label: 'Members Active', value: new Set(filtered.map(e => e.teamMember)).size, color: '#1D9E75' },
+          { icon: Hash, label: 'Entries', value: filtered.length, color: '#5777AB' },
+          { icon: Building2, label: 'Active Clients', value: activeClients, color: '#E8A020' },
         ].map((s, i) => (
           <div key={i} className="bg-white border border-[#EBEBF5] rounded-xl px-4 py-3.5 flex items-center gap-3">
             <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0" style={{ backgroundColor: `${s.color}15` }}>
@@ -455,8 +452,8 @@ export default function TeamOverview({ refresh }) {
         ) : (
           <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
             {teamSummary.map(m => {
-              const teamTotal = teamSummary.reduce((s, x) => s + x.totalMin, 0);
-              const pct = teamTotal > 0 ? (m.totalMin / teamTotal) * 100 : 0;
+              const teamTotalMin = teamSummary.reduce((s, x) => s + x.totalMin, 0);
+              const pct = teamTotalMin > 0 ? Math.round((m.totalMin / teamTotalMin) * 100) : 0;
               const color = MEMBER_COLORS[m.name] || '#9CA3AF';
               return (
                 <div key={m.name} className={`bg-white border border-[#EBEBF5] rounded-xl p-4 ${m.totalMin === 0 ? 'bg-[#FFFBEB]' : ''}`}>
@@ -474,12 +471,12 @@ export default function TeamOverview({ refresh }) {
                     <>
                       <p className="text-2xl font-bold text-[#242450] mb-1">{fmtHours(m.totalMin)}</p>
                       <span className="chip chip-purple text-[10px]">{m.topCategory}</span>
-                      <p className="text-[11px] text-[#9CA3AF] mt-2">{m.count} {m.count === 1 ? 'entry' : 'entries'}</p>
+                      <div className="flex items-center gap-3 mt-2">
+                        <p className="text-[11px] text-[#9CA3AF]">{m.count} {m.count === 1 ? 'entry' : 'entries'}</p>
+                        {pct > 0 && <p className="text-[11px] text-[#9CA3AF]">{pct}% of team total</p>}
+                      </div>
                     </>
                   )}
-                  <div className="mt-3 bg-[#F6F6FB] rounded-full h-1.5 overflow-hidden">
-                    <div className="h-full rounded-full transition-all duration-500" style={{ width: `${Math.max(pct, m.totalMin > 0 ? 2 : 0)}%`, backgroundColor: color }} />
-                  </div>
                 </div>
               );
             })}
@@ -550,7 +547,6 @@ export default function TeamOverview({ refresh }) {
               byCat[p.category].totalMin += p.minutes;
               byCat[p.category].projects.push(p);
             });
-            const catMax = Math.max(...Object.values(byCat).map(c => c.totalMin), 1);
             return (
               <div className="space-y-3">
                 {Object.entries(byCat).map(([cat, group]) => {
@@ -571,25 +567,15 @@ export default function TeamOverview({ refresh }) {
                       </button>
                       {!isCollapsed && (
                         <div>
-                          {group.projects.map((p, i) => {
-                            const barW = catMax > 0 ? (p.minutes / catMax) * 60 : 0;
-                            return (
-                              <div key={i} className="flex items-center gap-3 px-4 py-2 border-t border-[#F2F2F4] hover:bg-[#F6F6FB] transition-colors">
-                                <div className="flex-1 min-w-0">
-                                  <p className="text-xs font-medium text-[#242450] truncate">{p.task}</p>
-                                  <div className="flex items-center gap-1.5 mt-0.5">
-                                    {p.clientName && <span className="text-[10px] text-[#5777AB] bg-[#EEF2F8] px-1.5 py-0.5 rounded">{p.clientName}</span>}
-                                  </div>
-                                </div>
-                                <div className="flex items-center gap-2 shrink-0">
-                                  <div className="w-16 bg-[#F6F6FB] rounded-full h-1.5 overflow-hidden">
-                                    <div className="h-full rounded-full transition-all duration-500" style={{ width: `${Math.max(barW, 2)}%`, backgroundColor: color }} />
-                                  </div>
-                                  <span className="text-xs font-semibold text-[#242450] w-12 text-right">{fmtHoursShort(p.minutes)}</span>
-                                </div>
+                          {group.projects.map((p, i) => (
+                            <div key={i} className="flex items-center gap-3 px-4 py-2.5 border-t border-[#F2F2F4] hover:bg-[#F6F6FB] transition-colors">
+                              <div className="flex-1 min-w-0">
+                                <p className="text-xs font-medium text-[#242450] truncate">{p.task}</p>
+                                {p.clientName && <span className="text-[10px] text-[#5777AB] bg-[#EEF2F8] px-1.5 py-0.5 rounded mt-0.5 inline-block">{p.clientName}</span>}
                               </div>
-                            );
-                          })}
+                              <span className="text-sm font-bold text-[#242450] shrink-0">{fmtHoursShort(p.minutes)}</span>
+                            </div>
+                          ))}
                         </div>
                       )}
                     </div>

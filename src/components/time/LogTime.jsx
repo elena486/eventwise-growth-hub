@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { base44 } from '@/api/base44Client';
 import { format, parseISO, startOfWeek, endOfWeek, isWithinInterval, isToday, isYesterday } from 'date-fns';
 import { Play, Square, Pause, Link, MoreVertical, RotateCw, Copy, Pencil, Trash2, CalendarDays, List, Calendar } from 'lucide-react';
+import TranscriptField from './TranscriptField';
 import TaskPresetSelect from './TaskPresetSelect';
 import StopTimerModal from './StopTimerModal';
 import { CATEGORY_COLORS, CATEGORY_LABELS } from './categoryColors';
@@ -77,12 +78,7 @@ export default function LogTime({ onLogged }) {
   const totalPausedMsRef = useRef(0);
   const userIdRef = useRef(null);
 
-  const [timerCategory, setTimerCategory] = useState('');
-  const [timerClientId, setTimerClientId] = useState('');
-  const [timerClientName, setTimerClientName] = useState('');
-  const [timerProject, setTimerProject] = useState('');
-
-  // ── Quick entry bar ──
+  // ── Shared entry bar state (used for both quick log AND timer) ──
   const [quickDesc, setQuickDesc] = useState('');
   const [quickCat, setQuickCat] = useState('');
   const [quickClientId, setQuickClientId] = useState('');
@@ -90,6 +86,8 @@ export default function LogTime({ onLogged }) {
   const [quickH, setQuickH] = useState('0');
   const [quickM, setQuickM] = useState('0');
   const [quickTranscriptLink, setQuickTranscriptLink] = useState('');
+  const [quickTranscriptFileUrl, setQuickTranscriptFileUrl] = useState('');
+  const [quickTranscriptFileName, setQuickTranscriptFileName] = useState('');
 
   // ── Stop/edit modal ──
   const [modalOpen, setModalOpen] = useState(false);
@@ -136,10 +134,10 @@ export default function LogTime({ onLogged }) {
         const record = all[0];
         setActiveTimerId(record.id);
         setActiveTimerRecord(record);
-        setTimerCategory(record.category === '(Untitled session)' ? '' : record.category || '');
-        setTimerClientId(record.clientId || '');
-        setTimerClientName(record.clientName || '');
-        setTimerProject(record.projectTask === '(Untitled session)' ? '' : record.projectTask || '');
+        setQuickCat(record.category === '(Untitled session)' ? '' : record.category || '');
+        setQuickClientId(record.clientId || '');
+        setQuickClientName(record.clientName || '');
+        setQuickDesc(record.projectTask === '(Untitled session)' ? '' : record.projectTask || '');
 
         if (record.timerStartedAt) {
           const startMs = new Date(record.timerStartedAt).getTime();
@@ -274,20 +272,20 @@ export default function LogTime({ onLogged }) {
   const todayTotal = todayEntries.reduce((s, e) => s + (e.durationMinutes || 0), 0);
   const weekTotal = weekEntries.reduce((s, e) => s + (e.durationMinutes || 0), 0);
 
-  // ── Timer: Update DB as fields change ──
+  // ── Timer: Update DB as fields change (shared state) ──
   useEffect(() => {
     if (!activeTimerId || timerStatus === 'idle') return;
     const debounce = setTimeout(async () => {
       try {
         await base44.entities.TimeEntry.update(activeTimerId, {
-          category: timerCategory || '',
-          projectTask: timerProject.trim() || '(Untitled session)',
-          ...(timerClientId ? { clientId: timerClientId, clientName: timerClientName } : { clientId: '', clientName: '' }),
+          category: quickCat || '',
+          projectTask: quickDesc.trim() || '(Untitled session)',
+          ...(quickClientId ? { clientId: quickClientId, clientName: quickClientName } : { clientId: '', clientName: '' }),
         });
       } catch {}
     }, 600);
     return () => clearTimeout(debounce);
-  }, [timerCategory, timerClientId, timerProject]);
+  }, [quickCat, quickClientId, quickDesc]);
 
   // ── Timer: Start ──
   const handleStartTimer = async () => {
@@ -301,13 +299,13 @@ export default function LogTime({ onLogged }) {
       const record = await base44.entities.TimeEntry.create({
         date: format(new Date(), 'yyyy-MM-dd'),
         teamMember: firstName,
-        category: timerCategory || '',
-        projectTask: timerProject.trim() || '(Untitled session)',
+        category: quickCat || '',
+        projectTask: quickDesc.trim() || '(Untitled session)',
         durationMinutes: 0,
         timerStatus: 'running',
         timerStartedAt: now,
         timerPauseIntervals: '[]',
-        ...(timerClientId ? { clientId: timerClientId, clientName: timerClientName } : {}),
+        ...(quickClientId ? { clientId: quickClientId, clientName: quickClientName } : {}),
       });
 
       setActiveTimerRecord(record);
@@ -322,8 +320,8 @@ export default function LogTime({ onLogged }) {
         setElapsed(Date.now() - startTimeRef.current - totalPausedMsRef.current);
       }, 500);
 
-      saveTimerToLS(me.id, { startedAt: now, category: timerCategory, projectDescription: timerProject.trim() || '(Untitled session)', clientId: timerClientId, clientName: timerClientName, status: 'running', totalPausedMs: 0, pauseIntervals: [], recordId: record.id });
-      logActivity({ teamMember: firstName, actionType: 'Started a timer', section: 'Time & Capacity', recordName: timerProject.trim() || '(Untitled session)' });
+      saveTimerToLS(me.id, { startedAt: now, category: quickCat, projectDescription: quickDesc.trim() || '(Untitled session)', clientId: quickClientId, clientName: quickClientName, status: 'running', totalPausedMs: 0, pauseIntervals: [], recordId: record.id });
+      logActivity({ teamMember: firstName, actionType: 'Started a timer', section: 'Time & Capacity', recordName: quickDesc.trim() || '(Untitled session)' });
     } catch {}
   };
 
@@ -377,20 +375,21 @@ export default function LogTime({ onLogged }) {
 
     const totalActiveMs = Date.now() - startTimeRef.current - totalPausedMsRef.current;
     const totalMin = Math.max(1, Math.round(totalActiveMs / 60000));
-    const cat = activeTimerRecord?.category || timerCategory || '';
-    const task = activeTimerRecord?.projectTask === '(Untitled session)' ? timerProject : activeTimerRecord?.projectTask || timerProject || '';
-    const cId = activeTimerRecord?.clientId || timerClientId || '';
-    const cName = activeTimerRecord?.clientName || timerClientName || '';
+    // Use the live shared state fields — these are the single source of truth
+    const cat = quickCat || '';
+    const task = quickDesc.trim() || '';
+    const cId = quickClientId || '';
+    const cName = quickClientName || '';
 
     if (activeTimerId) {
       await base44.entities.TimeEntry.update(activeTimerId, {
         timerStatus: 'stopped', timerStoppedAt: new Date().toISOString(), durationMinutes: totalMin,
-        category: cat, projectTask: task,
+        category: cat, projectTask: task || '(Untitled session)',
         ...(cId ? { clientId: cId, clientName: cName } : {}),
       }).catch(() => {});
     }
 
-    setModalData({ mode: 'stop', category: cat, clientId: cId, clientName: cName, projectTask: task, durationMs: totalActiveMs, durationMinutes: totalMin, timerId: activeTimerId, date: format(new Date(), 'yyyy-MM-dd'), billable: false, notes: '' });
+    setModalData({ mode: 'stop', category: cat, clientId: cId, clientName: cName, projectTask: task, durationMs: totalActiveMs, durationMinutes: totalMin, timerId: activeTimerId, date: format(new Date(), 'yyyy-MM-dd'), notes: '', transcriptLink: quickTranscriptLink, transcriptFileUrl: quickTranscriptFileUrl, transcriptFileName: quickTranscriptFileName });
     setModalOpen(true);
 
     setTimerStatus('idle');
@@ -435,10 +434,12 @@ export default function LogTime({ onLogged }) {
         projectTask: quickDesc.trim(),
         durationMinutes: totalMin,
         transcriptLink: quickTranscriptLink.trim() || undefined,
+        transcriptFileUrl: quickTranscriptFileUrl || undefined,
+        transcriptFileName: quickTranscriptFileName || undefined,
         ...(quickClientId ? { clientId: quickClientId, clientName: quickClientName } : {}),
       });
       await writeClientActivityLog({ clientId: quickClientId, clientName: quickClientName, teamMember, category: quickCat || 'Other', projectTask: quickDesc.trim(), durationMinutes: totalMin, notes: '', transcriptLink: quickTranscriptLink.trim() });
-      setQuickDesc(''); setQuickH('0'); setQuickM('0'); setQuickTranscriptLink('');
+      setQuickDesc(''); setQuickH('0'); setQuickM('0'); setQuickTranscriptLink(''); setQuickTranscriptFileUrl(''); setQuickTranscriptFileName('');
       loadEntries();
       onLogged?.();
       logActivity({ teamMember, actionType: 'Logged a time entry', section: 'Time & Capacity', recordName: quickDesc.trim(), details: `${quickCat || 'Other'} — ${formatDuration(totalMin)}` });
@@ -588,7 +589,7 @@ export default function LogTime({ onLogged }) {
           {/* Category */}
           <div className="shrink-0">
             <label className="block text-[10px] font-semibold text-[#242450] uppercase tracking-[0.06em] mb-1">Category</label>
-            <select value={quickCat} onChange={e => { setQuickCat(e.target.value); setQuickDesc(''); }}
+            <select value={quickCat} onChange={e => { setQuickCat(e.target.value); if (timerStatus === 'idle') setQuickDesc(''); }}
               className="px-3 py-2 text-sm border border-[#E2E8F0] rounded-lg bg-[#F8FAFC] text-[#242450] w-[180px] focus:outline-none focus:border-[#8403C5] focus:ring-2 focus:ring-[#8403C5]/10 transition-all">
               <option value="">Select…</option>
               {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
@@ -675,17 +676,14 @@ export default function LogTime({ onLogged }) {
             </div>
           </div>
         </div>
-        {/* Transcript link */}
-        <div className="flex items-center gap-2">
-          <Link className="w-3.5 h-3.5 text-[#9CA3AF] shrink-0" />
-          <input
-            type="url"
-            value={quickTranscriptLink}
-            onChange={e => setQuickTranscriptLink(e.target.value)}
-            placeholder="Transcript link (optional — Fireflies, Otter, Google Doc…)"
-            className="flex-1 px-3 py-1.5 text-sm border border-[#E2E8F0] rounded-lg bg-[#F8FAFC] focus:outline-none focus:border-[#8403C5] focus:ring-2 focus:ring-[#8403C5]/10 transition-all"
-          />
-        </div>
+        {/* Transcript */}
+        <TranscriptField
+          transcriptLink={quickTranscriptLink}
+          onTranscriptLinkChange={setQuickTranscriptLink}
+          transcriptFileUrl={quickTranscriptFileUrl}
+          transcriptFileName={quickTranscriptFileName}
+          onTranscriptFileChange={({ url, name }) => { setQuickTranscriptFileUrl(url); setQuickTranscriptFileName(name); }}
+        />
         </div>
       </div>
 
