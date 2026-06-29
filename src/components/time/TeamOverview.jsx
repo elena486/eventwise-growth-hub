@@ -3,6 +3,7 @@ import { base44 } from '@/api/base44Client';
 import { format, parseISO, isWithinInterval, startOfWeek, endOfWeek, startOfMonth, endOfMonth, subMonths, addDays, isWeekend } from 'date-fns';
 import { Download, Filter, ChevronDown, ChevronRight, Clock, Users, Hash, Building2 } from 'lucide-react';
 import { CATEGORY_COLORS, CATEGORY_LABELS } from './categoryColors';
+import MemberDetailModal from './MemberDetailModal';
 
 const TEAM_MEMBERS = ['Chris', 'Elena', 'George', 'Martinique', 'Sreeja', 'Ramesh'];
 const CATEGORIES = [
@@ -53,6 +54,7 @@ export default function TeamOverview({ refresh }) {
   const [filterOpen, setFilterOpen] = useState(false);
   const [showUnlinkedOnly, setShowUnlinkedOnly] = useState(false);
   const [collapsedCategories, setCollapsedCategories] = useState({});
+  const [memberModal, setMemberModal] = useState(null);
 
   const load = async () => {
     setLoading(true);
@@ -456,7 +458,8 @@ export default function TeamOverview({ refresh }) {
               const pct = teamTotalMin > 0 ? Math.round((m.totalMin / teamTotalMin) * 100) : 0;
               const color = MEMBER_COLORS[m.name] || '#9CA3AF';
               return (
-                <div key={m.name} className={`bg-white border border-[#EBEBF5] rounded-xl p-4 ${m.totalMin === 0 ? 'bg-[#FFFBEB]' : ''}`}>
+                <div key={m.name} onClick={() => m.totalMin > 0 && setMemberModal(m.name)}
+                  className={`bg-white border border-[#EBEBF5] rounded-xl p-4 ${m.totalMin === 0 ? 'bg-[#FFFBEB]' : 'cursor-pointer hover:border-[#D8D8EE] hover:shadow-[0_2px_8px_rgba(0,0,0,0.06)]'} transition-all`}>
                   <div className="flex items-center gap-3 mb-3">
                     <div className="w-10 h-10 rounded-full flex items-center justify-center text-white text-sm font-bold shrink-0" style={{ backgroundColor: color }}>
                       {m.name.charAt(0)}
@@ -501,18 +504,16 @@ export default function TeamOverview({ refresh }) {
                   const color = BAR_COLORS[c.category] || '#9CA3AF';
                   const teamTotalMin = filtered.reduce((s, e) => s + e.durationMinutes, 0);
                   const pctOfTotal = teamTotalMin > 0 ? Math.round((c.minutes / teamTotalMin) * 100) : 0;
-                  const maxMinutes = Math.max(...categoryBreakdown.map(x => x.minutes), 1);
-                  const barWidth = (c.minutes / maxMinutes) * 80;
                   return (
                     <div key={c.category} className="flex items-center gap-3">
                       <span className="text-xs font-medium text-[#242450] w-44 shrink-0 truncate">{c.category}</span>
                       <div className="flex-1 flex items-center gap-2">
                         <div className="flex-1 bg-[#F6F6FB] rounded-full h-6 overflow-hidden">
-                          <div className="h-full rounded-full flex items-center px-2.5 transition-all duration-500" style={{ width: `${Math.max(barWidth, 3)}%`, backgroundColor: color }}>
-                            <span className="text-[10px] font-bold text-white whitespace-nowrap">{fmtHoursShort(c.minutes)}</span>
+                          <div className="h-full rounded-full flex items-center px-2.5 transition-all duration-500" style={{ width: `${Math.max(pctOfTotal, 2)}%`, backgroundColor: color }}>
+                            {pctOfTotal >= 8 && <span className="text-[10px] font-bold text-white whitespace-nowrap">{fmtHoursShort(c.minutes)}</span>}
                           </div>
                         </div>
-                        <span className="text-[11px] font-medium text-[#9CA3AF] shrink-0 w-9 text-right">{pctOfTotal}%</span>
+                        <span className="text-[11px] font-medium text-[#242450] shrink-0 w-24 text-right">{fmtHoursShort(c.minutes)} · {pctOfTotal}%</span>
                       </div>
                     </div>
                   );
@@ -624,6 +625,16 @@ export default function TeamOverview({ refresh }) {
       )}
 
       {filterOpen && <div className="fixed inset-0 z-40" onClick={() => setFilterOpen(false)} />}
+
+      {/* Member detail modal (FIX 7) */}
+      {memberModal && (
+        <MemberDetailModal
+          member={memberModal}
+          entries={filtered}
+          periodLabel={period === 'this_week' ? 'This Week' : period === 'this_month' ? 'This Month' : period === 'last_month' ? 'Last Month' : 'Selected Period'}
+          onClose={() => setMemberModal(null)}
+        />
+      )}
     </div>
   );
 }

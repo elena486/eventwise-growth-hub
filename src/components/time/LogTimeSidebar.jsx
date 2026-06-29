@@ -4,31 +4,23 @@ import { format } from 'date-fns';
 import { X, Play, Square, Pause, Clock } from 'lucide-react';
 import TranscriptField from './TranscriptField';
 import TaskPresetSelect from './TaskPresetSelect';
-import StopTimerModal from './StopTimerModal';
 import { CATEGORY_LABELS } from './categoryColors';
 import { logActivity } from '@/lib/logActivity';
+import {
+  useSharedTimer, sharedTimerStart, sharedTimerPause, sharedTimerResume,
+  sharedTimerStop, sharedTimerCommit, sharedTimerBootstrap, sharedTimerUpdateMeta
+} from '@/hooks/useSharedTimer';
 
 const TEAM_MEMBERS = ['Chris', 'Elena', 'George', 'Martinique', 'Sreeja', 'Ramesh'];
 
-const LS_KEY_PREFIX = 'eventwise_timer_';
-function getTimerLSKey(userId) { return `${LS_KEY_PREFIX}${userId}`; }
-function saveTimerToLS(userId, data) { try { localStorage.setItem(getTimerLSKey(userId), JSON.stringify(data)); } catch {} }
-function clearTimerLS(userId) { try { localStorage.removeItem(getTimerLSKey(userId)); } catch {} }
-function getTimerFromLS(userId) {
-  try { const raw = localStorage.getItem(getTimerLSKey(userId)); return raw ? JSON.parse(raw) : null; } catch { return null; }
-}
-
 function formatTimer(ms) {
   const sec = Math.floor(ms / 1000);
-  const h = Math.floor(sec / 3600);
-  const m = Math.floor((sec % 3600) / 60);
-  const s = sec % 60;
+  const h = Math.floor(sec / 3600); const m = Math.floor((sec % 3600) / 60); const s = sec % 60;
   return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
 }
 
 function formatDuration(minutes) {
-  const h = Math.floor(minutes / 60);
-  const m = minutes % 60;
+  const h = Math.floor(minutes / 60); const m = minutes % 60;
   if (h === 0 && m === 0) return '0m';
   if (h === 0) return `${m}m`;
   if (m === 0) return `${h}h`;
@@ -40,31 +32,22 @@ async function writeClientActivityLog({ clientId, clientName, teamMember, catego
   try {
     const client = await base44.entities.Client.get(clientId);
     if (!client) return;
-    const currentLog = (() => { try { return JSON.parse(client.activityLog || '[]'); } catch { return []; } })();
+    const log = (() => { try { return JSON.parse(client.activityLog || '[]'); } catch { return []; } })();
     const durStr = formatDuration(durationMinutes);
-    currentLog.push({
-      date: new Date().toISOString(),
-      type: 'Time logged',
-      label: `Time logged: ${durStr} — ${category}`,
-      category,
-      duration: durStr,
-      description: projectTask,
-      teamMember,
-      notes: notes || '',
-      transcriptLink: transcriptLink || '',
-    });
-    await base44.entities.Client.update(clientId, { activityLog: JSON.stringify(currentLog) });
+    log.push({ date: new Date().toISOString(), type: 'Time logged', label: `Time logged: ${durStr} — ${category}`, category, duration: durStr, description: projectTask, teamMember, notes: notes || '', transcriptLink: transcriptLink || '' });
+    await base44.entities.Client.update(clientId, { activityLog: JSON.stringify(log) });
   } catch {}
 }
 
 export default function LogTimeSidebar({ triggerOpen, onTriggerConsumed }) {
   const [open, setOpen] = useState(false);
+  const timer = useSharedTimer();
 
   useEffect(() => {
     if (triggerOpen) { setOpen(true); onTriggerConsumed?.(); }
   }, [triggerOpen]);
 
-  // Form fields — persist in state so they survive close/reopen
+  // Local form fields — mirror shared timer meta when a timer is active
   const [teamMember, setTeamMember] = useState('');
   const [category, setCategory] = useState('');
   const [projectTask, setProjectTask] = useState('');
@@ -80,39 +63,49 @@ export default function LogTimeSidebar({ triggerOpen, onTriggerConsumed }) {
   const [logging, setLogging] = useState(false);
   const [logged, setLogged] = useState(false);
 
-  // Timer
-  const [timerStatus, setTimerStatus] = useState('idle');
-  const [elapsed, setElapsed] = useState(0);
-  const [activeTimerId, setActiveTimerId] = useState(null);
-  const [activeTimerRecord, setActiveTimerRecord] = useState(null);
-  const intervalRef = useRef(null);
-  const startTimeRef = useRef(null);
-  const pauseStartRef = useRef(null);
-  const totalPausedMsRef = useRef(0);
+  // Inline stop validation
+  const [stoppedEntry, setStoppedEntry] = useState(null);
+  const [saveError, setSaveError] = useState('');
+
   const userIdRef = useRef(null);
 
-  // Stop modal
-  const [modalOpen, setModalOpen] = useState(false);
-  const [modalData, setModalData] = useState(null);
-
-  // Load user + clients once
   useEffect(() => {
     base44.auth.me().then(me => {
       if (me) {
         userIdRef.current = me.id;
         const first = me.full_name?.split(' ')[0] || '';
-        if (TEAM_MEMBERS.includes(first)) setTeamMember(first);
+        if (TEAM_MEMBERS.includes(first)) {
+          setTeamMember(first);
+          sharedTimerBootstrap(first, me.id);
+        }
       }
     }).catch(() => {});
     base44.entities.Client.list().then(c => setClients(c)).catch(() => {});
   }, []);
 
-  // Sync timer DB fields when category/task/client change
+  // Sync from shared state when timer is active
+  const prevTimerIdRef = useRef(null);
   useEffect(() => {
-    if (!activeTimerId || timerStatus === 'idle') return;
+    if (timer.timerId && timer.timerId !== prevTimerIdRef.current) {
+      setCategory(timer.category || '');
+      setProjectTask(timer.projectTask || '');
+      setClientId(timer.clientId || '');
+      setClientName(timer.clientName || '');
+    }
+    prevTimerIdRef.current = timer.timerId;
+  }, [timer.timerId, timer.category, timer.projectTask]);
+
+  // Setters that also update shared state when timer is active
+  const setAndSyncCategory = (v) => { setCategory(v); setProjectTask(''); if (timer.timerId) sharedTimerUpdateMeta({ category: v }); };
+  const setAndSyncTask = (v) => { setProjectTask(v); if (timer.timerId) sharedTimerUpdateMeta({ projectTask: v }); };
+  const setAndSyncClient = (v, name) => { setClientId(v); setClientName(name); if (timer.timerId) sharedTimerUpdateMeta({ clientId: v, clientName: name }); };
+
+  // Debounced DB sync
+  useEffect(() => {
+    if (!timer.timerId || timer.status === 'idle') return;
     const t = setTimeout(async () => {
       try {
-        await base44.entities.TimeEntry.update(activeTimerId, {
+        await base44.entities.TimeEntry.update(timer.timerId, {
           category: category || '',
           projectTask: projectTask.trim() || '(Untitled session)',
           ...(clientId ? { clientId, clientName } : { clientId: '', clientName: '' }),
@@ -120,157 +113,97 @@ export default function LogTimeSidebar({ triggerOpen, onTriggerConsumed }) {
       } catch {}
     }, 600);
     return () => clearTimeout(t);
-  }, [category, clientId, projectTask]);
+  }, [category, projectTask, clientId, clientName, timer.timerId]);
 
   const handleStartTimer = async () => {
-    if (activeTimerId) return;
-    const now = new Date().toISOString();
-    const nowMs = new Date(now).getTime();
-    const record = await base44.entities.TimeEntry.create({
-      date: format(new Date(), 'yyyy-MM-dd'),
-      teamMember,
-      category: category || '',
-      projectTask: projectTask.trim() || '(Untitled session)',
-      durationMinutes: 0,
-      timerStatus: 'running',
-      timerStartedAt: now,
-      timerPauseIntervals: '[]',
-      ...(clientId ? { clientId, clientName } : {}),
-    });
-    setActiveTimerRecord(record);
-    setActiveTimerId(record.id);
-    setTimerStatus('running');
-    setElapsed(0);
-    totalPausedMsRef.current = 0;
-    pauseStartRef.current = null;
-    startTimeRef.current = nowMs;
-    intervalRef.current = setInterval(() => {
-      setElapsed(Date.now() - startTimeRef.current - totalPausedMsRef.current);
-    }, 500);
-    if (userIdRef.current) saveTimerToLS(userIdRef.current, { startedAt: now, status: 'running', totalPausedMs: 0, pauseIntervals: [], recordId: record.id });
-  };
-
-  const handlePauseTimer = async () => {
-    const pauseTime = new Date().toISOString();
-    pauseStartRef.current = new Date(pauseTime).getTime();
-    clearInterval(intervalRef.current);
-    setTimerStatus('paused');
-    if (activeTimerId) {
-      const record = await base44.entities.TimeEntry.get(activeTimerId).catch(() => null);
-      if (record) {
-        const intervals = JSON.parse(record.timerPauseIntervals || '[]');
-        intervals.push({ pausedAt: pauseTime, resumedAt: null });
-        await base44.entities.TimeEntry.update(activeTimerId, { timerStatus: 'paused', timerPauseIntervals: JSON.stringify(intervals) }).catch(() => {});
-      }
-    }
-  };
-
-  const handleResumeTimer = async () => {
-    const resumeMs = Date.now();
-    if (pauseStartRef.current) { totalPausedMsRef.current += resumeMs - pauseStartRef.current; pauseStartRef.current = null; }
-    setTimerStatus('running');
-    intervalRef.current = setInterval(() => { setElapsed(Date.now() - startTimeRef.current - totalPausedMsRef.current); }, 500);
-    if (activeTimerId) {
-      const record = await base44.entities.TimeEntry.get(activeTimerId).catch(() => null);
-      if (record) {
-        const intervals = JSON.parse(record.timerPauseIntervals || '[]');
-        if (intervals.length > 0 && !intervals[intervals.length - 1].resumedAt) intervals[intervals.length - 1].resumedAt = new Date().toISOString();
-        await base44.entities.TimeEntry.update(activeTimerId, { timerStatus: 'running', timerPauseIntervals: JSON.stringify(intervals) }).catch(() => {});
-      }
-    }
+    if (timer.timerId) return;
+    setStoppedEntry(null); setSaveError('');
+    await sharedTimerStart({ teamMember, category, projectTask, clientId, clientName, userId: userIdRef.current });
+    logActivity({ teamMember, actionType: 'Started a timer', section: 'Time & Capacity', recordName: projectTask.trim() || '(Untitled session)' });
   };
 
   const handleStopTimer = async () => {
-    clearInterval(intervalRef.current);
-    if (timerStatus === 'paused' && pauseStartRef.current) { totalPausedMsRef.current += Date.now() - pauseStartRef.current; pauseStartRef.current = null; }
-    const totalActiveMs = Date.now() - startTimeRef.current - totalPausedMsRef.current;
-    const totalMin = Math.max(1, Math.round(totalActiveMs / 60000));
-    const cat = activeTimerRecord?.category || category || '';
-    const task = (activeTimerRecord?.projectTask === '(Untitled session)' ? projectTask : activeTimerRecord?.projectTask || projectTask) || '';
-    const cId = activeTimerRecord?.clientId || clientId || '';
-    const cName = activeTimerRecord?.clientName || clientName || '';
-    if (activeTimerId) {
-      await base44.entities.TimeEntry.update(activeTimerId, {
-        timerStatus: 'stopped', timerStoppedAt: new Date().toISOString(), durationMinutes: totalMin,
-        category: cat, projectTask: task, ...(cId ? { clientId: cId, clientName: cName } : {}),
-      }).catch(() => {});
+    const result = await sharedTimerStop();
+    const cat = category;
+    const task = projectTask.trim();
+    if (!cat || !task) {
+      setStoppedEntry({ ...result, category: cat, projectTask: task });
+      setSaveError('Category and Task are required before saving.');
+      return;
     }
-    setModalData({ mode: 'stop', category: cat, clientId: cId, clientName: cName, projectTask: task, durationMs: totalActiveMs, durationMinutes: totalMin, timerId: activeTimerId, date: format(new Date(), 'yyyy-MM-dd'), notes: notes || '', transcriptLink: transcriptLink || '', transcriptFileUrl: transcriptFileUrl || '', transcriptFileName: transcriptFileName || '' });
-    setModalOpen(true);
-    setTimerStatus('idle');
-    setActiveTimerRecord(null);
-    totalPausedMsRef.current = 0;
-    pauseStartRef.current = null;
-    if (userIdRef.current) clearTimerLS(userIdRef.current);
+    await finalizeSave(result.timerId, result.durationMinutes, cat, task);
   };
 
-  const handleModalSave = async (formData) => {
-    if (modalData?.timerId) {
-      await base44.entities.TimeEntry.update(modalData.timerId, {
-        ...formData, timerStatus: 'logged', teamMember,
-        transcriptLink: formData.transcriptLink || '',
-        ...(formData.clientId ? {} : { clientId: '', clientName: '' }),
-      });
-      await writeClientActivityLog({ clientId: formData.clientId, clientName: formData.clientName, teamMember, category: formData.category, projectTask: formData.projectTask, durationMinutes: formData.durationMinutes, notes: formData.notes, transcriptLink: formData.transcriptLink });
-    }
-    setModalOpen(false);
-    setActiveTimerId(null);
-    if (userIdRef.current) clearTimerLS(userIdRef.current);
-    logActivity({ teamMember, actionType: 'Logged a time entry via sidebar', section: 'Time & Capacity', recordName: formData.projectTask || '' });
+  const finalizeSave = async (timerId, durationMinutes, cat, task) => {
+    await sharedTimerCommit(timerId, {
+      category: cat, projectTask: task, clientId, clientName,
+      date: format(new Date(), 'yyyy-MM-dd'), durationMinutes, notes: notes.trim(),
+      transcriptLink: transcriptLink.trim(), transcriptFileUrl, transcriptFileName,
+    }, teamMember);
+    await writeClientActivityLog({ clientId, clientName, teamMember, category: cat, projectTask: task, durationMinutes, notes: notes.trim(), transcriptLink: transcriptLink.trim() });
+    logActivity({ teamMember, actionType: 'Logged a time entry via sidebar', section: 'Time & Capacity', recordName: task });
+    setStoppedEntry(null); setSaveError('');
+    setCategory(''); setProjectTask(''); setClientId(''); setClientName(''); setNotes('');
+    setTranscriptLink(''); setTranscriptFileUrl(''); setTranscriptFileName('');
+    setLogged(true); setTimeout(() => setLogged(false), 2000);
+  };
+
+  const handleSaveStopped = async () => {
+    if (!stoppedEntry) return;
+    const cat = category;
+    const task = projectTask.trim();
+    if (!cat || !task) { setSaveError('Category and Task are required before saving.'); return; }
+    await finalizeSave(stoppedEntry.timerId, stoppedEntry.durationMinutes, cat, task);
   };
 
   const handleQuickLog = async () => {
-    const h = parseInt(hours) || 0;
-    const m = parseInt(mins) || 0;
+    const h = parseInt(hours) || 0; const m = parseInt(mins) || 0;
     const totalMin = h * 60 + m;
     if (!projectTask.trim() || totalMin <= 0) return;
     setLogging(true);
     try {
       await base44.entities.TimeEntry.create({
-        date: format(new Date(), 'yyyy-MM-dd'),
-        teamMember,
-        category: category || 'Other',
-        projectTask: projectTask.trim(),
-        durationMinutes: totalMin,
-        notes: notes.trim() || undefined,
-        transcriptLink: transcriptLink.trim() || undefined,
-        transcriptFileUrl: transcriptFileUrl || undefined,
-        transcriptFileName: transcriptFileName || undefined,
+        date: format(new Date(), 'yyyy-MM-dd'), teamMember, category: category || 'Other',
+        projectTask: projectTask.trim(), durationMinutes: totalMin, timerStatus: 'logged',
+        notes: notes.trim() || undefined, transcriptLink: transcriptLink.trim() || undefined,
+        transcriptFileUrl: transcriptFileUrl || undefined, transcriptFileName: transcriptFileName || undefined,
         ...(clientId ? { clientId, clientName } : {}),
       });
       await writeClientActivityLog({ clientId, clientName, teamMember, category: category || 'Other', projectTask: projectTask.trim(), durationMinutes: totalMin, notes: notes.trim(), transcriptLink: transcriptLink.trim() });
       logActivity({ teamMember, actionType: 'Logged a time entry via sidebar', section: 'Time & Capacity', recordName: projectTask.trim(), details: `${category || 'Other'} — ${formatDuration(totalMin)}` });
-      // Reset form after log
       setProjectTask(''); setHours('0'); setMins('0'); setNotes(''); setTranscriptLink(''); setTranscriptFileUrl(''); setTranscriptFileName(''); setCategory(''); setClientId(''); setClientName('');
-      setLogged(true);
-      setTimeout(() => setLogged(false), 2000);
+      setLogged(true); setTimeout(() => setLogged(false), 2000);
     } catch {}
     setLogging(false);
   };
 
   const isValid = projectTask.trim() && ((parseInt(hours) || 0) + (parseInt(mins) || 0)) > 0;
+  const isStopped = !!stoppedEntry;
+  const missingCat = isStopped && !category;
+  const missingTask = isStopped && !projectTask.trim();
 
   return (
     <>
-      {/* Backdrop */}
       {open && <div className="fixed inset-0 z-40 bg-black/20" onClick={() => setOpen(false)} />}
-
-      {/* Sidebar panel */}
       <div className={`fixed top-0 right-0 h-full w-[360px] bg-white border-l border-[#EBEBF5] z-50 flex flex-col transition-transform duration-300 ${open ? 'translate-x-0' : 'translate-x-full'}`}>
         {/* Header */}
         <div className="shrink-0 flex items-center justify-between px-5 py-4 border-b border-[#EBEBF5] bg-[#242450]">
           <div className="flex items-center gap-2">
             <Clock className="w-4 h-4 text-white/70" />
             <h2 className="text-sm font-bold text-white">Log Time</h2>
+            {timer.status !== 'idle' && (
+              <span className={`text-xs font-mono font-bold px-2 py-0.5 rounded-full ${timer.status === 'running' ? 'bg-[#E8A020]/20 text-[#E8A020]' : 'bg-white/10 text-white/60'}`}>
+                {formatTimer(timer.elapsed)}
+              </span>
+            )}
           </div>
-          <button onClick={() => setOpen(false)} className="p-1.5 rounded-lg hover:bg-white/10 transition-colors">
+          <button onClick={() => setOpen(false)} className="p-1.5 rounded-lg hover:bg-white/10">
             <X className="w-4 h-4 text-white/70" />
           </button>
         </div>
 
         {/* Form */}
         <div className="flex-1 overflow-y-auto px-5 py-4 space-y-4">
-
           {/* Team Member */}
           <div>
             <label className="block text-[10px] font-semibold text-[#5777AB] uppercase tracking-[0.06em] mb-1">Team member</label>
@@ -284,8 +217,8 @@ export default function LogTimeSidebar({ triggerOpen, onTriggerConsumed }) {
           {/* Category */}
           <div>
             <label className="block text-[10px] font-semibold text-[#5777AB] uppercase tracking-[0.06em] mb-1">Category</label>
-            <select value={category} onChange={e => { setCategory(e.target.value); setProjectTask(''); }}
-              className="w-full px-3 py-2 text-sm border border-[#EBEBF5] rounded-lg bg-white focus:outline-none focus:border-[#8403C5]">
+            <select value={category} onChange={e => setAndSyncCategory(e.target.value)}
+              className={`w-full px-3 py-2 text-sm border rounded-lg bg-white focus:outline-none focus:border-[#8403C5] ${missingCat ? 'border-[#DC2626]' : 'border-[#EBEBF5]'}`}>
               <option value="">Select…</option>
               {CATEGORY_LABELS.map(c => <option key={c} value={c}>{c}</option>)}
             </select>
@@ -297,34 +230,36 @@ export default function LogTimeSidebar({ triggerOpen, onTriggerConsumed }) {
             <TaskPresetSelect
               category={category}
               value={projectTask}
-              onChange={setProjectTask}
+              onChange={setAndSyncTask}
               placeholder="Select a task…"
-              className="w-full px-3 py-2 text-sm border border-[#EBEBF5] rounded-lg bg-white focus:outline-none focus:border-[#8403C5]"
+              className={`w-full px-3 py-2 text-sm border rounded-lg bg-white focus:outline-none focus:border-[#8403C5] ${missingTask ? 'border-[#DC2626]' : 'border-[#EBEBF5]'}`}
             />
           </div>
 
           {/* Client */}
           <div>
             <label className="block text-[10px] font-semibold text-[#5777AB] uppercase tracking-[0.06em] mb-1">Client <span className="font-normal normal-case text-[#9CA3AF]">(optional)</span></label>
-            <select value={clientId} onChange={e => { setClientId(e.target.value); const c = clients.find(cl => cl.id === e.target.value); setClientName(c?.name || ''); }}
+            <select value={clientId} onChange={e => { const c = clients.find(cl => cl.id === e.target.value); setAndSyncClient(e.target.value, c?.name || ''); }}
               className="w-full px-3 py-2 text-sm border border-[#EBEBF5] rounded-lg bg-white focus:outline-none focus:border-[#8403C5]">
               <option value="">None</option>
               {clients.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
             </select>
           </div>
 
-          {/* Duration */}
-          <div>
-            <label className="block text-[10px] font-semibold text-[#5777AB] uppercase tracking-[0.06em] mb-1">Duration</label>
-            <div className="flex items-center gap-2">
-              <input type="number" min="0" value={hours} onChange={e => setHours(e.target.value)}
-                className="w-16 px-2 py-2 text-sm text-center border border-[#EBEBF5] rounded-lg bg-white focus:outline-none focus:border-[#8403C5]" placeholder="0" />
-              <span className="text-xs text-[#5777AB] font-medium">h</span>
-              <input type="number" min="0" max="59" value={mins} onChange={e => setMins(e.target.value)}
-                className="w-16 px-2 py-2 text-sm text-center border border-[#EBEBF5] rounded-lg bg-white focus:outline-none focus:border-[#8403C5]" placeholder="0" />
-              <span className="text-xs text-[#5777AB] font-medium">m</span>
+          {/* Duration — only for manual log (not timer) */}
+          {timer.status === 'idle' && !isStopped && (
+            <div>
+              <label className="block text-[10px] font-semibold text-[#5777AB] uppercase tracking-[0.06em] mb-1">Duration</label>
+              <div className="flex items-center gap-2">
+                <input type="number" min="0" value={hours} onChange={e => setHours(e.target.value)}
+                  className="w-16 px-2 py-2 text-sm text-center border border-[#EBEBF5] rounded-lg bg-white focus:outline-none focus:border-[#8403C5]" placeholder="0" />
+                <span className="text-xs text-[#5777AB] font-medium">h</span>
+                <input type="number" min="0" max="59" value={mins} onChange={e => setMins(e.target.value)}
+                  className="w-16 px-2 py-2 text-sm text-center border border-[#EBEBF5] rounded-lg bg-white focus:outline-none focus:border-[#8403C5]" placeholder="0" />
+                <span className="text-xs text-[#5777AB] font-medium">m</span>
+              </div>
             </div>
-          </div>
+          )}
 
           {/* Notes */}
           <div>
@@ -348,43 +283,54 @@ export default function LogTimeSidebar({ triggerOpen, onTriggerConsumed }) {
           {/* Timer section */}
           <div>
             <p className="text-[10px] font-semibold text-[#5777AB] uppercase tracking-[0.06em] mb-2">Timer</p>
-            <div className="flex items-center gap-2">
-              {timerStatus === 'idle' ? (
-                <button onClick={handleStartTimer}
-                  className="flex items-center gap-2 px-4 py-2 text-sm font-semibold bg-[#242450] hover:bg-[#1A1A3A] text-white rounded-full transition-all">
-                  <Play className="w-3.5 h-3.5" fill="white" /> Start Timer
+            {isStopped ? (
+              <div className="space-y-2">
+                <p className="text-sm text-[#242450]">Timer stopped — <span className="font-bold">{formatDuration(stoppedEntry.durationMinutes)}</span> recorded.</p>
+                {saveError && <p className="text-xs font-semibold text-[#DC2626]">{saveError}</p>}
+                <button onClick={handleSaveStopped} disabled={!category || !projectTask.trim()}
+                  className="w-full py-2 text-sm font-semibold bg-[#1D9E75] hover:bg-[#17856A] text-white disabled:bg-[#D8D8EE] disabled:text-[#9CA3AF] rounded-lg transition-colors">
+                  Save Entry
                 </button>
-              ) : (
-                <>
-                  <button onClick={timerStatus === 'running' ? handlePauseTimer : handleResumeTimer}
-                    className={`flex items-center gap-1.5 px-3 py-2 text-sm font-bold rounded-full transition-all ${timerStatus === 'running' ? 'bg-[#FFFBEB] border-2 border-[#E8A020] text-[#A16207]' : 'border-2 border-[#EBEBF5] text-[#5777AB] hover:bg-[#F6F6FB]'}`}>
-                    {timerStatus === 'running' ? <Pause className="w-3 h-3" /> : <Play className="w-3 h-3" />}
-                    <span className="font-mono">{formatTimer(elapsed)}</span>
+              </div>
+            ) : (
+              <div className="flex items-center gap-2">
+                {timer.status === 'idle' ? (
+                  <button onClick={handleStartTimer}
+                    className="flex items-center gap-2 px-4 py-2 text-sm font-semibold bg-[#242450] hover:bg-[#1A1A3A] text-white rounded-full transition-all">
+                    <Play className="w-3.5 h-3.5" fill="white" /> Start Timer
                   </button>
-                  <button onClick={handleStopTimer}
-                    className="flex items-center gap-1 px-3 py-2 text-sm font-semibold border-2 border-[#FECACA] text-[#DC2626] hover:bg-[#FEF2F2] rounded-lg transition-all">
-                    <Square className="w-3.5 h-3.5" /> Stop
-                  </button>
-                </>
-              )}
-            </div>
+                ) : (
+                  <>
+                    <button onClick={timer.status === 'running' ? sharedTimerPause : sharedTimerResume}
+                      className={`flex items-center gap-1.5 px-3 py-2 text-sm font-bold rounded-full transition-all ${timer.status === 'running' ? 'bg-[#FFFBEB] border-2 border-[#E8A020] text-[#A16207]' : 'border-2 border-[#EBEBF5] text-[#5777AB] hover:bg-[#F6F6FB]'}`}>
+                      {timer.status === 'running' ? <Pause className="w-3 h-3" /> : <Play className="w-3 h-3" />}
+                      <span className="font-mono">{formatTimer(timer.elapsed)}</span>
+                    </button>
+                    <button onClick={handleStopTimer}
+                      className="flex items-center gap-1 px-3 py-2 text-sm font-semibold border-2 border-[#FECACA] text-[#DC2626] hover:bg-[#FEF2F2] rounded-lg transition-all">
+                      <Square className="w-3.5 h-3.5" /> Stop
+                    </button>
+                  </>
+                )}
+              </div>
+            )}
           </div>
         </div>
 
-        {/* Footer */}
-        <div className="shrink-0 px-5 py-4 border-t border-[#EBEBF5]">
-          {logged ? (
-            <div className="w-full py-2.5 text-sm font-semibold text-center text-[#1D9E75] bg-[#E8F7F2] rounded-lg">✓ Logged!</div>
-          ) : (
-            <button onClick={handleQuickLog} disabled={!isValid || logging}
-              className="w-full py-2.5 text-sm font-semibold bg-[#8403C5] hover:bg-[#6B02A0] disabled:bg-[#D8D8EE] disabled:text-[#9CA3AF] text-white rounded-lg transition-colors">
-              {logging ? 'Saving…' : 'Log Entry'}
-            </button>
-          )}
-        </div>
+        {/* Footer — only for manual log */}
+        {timer.status === 'idle' && !isStopped && (
+          <div className="shrink-0 px-5 py-4 border-t border-[#EBEBF5]">
+            {logged ? (
+              <div className="w-full py-2.5 text-sm font-semibold text-center text-[#1D9E75] bg-[#E8F7F2] rounded-lg">✓ Logged!</div>
+            ) : (
+              <button onClick={handleQuickLog} disabled={!isValid || logging}
+                className="w-full py-2.5 text-sm font-semibold bg-[#8403C5] hover:bg-[#6B02A0] disabled:bg-[#D8D8EE] disabled:text-[#9CA3AF] text-white rounded-lg transition-colors">
+                {logging ? 'Saving…' : 'Log Entry'}
+              </button>
+            )}
+          </div>
+        )}
       </div>
-
-      <StopTimerModal open={modalOpen} onClose={() => setModalOpen(false)} onSave={handleModalSave} data={modalData} clients={clients} />
     </>
   );
 }

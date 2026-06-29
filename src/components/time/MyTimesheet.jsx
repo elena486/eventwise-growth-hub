@@ -1,9 +1,10 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { base44 } from '@/api/base44Client';
 import { format, startOfWeek, endOfWeek, addWeeks, subWeeks, addDays, parseISO, isWithinInterval, startOfMonth, endOfMonth } from 'date-fns';
-import { ChevronLeft, ChevronRight, List, Grid3X3, Calendar, Pencil, Trash2, Plus, CalendarDays } from 'lucide-react';
+import { ChevronLeft, ChevronRight, List, Grid3X3, Calendar, Pencil, Trash2, Plus, CalendarDays, X } from 'lucide-react';
 import { CATEGORY_COLORS, CATEGORY_LABELS } from './categoryColors';
 import QuickEntryModal from './QuickEntryModal';
+import EntryDetailModal from './EntryDetailModal';
 
 const PERIOD_OPTIONS = [
   { id: 'this_week', label: 'This week' },
@@ -42,6 +43,10 @@ export default function MyTimesheet({ refresh }) {
   // Quick‑add/edit modal
   const [modalOpen, setModalOpen] = useState(false);
   const [modalInitial, setModalInitial] = useState(null);
+
+  // Category drill-down
+  const [catDrillCat, setCatDrillCat] = useState(null);
+  const [drillEntry, setDrillEntry] = useState(null);
 
   const load = async () => {
     setLoading(true);
@@ -98,18 +103,26 @@ export default function MyTimesheet({ refresh }) {
     }), [entries, rangeStart, rangeEnd]
   );
 
-  const monthStart = startOfMonth(now);
-  const monthEnd = endOfMonth(now);
-  const weekTotal = weekEntries.reduce((s, e) => s + e.durationMinutes, 0);
-  const monthEntries = entries.filter(e => isWithinInterval(parseISO(e.date), { start: monthStart, end: monthEnd }));
-  const monthTotal = monthEntries.reduce((s, e) => s + e.durationMinutes, 0);
+  const periodTotal = weekEntries.reduce((s, e) => s + e.durationMinutes, 0);
+  // weekTotal alias kept for grid footer
+  const weekTotal = periodTotal;
 
   const topCategory = useMemo(() => {
     const catMap = {};
-    monthEntries.forEach(e => { catMap[e.category] = (catMap[e.category] || 0) + e.durationMinutes; });
+    weekEntries.forEach(e => { catMap[e.category] = (catMap[e.category] || 0) + e.durationMinutes; });
     const sorted = Object.entries(catMap).sort((a, b) => b[1] - a[1]);
     return sorted[0]?.[0] || '—';
-  }, [monthEntries]);
+  }, [weekEntries]);
+
+  // Human-readable label for current period
+  const periodLabel = useMemo(() => {
+    if (period === 'this_week') return weekOffset === 0 ? 'This Week' : `${format(rangeStart, 'd MMM')} – ${format(rangeEnd, 'd MMM')}`;
+    if (period === 'last_week') return 'Last Week';
+    if (period === 'this_month') return format(rangeStart, 'MMMM yyyy');
+    if (period === 'last_month') return format(rangeStart, 'MMMM yyyy');
+    if (period === 'custom' && customStart && customEnd) return `${format(rangeStart, 'd MMM')} – ${format(rangeEnd, 'd MMM yyyy')}`;
+    return 'Selected Period';
+  }, [period, weekOffset, rangeStart, rangeEnd, customStart, customEnd]);
 
   // Grid data
   const gridData = useMemo(() => {
@@ -167,16 +180,16 @@ export default function MyTimesheet({ refresh }) {
 
   return (
     <div className="pt-6">
-      {/* Summary chips */}
+      {/* Summary chips — reactive to selected period */}
       <div className="grid grid-cols-3 gap-3 mb-6">
         {[
-          { label: 'This week', value: fmtHours(weekTotal) },
-          { label: 'This month', value: fmtHours(monthTotal) },
+          { label: periodLabel, value: fmtHours(periodTotal) },
+          { label: 'Entries', value: weekEntries.length },
           { label: 'Most time on', value: topCategory },
         ].map((s, i) => (
           <div key={i} className="bg-white border border-[#EBEBF5] rounded-xl p-4">
-            <p className="text-[11px] font-bold text-[#9CA3AF] uppercase tracking-[0.08em]">{s.label}</p>
-            <p className="text-xl font-bold text-[#242450] mt-0.5">{s.value}</p>
+            <p className="text-[11px] font-bold text-[#9CA3AF] uppercase tracking-[0.08em] truncate">{s.label}</p>
+            <p className="text-xl font-bold text-[#242450] mt-0.5 truncate">{s.value}</p>
           </div>
         ))}
       </div>
@@ -280,7 +293,8 @@ export default function MyTimesheet({ refresh }) {
                   const color = CATEGORY_COLORS[cat] || '#9CA3AF';
                   return (
                     <tr key={cat} className="border-t border-[#F2F2F4] hover:bg-[#F6F6FB] transition-colors">
-                      <td className="px-4 py-2.5 text-xs font-medium" style={{ color }}>
+                      <td className="px-4 py-2.5 text-xs font-medium cursor-pointer hover:underline" style={{ color }}
+                        onClick={() => total > 0 && setCatDrillCat(cat)}>
                         {cat}
                       </td>
                       {days.map((v, i) => (
@@ -369,6 +383,74 @@ export default function MyTimesheet({ refresh }) {
         onSaved={load}
         initial={modalInitial}
       />
+
+      {/* Category drill-down modal (FIX 4) */}
+      {catDrillCat && (
+        <CategoryDrillModal
+          category={catDrillCat}
+          entries={weekEntries.filter(e => e.category === catDrillCat)}
+          periodLabel={periodLabel}
+          onClose={() => setCatDrillCat(null)}
+          onOpenEntry={(e) => { setDrillEntry(e); }}
+        />
+      )}
+
+      {/* Entry detail from drill-down */}
+      {drillEntry && (
+        <EntryDetailModal
+          entry={drillEntry}
+          onClose={() => setDrillEntry(null)}
+          onUpdated={() => { load(); setDrillEntry(null); }}
+          onDeleted={() => { load(); setDrillEntry(null); }}
+        />
+      )}
+    </div>
+  );
+}
+
+// ── Category Drill-Down Modal ──
+function CategoryDrillModal({ category, entries, periodLabel, onClose, onOpenEntry }) {
+  const color = CATEGORY_COLORS[category] || '#9CA3AF';
+  const totalMin = entries.reduce((s, e) => s + (e.durationMinutes || 0), 0);
+  const h = Math.floor(totalMin / 60); const m = totalMin % 60;
+  const totalStr = !h && !m ? '0h' : !m ? `${h}h` : !h ? `${m}m` : `${h}h ${m}m`;
+  const sorted = [...entries].sort((a, b) => (b.date || '').localeCompare(a.date || ''));
+
+  return (
+    <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/40" onClick={e => { if (e.target === e.currentTarget) onClose(); }}>
+      <div className="bg-white rounded-[14px] w-[520px] max-h-[85vh] overflow-y-auto animate-modal-in" onClick={e => e.stopPropagation()}>
+        <div className="flex items-center justify-between px-6 py-4 border-b border-[#EBEBF5]">
+          <div>
+            <h2 className="text-base font-bold" style={{ color }}>{category}</h2>
+            <p className="text-xs text-[#5777AB]">{periodLabel} · {entries.length} entries · {totalStr} total</p>
+          </div>
+          <button onClick={onClose} className="p-2 rounded-lg hover:bg-[#EBEBF5] text-[#9CA3AF]"><X className="w-4 h-4" /></button>
+        </div>
+        <div className="px-6 py-4">
+          {sorted.length === 0 ? (
+            <p className="text-sm text-[#5777AB] text-center py-8">No entries</p>
+          ) : (
+            <div className="space-y-1">
+              {sorted.map(e => {
+                let dateStr = ''; try { dateStr = format(parseISO(e.date), 'd MMM'); } catch {}
+                const h2 = Math.floor((e.durationMinutes || 0) / 60); const m2 = (e.durationMinutes || 0) % 60;
+                const dur = !h2 && !m2 ? '0h' : !m2 ? `${h2}h` : !h2 ? `${m2}m` : `${h2}h ${m2}m`;
+                return (
+                  <button key={e.id} onClick={() => onOpenEntry(e)}
+                    className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-[#F6F6FB] transition-colors text-left">
+                    <span className="text-[10px] text-[#9CA3AF] w-12 shrink-0">{dateStr}</span>
+                    <span className="flex-1 text-xs text-[#242450] truncate">{e.projectTask}</span>
+                    {e.clientName && <span className="text-[10px] text-[#5777AB] bg-[#EEF2F8] px-1.5 py-0.5 rounded shrink-0">{e.clientName}</span>}
+                    {e.notes && <span className="text-[10px] text-[#9CA3AF] shrink-0">📝</span>}
+                    {e.transcriptLink && <span className="text-[10px] text-[#9CA3AF] shrink-0">🔗</span>}
+                    <span className="text-xs font-bold text-[#242450] shrink-0">{dur}</span>
+                  </button>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      </div>
     </div>
   );
 }
