@@ -408,14 +408,7 @@ export default function AppShell() {
 
         {/* Right: user + utilities */}
         <div className="flex items-center gap-2 shrink-0 ml-4">
-          <NavTimer onStopAndLog={() => setSearchParams({ tab: 'time-log' })} />
-          <button
-            onClick={() => setLogTimeTrigger(n => n + 1)}
-            className="flex items-center gap-1.5 px-2 py-1.5 rounded-lg text-[#8B8FA8] hover:text-[#C4C6D4] hover:bg-white/5 transition-all"
-            title="Log Time"
-          >
-            <span className="hidden sm:inline text-xs font-medium">Log Time</span>
-          </button>
+          <NavTimer onStopAndLog={() => setSearchParams({ tab: 'time-log' })} onLogTime={() => setLogTimeTrigger(n => n + 1)} />
           <NotificationBell
             unreadCount={unreadCount}
             entries={changelogEntries}

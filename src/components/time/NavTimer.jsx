@@ -24,7 +24,7 @@ function formatTime(ms) {
   return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
 }
 
-export default function NavTimer({ onStopAndLog }) {
+export default function NavTimer({ onStopAndLog, onLogTime }) {
   const [open, setOpen] = useState(false);
   const timer = useSharedTimer();
 
@@ -119,7 +119,8 @@ export default function NavTimer({ onStopAndLog }) {
   return (
     <div className="relative">
       <button
-        onClick={() => setOpen(o => !o)}
+        onClick={() => timer.status === 'idle' ? onLogTime?.() : setOpen(o => !o)}
+        onContextMenu={(e) => { e.preventDefault(); setOpen(o => !o); }}
         className={`flex items-center gap-1.5 px-2 py-1.5 rounded-lg transition-all ${
           timer.status === 'running' ? 'text-[#E8A020] hover:bg-white/10'
           : timer.status === 'paused' ? 'text-[#8B8FA8] hover:bg-white/10'
