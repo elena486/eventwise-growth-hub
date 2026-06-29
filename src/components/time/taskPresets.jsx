@@ -65,6 +65,7 @@ export const TASK_PRESETS = {
     'Investor reporting',
     'Board / advisor meeting',
     'Funding round task',
+    'Accounting support (Chris)',
   ],
   'Strategy & Planning': [
     'Investor meeting / comms',

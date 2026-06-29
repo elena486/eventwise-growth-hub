@@ -569,8 +569,8 @@ export default function TeamOverview({ refresh }) {
                       {!isCollapsed && (
                         <div>
                           {group.projects.map((p, i) => (
-                            <div key={i} className="flex items-center gap-3 px-4 py-2.5 border-t border-[#F2F2F4] hover:bg-[#F6F6FB] transition-colors">
-                              <div className="flex-1 min-w-0">
+                            <div key={i} className="flex items-center justify-between gap-3 px-4 py-2.5 border-t border-[#F2F2F4] hover:bg-[#F6F6FB] transition-colors">
+                              <div className="min-w-0">
                                 <p className="text-xs font-medium text-[#242450] truncate">{p.task}</p>
                                 {p.clientName && <span className="text-[10px] text-[#5777AB] bg-[#EEF2F8] px-1.5 py-0.5 rounded mt-0.5 inline-block">{p.clientName}</span>}
                               </div>
