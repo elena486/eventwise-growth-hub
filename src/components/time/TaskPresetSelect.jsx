@@ -33,10 +33,11 @@ export default function TaskPresetSelect({ category, value, onChange, placeholde
   const [dbPresets, setDbPresets] = useState(null); // null = loading, {} = loaded
   const ref = useRef(null);
 
-  // Load DB templates once
+  // Load DB templates — re-fetch when category changes so newly-added presets appear immediately
   useEffect(() => {
+    setDbPresets(null); // show loading state
     loadDbPresets().then(map => setDbPresets(map));
-  }, []);
+  }, [category]);
 
   // Merge: DB rows take precedence if they exist for this category, else fall back to static
   const presets = useMemo(() => {

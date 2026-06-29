@@ -506,15 +506,10 @@ export default function TeamOverview({ refresh }) {
                   const pctOfTotal = teamTotalMin > 0 ? Math.round((c.minutes / teamTotalMin) * 100) : 0;
                   return (
                     <div key={c.category} className="flex items-center gap-3">
-                      <span className="text-xs font-medium text-[#242450] w-44 shrink-0 truncate">{c.category}</span>
-                      <div className="flex-1 flex items-center gap-2">
-                        <div className="flex-1 bg-[#F6F6FB] rounded-full h-6 overflow-hidden">
-                          <div className="h-full rounded-full flex items-center px-2.5 transition-all duration-500" style={{ width: `${Math.max(pctOfTotal, 2)}%`, backgroundColor: color }}>
-                            {pctOfTotal >= 8 && <span className="text-[10px] font-bold text-white whitespace-nowrap">{fmtHoursShort(c.minutes)}</span>}
-                          </div>
-                        </div>
-                        <span className="text-[11px] font-medium text-[#242450] shrink-0 w-24 text-right">{fmtHoursShort(c.minutes)} · {pctOfTotal}%</span>
-                      </div>
+                      <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: color }} />
+                      <span className="text-xs font-medium text-[#242450] flex-1 truncate">{c.category}</span>
+                      <span className="text-xs font-semibold text-[#242450] shrink-0">{fmtHoursShort(c.minutes)}</span>
+                      <span className="text-[11px] text-[#9CA3AF] shrink-0 w-8 text-right">{pctOfTotal}%</span>
                     </div>
                   );
                 })}
