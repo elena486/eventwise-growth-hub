@@ -5,7 +5,7 @@ import { ChevronLeft, ChevronRight, List, Grid3X3, Calendar, Pencil, Trash2, Plu
 import { CATEGORY_COLORS, CATEGORY_LABELS } from './categoryColors';
 import QuickEntryModal from './QuickEntryModal';
 import EntryDetailModal from './EntryDetailModal';
-import InteractiveCalendar from './InteractiveCalendar';
+import CalendarView from './CalendarView';
 
 const PERIOD_OPTIONS = [
   { id: 'this_week', label: 'This week' },
@@ -76,9 +76,12 @@ export default function MyTimesheet({ refresh }) {
         const s = startOfWeek(addWeeks(now, -1 + weekOffset), { weekStartsOn: 1 });
         return { rangeStart: s, rangeEnd: endOfWeek(addWeeks(now, -1 + weekOffset), { weekStartsOn: 1 }) };
       }
-      case 'this_month': return { rangeStart: startOfMonth(now), rangeEnd: endOfMonth(now) };
+      case 'this_month': {
+        const m = new Date(now.getFullYear(), now.getMonth() + weekOffset, 1);
+        return { rangeStart: startOfMonth(m), rangeEnd: endOfMonth(m) };
+      }
       case 'last_month': {
-        const lm = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+        const lm = new Date(now.getFullYear(), now.getMonth() - 1 + weekOffset, 1);
         return { rangeStart: startOfMonth(lm), rangeEnd: endOfMonth(lm) };
       }
       case 'custom': {
@@ -226,10 +229,24 @@ export default function MyTimesheet({ refresh }) {
                 <button onClick={() => setWeekOffset(o => o + 1)} className="p-1.5 rounded-lg hover:bg-[#EBEBF5] transition-colors">
                   <ChevronRight className="w-4 h-4 text-[#5777AB]" />
                 </button>
+                {weekOffset !== 0 && (
+                  <button onClick={() => setWeekOffset(0)} className="px-2 py-1 text-xs text-[#8403C5] border border-[#8403C5]/30 rounded-lg hover:bg-[#F3E8FF]">Today</button>
+                )}
               </>
             )}
             {(period === 'this_month' || period === 'last_month') && (
-              <span className="text-sm font-semibold text-[#242450]">{format(rangeStart, 'MMMM yyyy')}</span>
+              <>
+                <button onClick={() => setWeekOffset(o => o - 1)} className="p-1.5 rounded-lg hover:bg-[#EBEBF5] transition-colors">
+                  <ChevronLeft className="w-4 h-4 text-[#5777AB]" />
+                </button>
+                <span className="text-sm font-semibold text-[#242450]">{format(rangeStart, 'MMMM yyyy')}</span>
+                <button onClick={() => setWeekOffset(o => o + 1)} className="p-1.5 rounded-lg hover:bg-[#EBEBF5] transition-colors">
+                  <ChevronRight className="w-4 h-4 text-[#5777AB]" />
+                </button>
+                {weekOffset !== 0 && (
+                  <button onClick={() => setWeekOffset(0)} className="px-2 py-1 text-xs text-[#8403C5] border border-[#8403C5]/30 rounded-lg hover:bg-[#F3E8FF]">Today</button>
+                )}
+              </>
             )}
             {period === 'custom' && customStart && customEnd && (
               <span className="text-sm font-semibold text-[#242450]">{format(rangeStart, 'd MMM')} — {format(rangeEnd, 'd MMM yyyy')}</span>
@@ -374,15 +391,16 @@ export default function MyTimesheet({ refresh }) {
           </div>
         </div>
       ) : (
-        <WeekCalendarView
+        <CalendarView
           entries={weekEntries}
           weekStart={weekStart}
-          DAYS={DAYS}
+          rangeStart={rangeStart}
+          rangeEnd={rangeEnd}
+          period={period}
           currentUser={currentUser}
           onEntryUpdated={(e) => setEntries(prev => prev.map(x => x.id === e.id ? e : x))}
           onEntryCreated={(e) => setEntries(prev => [...prev, e])}
           onEntryDeleted={(id) => setEntries(prev => prev.filter(x => x.id !== id))}
-          onOpenEntry={handleOpenForEntry}
         />
       )}
 
@@ -461,51 +479,6 @@ function CategoryDrillModal({ category, entries, periodLabel, onClose, onOpenEnt
           )}
         </div>
       </div>
-    </div>
-  );
-}
-
-// ── Week Calendar View — uses InteractiveCalendar per day ──
-function WeekCalendarView({ entries, weekStart, DAYS, currentUser, onEntryUpdated, onEntryCreated, onEntryDeleted, onOpenEntry }) {
-  const [clients, setClients] = useState([]);
-  useEffect(() => { base44.entities.Client.list().then(setClients).catch(() => {}); }, []);
-
-  // Group entries by day date string
-  const entriesByDate = useMemo(() => {
-    const map = {};
-    entries.forEach(e => {
-      if (!map[e.date]) map[e.date] = [];
-      map[e.date].push(e);
-    });
-    return map;
-  }, [entries]);
-
-  return (
-    <div className="space-y-4">
-      {DAYS.map((dayLabel, i) => {
-        const date = addDays(weekStart, i);
-        const dateStr = format(date, 'yyyy-MM-dd');
-        const dayEntries = entriesByDate[dateStr] || [];
-        const dayTotal = dayEntries.reduce((s, e) => s + (e.durationMinutes || 0), 0);
-        return (
-          <div key={dateStr}>
-            <div className="flex items-center gap-3 mb-2">
-              <span className="text-sm font-bold text-[#242450]">{dayLabel} {format(date, 'd MMM')}</span>
-              {dayTotal > 0 && <span className="text-xs font-bold text-[#8403C5] bg-[#F3E8FF] px-2 py-0.5 rounded-full">{fmtHours(dayTotal)}</span>}
-            </div>
-            <InteractiveCalendar
-              entries={dayEntries}
-              dateStr={dateStr}
-              teamMember={currentUser}
-              clients={clients}
-              onEntryCreated={onEntryCreated}
-              onEntryUpdated={onEntryUpdated}
-              onEntryDeleted={onEntryDeleted}
-              onOpenEntry={onOpenEntry}
-            />
-          </div>
-        );
-      })}
     </div>
   );
 }
