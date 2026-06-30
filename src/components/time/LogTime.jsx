@@ -79,13 +79,9 @@ export default function LogTime({ onLogged }) {
   const [stoppedEntry, setStoppedEntry] = useState(null); // { timerId, durationMinutes, durationMs }
   const [saveError, setSaveError] = useState('');
 
-  // Quick log
-  const [quickH, setQuickH] = useState('0');
-  const [quickM, setQuickM] = useState('0');
+  // Quick log — unified start/end time
   const [quickStartTime, setQuickStartTime] = useState('');
-  const [timeMode, setTimeMode] = useState('duration'); // 'duration' | 'startend'
-  const [quickStartTime2, setQuickStartTime2] = useState('');
-  const [quickEndTime2, setQuickEndTime2] = useState('');
+  const [quickEndTime, setQuickEndTime] = useState('');
   const [quickTranscriptLink, setQuickTranscriptLink] = useState('');
   const [quickTranscriptFileUrl, setQuickTranscriptFileUrl] = useState('');
   const [quickTranscriptFileName, setQuickTranscriptFileName] = useState('');
@@ -224,52 +220,26 @@ export default function LogTime({ onLogged }) {
     await commitEntry(stoppedEntry.timerId, stoppedEntry.durationMinutes, cat, task);
   };
 
-  // Compute end time string for display
-  const computedEndTime = (() => {
-    if (timeMode !== 'duration' || !quickStartTime) return null;
+  // Compute duration from start/end time
+  const quickDuration = (() => {
+    if (!quickStartTime || !quickEndTime) return 0;
     try {
-      const [hh, mm] = quickStartTime.split(':').map(Number);
-      const totalStartMin = hh * 60 + mm;
-      const durMin = (parseInt(quickH) || 0) * 60 + (parseInt(quickM) || 0);
-      if (durMin <= 0) return null;
-      const endMin = totalStartMin + durMin;
-      return `${String(Math.floor(endMin / 60) % 24).padStart(2, '0')}:${String(endMin % 60).padStart(2, '0')}`;
-    } catch { return null; }
-  })();
-
-  // Compute duration from start/end time in startend mode
-  const startEndDuration = (() => {
-    if (timeMode !== 'startend' || !quickStartTime2 || !quickEndTime2) return 0;
-    try {
-      const [sh, sm] = quickStartTime2.split(':').map(Number);
-      const [eh, em] = quickEndTime2.split(':').map(Number);
+      const [sh, sm] = quickStartTime.split(':').map(Number);
+      const [eh, em] = quickEndTime.split(':').map(Number);
       return Math.max(0, (eh * 60 + em) - (sh * 60 + sm));
     } catch { return 0; }
   })();
 
   // ── Quick Log ──
   const handleQuickLog = async () => {
-    if (!quickDesc.trim()) return;
-    let totalMin, startISO, endISO;
+    if (!quickDesc.trim() || quickDuration <= 0) return;
     const today = format(new Date(), 'yyyy-MM-dd');
-    if (timeMode === 'startend') {
-      totalMin = startEndDuration;
-      if (totalMin <= 0) return;
-      startISO = `${today}T${quickStartTime2}:00`;
-      endISO = `${today}T${quickEndTime2}:00`;
-    } else {
-      const h = parseInt(quickH) || 0; const m = parseInt(quickM) || 0;
-      totalMin = h * 60 + m;
-      if (totalMin <= 0) return;
-      if (quickStartTime) {
-        startISO = `${today}T${quickStartTime}:00`;
-        endISO = computedEndTime ? `${today}T${computedEndTime}:00` : undefined;
-      }
-    }
+    const startISO = quickStartTime ? `${today}T${quickStartTime}:00` : undefined;
+    const endISO = quickEndTime ? `${today}T${quickEndTime}:00` : undefined;
     try {
       await base44.entities.TimeEntry.create({
         date: today, teamMember, category: quickCat || 'Other',
-        projectTask: quickDesc.trim(), durationMinutes: totalMin,
+        projectTask: quickDesc.trim(), durationMinutes: quickDuration,
         transcriptLink: quickTranscriptLink.trim() || undefined,
         transcriptFileUrl: quickTranscriptFileUrl || undefined,
         transcriptFileName: quickTranscriptFileName || undefined,
@@ -278,10 +248,10 @@ export default function LogTime({ onLogged }) {
         ...(endISO ? { timerStoppedAt: endISO } : {}),
         ...(quickClientId ? { clientId: quickClientId, clientName: quickClientName } : {}),
       });
-      await writeClientActivityLog({ clientId: quickClientId, clientName: quickClientName, teamMember, category: quickCat || 'Other', projectTask: quickDesc.trim(), durationMinutes: totalMin, notes: '', transcriptLink: quickTranscriptLink.trim() });
-      setQuickDesc(''); setQuickH('0'); setQuickM('0'); setQuickStartTime(''); setQuickStartTime2(''); setQuickEndTime2(''); setQuickTranscriptLink(''); setQuickTranscriptFileUrl(''); setQuickTranscriptFileName('');
+      await writeClientActivityLog({ clientId: quickClientId, clientName: quickClientName, teamMember, category: quickCat || 'Other', projectTask: quickDesc.trim(), durationMinutes: quickDuration, notes: '', transcriptLink: quickTranscriptLink.trim() });
+      setQuickDesc(''); setQuickStartTime(''); setQuickEndTime(''); setQuickTranscriptLink(''); setQuickTranscriptFileUrl(''); setQuickTranscriptFileName('');
       loadEntries(); onLogged?.();
-      logActivity({ teamMember, actionType: 'Logged a time entry', section: 'Time & Capacity', recordName: quickDesc.trim(), details: `${quickCat || 'Other'} — ${formatDuration(totalMin)}` });
+      logActivity({ teamMember, actionType: 'Logged a time entry', section: 'Time & Capacity', recordName: quickDesc.trim(), details: `${quickCat || 'Other'} — ${formatDuration(quickDuration)}` });
     } catch {}
   };
 
@@ -290,9 +260,7 @@ export default function LogTime({ onLogged }) {
     setQuickCat(entry.category || '');
     setQuickClientId(entry.clientId || '');
     setQuickClientName(entry.clientName || '');
-    const h = Math.floor((entry.durationMinutes || 0) / 60);
-    const m = (entry.durationMinutes || 0) % 60;
-    setQuickH(String(h)); setQuickM(String(m));
+    // Time fields left blank — user sets start/end time for the new entry
   };
 
   const handleEdit = (entry) => {
@@ -425,43 +393,18 @@ export default function LogTime({ onLogged }) {
                 {clients.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
               </select>
             </div>
-            {/* Time fields (only show when timer is idle and not stopped) */}
+            {/* Time fields — Start → End (only show when timer is idle and not stopped) */}
             {timer.status === 'idle' && !isStopped && (
               <div className="shrink-0">
-                {timeMode === 'duration' ? (
-                  <>
-                    <div className="flex items-center gap-2 mb-1">
-                      <label className="text-[10px] font-semibold text-[#242450] uppercase tracking-[0.06em]">Start time</label>
-                    </div>
-                    <div className="flex items-center gap-1.5">
-                      <input type="time" value={quickStartTime} onChange={e => setQuickStartTime(e.target.value)}
-                        className="px-2 py-2 text-sm border border-[#E2E8F0] rounded-lg bg-[#F8FAFC] focus:outline-none focus:border-[#8403C5]" />
-                      <input type="number" min="0" value={quickH} onChange={e => setQuickH(e.target.value)}
-                        className="w-10 px-1 py-2 text-sm text-center border border-[#E2E8F0] rounded-lg bg-[#F8FAFC] focus:outline-none focus:border-[#8403C5]" placeholder="0" />
-                      <span className="text-xs text-[#5777AB] font-medium">h</span>
-                      <input type="number" min="0" max="59" value={quickM} onChange={e => setQuickM(e.target.value)}
-                        className="w-10 px-1 py-2 text-sm text-center border border-[#E2E8F0] rounded-lg bg-[#F8FAFC] focus:outline-none focus:border-[#8403C5]" placeholder="0" />
-                      <span className="text-xs text-[#5777AB] font-medium">m</span>
-                      {computedEndTime && <span className="text-[10px] text-[#1D9E75] font-semibold whitespace-nowrap">→ {computedEndTime}</span>}
-                    </div>
-                    <button onClick={() => setTimeMode('startend')} className="text-[10px] text-[#8403C5] hover:underline mt-1 block">Use start/end time</button>
-                  </>
-                ) : (
-                  <>
-                    <div className="flex items-center gap-2 mb-1">
-                      <label className="text-[10px] font-semibold text-[#242450] uppercase tracking-[0.06em]">Start → End</label>
-                    </div>
-                    <div className="flex items-center gap-1.5">
-                      <input type="time" value={quickStartTime2} onChange={e => setQuickStartTime2(e.target.value)}
-                        className="px-2 py-2 text-sm border border-[#E2E8F0] rounded-lg bg-[#F8FAFC] focus:outline-none focus:border-[#8403C5]" />
-                      <span className="text-xs text-[#5777AB]">→</span>
-                      <input type="time" value={quickEndTime2} onChange={e => setQuickEndTime2(e.target.value)}
-                        className="px-2 py-2 text-sm border border-[#E2E8F0] rounded-lg bg-[#F8FAFC] focus:outline-none focus:border-[#8403C5]" />
-                      {startEndDuration > 0 && <span className="text-[10px] text-[#1D9E75] font-semibold whitespace-nowrap">{Math.floor(startEndDuration/60)}h {startEndDuration%60}m</span>}
-                    </div>
-                    <button onClick={() => setTimeMode('duration')} className="text-[10px] text-[#8403C5] hover:underline mt-1 block">Use duration instead</button>
-                  </>
-                )}
+                <label className="block text-[10px] font-semibold text-[#242450] uppercase tracking-[0.06em] mb-1">Time</label>
+                <div className="flex items-center gap-1.5">
+                  <input type="time" value={quickStartTime} onChange={e => setQuickStartTime(e.target.value)}
+                    className="px-2 py-2 text-sm border border-[#E2E8F0] rounded-lg bg-[#F8FAFC] focus:outline-none focus:border-[#8403C5]" />
+                  <span className="text-xs text-[#5777AB]">→</span>
+                  <input type="time" value={quickEndTime} onChange={e => setQuickEndTime(e.target.value)}
+                    className="px-2 py-2 text-sm border border-[#E2E8F0] rounded-lg bg-[#F8FAFC] focus:outline-none focus:border-[#8403C5]" />
+                  {quickDuration > 0 && <span className="text-[10px] text-[#1D9E75] font-semibold whitespace-nowrap">{formatDuration(quickDuration)}</span>}
+                </div>
               </div>
             )}
             {/* Log / Save button */}
@@ -478,7 +421,7 @@ export default function LogTime({ onLogged }) {
               <div className="shrink-0">
                 <label className="block text-[10px] font-semibold text-[#242450] uppercase tracking-[0.06em] mb-1">&nbsp;</label>
                 <button onClick={handleQuickLog}
-                  disabled={!quickDesc || (timeMode === 'duration' ? ((parseInt(quickH) || 0) * 60 + (parseInt(quickM) || 0)) <= 0 : startEndDuration <= 0)}
+                  disabled={!quickDesc || quickDuration <= 0}
                   className="h-[38px] px-4 text-sm font-semibold border-2 border-[#8403C5] text-[#8403C5] bg-transparent hover:bg-[#F3E8FF] disabled:border-[#D8D8EE] disabled:text-[#D8D8EE] disabled:hover:bg-transparent rounded-lg transition-all shrink-0">
                   Log
                 </button>

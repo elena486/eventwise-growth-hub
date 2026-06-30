@@ -777,6 +777,8 @@ function ActivityLogTab({ clientId }) {
   const [memberFilter, setMemberFilter] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('');
   const [dateFilter, setDateFilter] = useState('all');
+  const [customStart, setCustomStart] = useState('');
+  const [customEnd, setCustomEnd] = useState('');
 
   useEffect(() => {
     if (!clientId) return;
@@ -809,15 +811,61 @@ function ActivityLogTab({ clientId }) {
           if (dateFilter === 'this_week' && !isWithinInterval(d, { start: startOfWeek(now, { weekStartsOn: 1 }), end: endOfWeek(now, { weekStartsOn: 1 }) })) return false;
           if (dateFilter === 'this_month' && !isWithinInterval(d, { start: startOfMonth(now), end: endOfMonth(now) })) return false;
           if (dateFilter === 'last_month' && !isWithinInterval(d, { start: startOfMonth(subMonths(now, 1)), end: endOfMonth(subMonths(now, 1)) })) return false;
+          if (dateFilter === 'custom') {
+            const start = customStart ? parseDI(customStart) : null;
+            const end = customEnd ? parseDI(customEnd) : null;
+            if (start && d < start) return false;
+            if (end && d > end) return false;
+          }
         } catch { return false; }
       }
       return true;
     });
-  }, [entries, memberFilter, categoryFilter, dateFilter]);
+  }, [entries, memberFilter, categoryFilter, dateFilter, customStart, customEnd]);
 
   const thisMonthTotal = useMemo(() => entries.filter(e => {
     try { return isWithinInterval(parseDI(e.date), { start: startOfMonth(now), end: endOfMonth(now) }); } catch { return false; }
   }).reduce((s, e) => s + (e.durationMinutes || 0), 0), [entries]);
+
+  // Insights
+  const catBreakdown = useMemo(() => {
+    const map = {};
+    entries.forEach(e => { map[e.category] = (map[e.category] || 0) + (e.durationMinutes || 0); });
+    const total = Object.values(map).reduce((s, v) => s + v, 0);
+    return Object.entries(map).sort((a, b) => b[1] - a[1]).map(([cat, min]) => ({ cat, min, pct: total ? Math.round((min / total) * 100) : 0 }));
+  }, [entries]);
+
+  const memberBreakdown = useMemo(() => {
+    const map = {};
+    entries.forEach(e => { map[e.teamMember] = (map[e.teamMember] || 0) + (e.durationMinutes || 0); });
+    const total = Object.values(map).reduce((s, v) => s + v, 0);
+    return Object.entries(map).sort((a, b) => b[1] - a[1]).map(([m, min]) => ({ m, min, pct: total ? Math.round((min / total) * 100) : 0 }));
+  }, [entries]);
+
+  // Monthly trend — last 3 months
+  const monthlyTrend = useMemo(() => {
+    const months = [];
+    for (let i = 2; i >= 0; i--) {
+      const mStart = startOfMonth(subMonths(now, i));
+      const mEnd = endOfMonth(subMonths(now, i));
+      const label = format(mStart, 'MMM');
+      const min = entries.filter(e => { try { return isWithinInterval(parseDI(e.date), { start: mStart, end: mEnd }); } catch { return false; } }).reduce((s, e) => s + (e.durationMinutes || 0), 0);
+      months.push({ label, min });
+    }
+    return months;
+  }, [entries]);
+
+  const lastActivityDate = useMemo(() => {
+    if (!entries.length) return null;
+    return entries.reduce((latest, e) => e.date > latest ? e.date : latest, entries[0].date);
+  }, [entries]);
+
+  const lastActivityDaysAgo = useMemo(() => {
+    if (!lastActivityDate) return null;
+    try { return Math.floor((now - parseDI(lastActivityDate)) / (1000 * 60 * 60 * 24)); } catch { return null; }
+  }, [lastActivityDate]);
+
+  const [showInsights, setShowInsights] = useState(false);
 
   const grouped = useMemo(() => {
     const map = {};
@@ -832,6 +880,8 @@ function ActivityLogTab({ clientId }) {
   const uniqueMembers = [...new Set(entries.map(e => e.teamMember).filter(Boolean))];
   const uniqueCategories = [...new Set(entries.map(e => e.category).filter(Boolean))];
   const activeFilters = [memberFilter, categoryFilter, dateFilter !== 'all' ? dateFilter : ''].filter(Boolean).length;
+  const filteredTotal = filtered.reduce((s, e) => s + (e.durationMinutes || 0), 0);
+  const periodLabel = dateFilter === 'this_week' ? 'this week' : dateFilter === 'this_month' ? 'this month' : dateFilter === 'last_month' ? 'last month' : dateFilter === 'custom' ? 'selected period' : 'all time';
 
   if (loading) {
     return <div className="flex items-center justify-center h-32"><div className="w-5 h-5 border-2 border-[#8403C5]/20 border-t-[#8403C5] rounded-full animate-spin" /></div>;
@@ -848,10 +898,18 @@ function ActivityLogTab({ clientId }) {
 
   return (
     <div>
+      {/* Last activity indicator */}
+      {lastActivityDaysAgo !== null && (
+        <div className={`flex items-center gap-2 mb-3 px-3 py-2 rounded-lg text-xs font-medium ${lastActivityDaysAgo === 0 ? 'bg-[#E8F7F2] text-[#1D9E75]' : lastActivityDaysAgo <= 7 ? 'bg-[#FFFBEB] text-[#A16207]' : 'bg-[#FEF2F2] text-[#DC2626]'}`}>
+          <span className="font-bold">Last activity:</span>
+          {lastActivityDaysAgo === 0 ? 'Today' : lastActivityDaysAgo === 1 ? 'Yesterday' : `${lastActivityDaysAgo} days ago`}
+        </div>
+      )}
+
       {/* Total banner */}
       <div className="flex items-center justify-between mb-3 px-3 py-2.5 bg-[#F3E8FF]/50 rounded-xl border border-[#8403C5]/10">
         <div>
-          <p className="text-[11px] font-bold text-[#9CA3AF] uppercase tracking-[0.08em]">Total time this month</p>
+          <p className="text-[11px] font-bold text-[#9CA3AF] uppercase tracking-[0.08em]">This month</p>
           <p className="text-lg font-bold text-[#8403C5]">{fmtDurAct(thisMonthTotal)}</p>
         </div>
         <div className="text-right">
@@ -859,6 +917,71 @@ function ActivityLogTab({ clientId }) {
           <p className="text-sm font-bold text-[#242450]">{fmtDurAct(entries.reduce((s, e) => s + (e.durationMinutes || 0), 0))}</p>
         </div>
       </div>
+
+      {/* Insights toggle */}
+      <button onClick={() => setShowInsights(v => !v)}
+        className="flex items-center gap-1.5 text-xs font-semibold text-[#5777AB] hover:text-[#8403C5] mb-3 transition-colors">
+        <ChevronDown className={`w-3.5 h-3.5 transition-transform ${showInsights ? 'rotate-180' : ''}`} />
+        {showInsights ? 'Hide insights' : 'Show insights'}
+      </button>
+
+      {/* Insights panel */}
+      {showInsights && (
+        <div className="mb-4 space-y-3">
+          {/* Monthly trend */}
+          <div className="bg-white border border-[#EBEBF5] rounded-xl p-3">
+            <p className="text-[10px] font-bold text-[#9CA3AF] uppercase tracking-[0.08em] mb-2">Hours per month (last 3 months)</p>
+            <div className="flex items-end gap-2 h-12">
+              {(() => {
+                const maxMin = Math.max(...monthlyTrend.map(m => m.min), 1);
+                return monthlyTrend.map(({ label, min }) => (
+                  <div key={label} className="flex-1 flex flex-col items-center gap-1">
+                    <span className="text-[9px] font-bold text-[#242450]">{min > 0 ? fmtDurAct(min) : '—'}</span>
+                    <div className="w-full rounded-t" style={{ height: `${Math.max(4, (min / maxMin) * 32)}px`, backgroundColor: '#8403C5' }} />
+                    <span className="text-[9px] text-[#9CA3AF]">{label}</span>
+                  </div>
+                ));
+              })()}
+            </div>
+          </div>
+
+          {/* Category breakdown */}
+          <div className="bg-white border border-[#EBEBF5] rounded-xl p-3">
+            <p className="text-[10px] font-bold text-[#9CA3AF] uppercase tracking-[0.08em] mb-2">Time by category</p>
+            <div className="space-y-1.5">
+              {catBreakdown.slice(0, 4).map(({ cat, min, pct }) => (
+                <div key={cat} className="flex items-center gap-2">
+                  <div className="flex-1 h-1.5 bg-[#EBEBF5] rounded-full overflow-hidden">
+                    <div className="h-full rounded-full bg-[#8403C5]" style={{ width: `${pct}%` }} />
+                  </div>
+                  <span className="text-[10px] font-medium text-[#242450] w-24 truncate shrink-0">{cat}</span>
+                  <span className="text-[10px] font-bold text-[#5777AB] shrink-0 w-8 text-right">{pct}%</span>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Member breakdown */}
+          <div className="bg-white border border-[#EBEBF5] rounded-xl p-3">
+            <p className="text-[10px] font-bold text-[#9CA3AF] uppercase tracking-[0.08em] mb-2">Time by team member</p>
+            <div className="space-y-1.5">
+              {memberBreakdown.map(({ m, min, pct }) => {
+                const color = TEAM_MEMBER_COLORS[m] || '#9CA3AF';
+                return (
+                  <div key={m} className="flex items-center gap-2">
+                    <div className="w-4 h-4 rounded-full shrink-0 flex items-center justify-center text-white text-[8px] font-bold" style={{ backgroundColor: color }}>{m.charAt(0)}</div>
+                    <div className="flex-1 h-1.5 bg-[#EBEBF5] rounded-full overflow-hidden">
+                      <div className="h-full rounded-full" style={{ width: `${pct}%`, backgroundColor: color }} />
+                    </div>
+                    <span className="text-[10px] font-medium text-[#242450] shrink-0">{m}</span>
+                    <span className="text-[10px] font-bold text-[#5777AB] shrink-0">{fmtDurAct(min)}</span>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Filter bar */}
       <div className="mb-3">
@@ -885,15 +1008,30 @@ function ActivityLogTab({ clientId }) {
                 <option value="this_week">This week</option>
                 <option value="this_month">This month</option>
                 <option value="last_month">Last month</option>
+                <option value="custom">Custom range…</option>
               </select>
               {activeFilters > 0 && (
-                <button onClick={() => { setMemberFilter(''); setCategoryFilter(''); setDateFilter('all'); }}
+                <button onClick={() => { setMemberFilter(''); setCategoryFilter(''); setDateFilter('all'); setCustomStart(''); setCustomEnd(''); }}
                   className="px-2 py-1.5 text-xs text-[#DC2626] hover:bg-[#FEF2F2] rounded-lg border border-[#FECACA]">Clear</button>
               )}
             </div>
+            {dateFilter === 'custom' && (
+              <div className="flex items-center gap-2 mt-1">
+                <input type="date" value={customStart} onChange={e => setCustomStart(e.target.value)}
+                  className="px-2 py-1.5 text-xs border border-[#EBEBF5] rounded-lg focus:outline-none focus:border-[#8403C5]" />
+                <span className="text-xs text-[#9CA3AF]">to</span>
+                <input type="date" value={customEnd} onChange={e => setCustomEnd(e.target.value)}
+                  className="px-2 py-1.5 text-xs border border-[#EBEBF5] rounded-lg focus:outline-none focus:border-[#8403C5]" />
+              </div>
+            )}
           </div>
         )}
       </div>
+
+      {/* Filtered total */}
+      {dateFilter !== 'all' && (
+        <p className="text-xs font-semibold text-[#5777AB] mb-2">{filtered.length} {filtered.length === 1 ? 'entry' : 'entries'} · <span className="text-[#8403C5]">{fmtDurAct(filteredTotal)}</span> {periodLabel}</p>
+      )}
 
       {/* Grouped entries */}
       {filtered.length === 0 ? (

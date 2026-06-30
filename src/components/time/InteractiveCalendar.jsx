@@ -303,7 +303,7 @@ export default function InteractiveCalendar({
             const color = CATEGORY_COLORS[entry.category] || '#9CA3AF';
             const colW = `calc((100% - ${LEFT_GUTTER + 4}px) / ${totalCols})`;
             const leftPx = `calc(${LEFT_GUTTER + 2}px + (100% - ${LEFT_GUTTER + 4}px) / ${totalCols} * ${col})`;
-            const blockH = Math.max(24, hourToPx(dispEndH) - hourToPx(dispStartH));
+            const blockH = Math.max(HOUR_HEIGHT / 4, hourToPx(dispEndH) - hourToPx(dispStartH)); // min 15min height
 
             return (
               <div key={entry.id}
@@ -331,11 +331,13 @@ export default function InteractiveCalendar({
                   if (!isDragging) { e.stopPropagation(); onOpenEntry?.(entry); }
                 }}
               >
-                {/* Content */}
-                <div className="px-2 py-1 pointer-events-none">
-                  <p className="text-[10px] font-semibold leading-tight truncate" style={{ color }}>{entry.category}</p>
-                  <p className="text-[10px] font-medium text-[#242450] leading-tight mt-0.5 truncate">{entry.projectTask}</p>
-                  <p className="text-[9px] font-bold text-[#242450] mt-0.5">{fmtDur(Math.round((dispEndH - dispStartH) * 60))}</p>
+                {/* Content — always show category + duration; task truncated with ellipsis */}
+                <div className="px-2 py-1 pointer-events-none overflow-hidden" title={`${entry.category} · ${fmtDur(Math.round((dispEndH - dispStartH) * 60))} · ${entry.projectTask}`}>
+                  <div className="flex items-baseline gap-1 leading-tight">
+                    <p className="text-[10px] font-semibold truncate shrink-0 max-w-[60%]" style={{ color }}>{entry.category}</p>
+                    <p className="text-[9px] font-bold text-[#242450] shrink-0">{fmtDur(Math.round((dispEndH - dispStartH) * 60))}</p>
+                  </div>
+                  {blockH >= 32 && <p className="text-[10px] font-medium text-[#242450] leading-tight mt-0.5 truncate">{entry.projectTask}</p>}
                 </div>
                 {/* Resize handles */}
                 <div className="absolute top-0 left-0 right-0 h-[6px] cursor-n-resize opacity-0 group-hover:opacity-100 bg-current"

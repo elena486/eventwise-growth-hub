@@ -53,8 +53,8 @@ export default function LogTimeSidebar({ triggerOpen, onTriggerConsumed }) {
   const [projectTask, setProjectTask] = useState('');
   const [clientId, setClientId] = useState('');
   const [clientName, setClientName] = useState('');
-  const [hours, setHours] = useState('0');
-  const [mins, setMins] = useState('0');
+  const [startTime, setStartTime] = useState('');
+  const [endTime, setEndTime] = useState('');
   const [notes, setNotes] = useState('');
   const [transcriptLink, setTranscriptLink] = useState('');
   const [transcriptFileUrl, setTranscriptFileUrl] = useState('');
@@ -156,28 +156,41 @@ export default function LogTimeSidebar({ triggerOpen, onTriggerConsumed }) {
     await finalizeSave(stoppedEntry.timerId, stoppedEntry.durationMinutes, cat, task);
   };
 
+  const startEndDuration = (() => {
+    if (!startTime || !endTime) return 0;
+    try {
+      const [sh, sm] = startTime.split(':').map(Number);
+      const [eh, em] = endTime.split(':').map(Number);
+      return Math.max(0, (eh * 60 + em) - (sh * 60 + sm));
+    } catch { return 0; }
+  })();
+
   const handleQuickLog = async () => {
-    const h = parseInt(hours) || 0; const m = parseInt(mins) || 0;
-    const totalMin = h * 60 + m;
+    const totalMin = startEndDuration;
     if (!projectTask.trim() || totalMin <= 0) return;
+    const today = format(new Date(), 'yyyy-MM-dd');
+    const startISO = startTime ? `${today}T${startTime}:00` : undefined;
+    const endISO = endTime ? `${today}T${endTime}:00` : undefined;
     setLogging(true);
     try {
       await base44.entities.TimeEntry.create({
-        date: format(new Date(), 'yyyy-MM-dd'), teamMember, category: category || 'Other',
+        date: today, teamMember, category: category || 'Other',
         projectTask: projectTask.trim(), durationMinutes: totalMin, timerStatus: 'logged',
         notes: notes.trim() || undefined, transcriptLink: transcriptLink.trim() || undefined,
         transcriptFileUrl: transcriptFileUrl || undefined, transcriptFileName: transcriptFileName || undefined,
+        ...(startISO ? { timerStartedAt: startISO } : {}),
+        ...(endISO ? { timerStoppedAt: endISO } : {}),
         ...(clientId ? { clientId, clientName } : {}),
       });
       await writeClientActivityLog({ clientId, clientName, teamMember, category: category || 'Other', projectTask: projectTask.trim(), durationMinutes: totalMin, notes: notes.trim(), transcriptLink: transcriptLink.trim() });
       logActivity({ teamMember, actionType: 'Logged a time entry via sidebar', section: 'Time & Capacity', recordName: projectTask.trim(), details: `${category || 'Other'} — ${formatDuration(totalMin)}` });
-      setProjectTask(''); setHours('0'); setMins('0'); setNotes(''); setTranscriptLink(''); setTranscriptFileUrl(''); setTranscriptFileName(''); setCategory(''); setClientId(''); setClientName('');
+      setProjectTask(''); setStartTime(''); setEndTime(''); setNotes(''); setTranscriptLink(''); setTranscriptFileUrl(''); setTranscriptFileName(''); setCategory(''); setClientId(''); setClientName('');
       setLogged(true); setTimeout(() => setLogged(false), 2000);
     } catch {}
     setLogging(false);
   };
 
-  const isValid = projectTask.trim() && ((parseInt(hours) || 0) + (parseInt(mins) || 0)) > 0;
+  const isValid = projectTask.trim() && startEndDuration > 0;
   const isStopped = !!stoppedEntry;
   const missingCat = isStopped && !category;
   const missingTask = isStopped && !projectTask.trim();
@@ -246,18 +259,20 @@ export default function LogTimeSidebar({ triggerOpen, onTriggerConsumed }) {
             </select>
           </div>
 
-          {/* Duration — only for manual log (not timer) */}
+          {/* Time — only for manual log (not timer) */}
           {timer.status === 'idle' && !isStopped && (
             <div>
-              <label className="block text-[10px] font-semibold text-[#5777AB] uppercase tracking-[0.06em] mb-1">Duration</label>
+              <label className="block text-[10px] font-semibold text-[#5777AB] uppercase tracking-[0.06em] mb-1">Time</label>
               <div className="flex items-center gap-2">
-                <input type="number" min="0" value={hours} onChange={e => setHours(e.target.value)}
-                  className="w-16 px-2 py-2 text-sm text-center border border-[#EBEBF5] rounded-lg bg-white focus:outline-none focus:border-[#8403C5]" placeholder="0" />
-                <span className="text-xs text-[#5777AB] font-medium">h</span>
-                <input type="number" min="0" max="59" value={mins} onChange={e => setMins(e.target.value)}
-                  className="w-16 px-2 py-2 text-sm text-center border border-[#EBEBF5] rounded-lg bg-white focus:outline-none focus:border-[#8403C5]" placeholder="0" />
-                <span className="text-xs text-[#5777AB] font-medium">m</span>
+                <input type="time" value={startTime} onChange={e => setStartTime(e.target.value)}
+                  className="flex-1 px-2 py-2 text-sm border border-[#EBEBF5] rounded-lg bg-white focus:outline-none focus:border-[#8403C5]" />
+                <span className="text-xs text-[#5777AB]">→</span>
+                <input type="time" value={endTime} onChange={e => setEndTime(e.target.value)}
+                  className="flex-1 px-2 py-2 text-sm border border-[#EBEBF5] rounded-lg bg-white focus:outline-none focus:border-[#8403C5]" />
               </div>
+              {startEndDuration > 0 && (
+                <p className="text-[11px] text-[#1D9E75] font-semibold mt-1">Duration: {formatDuration(startEndDuration)}</p>
+              )}
             </div>
           )}
 
