@@ -14,16 +14,17 @@ import {
   sharedTimerStop, sharedTimerCommit, sharedTimerBootstrap, sharedTimerUpdateMeta
 } from '@/hooks/useSharedTimer';
 
-async function writeLeadActivityLog({ leadId, leadName, teamMember, category, projectTask, durationMinutes }) {
+async function writeLeadActivityLog({ leadId, leadName, teamMember, category, projectTask, durationMinutes, notes, transcriptLink, transcriptFileUrl, transcriptFileName }) {
   if (!leadId) return;
   try {
     const lead = await base44.entities.Lead.get(leadId);
     if (!lead) return;
     const log = (() => { try { return JSON.parse(lead.activityLog || '[]'); } catch { return []; } })();
     const h = Math.floor(durationMinutes / 60); const m = durationMinutes % 60;
-    const durStr = m === 0 ? `${h}h` : `${h}h ${m}m`;
-    log.push({ date: new Date().toISOString(), type: 'Time logged', label: `Time logged: ${durStr} — ${category}`, category, duration: durStr, description: projectTask, teamMember });
-    await base44.entities.Lead.update(leadId, { activityLog: JSON.stringify(log) });
+    const durStr = h === 0 ? `${m}m` : m === 0 ? `${h}h` : `${h}h ${m}m`;
+    const now = new Date().toISOString();
+    log.unshift({ id: Date.now(), type: 'Time logged', createdAt: now, addedBy: teamMember, category, duration: durStr, description: projectTask, summary: notes || '', transcriptLink: transcriptLink || '', transcriptFileUrl: transcriptFileUrl || '', transcriptFileName: transcriptFileName || '' });
+    await base44.entities.Lead.update(leadId, { activityLog: JSON.stringify(log), lastActivity: now });
   } catch {}
 }
 
@@ -224,6 +225,7 @@ export default function LogTime({ onLogged }) {
       transcriptFileName: quickTranscriptFileName,
     }, teamMember);
     await writeClientActivityLog({ clientId: quickClientId, clientName: quickClientName, teamMember, category: cat, projectTask: task, durationMinutes, notes: '', transcriptLink: quickTranscriptLink.trim() });
+    if (quickLeadId) { writeLeadActivityLog({ leadId: quickLeadId, leadName: quickLeadName, teamMember, category: cat, projectTask: task, durationMinutes, notes: '', transcriptLink: quickTranscriptLink.trim(), transcriptFileUrl: quickTranscriptFileUrl, transcriptFileName: quickTranscriptFileName }); }
     setStoppedEntry(null); setSaveError('');
     setQuickCatRaw(''); setQuickDescRaw(''); setQuickClientIdRaw(''); setQuickClientNameRaw(''); setQuickLeadIdRaw(''); setQuickLeadNameRaw('');
     setQuickTranscriptLink(''); setQuickTranscriptFileUrl(''); setQuickTranscriptFileName('');
@@ -270,7 +272,7 @@ export default function LogTime({ onLogged }) {
         ...(quickLeadId ? { leadId: quickLeadId, leadName: quickLeadName } : {}),
       });
       await writeClientActivityLog({ clientId: quickClientId, clientName: quickClientName, teamMember, category: quickCat || 'Other', projectTask: quickDesc.trim(), durationMinutes: quickDuration, notes: '', transcriptLink: quickTranscriptLink.trim() });
-      if (quickLeadId) { writeLeadActivityLog({ leadId: quickLeadId, leadName: quickLeadName, teamMember, category: quickCat || 'Other', projectTask: quickDesc.trim(), durationMinutes: quickDuration }); }
+      if (quickLeadId) { writeLeadActivityLog({ leadId: quickLeadId, leadName: quickLeadName, teamMember, category: quickCat || 'Other', projectTask: quickDesc.trim(), durationMinutes: quickDuration, notes: '', transcriptLink: quickTranscriptLink.trim(), transcriptFileUrl: quickTranscriptFileUrl, transcriptFileName: quickTranscriptFileName }); }
       setQuickDesc(''); setQuickStartTime(''); setQuickEndTime(''); setQuickTranscriptLink(''); setQuickTranscriptFileUrl(''); setQuickTranscriptFileName(''); setQuickLeadIdRaw(''); setQuickLeadNameRaw('');
       loadEntries(); onLogged?.();
       logActivity({ teamMember, actionType: 'Logged a time entry', section: 'Time & Capacity', recordName: quickDesc.trim(), details: `${quickCat || 'Other'} — ${formatDuration(quickDuration)}` });

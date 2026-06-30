@@ -28,15 +28,16 @@ function formatDuration(minutes) {
   return `${h}h ${m}m`;
 }
 
-async function writeLeadActivityLog({ leadId, leadName, teamMember, category, projectTask, durationMinutes }) {
+async function writeLeadActivityLog({ leadId, leadName, teamMember, category, projectTask, durationMinutes, notes, transcriptLink, transcriptFileUrl, transcriptFileName }) {
   if (!leadId) return;
   try {
     const lead = await base44.entities.Lead.get(leadId);
     if (!lead) return;
     const log = (() => { try { return JSON.parse(lead.activityLog || '[]'); } catch { return []; } })();
     const durStr = formatDuration(durationMinutes);
-    log.push({ date: new Date().toISOString(), type: 'Time logged', label: `Time logged: ${durStr} — ${category}`, category, duration: durStr, description: projectTask, teamMember });
-    await base44.entities.Lead.update(leadId, { activityLog: JSON.stringify(log) });
+    const now = new Date().toISOString();
+    log.unshift({ id: Date.now(), type: 'Time logged', createdAt: now, addedBy: teamMember, category, duration: durStr, description: projectTask, summary: notes || '', transcriptLink: transcriptLink || '', transcriptFileUrl: transcriptFileUrl || '', transcriptFileName: transcriptFileName || '' });
+    await base44.entities.Lead.update(leadId, { activityLog: JSON.stringify(log), lastActivity: now });
   } catch {}
 }
 
@@ -160,7 +161,7 @@ export default function LogTimeSidebar({ triggerOpen, onTriggerConsumed }) {
       transcriptLink: transcriptLink.trim(), transcriptFileUrl, transcriptFileName,
     }, teamMember);
     await writeClientActivityLog({ clientId, clientName, teamMember, category: cat, projectTask: task, durationMinutes, notes: notes.trim(), transcriptLink: transcriptLink.trim() });
-    if (leadId) { writeLeadActivityLog({ leadId, leadName, teamMember, category: cat, projectTask: task, durationMinutes }); }
+    if (leadId) { writeLeadActivityLog({ leadId, leadName, teamMember, category: cat, projectTask: task, durationMinutes, notes: notes.trim(), transcriptLink: transcriptLink.trim(), transcriptFileUrl, transcriptFileName }); }
     logActivity({ teamMember, actionType: 'Logged a time entry via sidebar', section: 'Time & Capacity', recordName: task });
     setStoppedEntry(null); setSaveError('');
     setCategory(''); setProjectTask(''); setClientId(''); setClientName(''); setLeadId(''); setLeadName(''); setNotes('');
@@ -204,7 +205,7 @@ export default function LogTimeSidebar({ triggerOpen, onTriggerConsumed }) {
         ...(leadId ? { leadId, leadName } : {}),
       });
       await writeClientActivityLog({ clientId, clientName, teamMember, category: category || 'Other', projectTask: projectTask.trim(), durationMinutes: totalMin, notes: notes.trim(), transcriptLink: transcriptLink.trim() });
-      if (leadId) { writeLeadActivityLog({ leadId, leadName, teamMember, category: category || 'Other', projectTask: projectTask.trim(), durationMinutes: totalMin }); }
+      if (leadId) { writeLeadActivityLog({ leadId, leadName, teamMember, category: category || 'Other', projectTask: projectTask.trim(), durationMinutes: totalMin, notes: notes.trim(), transcriptLink: transcriptLink.trim(), transcriptFileUrl, transcriptFileName }); }
       logActivity({ teamMember, actionType: 'Logged a time entry via sidebar', section: 'Time & Capacity', recordName: projectTask.trim(), details: `${category || 'Other'} — ${formatDuration(totalMin)}` });
       setProjectTask(''); setStartTime(''); setEndTime(''); setNotes(''); setTranscriptLink(''); setTranscriptFileUrl(''); setTranscriptFileName(''); setCategory(''); setClientId(''); setClientName(''); setLeadId(''); setLeadName('');
       setLogged(true); setTimeout(() => setLogged(false), 2000);

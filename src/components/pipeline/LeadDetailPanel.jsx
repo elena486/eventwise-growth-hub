@@ -7,7 +7,6 @@ import {
   Check, ChevronDown, ChevronUp, AlertTriangle, Star, Link
 } from 'lucide-react';
 import MultiFileUpload from '@/components/shared/MultiFileUpload';
-import TranscriptSection from '@/components/shared/TranscriptSection';
 import StageBadge from './Stagebadge';
 import { logActivity } from '@/lib/logActivity';
 
@@ -21,8 +20,9 @@ const INDUSTRIES = ['Festival', 'Event Organiser', 'Event Agency', 'Corporate Ev
 const HEARD_ABOUT = ['LinkedIn', 'Referral', 'Inbound', 'Outbound', 'Event', 'EPS (Event Production Show)', 'EBL (Event Buyers Live)', 'AAA (Access All Areas)', 'Other'];
 const ACCOUNTING_SERVICE_OPTIONS = ['Not included', 'Included in plan', 'Included in accounting service fee', 'Separate fee'];
 const ONBOARDING_PLANS = ['Basic', 'Standard', 'Enterprise', 'Option 1'];
-const LOG_TYPES = ['Call', 'Email', 'Demo', 'Meeting', 'LinkedIn', 'Note'];
-const LOG_MEMBERS = ['Chris', 'Ramesh', 'George', 'Elena', 'Martinique'];
+const LOG_TYPES = ['Call', 'Email', 'Demo', 'Meeting', 'LinkedIn', 'Note', 'Time logged'];
+const LOG_MEMBERS = ['Chris', 'Ramesh', 'George', 'Elena', 'Martinique', 'Sreeja'];
+const TRANSCRIPT_TYPES = ['Call', 'Meeting', 'Demo'];
 
 const LOG_TYPE_ICONS = {
   Call: '📞',
@@ -31,6 +31,7 @@ const LOG_TYPE_ICONS = {
   Meeting: '🤝',
   LinkedIn: '💼',
   Note: '📝',
+  'Time logged': '⏱',
 };
 const PROPOSAL_STATUSES = ['Not sent', 'Sent', 'Accepted', 'Declined'];
 
@@ -41,6 +42,7 @@ const LOG_TYPE_STYLES = {
   Meeting: 'bg-green-100 text-green-700',
   LinkedIn: 'bg-[#DBEAFE] text-[#1D4ED8]',
   Note: 'bg-amber-100 text-amber-700',
+  'Time logged': 'bg-[#FFFBEB] text-[#A16207]',
 };
 
 function fmtActivityDate(isoOrDate) {
@@ -173,20 +175,42 @@ function ContactsSection({ contacts, onChange }) {
 
 // ─── Activity Log ─────────────────────────────────────────────────────────────
 
-function ActivityLog({ entries, onSave }) {
+function groupEntriesByDate(entries) {
+  const groups = {};
+  const today = new Date().toDateString();
+  const yesterday = new Date(Date.now() - 86400000).toDateString();
+  entries.forEach(entry => {
+    let d; try { d = new Date(entry.createdAt || entry.datetime || entry.date); } catch { d = new Date(); }
+    let key;
+    if (d.toDateString() === today) key = 'Today';
+    else if (d.toDateString() === yesterday) key = 'Yesterday';
+    else { try { key = format(d, 'd MMM yyyy'); } catch { key = 'Earlier'; } }
+    if (!groups[key]) groups[key] = [];
+    groups[key].push(entry);
+  });
+  return groups;
+}
+
+function ActivityLog({ entries, onSave, currentUser }) {
   const [adding, setAdding] = useState(false);
-  const [newEntry, setNewEntry] = useState({ type: 'Note', datetime: nowDateTimeLocal(), summary: '', addedBy: 'Chris' });
+  const [newEntry, setNewEntry] = useState({ type: 'Note', datetime: nowDateTimeLocal(), summary: '', addedBy: currentUser || 'Chris', transcriptLink: '', transcriptFileUrl: '', transcriptFileName: '' });
   const [editingId, setEditingId] = useState(null);
   const [editDraft, setEditDraft] = useState({});
   const [deleteConfirm, setDeleteConfirm] = useState(null);
+  const [uploadingFile, setUploadingFile] = useState(false);
 
-  const openForm = () => {
-    setNewEntry({ type: 'Note', datetime: nowDateTimeLocal(), summary: '', addedBy: 'Chris' });
+  const openForm = (defaultType = 'Note') => {
+    setNewEntry({ type: defaultType, datetime: nowDateTimeLocal(), summary: '', addedBy: currentUser || 'Chris', transcriptLink: '', transcriptFileUrl: '', transcriptFileName: '' });
     setAdding(true);
   };
 
+  const canSave = () => {
+    if (newEntry.type === 'Time logged') return !!(newEntry.category && newEntry.description && newEntry.duration);
+    return !!newEntry.summary.trim();
+  };
+
   const addEntry = () => {
-    if (!newEntry.summary.trim()) return;
+    if (!canSave()) return;
     const iso = newEntry.datetime ? new Date(newEntry.datetime).toISOString() : new Date().toISOString();
     onSave([{ ...newEntry, id: Date.now(), createdAt: iso }, ...entries]);
     setAdding(false);
@@ -202,23 +226,36 @@ function ActivityLog({ entries, onSave }) {
     setDeleteConfirm(null);
   };
 
+  const handleFileUpload = async (file, target) => {
+    setUploadingFile(true);
+    try {
+      const { file_url } = await base44.integrations.Core.UploadFile({ file });
+      if (target === 'new') setNewEntry(n => ({ ...n, transcriptFileUrl: file_url, transcriptFileName: file.name }));
+      else setEditDraft(d => ({ ...d, transcriptFileUrl: file_url, transcriptFileName: file.name }));
+    } catch {}
+    setUploadingFile(false);
+  };
+
+  const grouped = groupEntriesByDate([...entries].sort((a, b) => new Date(b.createdAt || b.datetime || b.date || 0) - new Date(a.createdAt || a.datetime || a.date || 0)));
+  const groupOrder = Object.keys(grouped);
+
   return (
     <div>
-      {/* Header + add button */}
+      {/* Header */}
       <div className="flex items-center justify-between mb-4">
         <SectionTitle>Activity Log</SectionTitle>
         {!adding && (
-          <button onClick={openForm}
+          <button onClick={() => openForm('Note')}
             className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-white bg-[#8403C5] hover:bg-[#7002A8] rounded-lg transition-colors">
             <Plus className="w-3.5 h-3.5" /> Log activity
           </button>
         )}
       </div>
 
-      {/* Inline add form */}
+      {/* Add form */}
       {adding && (
         <div className="bg-[#F7F8FC] border border-ew-border rounded-xl p-4 mb-5 space-y-3">
-          {/* Type buttons */}
+          {/* Type selector */}
           <div>
             <label className="block text-[11px] font-medium text-ew-muted mb-2">Type</label>
             <div className="flex flex-wrap gap-1.5">
@@ -227,7 +264,7 @@ function ActivityLog({ entries, onSave }) {
                   onClick={() => setNewEntry(n => ({ ...n, type: t }))}
                   className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold border transition-colors ${
                     newEntry.type === t
-                      ? LOG_TYPE_STYLES[t] + ' border-transparent ring-2 ring-offset-1 ring-[#8403C5]/30'
+                      ? (LOG_TYPE_STYLES[t] || 'bg-amber-100 text-amber-700') + ' border-transparent ring-2 ring-offset-1 ring-[#8403C5]/30'
                       : 'bg-white border-ew-border text-ew-body hover:bg-ew-bg'
                   }`}>
                   <span>{LOG_TYPE_ICONS[t]}</span>{t}
@@ -244,20 +281,59 @@ function ActivityLog({ entries, onSave }) {
               onChange={e => setNewEntry(n => ({ ...n, datetime: e.target.value }))} />
           </div>
 
-          {/* Summary */}
-          <div>
-            <label className="block text-[11px] font-medium text-ew-muted mb-1">Summary <span className="text-red-400">*</span></label>
-            <MentionTextarea
-              className={ic + ' h-24 resize-none'}
-              value={newEntry.summary}
-              onChange={v => setNewEntry(n => ({ ...n, summary: v }))}
-              placeholder="What happened? Key points, outcomes, anything relevant..."
-              rows={4}
-              author={newEntry.addedBy}
-              section="Pipeline / Activity Log"
-              appUrl="https://app.base44.com/apps/68036e9feb8b4d9b7625aaa5/AppShell?tab=pipeline"
-            />
-          </div>
+          {/* Time logged fields */}
+          {newEntry.type === 'Time logged' ? (
+            <>
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="block text-[11px] font-medium text-ew-muted mb-1">Category <span className="text-red-400">*</span></label>
+                  <input className={ic} value={newEntry.category || ''} onChange={e => setNewEntry(n => ({ ...n, category: e.target.value }))} placeholder="e.g. Sales & Outbound" />
+                </div>
+                <div>
+                  <label className="block text-[11px] font-medium text-ew-muted mb-1">Duration <span className="text-red-400">*</span></label>
+                  <input className={ic} value={newEntry.duration || ''} onChange={e => setNewEntry(n => ({ ...n, duration: e.target.value }))} placeholder="e.g. 1h 30m" />
+                </div>
+              </div>
+              <div>
+                <label className="block text-[11px] font-medium text-ew-muted mb-1">Task / Description <span className="text-red-400">*</span></label>
+                <input className={ic} value={newEntry.description || ''} onChange={e => setNewEntry(n => ({ ...n, description: e.target.value }))} placeholder="What was worked on?" />
+              </div>
+              <div>
+                <label className="block text-[11px] font-medium text-ew-muted mb-1">Notes <span className="font-normal">(optional)</span></label>
+                <textarea className={ic + ' h-16 resize-none'} value={newEntry.summary || ''} onChange={e => setNewEntry(n => ({ ...n, summary: e.target.value }))} />
+              </div>
+            </>
+          ) : (
+            <div>
+              <label className="block text-[11px] font-medium text-ew-muted mb-1">Summary <span className="text-red-400">*</span></label>
+              <MentionTextarea
+                className={ic + ' h-24 resize-none'}
+                value={newEntry.summary}
+                onChange={v => setNewEntry(n => ({ ...n, summary: v }))}
+                placeholder="What happened? Key points, outcomes, anything relevant..."
+                rows={4}
+                author={newEntry.addedBy}
+                section="Pipeline / Activity Log"
+                appUrl="https://app.base44.com/apps/68036e9feb8b4d9b7625aaa5/AppShell?tab=pipeline"
+              />
+            </div>
+          )}
+
+          {/* Transcript — for Call/Meeting/Demo */}
+          {TRANSCRIPT_TYPES.includes(newEntry.type) && (
+            <div>
+              <label className="block text-[11px] font-medium text-ew-muted mb-1">Transcript link <span className="font-normal">(optional)</span></label>
+              <input className={ic} value={newEntry.transcriptLink || ''} onChange={e => setNewEntry(n => ({ ...n, transcriptLink: e.target.value }))} placeholder="https://…" />
+              <div className="mt-1.5 flex items-center gap-2">
+                <label className="text-[11px] text-ew-muted">Or upload file:</label>
+                <label className="cursor-pointer text-[11px] text-[#8403C5] hover:underline">
+                  {uploadingFile ? 'Uploading…' : newEntry.transcriptFileName ? `✓ ${newEntry.transcriptFileName}` : 'Choose file'}
+                  <input type="file" className="hidden" disabled={uploadingFile} onChange={e => { if (e.target.files?.[0]) handleFileUpload(e.target.files[0], 'new'); }} />
+                </label>
+                {newEntry.transcriptFileName && <button onClick={() => setNewEntry(n => ({ ...n, transcriptFileUrl: '', transcriptFileName: '' }))} className="text-[11px] text-ew-muted hover:text-red-500"><X className="w-3 h-3" /></button>}
+              </div>
+            </div>
+          )}
 
           {/* Added by */}
           <div>
@@ -271,101 +347,131 @@ function ActivityLog({ entries, onSave }) {
           <div className="flex gap-2 justify-end pt-1">
             <button onClick={() => setAdding(false)}
               className="px-3 py-1.5 text-sm text-ew-body hover:bg-ew-bg rounded-lg border border-ew-border transition-colors">Cancel</button>
-            <button onClick={addEntry} disabled={!newEntry.summary.trim()}
+            <button onClick={addEntry} disabled={!canSave()}
               className="px-4 py-1.5 text-sm font-semibold bg-[#8403C5] text-white rounded-lg hover:bg-[#7002A8] disabled:opacity-40 transition-colors">Save</button>
           </div>
         </div>
       )}
 
-      {/* Feed */}
-      <div className="space-y-2">
-        {entries.length === 0 && !adding && (
-          <div className="text-center py-10 border border-dashed border-ew-border rounded-xl">
-            <p className="text-2xl mb-2">📋</p>
-            <p className="text-sm text-ew-muted">No activity logged yet.</p>
-            <button onClick={openForm}
-              className="mt-3 text-xs text-[#8403C5] hover:underline font-semibold">Log your first entry</button>
-          </div>
-        )}
-        {entries.map(entry => (
-          <div key={entry.id}
-            className="group flex gap-3 bg-white border border-ew-border rounded-xl p-3.5 hover:border-[#8403C5]/30 transition-colors">
-            {editingId === entry.id ? (
-              <div className="flex-1 space-y-2">
-                <div className="flex flex-wrap gap-1.5 mb-2">
-                  {LOG_TYPES.map(t => (
-                    <button key={t} type="button"
-                      onClick={() => setEditDraft(d => ({ ...d, type: t }))}
-                      className={`flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-semibold border transition-colors ${
-                        editDraft.type === t
-                          ? LOG_TYPE_STYLES[t] + ' border-transparent'
-                          : 'bg-white border-ew-border text-ew-body hover:bg-ew-bg'
-                      }`}>
-                      <span>{LOG_TYPE_ICONS[t]}</span>{t}
-                    </button>
-                  ))}
-                </div>
-                <input type="datetime-local" className={ic + ' text-xs py-1.5'}
-                  value={editDraft.datetime || ''}
-                  onChange={e => setEditDraft(d => ({ ...d, datetime: e.target.value }))} />
-                <textarea className={ic + ' h-16 resize-none text-sm'}
-                  value={editDraft.summary}
-                  onChange={e => setEditDraft(d => ({ ...d, summary: e.target.value }))} />
-                <div className="flex gap-2 justify-end">
-                  <button onClick={() => setEditingId(null)}
-                    className="px-2 py-1 text-xs text-ew-body hover:bg-ew-bg rounded">Cancel</button>
-                  <button onClick={() => saveEdit(entry.id)}
-                    className="px-3 py-1 text-xs font-semibold bg-[#8403C5] text-white rounded">Save</button>
-                </div>
-              </div>
-            ) : (
-              <>
-                {/* Icon */}
-                <div className="text-xl shrink-0 mt-0.5">{LOG_TYPE_ICONS[entry.type] || '📝'}</div>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 mb-1 flex-wrap">
-                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
-                      LOG_TYPE_STYLES[entry.type] || 'bg-gray-100 text-gray-600'
-                    }`}>{entry.type}</span>
-                    <span className="text-[11px] text-ew-muted">
-                      {fmtActivityDate(entry.createdAt || entry.datetime || entry.date)}
-                    </span>
-                    {entry.addedBy && (
-                      <span className="text-[11px] text-ew-muted">· {entry.addedBy}</span>
+      {/* Feed grouped by date */}
+      {entries.length === 0 && !adding ? (
+        <div className="text-center py-10 border border-dashed border-ew-border rounded-xl">
+          <p className="text-2xl mb-2">📋</p>
+          <p className="text-sm text-ew-muted">No activity logged yet.</p>
+          <button onClick={() => openForm('Note')} className="mt-3 text-xs text-[#8403C5] hover:underline font-semibold">Log your first entry</button>
+        </div>
+      ) : (
+        <div className="space-y-4">
+          {groupOrder.map(group => (
+            <div key={group}>
+              <p className="text-[10px] font-bold text-ew-muted uppercase tracking-[0.12em] mb-2 px-1">{group}</p>
+              <div className="space-y-2">
+                {grouped[group].map(entry => (
+                  <div key={entry.id}
+                    className="group flex gap-3 bg-white border border-ew-border rounded-xl p-3.5 hover:border-[#8403C5]/30 transition-colors">
+                    {editingId === entry.id ? (
+                      <div className="flex-1 space-y-2">
+                        <div className="flex flex-wrap gap-1.5 mb-2">
+                          {LOG_TYPES.map(t => (
+                            <button key={t} type="button"
+                              onClick={() => setEditDraft(d => ({ ...d, type: t }))}
+                              className={`flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-semibold border transition-colors ${
+                                editDraft.type === t
+                                  ? (LOG_TYPE_STYLES[t] || 'bg-amber-100 text-amber-700') + ' border-transparent'
+                                  : 'bg-white border-ew-border text-ew-body hover:bg-ew-bg'
+                              }`}>
+                              <span>{LOG_TYPE_ICONS[t]}</span>{t}
+                            </button>
+                          ))}
+                        </div>
+                        <input type="datetime-local" className={ic + ' text-xs py-1.5'}
+                          value={editDraft.datetime || ''}
+                          onChange={e => setEditDraft(d => ({ ...d, datetime: e.target.value }))} />
+                        {editDraft.type === 'Time logged' ? (
+                          <>
+                            <input className={ic} value={editDraft.category || ''} onChange={e => setEditDraft(d => ({ ...d, category: e.target.value }))} placeholder="Category" />
+                            <input className={ic} value={editDraft.duration || ''} onChange={e => setEditDraft(d => ({ ...d, duration: e.target.value }))} placeholder="Duration" />
+                            <input className={ic} value={editDraft.description || ''} onChange={e => setEditDraft(d => ({ ...d, description: e.target.value }))} placeholder="Task / Description" />
+                          </>
+                        ) : null}
+                        <textarea className={ic + ' h-16 resize-none text-sm'}
+                          value={editDraft.summary || ''}
+                          placeholder={editDraft.type === 'Time logged' ? 'Notes (optional)' : 'Summary'}
+                          onChange={e => setEditDraft(d => ({ ...d, summary: e.target.value }))} />
+                        {TRANSCRIPT_TYPES.includes(editDraft.type) && (
+                          <input className={ic} value={editDraft.transcriptLink || ''} onChange={e => setEditDraft(d => ({ ...d, transcriptLink: e.target.value }))} placeholder="Transcript link (https://…)" />
+                        )}
+                        <div className="flex gap-2 justify-end">
+                          <button onClick={() => setEditingId(null)}
+                            className="px-2 py-1 text-xs text-ew-body hover:bg-ew-bg rounded">Cancel</button>
+                          <button onClick={() => saveEdit(entry.id)}
+                            className="px-3 py-1 text-xs font-semibold bg-[#8403C5] text-white rounded">Save</button>
+                        </div>
+                      </div>
+                    ) : (
+                      <>
+                        <div className="text-xl shrink-0 mt-0.5">{LOG_TYPE_ICONS[entry.type] || '📝'}</div>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 mb-1 flex-wrap">
+                            <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${LOG_TYPE_STYLES[entry.type] || 'bg-gray-100 text-gray-600'}`}>{entry.type}</span>
+                            {entry.addedBy && <span className="text-[11px] text-ew-muted">{entry.addedBy}</span>}
+                            <span className="text-[11px] text-ew-muted">· {fmtActivityDate(entry.createdAt || entry.datetime || entry.date)}</span>
+                          </div>
+                          {entry.type === 'Time logged' ? (
+                            <div>
+                              {entry.category && <span className="inline-block text-[10px] font-semibold px-2 py-0.5 rounded-full bg-[#EBEBF5] text-[#5777AB] mr-1.5 mb-1">{entry.category}</span>}
+                              {entry.duration && <span className="inline-block text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#FFFBEB] text-[#A16207] mr-1.5 mb-1">⏱ {entry.duration}</span>}
+                              {entry.description && <p className="text-sm text-ew-body font-medium">{entry.description}</p>}
+                              {entry.summary && <p className="text-xs text-ew-muted mt-0.5">{entry.summary}</p>}
+                            </div>
+                          ) : (
+                            <p className="text-sm text-ew-body whitespace-pre-wrap">{entry.summary || entry.label || entry.description || ''}</p>
+                          )}
+                          {(entry.transcriptLink || entry.transcriptFileUrl || entry.transcriptFileName) && (
+                            <div className="mt-1.5 flex items-center gap-1.5 flex-wrap">
+                              {entry.transcriptLink && (
+                                <a href={entry.transcriptLink} target="_blank" rel="noopener noreferrer"
+                                  className="flex items-center gap-1 text-[11px] text-[#5777AB] bg-[#EEF2F8] px-2 py-0.5 rounded-full hover:text-[#8403C5]">
+                                  <Link className="w-3 h-3" /> Transcript
+                                </a>
+                              )}
+                              {entry.transcriptFileUrl && (
+                                <a href={entry.transcriptFileUrl} target="_blank" rel="noopener noreferrer"
+                                  className="flex items-center gap-1 text-[11px] text-[#5777AB] bg-[#EEF2F8] px-2 py-0.5 rounded-full hover:text-[#8403C5]">
+                                  <Link className="w-3 h-3" /> {entry.transcriptFileName || 'File'}
+                                </a>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                        <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
+                          <button
+                            onClick={() => {
+                              setEditingId(entry.id);
+                              const dtVal = entry.createdAt ? format(new Date(entry.createdAt), "yyyy-MM-dd'T'HH:mm") : (entry.datetime || entry.date || '');
+                              setEditDraft({ type: entry.type, datetime: dtVal, summary: entry.summary || '', category: entry.category || '', duration: entry.duration || '', description: entry.description || '', transcriptLink: entry.transcriptLink || '', transcriptFileUrl: entry.transcriptFileUrl || '', transcriptFileName: entry.transcriptFileName || '' });
+                            }}
+                            className="p-1 text-ew-muted hover:text-navy rounded"><Pencil className="w-3 h-3" /></button>
+                          <button onClick={() => setDeleteConfirm(entry.id)}
+                            className="p-1 text-ew-muted hover:text-red-500 rounded"><X className="w-3 h-3" /></button>
+                        </div>
+                      </>
                     )}
                   </div>
-                  <p className="text-sm text-ew-body whitespace-pre-wrap">{entry.summary}</p>
-                </div>
-                <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
-                  <button
-                    onClick={() => {
-                      setEditingId(entry.id);
-                      const dtVal = entry.createdAt
-                        ? format(new Date(entry.createdAt), "yyyy-MM-dd'T'HH:mm")
-                        : (entry.datetime || entry.date || '');
-                      setEditDraft({ type: entry.type, datetime: dtVal, summary: entry.summary });
-                    }}
-                    className="p-1 text-ew-muted hover:text-navy rounded"><Pencil className="w-3 h-3" /></button>
-                  <button onClick={() => setDeleteConfirm(entry.id)}
-                    className="p-1 text-ew-muted hover:text-red-500 rounded"><X className="w-3 h-3" /></button>
-                </div>
-              </>
-            )}
-          </div>
-        ))}
-      </div>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
 
       {deleteConfirm && (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-[200] p-4"
-          onClick={() => setDeleteConfirm(null)}>
-          <div className="bg-white rounded-xl shadow-2xl w-full max-w-xs p-5"
-            onClick={e => e.stopPropagation()}>
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-[200] p-4" onClick={() => setDeleteConfirm(null)}>
+          <div className="bg-white rounded-xl shadow-2xl w-full max-w-xs p-5" onClick={e => e.stopPropagation()}>
             <p className="text-sm font-semibold text-navy mb-3">Delete this activity entry?</p>
             <div className="flex gap-2 justify-end">
-              <button onClick={() => setDeleteConfirm(null)}
-                className="px-3 py-1.5 text-sm text-ew-body hover:bg-ew-bg rounded-lg">Cancel</button>
-              <button onClick={() => deleteEntry(deleteConfirm)}
-                className="px-3 py-1.5 text-sm font-semibold bg-red-600 text-white rounded-lg">Delete</button>
+              <button onClick={() => setDeleteConfirm(null)} className="px-3 py-1.5 text-sm text-ew-body hover:bg-ew-bg rounded-lg">Cancel</button>
+              <button onClick={() => deleteEntry(deleteConfirm)} className="px-3 py-1.5 text-sm font-semibold bg-red-600 text-white rounded-lg">Delete</button>
             </div>
           </div>
         </div>
@@ -790,15 +896,12 @@ export default function LeadDetailPanel({ lead, onClose, onUpdate, onDelete, onC
           <div className="space-y-5">
             <ActivityLog
               entries={logEntries}
+              currentUser={currentUserFirst}
               onSave={entries => {
                 const mostRecent = entries[0];
                 const lastActivity = mostRecent?.createdAt || new Date().toISOString();
                 autoSave({ activityLog: JSON.stringify(entries), lastActivity });
               }}
-            />
-            <TranscriptSection
-              transcripts={(() => { try { return JSON.parse(data.transcripts || '[]'); } catch { return []; } })()}
-              onChange={val => autoSave({ transcripts: JSON.stringify(val) })}
             />
             <div>
               <SectionTitle>Demo</SectionTitle>
