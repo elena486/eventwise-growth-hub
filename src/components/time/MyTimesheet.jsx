@@ -5,6 +5,7 @@ import { ChevronLeft, ChevronRight, List, Grid3X3, Calendar, Pencil, Trash2, Plu
 import { CATEGORY_COLORS, CATEGORY_LABELS } from './categoryColors';
 import QuickEntryModal from './QuickEntryModal';
 import EntryDetailModal from './EntryDetailModal';
+import InteractiveCalendar from './InteractiveCalendar';
 
 const PERIOD_OPTIONS = [
   { id: 'this_week', label: 'This week' },
@@ -34,7 +35,7 @@ export default function MyTimesheet({ refresh }) {
   const [entries, setEntries] = useState([]);
   const [loading, setLoading] = useState(true);
   const [currentUser, setCurrentUser] = useState(null);
-  const [view, setView] = useState('grid');
+  const [view, setView] = useState('calendar');
   const [weekOffset, setWeekOffset] = useState(0);
   const [period, setPeriod] = useState('this_week');
   const [customStart, setCustomStart] = useState('');
@@ -373,7 +374,16 @@ export default function MyTimesheet({ refresh }) {
           </div>
         </div>
       ) : (
-        <CalendarView entries={weekEntries} weekStart={weekStart} DAYS={DAYS} onOpenEntry={handleOpenForEntry} onAddForDay={handleOpenForDate} />
+        <WeekCalendarView
+          entries={weekEntries}
+          weekStart={weekStart}
+          DAYS={DAYS}
+          currentUser={currentUser}
+          onEntryUpdated={(e) => setEntries(prev => prev.map(x => x.id === e.id ? e : x))}
+          onEntryCreated={(e) => setEntries(prev => [...prev, e])}
+          onEntryDeleted={(id) => setEntries(prev => prev.filter(x => x.id !== id))}
+          onOpenEntry={handleOpenForEntry}
+        />
       )}
 
       {/* Quick-add / edit modal */}
@@ -455,179 +465,47 @@ function CategoryDrillModal({ category, entries, periodLabel, onClose, onOpenEnt
   );
 }
 
-// ── Calendar View ──
+// ── Week Calendar View — uses InteractiveCalendar per day ──
+function WeekCalendarView({ entries, weekStart, DAYS, currentUser, onEntryUpdated, onEntryCreated, onEntryDeleted, onOpenEntry }) {
+  const [clients, setClients] = useState([]);
+  useEffect(() => { base44.entities.Client.list().then(setClients).catch(() => {}); }, []);
 
-function CalendarView({ entries, weekStart, DAYS, onOpenEntry, onAddForDay }) {
-  const now = new Date();
-  const currentHourDecimal = now.getHours() + now.getMinutes() / 60;
-  const showCurrentLine = currentHourDecimal >= 7 && currentHourDecimal <= 22;
-
-  // Group entries by day index
-  const entriesByDayIdx = useMemo(() => {
+  // Group entries by day date string
+  const entriesByDate = useMemo(() => {
     const map = {};
-    DAYS.forEach((_, i) => { map[i] = []; });
     entries.forEach(e => {
-      const day = parseISO(e.date).getDay();
-      const idx = day === 0 ? 6 : day - 1;
-      if (idx >= 0 && idx < 7) map[idx].push(e);
+      if (!map[e.date]) map[e.date] = [];
+      map[e.date].push(e);
     });
     return map;
   }, [entries]);
-
-  // Position entries that have timer start/stop times
-  const positionedEntriesByDayIdx = useMemo(() => {
-    const map = {};
-    DAYS.forEach((_, i) => { map[i] = []; });
-    entries.forEach(e => {
-      if (!e.timerStartedAt || !e.timerStoppedAt) return;
-      const day = parseISO(e.date).getDay();
-      const idx = day === 0 ? 6 : day - 1;
-      if (idx < 0 || idx >= 7) return;
-      try {
-        const start = new Date(e.timerStartedAt);
-        const startH = start.getHours() + start.getMinutes() / 60;
-        const endH = new Date(e.timerStoppedAt).getHours() + new Date(e.timerStoppedAt).getMinutes() / 60;
-        if (startH < 7 || startH > 22) return;
-        map[idx].push({ entry: e, startH, endH, top: (startH - 7) * 60, height: Math.max(20, (endH - startH) * 60) });
-      } catch {}
-    });
-    return map;
-  }, [entries]);
-
-  // Entries without timer data — show as chips
-  const untimedEntriesByDayIdx = useMemo(() => {
-    const map = {};
-    DAYS.forEach((_, i) => { map[i] = []; });
-    entries.forEach(e => {
-      if (e.timerStartedAt && e.timerStoppedAt) return;
-      const day = parseISO(e.date).getDay();
-      const idx = day === 0 ? 6 : day - 1;
-      if (idx >= 0 && idx < 7) map[idx].push(e);
-    });
-    return map;
-  }, [entries]);
-
-  const handleCellClick = (dayIdx, hour) => {
-    const date = addDays(weekStart, dayIdx);
-    const dateStr = format(date, 'yyyy-MM-dd');
-    const timeStr = `${String(hour).padStart(2, '0')}:00`;
-    onAddForDay(dateStr, '', timeStr);
-  };
-
-  const totalHeight = CALENDAR_HOURS.length * 60;
 
   return (
-    <div className="bg-white border border-[#EBEBF5] rounded-xl overflow-hidden">
-      {/* Day headers */}
-      <div className="grid grid-cols-[60px_repeat(7,1fr)] border-b border-[#EBEBF5]">
-        <div className="border-r border-[#EBEBF5]" />
-        {DAYS.map((d, i) => {
-          const date = addDays(weekStart, i);
-          const dayTotal = (entriesByDayIdx[i] || []).reduce((s, e) => s + e.durationMinutes, 0);
-          return (
-            <div key={i} className="px-2 py-2.5 text-center border-r border-[#EBEBF5] last:border-r-0">
-              <p className="text-[11px] font-bold text-[#5777AB] uppercase tracking-[0.06em]">{d}</p>
-              <p className="text-[10px] text-[#9CA3AF]">{format(date, 'd MMM')}</p>
-              {dayTotal > 0 && <p className="text-[11px] font-bold text-[#242450] mt-0.5">{fmtHours(dayTotal)}</p>}
+    <div className="space-y-4">
+      {DAYS.map((dayLabel, i) => {
+        const date = addDays(weekStart, i);
+        const dateStr = format(date, 'yyyy-MM-dd');
+        const dayEntries = entriesByDate[dateStr] || [];
+        const dayTotal = dayEntries.reduce((s, e) => s + (e.durationMinutes || 0), 0);
+        return (
+          <div key={dateStr}>
+            <div className="flex items-center gap-3 mb-2">
+              <span className="text-sm font-bold text-[#242450]">{dayLabel} {format(date, 'd MMM')}</span>
+              {dayTotal > 0 && <span className="text-xs font-bold text-[#8403C5] bg-[#F3E8FF] px-2 py-0.5 rounded-full">{fmtHours(dayTotal)}</span>}
             </div>
-          );
-        })}
-      </div>
-
-      {/* Time grid */}
-      <div className="overflow-auto" style={{ maxHeight: 'calc(100vh - 320px)' }}>
-        <div className="relative" style={{ height: `${totalHeight}px` }}>
-          {CALENDAR_HOURS.map((hour) => {
-            const top = (hour - 7) * 60;
-            return (
-              <div key={hour} className="absolute left-0 right-0" style={{ top: `${top}px`, height: '60px' }}>
-                {/* Hour marker label */}
-                <div className="absolute left-0 top-0 w-[60px] h-full border-r border-[#EBEBF5] flex items-start justify-end pr-2">
-                  <span className="text-[10px] font-bold text-[#5777AB] leading-none mt-0">{String(hour).padStart(2, '0')}:00</span>
-                </div>
-
-                {/* Solid hour line across all day columns */}
-                <div className="absolute left-[60px] right-0 top-0 border-t border-[#EBEBF5] h-px" />
-
-                {/* Half-hour dotted line */}
-                <div className="absolute left-[60px] right-0 top-[30px] border-t border-dashed border-[#D8D8EE] h-px" />
-
-                {/* Clickable day columns */}
-                {DAYS.map((_, dayIdx) => (
-                  <div key={dayIdx}
-                    className="absolute border-r border-[#EBEBF5] last:border-r-0 h-full hover:bg-[#F3E8FF]/30 cursor-pointer transition-colors"
-                    style={{ left: `calc(60px + (100% - 60px) / 7 * ${dayIdx})`, width: `calc((100% - 60px) / 7)` }}
-                    onClick={() => handleCellClick(dayIdx, hour)}
-                    title={`Log at ${String(hour).padStart(2, '0')}:00`}
-                  />
-                ))}
-              </div>
-            );
-          })}
-
-          {/* Positioned entry blocks (those with timer start/stop) */}
-          {DAYS.map((_, dayIdx) => {
-            const posEntries = positionedEntriesByDayIdx[dayIdx] || [];
-            const colWidth = `calc((100% - 60px) / 7)`;
-            return posEntries.map(({ entry, top, height }) => {
-              const color = CATEGORY_COLORS[entry.category] || '#9CA3AF';
-              return (
-                <div key={entry.id}
-                  className="absolute rounded-md px-2 py-1 overflow-hidden cursor-pointer hover:shadow-md transition-shadow z-10"
-                  style={{
-                    left: `calc(60px + (100% - 60px) / 7 * ${dayIdx})`,
-                    width: colWidth,
-                    top: `${top}px`,
-                    height: `${Math.min(height, totalHeight - top)}px`,
-                    backgroundColor: `${color}18`,
-                    borderLeft: `3px solid ${color}`,
-                  }}
-                  onClick={(e) => { e.stopPropagation(); onOpenEntry(entry); }}
-                >
-                  <p className="text-[10px] font-semibold leading-tight" style={{ color }}>{entry.category}</p>
-                  <p className="text-[10px] font-medium text-[#242450] leading-tight mt-0.5 truncate">{entry.projectTask}</p>
-                  <p className="text-[9px] font-bold text-[#242450] mt-0.5">{fmtHours(entry.durationMinutes)}</p>
-                </div>
-              );
-            });
-          })}
-
-          {/* Untimed entries — chips at top of each day column */}
-          {DAYS.map((_, dayIdx) => {
-            const chips = untimedEntriesByDayIdx[dayIdx] || [];
-            const colWidth = `calc((100% - 60px) / 7)`;
-            return chips.map((e, ci) => {
-              const color = CATEGORY_COLORS[e.category] || '#9CA3AF';
-              return (
-                <div key={e.id}
-                  className="absolute px-1.5 py-0.5 rounded cursor-pointer hover:shadow-sm transition-shadow z-10"
-                  style={{
-                    left: `calc(60px + (100% - 60px) / 7 * ${dayIdx})`,
-                    width: colWidth,
-                    top: `${ci * 24}px`,
-                    backgroundColor: `${color}12`,
-                    borderLeft: `2px solid ${color}`,
-                  }}
-                  onClick={(ev) => { ev.stopPropagation(); onOpenEntry(e); }}
-                >
-                  <p className="text-[9px] font-medium text-[#242450] truncate leading-tight">{e.projectTask || '—'}</p>
-                  <p className="text-[8px] text-[#5777AB]">{fmtHours(e.durationMinutes)}</p>
-                </div>
-              );
-            });
-          })}
-
-          {/* Current time line */}
-          {showCurrentLine && (
-            <div className="absolute left-0 right-0 z-20 pointer-events-none" style={{ top: `${(currentHourDecimal - 7) * 60}px` }}>
-              <div className="absolute left-[60px] right-0 h-px bg-[#DC2626]" />
-              <div className="absolute left-0 w-[60px] flex items-center justify-end pr-2" style={{ marginTop: '-9px' }}>
-                <span className="text-[10px] font-bold text-[#DC2626] bg-white px-1 rounded">{format(now, 'HH:mm')}</span>
-              </div>
-            </div>
-          )}
-        </div>
-      </div>
+            <InteractiveCalendar
+              entries={dayEntries}
+              dateStr={dateStr}
+              teamMember={currentUser}
+              clients={clients}
+              onEntryCreated={onEntryCreated}
+              onEntryUpdated={onEntryUpdated}
+              onEntryDeleted={onEntryDeleted}
+              onOpenEntry={onOpenEntry}
+            />
+          </div>
+        );
+      })}
     </div>
   );
 }

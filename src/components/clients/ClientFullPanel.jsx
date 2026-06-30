@@ -1,9 +1,9 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import ReactDOM from 'react-dom';
 import HealthScoreChip from '@/components/health/HealthScoreChip';
 import ContractDocuments from './ContractDocuments';
 import { base44 } from '@/api/base44Client';
-import { format, differenceInDays } from 'date-fns';
+import { format, differenceInDays, isToday, isYesterday, isWithinInterval, startOfWeek, endOfWeek, startOfMonth, endOfMonth, subMonths, parseISO as parseDI } from 'date-fns';
 import {
   X, Mail, Phone, Check, ChevronDown, ChevronUp, Trash2, AlertTriangle, MessageSquareOff, Plus, ExternalLink
 } from 'lucide-react';
@@ -711,20 +711,80 @@ export default function ClientFullPanel({ client: initialClient, onClose, onUpda
 
 // ─── Activity Log Tab ─────────────────────────────────────────────────────────
 
+const TEAM_MEMBER_COLORS = { Chris: '#8403C5', Elena: '#1D9E75', George: '#E8A020', Martinique: '#0EA5E9', Sreeja: '#DC2626', Ramesh: '#5777AB' };
+const CAT_COLORS_ACT = { 'Sales & Outbound': '#3B82F6', 'Customer Success & Onboarding': '#22C55E', 'Marketing & Content': '#A855F7', 'Operations & Admin': '#F97316', 'Product & Tech': '#14B8A6', 'Finance': '#EAB308', 'Strategy & Planning': '#1E3A5F', 'Other': '#9CA3AF' };
+
+function fmtDurAct(min) {
+  if (!min) return '—';
+  const h = Math.floor(min / 60); const m = min % 60;
+  if (!h) return `${m}m`; if (!m) return `${h}h`; return `${h}h ${m}m`;
+}
+
+function dateGroupLabel(dateStr) {
+  if (!dateStr) return dateStr;
+  try {
+    const d = parseDI(dateStr);
+    if (isToday(d)) return 'Today';
+    if (isYesterday(d)) return 'Yesterday';
+    return format(d, 'd MMM yyyy');
+  } catch { return dateStr; }
+}
+
+function ActivityEntryRow({ e }) {
+  const [expanded, setExpanded] = useState(false);
+  const color = CAT_COLORS_ACT[e.category] || '#9CA3AF';
+  const memberColor = TEAM_MEMBER_COLORS[e.teamMember] || '#9CA3AF';
+  const hasExtra = e.notes || e.transcriptLink;
+  return (
+    <div className="border border-[#E5E7EB] rounded-xl bg-white hover:border-[#8403C5]/20 transition-colors overflow-hidden">
+      <div className="flex items-center gap-3 px-3.5 py-3">
+        <div className="w-7 h-7 rounded-full flex items-center justify-center text-white text-[10px] font-bold shrink-0" style={{ backgroundColor: memberColor }}>
+          {(e.teamMember || '?').charAt(0)}
+        </div>
+        <div className="flex-1 min-w-0">
+          <p className="text-sm font-semibold text-[#111827] truncate">{e.projectTask || <span className="text-[#9CA3AF] italic font-normal">No description</span>}</p>
+          <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
+            <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded" style={{ backgroundColor: `${color}20`, color }}>{e.category}</span>
+            <span className="text-[10px] text-[#9CA3AF]">{e.teamMember}</span>
+          </div>
+        </div>
+        <span className="text-sm font-bold text-[#242450] shrink-0">{fmtDurAct(e.durationMinutes)}</span>
+        {hasExtra && (
+          <button onClick={() => setExpanded(v => !v)} className="p-1 text-[#9CA3AF] hover:text-[#242450] shrink-0">
+            <ChevronDown className={`w-3.5 h-3.5 transition-transform ${expanded ? 'rotate-180' : ''}`} />
+          </button>
+        )}
+      </div>
+      {expanded && hasExtra && (
+        <div className="px-3.5 pb-3 space-y-1.5 border-t border-[#F3F4F6] pt-2">
+          {e.notes && <p className="text-xs text-[#6B7280]">{e.notes}</p>}
+          {e.transcriptLink && (
+            <a href={e.transcriptLink} target="_blank" rel="noopener noreferrer"
+              className="flex items-center gap-1 text-xs text-[#8403C5] hover:underline">
+              <ExternalLink className="w-3 h-3" /> View transcript
+            </a>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function ActivityLogTab({ clientId }) {
   const [entries, setEntries] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [filtersOpen, setFiltersOpen] = useState(false);
+  const [memberFilter, setMemberFilter] = useState('');
+  const [categoryFilter, setCategoryFilter] = useState('');
+  const [dateFilter, setDateFilter] = useState('all');
 
   useEffect(() => {
     if (!clientId) return;
     setLoading(true);
-    // Query TimeEntry records directly by clientId
     base44.entities.TimeEntry.filter({ clientId }).then(rows => {
       setEntries(rows.sort((a, b) => (b.date || '').localeCompare(a.date || '')));
       setLoading(false);
     }).catch(() => setLoading(false));
-
-    // Subscribe to real-time updates
     const unsub = base44.entities.TimeEntry.subscribe((event) => {
       if (event.type === 'create' && event.data?.clientId === clientId) {
         setEntries(prev => [event.data, ...prev].sort((a, b) => (b.date || '').localeCompare(a.date || '')));
@@ -737,11 +797,41 @@ function ActivityLogTab({ clientId }) {
     return unsub;
   }, [clientId]);
 
-  function fmtDur(min) {
-    if (!min) return '—';
-    const h = Math.floor(min / 60); const m = min % 60;
-    if (!h) return `${m}m`; if (!m) return `${h}h`; return `${h}h ${m}m`;
-  }
+  const now = new Date();
+
+  const filtered = useMemo(() => {
+    return entries.filter(e => {
+      if (memberFilter && e.teamMember !== memberFilter) return false;
+      if (categoryFilter && e.category !== categoryFilter) return false;
+      if (dateFilter !== 'all') {
+        try {
+          const d = parseDI(e.date);
+          if (dateFilter === 'this_week' && !isWithinInterval(d, { start: startOfWeek(now, { weekStartsOn: 1 }), end: endOfWeek(now, { weekStartsOn: 1 }) })) return false;
+          if (dateFilter === 'this_month' && !isWithinInterval(d, { start: startOfMonth(now), end: endOfMonth(now) })) return false;
+          if (dateFilter === 'last_month' && !isWithinInterval(d, { start: startOfMonth(subMonths(now, 1)), end: endOfMonth(subMonths(now, 1)) })) return false;
+        } catch { return false; }
+      }
+      return true;
+    });
+  }, [entries, memberFilter, categoryFilter, dateFilter]);
+
+  const thisMonthTotal = useMemo(() => entries.filter(e => {
+    try { return isWithinInterval(parseDI(e.date), { start: startOfMonth(now), end: endOfMonth(now) }); } catch { return false; }
+  }).reduce((s, e) => s + (e.durationMinutes || 0), 0), [entries]);
+
+  const grouped = useMemo(() => {
+    const map = {};
+    filtered.forEach(e => {
+      const key = e.date || '';
+      if (!map[key]) map[key] = [];
+      map[key].push(e);
+    });
+    return Object.entries(map).sort((a, b) => b[0].localeCompare(a[0]));
+  }, [filtered]);
+
+  const uniqueMembers = [...new Set(entries.map(e => e.teamMember).filter(Boolean))];
+  const uniqueCategories = [...new Set(entries.map(e => e.category).filter(Boolean))];
+  const activeFilters = [memberFilter, categoryFilter, dateFilter !== 'all' ? dateFilter : ''].filter(Boolean).length;
 
   if (loading) {
     return <div className="flex items-center justify-center h-32"><div className="w-5 h-5 border-2 border-[#8403C5]/20 border-t-[#8403C5] rounded-full animate-spin" /></div>;
@@ -756,44 +846,70 @@ function ActivityLogTab({ clientId }) {
     );
   }
 
-  const total = entries.reduce((s, e) => s + (e.durationMinutes || 0), 0);
-
   return (
     <div>
-      <div className="flex items-center justify-between mb-4">
-        <p className="text-[11px] font-bold text-[#9CA3AF] uppercase tracking-[0.08em]">{entries.length} time {entries.length === 1 ? 'entry' : 'entries'}</p>
-        <span className="text-sm font-bold text-[#8403C5]">{fmtDur(total)} total</span>
+      {/* Total banner */}
+      <div className="flex items-center justify-between mb-3 px-3 py-2.5 bg-[#F3E8FF]/50 rounded-xl border border-[#8403C5]/10">
+        <div>
+          <p className="text-[11px] font-bold text-[#9CA3AF] uppercase tracking-[0.08em]">Total time this month</p>
+          <p className="text-lg font-bold text-[#8403C5]">{fmtDurAct(thisMonthTotal)}</p>
+        </div>
+        <div className="text-right">
+          <p className="text-[11px] font-bold text-[#9CA3AF] uppercase tracking-[0.08em]">All time</p>
+          <p className="text-sm font-bold text-[#242450]">{fmtDurAct(entries.reduce((s, e) => s + (e.durationMinutes || 0), 0))}</p>
+        </div>
       </div>
-      <div className="space-y-2">
-        {entries.map(e => (
-          <div key={e.id} className="border border-[#E5E7EB] rounded-xl p-3.5 bg-white hover:border-[#8403C5]/30 transition-colors">
-            <div className="flex items-start justify-between gap-2 mb-1.5">
-              <div className="min-w-0">
-                <p className="text-sm font-semibold text-[#111827] leading-tight truncate">{e.projectTask || <span className="text-[#9CA3AF] italic font-normal">No description</span>}</p>
-                <div className="flex items-center gap-1.5 flex-wrap mt-1">
-                  {e.category && (
-                    <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-[#F3E8FF] text-[#8403C5]">{e.category}</span>
-                  )}
-                  {e.teamMember && (
-                    <span className="text-[10px] font-medium text-[#6B7280] bg-[#F3F4F6] px-1.5 py-0.5 rounded">{e.teamMember}</span>
-                  )}
-                  {e.date && (
-                    <span className="text-[10px] text-[#9CA3AF]">{e.date}</span>
-                  )}
-                </div>
-              </div>
-              <span className="shrink-0 text-base font-bold text-[#242450]">{fmtDur(e.durationMinutes)}</span>
+
+      {/* Filter bar */}
+      <div className="mb-3">
+        <button onClick={() => setFiltersOpen(v => !v)}
+          className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg border transition-colors ${activeFilters > 0 ? 'bg-[#F3E8FF] text-[#8403C5] border-[#8403C5]/30' : 'bg-white text-[#5777AB] border-[#EBEBF5]'}`}>
+          <Plus className="w-3 h-3" /> Filters {activeFilters > 0 && <span className="bg-[#8403C5] text-white text-[9px] font-bold px-1.5 rounded-full">{activeFilters}</span>}
+        </button>
+        {filtersOpen && (
+          <div className="mt-2 p-3 bg-white border border-[#EBEBF5] rounded-xl space-y-2">
+            <div className="flex gap-2 flex-wrap">
+              <select value={memberFilter} onChange={e => setMemberFilter(e.target.value)}
+                className="px-2 py-1.5 text-xs border border-[#EBEBF5] rounded-lg focus:outline-none focus:border-[#8403C5]">
+                <option value="">All members</option>
+                {uniqueMembers.map(m => <option key={m} value={m}>{m}</option>)}
+              </select>
+              <select value={categoryFilter} onChange={e => setCategoryFilter(e.target.value)}
+                className="px-2 py-1.5 text-xs border border-[#EBEBF5] rounded-lg focus:outline-none focus:border-[#8403C5]">
+                <option value="">All categories</option>
+                {uniqueCategories.map(c => <option key={c} value={c}>{c}</option>)}
+              </select>
+              <select value={dateFilter} onChange={e => setDateFilter(e.target.value)}
+                className="px-2 py-1.5 text-xs border border-[#EBEBF5] rounded-lg focus:outline-none focus:border-[#8403C5]">
+                <option value="all">All time</option>
+                <option value="this_week">This week</option>
+                <option value="this_month">This month</option>
+                <option value="last_month">Last month</option>
+              </select>
+              {activeFilters > 0 && (
+                <button onClick={() => { setMemberFilter(''); setCategoryFilter(''); setDateFilter('all'); }}
+                  className="px-2 py-1.5 text-xs text-[#DC2626] hover:bg-[#FEF2F2] rounded-lg border border-[#FECACA]">Clear</button>
+              )}
             </div>
-            {e.notes && <p className="text-xs text-[#6B7280] mt-1">{e.notes}</p>}
-            {e.transcriptLink && (
-              <a href={e.transcriptLink} target="_blank" rel="noopener noreferrer"
-                className="flex items-center gap-1 text-xs text-[#8403C5] hover:underline mt-1">
-                <ExternalLink className="w-3 h-3" /> Transcript
-              </a>
-            )}
           </div>
-        ))}
+        )}
       </div>
+
+      {/* Grouped entries */}
+      {filtered.length === 0 ? (
+        <p className="text-sm text-[#9CA3AF] italic text-center py-6">No entries match your filters.</p>
+      ) : (
+        <div className="space-y-4">
+          {grouped.map(([dateStr, dayEntries]) => (
+            <div key={dateStr}>
+              <p className="text-[11px] font-bold text-[#9CA3AF] uppercase tracking-[0.08em] mb-1.5">{dateGroupLabel(dateStr)}</p>
+              <div className="space-y-1.5">
+                {dayEntries.map(e => <ActivityEntryRow key={e.id} e={e} />)}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
