@@ -5,14 +5,13 @@ import { Play, Square, Pause, Link, MoreVertical, RotateCw, Copy, Pencil, Trash2
 import TranscriptField from './TranscriptField';
 import TaskPresetSelect from './TaskPresetSelect';
 import EntryDetailModal from './EntryDetailModal';
+import InteractiveCalendar from './InteractiveCalendar';
 import { CATEGORY_COLORS, CATEGORY_LABELS } from './categoryColors';
 import { logActivity } from '@/lib/logActivity';
 import {
   useSharedTimer, sharedTimerStart, sharedTimerPause, sharedTimerResume,
   sharedTimerStop, sharedTimerCommit, sharedTimerBootstrap, sharedTimerUpdateMeta
 } from '@/hooks/useSharedTimer';
-
-const CALENDAR_HOURS = Array.from({ length: 16 }, (_, i) => i + 7);
 
 async function writeClientActivityLog({ clientId, clientName, teamMember, category, projectTask, durationMinutes, notes, transcriptLink }) {
   if (!clientId) return;
@@ -500,7 +499,16 @@ export default function LogTime({ onLogged }) {
             ) : todayEntries.map((e, i) => <EntryRow key={e.id} entry={e} idx={i} />)}
           </div>
         ) : (
-          <TodayCalendarView entries={todayEntries} onOpenEntry={setDetailEntry} />
+          <InteractiveCalendar
+            entries={todayEntries}
+            dateStr={format(new Date(), 'yyyy-MM-dd')}
+            teamMember={teamMember}
+            clients={clients}
+            onEntryCreated={(e) => { setEntries(prev => [...prev, e]); onLogged?.(); }}
+            onEntryUpdated={(e) => setEntries(prev => prev.map(x => x.id === e.id ? e : x))}
+            onEntryDeleted={(id) => { setEntries(prev => prev.filter(x => x.id !== id)); onLogged?.(); }}
+            onOpenEntry={setDetailEntry}
+          />
         )}
       </div>
 
@@ -547,110 +555,6 @@ export default function LogTime({ onLogged }) {
           }}
         />
       )}
-    </div>
-  );
-}
-
-// ── Today Calendar View with side-by-side overlap fix + clickable entries ──
-function TodayCalendarView({ entries, onOpenEntry }) {
-  const now = new Date();
-  const currentHourDecimal = now.getHours() + now.getMinutes() / 60;
-  const showCurrentLine = currentHourDecimal >= 7 && currentHourDecimal <= 22;
-  const totalHeight = CALENDAR_HOURS.length * 60;
-
-  // Compute columns for overlapping entries
-  const positioned = useMemo(() => {
-    const raw = entries.filter(e => e.timerStartedAt && e.timerStoppedAt).map(e => {
-      try {
-        const startH = new Date(e.timerStartedAt).getHours() + new Date(e.timerStartedAt).getMinutes() / 60;
-        const endH = new Date(e.timerStoppedAt).getHours() + new Date(e.timerStoppedAt).getMinutes() / 60;
-        if (startH < 7 || startH > 22) return null;
-        return { entry: e, startH, endH, top: (startH - 7) * 60, height: Math.max(24, (endH - startH) * 60) };
-      } catch { return null; }
-    }).filter(Boolean);
-
-    // Assign columns for overlaps
-    const columns = [];
-    raw.forEach(item => {
-      let placed = false;
-      for (let col = 0; col < columns.length; col++) {
-        const lastInCol = columns[col][columns[col].length - 1];
-        if (item.startH >= lastInCol.endH) { columns[col].push(item); item.col = col; placed = true; break; }
-      }
-      if (!placed) { item.col = columns.length; columns.push([item]); }
-    });
-    const totalCols = columns.length;
-    return raw.map(item => ({ ...item, totalCols }));
-  }, [entries]);
-
-  const untimed = useMemo(() => entries.filter(e => !e.timerStartedAt || !e.timerStoppedAt), [entries]);
-
-  function fmtDur(minutes) {
-    const h = Math.floor(minutes / 60); const m = minutes % 60;
-    if (!h && !m) return '—'; if (!m) return `${h}h`; if (!h) return `${m}m`; return `${h}h ${m}m`;
-  }
-
-  return (
-    <div className="bg-white border border-[#EBEBF5] rounded-xl overflow-hidden">
-      <div className="grid grid-cols-[60px_1fr] border-b border-[#EBEBF5]">
-        <div className="border-r border-[#EBEBF5]" />
-        <div className="px-3 py-2.5 text-center">
-          <p className="text-[11px] font-bold text-[#5777AB] uppercase tracking-[0.06em]">{format(now, 'EEEE')}</p>
-          <p className="text-[10px] text-[#9CA3AF]">{format(now, 'd MMM yyyy')}</p>
-        </div>
-      </div>
-      <div className="overflow-auto" style={{ maxHeight: 'calc(100vh - 400px)' }}>
-        <div className="relative" style={{ height: `${totalHeight}px` }}>
-          {CALENDAR_HOURS.map(hour => {
-            const top = (hour - 7) * 60;
-            return (
-              <div key={hour} className="absolute left-0 right-0" style={{ top: `${top}px`, height: '60px' }}>
-                <div className="absolute left-0 top-0 w-[60px] h-full border-r border-[#EBEBF5] flex items-start justify-end pr-2">
-                  <span className="text-[10px] font-bold text-[#5777AB] leading-none">{String(hour).padStart(2, '0')}:00</span>
-                </div>
-                <div className="absolute left-[60px] right-0 top-0 border-t border-[#EBEBF5] h-px" />
-                <div className="absolute left-[60px] right-0 top-[30px] border-t border-dashed border-[#D8D8EE] h-px" />
-              </div>
-            );
-          })}
-          {/* Positioned entries — side by side if overlapping */}
-          {positioned.map(({ entry, top, height, col, totalCols }) => {
-            const color = CATEGORY_COLORS[entry.category] || '#9CA3AF';
-            const colW = `calc((100% - 64px) / ${totalCols})`;
-            const leftPx = `calc(64px + (100% - 64px) / ${totalCols} * ${col})`;
-            return (
-              <div key={entry.id}
-                className="absolute rounded-md px-2 py-1 overflow-hidden z-10 cursor-pointer hover:opacity-90 transition-opacity"
-                style={{ left: leftPx, width: colW, top: `${top}px`, height: `${Math.min(height, totalHeight - top)}px`, backgroundColor: `${color}18`, borderLeft: `3px solid ${color}` }}
-                onClick={() => onOpenEntry(entry)}>
-                <p className="text-[10px] font-semibold leading-tight truncate" style={{ color }}>{entry.category}</p>
-                <p className="text-[10px] font-medium text-[#242450] leading-tight mt-0.5 truncate">{entry.projectTask}</p>
-                <p className="text-[9px] font-bold text-[#242450] mt-0.5">{fmtDur(entry.durationMinutes)}</p>
-              </div>
-            );
-          })}
-          {/* Untimed entries */}
-          {untimed.map((e, ci) => {
-            const color = CATEGORY_COLORS[e.category] || '#9CA3AF';
-            return (
-              <div key={e.id} className="absolute px-1.5 py-0.5 rounded z-10 cursor-pointer hover:opacity-90"
-                style={{ left: '64px', right: '4px', top: `${ci * 26}px`, backgroundColor: `${color}12`, borderLeft: `2px solid ${color}` }}
-                onClick={() => onOpenEntry(e)}>
-                <p className="text-[9px] font-medium text-[#242450] truncate">{e.projectTask || '—'}</p>
-                <p className="text-[8px] text-[#5777AB]">{fmtDur(e.durationMinutes)}</p>
-              </div>
-            );
-          })}
-          {showCurrentLine && (
-            <div className="absolute left-0 right-0 z-20 pointer-events-none" style={{ top: `${(currentHourDecimal - 7) * 60}px` }}>
-              <div className="absolute left-[60px] right-0 h-px bg-[#DC2626]" />
-              <div className="absolute left-0 w-[60px] flex items-center justify-end pr-2" style={{ marginTop: '-9px' }}>
-                <span className="text-[10px] font-bold text-[#DC2626] bg-white px-1 rounded">{format(now, 'HH:mm')}</span>
-              </div>
-            </div>
-          )}
-        </div>
-      </div>
     </div>
   );
 }

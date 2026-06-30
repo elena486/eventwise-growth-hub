@@ -64,6 +64,7 @@ const SUB_SCORE_KEYS = [
 
 const TABS = [
   { id: 'overview', label: 'Overview' },
+  { id: 'activity', label: 'Activity Log' },
   { id: 'onboarding', label: 'Onboarding' },
   { id: 'health', label: 'Health' },
   { id: 'notes', label: 'Notes' },
@@ -668,6 +669,11 @@ export default function ClientFullPanel({ client: initialClient, onClose, onUpda
             </>
           )}
 
+          {/* ACTIVITY LOG TAB */}
+          {activeTab === 'activity' && (
+            <ActivityLogTab clientId={client.id} />
+          )}
+
           {/* BUGS TAB */}
           {activeTab === 'bugs' && (
             <BugsTabContent
@@ -699,6 +705,95 @@ export default function ClientFullPanel({ client: initialClient, onClose, onUpda
         />,
         document.body
       )}
+    </div>
+  );
+}
+
+// ─── Activity Log Tab ─────────────────────────────────────────────────────────
+
+function ActivityLogTab({ clientId }) {
+  const [entries, setEntries] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (!clientId) return;
+    setLoading(true);
+    // Query TimeEntry records directly by clientId
+    base44.entities.TimeEntry.filter({ clientId }).then(rows => {
+      setEntries(rows.sort((a, b) => (b.date || '').localeCompare(a.date || '')));
+      setLoading(false);
+    }).catch(() => setLoading(false));
+
+    // Subscribe to real-time updates
+    const unsub = base44.entities.TimeEntry.subscribe((event) => {
+      if (event.type === 'create' && event.data?.clientId === clientId) {
+        setEntries(prev => [event.data, ...prev].sort((a, b) => (b.date || '').localeCompare(a.date || '')));
+      } else if (event.type === 'update' && event.data?.clientId === clientId) {
+        setEntries(prev => prev.map(e => e.id === event.id ? event.data : e));
+      } else if (event.type === 'delete') {
+        setEntries(prev => prev.filter(e => e.id !== event.id));
+      }
+    });
+    return unsub;
+  }, [clientId]);
+
+  function fmtDur(min) {
+    if (!min) return '—';
+    const h = Math.floor(min / 60); const m = min % 60;
+    if (!h) return `${m}m`; if (!m) return `${h}h`; return `${h}h ${m}m`;
+  }
+
+  if (loading) {
+    return <div className="flex items-center justify-center h-32"><div className="w-5 h-5 border-2 border-[#8403C5]/20 border-t-[#8403C5] rounded-full animate-spin" /></div>;
+  }
+
+  if (entries.length === 0) {
+    return (
+      <div className="text-center py-12 border border-dashed border-[#E5E7EB] rounded-xl">
+        <p className="text-sm text-[#6B7280]">No time has been logged against this client yet.</p>
+        <p className="text-xs text-[#9CA3AF] mt-1">Log time in Time & Capacity and select this client to see entries here.</p>
+      </div>
+    );
+  }
+
+  const total = entries.reduce((s, e) => s + (e.durationMinutes || 0), 0);
+
+  return (
+    <div>
+      <div className="flex items-center justify-between mb-4">
+        <p className="text-[11px] font-bold text-[#9CA3AF] uppercase tracking-[0.08em]">{entries.length} time {entries.length === 1 ? 'entry' : 'entries'}</p>
+        <span className="text-sm font-bold text-[#8403C5]">{fmtDur(total)} total</span>
+      </div>
+      <div className="space-y-2">
+        {entries.map(e => (
+          <div key={e.id} className="border border-[#E5E7EB] rounded-xl p-3.5 bg-white hover:border-[#8403C5]/30 transition-colors">
+            <div className="flex items-start justify-between gap-2 mb-1.5">
+              <div className="min-w-0">
+                <p className="text-sm font-semibold text-[#111827] leading-tight truncate">{e.projectTask || <span className="text-[#9CA3AF] italic font-normal">No description</span>}</p>
+                <div className="flex items-center gap-1.5 flex-wrap mt-1">
+                  {e.category && (
+                    <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-[#F3E8FF] text-[#8403C5]">{e.category}</span>
+                  )}
+                  {e.teamMember && (
+                    <span className="text-[10px] font-medium text-[#6B7280] bg-[#F3F4F6] px-1.5 py-0.5 rounded">{e.teamMember}</span>
+                  )}
+                  {e.date && (
+                    <span className="text-[10px] text-[#9CA3AF]">{e.date}</span>
+                  )}
+                </div>
+              </div>
+              <span className="shrink-0 text-base font-bold text-[#242450]">{fmtDur(e.durationMinutes)}</span>
+            </div>
+            {e.notes && <p className="text-xs text-[#6B7280] mt-1">{e.notes}</p>}
+            {e.transcriptLink && (
+              <a href={e.transcriptLink} target="_blank" rel="noopener noreferrer"
+                className="flex items-center gap-1 text-xs text-[#8403C5] hover:underline mt-1">
+                <ExternalLink className="w-3 h-3" /> Transcript
+              </a>
+            )}
+          </div>
+        ))}
+      </div>
     </div>
   );
 }
