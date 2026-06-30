@@ -30,8 +30,8 @@ export default function EntryDetailModal({ entry, onClose, onUpdated, onDeleted,
   const [projectTask, setProjectTask] = useState('');
   const [clientId, setClientId] = useState('');
   const [clientName, setClientName] = useState('');
-  const [hours, setHours] = useState('0');
-  const [mins, setMins] = useState('0');
+  const [startTime, setStartTime] = useState('');
+  const [endTime, setEndTime] = useState('');
   const [notes, setNotes] = useState('');
   const [transcriptLink, setTranscriptLink] = useState('');
 
@@ -41,8 +41,20 @@ export default function EntryDetailModal({ entry, onClose, onUpdated, onDeleted,
       setProjectTask(entry.projectTask || '');
       setClientId(entry.clientId || '');
       setClientName(entry.clientName || '');
-      setHours(String(Math.floor((entry.durationMinutes || 0) / 60)));
-      setMins(String((entry.durationMinutes || 0) % 60));
+      // Pre-fill start/end from stored ISO timestamps if available, else derive from duration
+      if (entry.timerStartedAt) {
+        setStartTime(fmtTime(entry.timerStartedAt));
+      } else {
+        setStartTime('09:00');
+      }
+      if (entry.timerStoppedAt) {
+        setEndTime(fmtTime(entry.timerStoppedAt));
+      } else {
+        const totalMin = entry.durationMinutes || 0;
+        const endH = 9 + Math.floor(totalMin / 60);
+        const endM = totalMin % 60;
+        setEndTime(`${String(endH).padStart(2, '0')}:${String(endM).padStart(2, '0')}`);
+      }
       setNotes(entry.notes || '');
       setTranscriptLink(entry.transcriptLink || '');
     }
@@ -50,18 +62,30 @@ export default function EntryDetailModal({ entry, onClose, onUpdated, onDeleted,
 
   if (!entry) return null;
 
+  const calcDuration = () => {
+    if (!startTime || !endTime) return 0;
+    const [sh, sm] = startTime.split(':').map(Number);
+    const [eh, em] = endTime.split(':').map(Number);
+    return Math.max(0, (eh * 60 + em) - (sh * 60 + sm));
+  };
+
   const handleSave = async () => {
     if (!category || !projectTask.trim()) return;
     setSaving(true);
-    const durationMinutes = (parseInt(hours) || 0) * 60 + (parseInt(mins) || 0);
-    const updated = await base44.entities.TimeEntry.update(entry.id, {
+    const durationMinutes = calcDuration();
+    const datePrefix = entry.date || format(new Date(), 'yyyy-MM-dd');
+    const startISO = startTime ? `${datePrefix}T${startTime}:00` : entry.timerStartedAt;
+    const endISO = endTime ? `${datePrefix}T${endTime}:00` : entry.timerStoppedAt;
+    await base44.entities.TimeEntry.update(entry.id, {
       category, projectTask: projectTask.trim(), clientId: clientId || '',
       clientName: clientName || '', durationMinutes, notes: notes.trim(),
       transcriptLink: transcriptLink.trim(),
+      ...(startISO ? { timerStartedAt: startISO } : {}),
+      ...(endISO ? { timerStoppedAt: endISO } : {}),
     }).catch(() => null);
     setSaving(false);
     setEditing(false);
-    onUpdated?.({ ...entry, category, projectTask: projectTask.trim(), clientId, clientName, durationMinutes, notes: notes.trim(), transcriptLink: transcriptLink.trim() });
+    onUpdated?.({ ...entry, category, projectTask: projectTask.trim(), clientId, clientName, durationMinutes, notes: notes.trim(), transcriptLink: transcriptLink.trim(), timerStartedAt: startISO, timerStoppedAt: endISO });
   };
 
   const handleDelete = async () => {
@@ -136,15 +160,17 @@ export default function EntryDetailModal({ entry, onClose, onUpdated, onDeleted,
                 </select>
               </div>
               <div>
-                <label className="block text-[10px] font-semibold text-[#5777AB] uppercase tracking-[0.06em] mb-1">Duration</label>
+                <label className="block text-[10px] font-semibold text-[#5777AB] uppercase tracking-[0.06em] mb-1">Time</label>
                 <div className="flex items-center gap-2">
-                  <input type="number" min="0" value={hours} onChange={e => setHours(e.target.value)}
-                    className="w-16 px-2 py-2 text-sm text-center border border-[#EBEBF5] rounded-lg" />
-                  <span className="text-xs text-[#5777AB]">h</span>
-                  <input type="number" min="0" max="59" value={mins} onChange={e => setMins(e.target.value)}
-                    className="w-16 px-2 py-2 text-sm text-center border border-[#EBEBF5] rounded-lg" />
-                  <span className="text-xs text-[#5777AB]">m</span>
+                  <input type="time" value={startTime} onChange={e => setStartTime(e.target.value)}
+                    className="flex-1 px-2 py-2 text-sm border border-[#EBEBF5] rounded-lg focus:outline-none focus:border-[#8403C5]" />
+                  <span className="text-xs text-[#5777AB]">→</span>
+                  <input type="time" value={endTime} onChange={e => setEndTime(e.target.value)}
+                    className="flex-1 px-2 py-2 text-sm border border-[#EBEBF5] rounded-lg focus:outline-none focus:border-[#8403C5]" />
                 </div>
+                {calcDuration() > 0 && (
+                  <p className="text-[11px] text-[#1D9E75] font-semibold mt-1">Duration: {fmtDur(calcDuration())}</p>
+                )}
               </div>
               <div>
                 <label className="block text-[10px] font-semibold text-[#5777AB] uppercase tracking-[0.06em] mb-1">Notes</label>
