@@ -1,0 +1,41 @@
+{
+  "name": "Link",
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string"
+    },
+    "url": {
+      "type": "string"
+    },
+    "category": {
+      "type": "string",
+      "enum": [
+        "Booking",
+        "Calendar",
+        "Sales",
+        "CS",
+        "Marketing",
+        "Other"
+      ]
+    },
+    "owner": {
+      "type": "string"
+    },
+    "description": {
+      "type": "string"
+    },
+    "visibility": {
+      "type": "string",
+      "enum": [
+        "Everyone",
+        "Admin only"
+      ],
+      "default": "Everyone"
+    }
+  },
+  "required": [
+    "name",
+    "category"
+  ]
+}
