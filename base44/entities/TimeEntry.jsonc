@@ -85,6 +85,14 @@
     "clientName": {
       "type": "string",
       "description": "Denormalised client name for display"
+    },
+    "leadId": {
+      "type": "string",
+      "description": "Optional linked sales lead/prospect ID"
+    },
+    "leadName": {
+      "type": "string",
+      "description": "Denormalised lead company name for display"
     }
   },
   "required": [

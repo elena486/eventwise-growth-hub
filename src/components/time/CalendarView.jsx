@@ -7,6 +7,7 @@ import { format, addDays, parseISO, startOfMonth, endOfMonth, startOfWeek, eachD
 import { base44 } from '@/api/base44Client';
 import { CATEGORY_COLORS, CATEGORY_LABELS } from './categoryColors';
 import TaskPresetSelect from './TaskPresetSelect';
+import LeadSelect from './LeadSelect';
 import EntryDetailModal from './EntryDetailModal';
 
 const CALENDAR_HOURS = Array.from({ length: 16 }, (_, i) => i + 7); // 07:00–22:00
@@ -109,7 +110,7 @@ function DayColumn({ dateStr, entries, teamMember, clients, onEntryCreated, onEn
         const finalStart = ghost.startH;
         const finalEnd = (ghost.endH - ghost.startH) < 0.1 ? finalStart + 0.5 : ghost.endH;
         setGhost(null);
-        setNewForm({ startH: finalStart, endH: finalEnd, category: '', task: '', clientId: '', clientName: '', saving: false, error: '' });
+        setNewForm({ startH: finalStart, endH: finalEnd, category: '', task: '', clientId: '', clientName: '', leadId: '', leadName: '', saving: false, error: '' });
         return;
       }
       if (dragRef.current && dragging) {
@@ -145,7 +146,9 @@ function DayColumn({ dateStr, entries, teamMember, clients, onEntryCreated, onEn
     const created = await base44.entities.TimeEntry.create({
       date: dateStr, teamMember, category: newForm.category, projectTask: newForm.task.trim(),
       durationMinutes, timerStartedAt: hourToISO(dateStr, newForm.startH), timerStoppedAt: hourToISO(dateStr, newForm.endH),
-      timerStatus: 'logged', ...(newForm.clientId ? { clientId: newForm.clientId, clientName: newForm.clientName } : {}),
+      timerStatus: 'logged',
+      ...(newForm.clientId ? { clientId: newForm.clientId, clientName: newForm.clientName } : {}),
+      ...(newForm.leadId ? { leadId: newForm.leadId, leadName: newForm.leadName } : {}),
     }).catch(() => null);
     if (!created) { setNewForm(f => ({ ...f, saving: false, error: 'Failed — try again.' })); return; }
     setNewForm(null);
@@ -239,11 +242,16 @@ function DayColumn({ dateStr, entries, teamMember, clients, onEntryCreated, onEn
             </select>
             <TaskPresetSelect category={newForm.category} value={newForm.task} onChange={v => setNewForm(f => ({ ...f, task: v }))} placeholder="Task…"
               className={`w-full px-2 py-1 text-[11px] border rounded-lg focus:outline-none ${!newForm.task && newForm.error ? 'border-[#DC2626]' : 'border-[#EBEBF5] focus:border-[#8403C5]'}`} />
-            <select value={newForm.clientId} onChange={e => { const c = clients.find(cl => cl.id === e.target.value); setNewForm(f => ({ ...f, clientId: e.target.value, clientName: c?.name || '' })); }}
+            <select value={newForm.clientId} onChange={e => { const c = clients.find(cl => cl.id === e.target.value); setNewForm(f => ({ ...f, clientId: e.target.value, clientName: c?.name || '', leadId: e.target.value ? '' : f.leadId, leadName: e.target.value ? '' : f.leadName })); }}
               className="w-full px-2 py-1 text-[11px] border border-[#EBEBF5] rounded-lg focus:outline-none focus:border-[#8403C5]">
               <option value="">No client</option>
               {clients.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
             </select>
+            <LeadSelect
+              value={newForm.leadId}
+              onChange={(id, name) => setNewForm(f => ({ ...f, leadId: id, leadName: name, clientId: id ? '' : f.clientId, clientName: id ? '' : f.clientName }))}
+              className="w-full px-2 py-1 text-[11px] border border-[#EBEBF5] rounded-lg bg-white focus:outline-none"
+            />
             {newForm.error && <p className="text-[9px] text-[#DC2626] font-semibold">{newForm.error}</p>}
             <div className="flex gap-1.5 pt-0.5">
               <button onClick={() => setNewForm(null)} className="flex-1 px-2 py-1 text-[11px] text-[#5777AB] border border-[#5777AB] rounded-lg hover:bg-[#EEF2F8]">Cancel</button>

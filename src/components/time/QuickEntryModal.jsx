@@ -3,6 +3,7 @@ import { base44 } from '@/api/base44Client';
 import { CATEGORY_LABELS } from './categoryColors';
 import TaskPresetSelect from './TaskPresetSelect';
 import { Link } from 'lucide-react';
+import LeadSelect from './LeadSelect';
 
 const TEAM_MEMBERS = ['Chris', 'Elena', 'George', 'Martinique', 'Sreeja', 'Ramesh'];
 
@@ -12,6 +13,8 @@ export default function QuickEntryModal({ open, onClose, onSaved, initial }) {
   const [category, setCategory] = useState('');
   const [clientId, setClientId] = useState('');
   const [clientName, setClientName] = useState('');
+  const [leadId, setLeadId] = useState('');
+  const [leadName, setLeadName] = useState('');
   const [projectTask, setProjectTask] = useState('');
   const [startTime, setStartTime] = useState('');
   const [hours, setHours] = useState('');
@@ -41,6 +44,8 @@ export default function QuickEntryModal({ open, onClose, onSaved, initial }) {
       setCategory(initial.category || '');
       setClientId(initial.clientId || '');
       setClientName(initial.clientName || '');
+      setLeadId(initial.leadId || '');
+      setLeadName(initial.leadName || '');
       setProjectTask(initial.projectTask || '');
       setStartTime(initial.startTime || '');
       setHours(String(h));
@@ -52,6 +57,8 @@ export default function QuickEntryModal({ open, onClose, onSaved, initial }) {
       setCategory(initial?.category || '');
       setClientId('');
       setClientName('');
+      setLeadId('');
+      setLeadName('');
       setProjectTask('');
       setStartTime(initial?.startTime || '');
       setHours('');
@@ -78,6 +85,7 @@ export default function QuickEntryModal({ open, onClose, onSaved, initial }) {
         notes: notes.trim() || undefined,
         transcriptLink: transcriptLink.trim() || undefined,
         ...(clientId ? { clientId, clientName } : {}),
+        ...(leadId ? { leadId, leadName } : {}),
       };
 
       if (isEdit) {
@@ -162,11 +170,19 @@ export default function QuickEntryModal({ open, onClose, onSaved, initial }) {
           </div>
           <div>
             <label className="block text-[11px] font-semibold text-[#5777AB] uppercase mb-1">Client <span className="font-normal normal-case text-[#9CA3AF]">(optional)</span></label>
-            <select value={clientId} onChange={e => { setClientId(e.target.value); const c = clients.find(cl => cl.id === e.target.value); setClientName(c?.name || ''); }}
+            <select value={clientId} onChange={e => { setClientId(e.target.value); const c = clients.find(cl => cl.id === e.target.value); setClientName(c?.name || ''); if (e.target.value) { setLeadId(''); setLeadName(''); } }}
               className="w-full px-3 py-2 text-sm border border-[#EBEBF5] rounded-lg">
               <option value="">None</option>
               {clients.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
             </select>
+          </div>
+          <div>
+            <label className="block text-[11px] font-semibold text-[#5777AB] uppercase mb-1">Sales Company <span className="font-normal normal-case text-[#9CA3AF]">(optional — prospect)</span></label>
+            <LeadSelect
+              value={leadId}
+              onChange={(id, name) => { setLeadId(id); setLeadName(name); if (id) { setClientId(''); setClientName(''); } }}
+              className="w-full px-3 py-2 text-sm border border-[#EBEBF5] rounded-lg bg-white focus:outline-none"
+            />
           </div>
           <div>
             <label className="block text-[11px] font-semibold text-[#5777AB] uppercase mb-1">Project / Task</label>

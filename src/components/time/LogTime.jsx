@@ -3,6 +3,7 @@ import { base44 } from '@/api/base44Client';
 import { format, parseISO, startOfWeek, endOfWeek, isWithinInterval, isToday, isYesterday } from 'date-fns';
 import { Play, Square, Pause, Link, MoreVertical, RotateCw, Copy, Pencil, Trash2, CalendarDays, List, Calendar } from 'lucide-react';
 import TranscriptField from './TranscriptField';
+import LeadSelect from './LeadSelect';
 import TaskPresetSelect from './TaskPresetSelect';
 import EntryDetailModal from './EntryDetailModal';
 import InteractiveCalendar from './InteractiveCalendar';
@@ -12,6 +13,19 @@ import {
   useSharedTimer, sharedTimerStart, sharedTimerPause, sharedTimerResume,
   sharedTimerStop, sharedTimerCommit, sharedTimerBootstrap, sharedTimerUpdateMeta
 } from '@/hooks/useSharedTimer';
+
+async function writeLeadActivityLog({ leadId, leadName, teamMember, category, projectTask, durationMinutes }) {
+  if (!leadId) return;
+  try {
+    const lead = await base44.entities.Lead.get(leadId);
+    if (!lead) return;
+    const log = (() => { try { return JSON.parse(lead.activityLog || '[]'); } catch { return []; } })();
+    const h = Math.floor(durationMinutes / 60); const m = durationMinutes % 60;
+    const durStr = m === 0 ? `${h}h` : `${h}h ${m}m`;
+    log.push({ date: new Date().toISOString(), type: 'Time logged', label: `Time logged: ${durStr} — ${category}`, category, duration: durStr, description: projectTask, teamMember });
+    await base44.entities.Lead.update(leadId, { activityLog: JSON.stringify(log) });
+  } catch {}
+}
 
 async function writeClientActivityLog({ clientId, clientName, teamMember, category, projectTask, durationMinutes, notes, transcriptLink }) {
   if (!clientId) return;
@@ -56,6 +70,8 @@ export default function LogTime({ onLogged }) {
   const [quickDesc, setQuickDescRaw] = useState(timer.projectTask || '');
   const [quickClientId, setQuickClientIdRaw] = useState(timer.clientId || '');
   const [quickClientName, setQuickClientNameRaw] = useState(timer.clientName || '');
+  const [quickLeadId, setQuickLeadIdRaw] = useState(timer.leadId || '');
+  const [quickLeadName, setQuickLeadNameRaw] = useState(timer.leadName || '');
 
   // Keep local fields in sync when shared state changes from another surface
   const prevTimerRef = useRef(timer);
@@ -72,8 +88,10 @@ export default function LogTime({ onLogged }) {
 
   const setQuickCat = (v) => { setQuickCatRaw(v); if (timer.timerId) sharedTimerUpdateMeta({ category: v }); };
   const setQuickDesc = (v) => { setQuickDescRaw(v); if (timer.timerId) sharedTimerUpdateMeta({ projectTask: v }); };
-  const setQuickClientId = (v) => { setQuickClientIdRaw(v); };
+  const setQuickClientId = (v) => { setQuickClientIdRaw(v); if (v) { setQuickLeadIdRaw(''); setQuickLeadNameRaw(''); } };
   const setQuickClientName = (v) => { setQuickClientNameRaw(v); if (timer.timerId) sharedTimerUpdateMeta({ clientName: v }); };
+  const setQuickLeadId = (v) => { setQuickLeadIdRaw(v); if (v) { setQuickClientIdRaw(''); setQuickClientNameRaw(''); } };
+  const setQuickLeadName = (v) => { setQuickLeadNameRaw(v); };
 
   // Inline validation after stop
   const [stoppedEntry, setStoppedEntry] = useState(null); // { timerId, durationMinutes, durationMs }
@@ -105,6 +123,7 @@ export default function LogTime({ onLogged }) {
           category: quickCat || '',
           projectTask: quickDesc.trim() || '(Untitled session)',
           ...(quickClientId ? { clientId: quickClientId, clientName: quickClientName } : { clientId: '', clientName: '' }),
+          ...(quickLeadId ? { leadId: quickLeadId, leadName: quickLeadName } : { leadId: '', leadName: '' }),
         });
       } catch {}
     }, 600);
@@ -196,6 +215,7 @@ export default function LogTime({ onLogged }) {
     await sharedTimerCommit(timerId, {
       category: cat, projectTask: task,
       clientId: quickClientId, clientName: quickClientName,
+      leadId: quickLeadId, leadName: quickLeadName,
       date: format(new Date(), 'yyyy-MM-dd'),
       durationMinutes,
       notes: '',
@@ -205,7 +225,7 @@ export default function LogTime({ onLogged }) {
     }, teamMember);
     await writeClientActivityLog({ clientId: quickClientId, clientName: quickClientName, teamMember, category: cat, projectTask: task, durationMinutes, notes: '', transcriptLink: quickTranscriptLink.trim() });
     setStoppedEntry(null); setSaveError('');
-    setQuickCatRaw(''); setQuickDescRaw(''); setQuickClientIdRaw(''); setQuickClientNameRaw('');
+    setQuickCatRaw(''); setQuickDescRaw(''); setQuickClientIdRaw(''); setQuickClientNameRaw(''); setQuickLeadIdRaw(''); setQuickLeadNameRaw('');
     setQuickTranscriptLink(''); setQuickTranscriptFileUrl(''); setQuickTranscriptFileName('');
     loadEntries();
     onLogged?.();
@@ -247,9 +267,11 @@ export default function LogTime({ onLogged }) {
         ...(startISO ? { timerStartedAt: startISO } : {}),
         ...(endISO ? { timerStoppedAt: endISO } : {}),
         ...(quickClientId ? { clientId: quickClientId, clientName: quickClientName } : {}),
+        ...(quickLeadId ? { leadId: quickLeadId, leadName: quickLeadName } : {}),
       });
       await writeClientActivityLog({ clientId: quickClientId, clientName: quickClientName, teamMember, category: quickCat || 'Other', projectTask: quickDesc.trim(), durationMinutes: quickDuration, notes: '', transcriptLink: quickTranscriptLink.trim() });
-      setQuickDesc(''); setQuickStartTime(''); setQuickEndTime(''); setQuickTranscriptLink(''); setQuickTranscriptFileUrl(''); setQuickTranscriptFileName('');
+      if (quickLeadId) { writeLeadActivityLog({ leadId: quickLeadId, leadName: quickLeadName, teamMember, category: quickCat || 'Other', projectTask: quickDesc.trim(), durationMinutes: quickDuration }); }
+      setQuickDesc(''); setQuickStartTime(''); setQuickEndTime(''); setQuickTranscriptLink(''); setQuickTranscriptFileUrl(''); setQuickTranscriptFileName(''); setQuickLeadIdRaw(''); setQuickLeadNameRaw('');
       loadEntries(); onLogged?.();
       logActivity({ teamMember, actionType: 'Logged a time entry', section: 'Time & Capacity', recordName: quickDesc.trim(), details: `${quickCat || 'Other'} — ${formatDuration(quickDuration)}` });
     } catch {}
@@ -300,6 +322,11 @@ export default function LogTime({ onLogged }) {
           <div className="flex items-center gap-2 mt-1">
             <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full" style={{ backgroundColor: `${color}20`, color }}>{catLabel || 'Uncategorised'}</span>
             {entry.clientName && <span className="text-[11px] text-[#4A5568] border border-[#D8D8EE] rounded-full px-2 py-0.5">{entry.clientName}</span>}
+            {entry.leadName && !entry.clientName && (
+              <span className="text-[11px] font-semibold text-[#A16207] bg-[#FFFBEB] border border-[#FDE68A] rounded-full px-2 py-0.5">
+                {entry.leadName} · Prospect
+              </span>
+            )}
             {entry.transcriptLink && (
               <a href={entry.transcriptLink} target="_blank" rel="noopener noreferrer" onClick={e => e.stopPropagation()}
                 className="flex items-center gap-1 text-[11px] text-[#5777AB] hover:text-[#8403C5]">
@@ -392,6 +419,15 @@ export default function LogTime({ onLogged }) {
                 <option value="">None</option>
                 {clients.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
               </select>
+            </div>
+            {/* Sales Company (Prospect) */}
+            <div className="shrink-0">
+              <label className="block text-[10px] font-semibold text-[#242450] uppercase tracking-[0.06em] mb-1">Sales Co. <span className="font-normal normal-case text-[#9CA3AF]">(prospect)</span></label>
+              <LeadSelect
+                value={quickLeadId}
+                onChange={(id, name) => { setQuickLeadId(id); setQuickLeadName(name); }}
+                className="px-3 py-2 text-sm border border-[#E2E8F0] rounded-lg bg-[#F8FAFC] text-[#242450] w-[130px] focus:outline-none focus:border-[#8403C5]"
+              />
             </div>
             {/* Time fields — Start → End (only show when timer is idle and not stopped) */}
             {timer.status === 'idle' && !isStopped && (

@@ -7,6 +7,7 @@ import { base44 } from '@/api/base44Client';
 import { format, parseISO } from 'date-fns';
 import { X, Pencil, Trash2, Link } from 'lucide-react';
 import { CATEGORY_LABELS } from './categoryColors';
+import LeadSelect from './LeadSelect';
 
 const CATEGORIES = CATEGORY_LABELS;
 
@@ -30,6 +31,8 @@ export default function EntryDetailModal({ entry, onClose, onUpdated, onDeleted,
   const [projectTask, setProjectTask] = useState('');
   const [clientId, setClientId] = useState('');
   const [clientName, setClientName] = useState('');
+  const [leadId, setLeadId] = useState('');
+  const [leadName, setLeadName] = useState('');
   const [startTime, setStartTime] = useState('');
   const [endTime, setEndTime] = useState('');
   const [notes, setNotes] = useState('');
@@ -41,6 +44,8 @@ export default function EntryDetailModal({ entry, onClose, onUpdated, onDeleted,
       setProjectTask(entry.projectTask || '');
       setClientId(entry.clientId || '');
       setClientName(entry.clientName || '');
+      setLeadId(entry.leadId || '');
+      setLeadName(entry.leadName || '');
       // Pre-fill start/end from stored ISO timestamps if available, else derive from duration
       if (entry.timerStartedAt) {
         setStartTime(fmtTime(entry.timerStartedAt));
@@ -78,14 +83,17 @@ export default function EntryDetailModal({ entry, onClose, onUpdated, onDeleted,
     const endISO = endTime ? `${datePrefix}T${endTime}:00` : entry.timerStoppedAt;
     await base44.entities.TimeEntry.update(entry.id, {
       category, projectTask: projectTask.trim(), clientId: clientId || '',
-      clientName: clientName || '', durationMinutes, notes: notes.trim(),
+      clientName: clientName || '',
+      leadId: leadId || '',
+      leadName: leadName || '',
+      durationMinutes, notes: notes.trim(),
       transcriptLink: transcriptLink.trim(),
       ...(startISO ? { timerStartedAt: startISO } : {}),
       ...(endISO ? { timerStoppedAt: endISO } : {}),
     }).catch(() => null);
     setSaving(false);
     setEditing(false);
-    onUpdated?.({ ...entry, category, projectTask: projectTask.trim(), clientId, clientName, durationMinutes, notes: notes.trim(), transcriptLink: transcriptLink.trim(), timerStartedAt: startISO, timerStoppedAt: endISO });
+    onUpdated?.({ ...entry, category, projectTask: projectTask.trim(), clientId, clientName, leadId, leadName, durationMinutes, notes: notes.trim(), transcriptLink: transcriptLink.trim(), timerStartedAt: startISO, timerStoppedAt: endISO });
   };
 
   const handleDelete = async () => {
@@ -153,11 +161,19 @@ export default function EntryDetailModal({ entry, onClose, onUpdated, onDeleted,
               </div>
               <div>
                 <label className="block text-[10px] font-semibold text-[#5777AB] uppercase tracking-[0.06em] mb-1">Client</label>
-                <select value={clientId} onChange={e => { setClientId(e.target.value); const c = clients.find(cl => cl.id === e.target.value); setClientName(c?.name || ''); }}
+                <select value={clientId} onChange={e => { setClientId(e.target.value); const c = clients.find(cl => cl.id === e.target.value); setClientName(c?.name || ''); if (e.target.value) { setLeadId(''); setLeadName(''); } }}
                   className="w-full px-3 py-2 text-sm border border-[#EBEBF5] rounded-lg bg-white">
                   <option value="">None</option>
                   {clients.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
                 </select>
+              </div>
+              <div>
+                <label className="block text-[10px] font-semibold text-[#5777AB] uppercase tracking-[0.06em] mb-1">Sales Company <span className="font-normal normal-case text-[#9CA3AF]">(prospect)</span></label>
+                <LeadSelect
+                  value={leadId}
+                  onChange={(id, name) => { setLeadId(id); setLeadName(name); if (id) { setClientId(''); setClientName(''); } }}
+                  className="w-full px-3 py-2 text-sm border border-[#EBEBF5] rounded-lg bg-white"
+                />
               </div>
               <div>
                 <label className="block text-[10px] font-semibold text-[#5777AB] uppercase tracking-[0.06em] mb-1">Time</label>
@@ -196,7 +212,19 @@ export default function EntryDetailModal({ entry, onClose, onUpdated, onDeleted,
                 <Detail label="Date" value={dateStr} />
                 <Detail label="Duration" value={fmtDur(entry.durationMinutes)} />
                 <Detail label="Category" value={entry.category} />
-                <Detail label="Client" value={entry.clientName || '—'} />
+                <div>
+                  <p className="text-[10px] font-semibold text-[#5777AB] uppercase tracking-[0.06em] mb-0.5">
+                    {entry.leadId ? 'Sales Company' : 'Client'}
+                  </p>
+                  {entry.leadId ? (
+                    <span className="inline-flex items-center gap-1 text-sm font-medium text-[#E8A020]">
+                      {entry.leadName || '—'}
+                      <span className="text-[9px] font-bold px-1.5 py-0.5 bg-[#FFFBEB] text-[#A16207] border border-[#FDE68A] rounded-full">Prospect</span>
+                    </span>
+                  ) : (
+                    <p className="text-sm text-[#242450] font-medium">{entry.clientName || '—'}</p>
+                  )}
+                </div>
               </div>
               <Detail label="Project / Task" value={entry.projectTask} />
               {hasTimes && (

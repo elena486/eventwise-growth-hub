@@ -3,6 +3,7 @@ import { base44 } from '@/api/base44Client';
 import { format } from 'date-fns';
 import { X, Play, Square, Pause, Clock } from 'lucide-react';
 import TranscriptField from './TranscriptField';
+import LeadSelect from './LeadSelect';
 import TaskPresetSelect from './TaskPresetSelect';
 import { CATEGORY_LABELS } from './categoryColors';
 import { logActivity } from '@/lib/logActivity';
@@ -25,6 +26,18 @@ function formatDuration(minutes) {
   if (h === 0) return `${m}m`;
   if (m === 0) return `${h}h`;
   return `${h}h ${m}m`;
+}
+
+async function writeLeadActivityLog({ leadId, leadName, teamMember, category, projectTask, durationMinutes }) {
+  if (!leadId) return;
+  try {
+    const lead = await base44.entities.Lead.get(leadId);
+    if (!lead) return;
+    const log = (() => { try { return JSON.parse(lead.activityLog || '[]'); } catch { return []; } })();
+    const durStr = formatDuration(durationMinutes);
+    log.push({ date: new Date().toISOString(), type: 'Time logged', label: `Time logged: ${durStr} — ${category}`, category, duration: durStr, description: projectTask, teamMember });
+    await base44.entities.Lead.update(leadId, { activityLog: JSON.stringify(log) });
+  } catch {}
 }
 
 async function writeClientActivityLog({ clientId, clientName, teamMember, category, projectTask, durationMinutes, notes, transcriptLink }) {
@@ -53,6 +66,8 @@ export default function LogTimeSidebar({ triggerOpen, onTriggerConsumed }) {
   const [projectTask, setProjectTask] = useState('');
   const [clientId, setClientId] = useState('');
   const [clientName, setClientName] = useState('');
+  const [leadId, setLeadId] = useState('');
+  const [leadName, setLeadName] = useState('');
   const [startTime, setStartTime] = useState('');
   const [endTime, setEndTime] = useState('');
   const [notes, setNotes] = useState('');
@@ -91,6 +106,8 @@ export default function LogTimeSidebar({ triggerOpen, onTriggerConsumed }) {
       setProjectTask(timer.projectTask || '');
       setClientId(timer.clientId || '');
       setClientName(timer.clientName || '');
+      setLeadId(timer.leadId || '');
+      setLeadName(timer.leadName || '');
     }
     prevTimerIdRef.current = timer.timerId;
   }, [timer.timerId, timer.category, timer.projectTask]);
@@ -98,7 +115,8 @@ export default function LogTimeSidebar({ triggerOpen, onTriggerConsumed }) {
   // Setters that also update shared state when timer is active
   const setAndSyncCategory = (v) => { setCategory(v); setProjectTask(''); if (timer.timerId) sharedTimerUpdateMeta({ category: v }); };
   const setAndSyncTask = (v) => { setProjectTask(v); if (timer.timerId) sharedTimerUpdateMeta({ projectTask: v }); };
-  const setAndSyncClient = (v, name) => { setClientId(v); setClientName(name); if (timer.timerId) sharedTimerUpdateMeta({ clientId: v, clientName: name }); };
+  const setAndSyncClient = (v, name) => { setClientId(v); setClientName(name); if (v) { setLeadId(''); setLeadName(''); } if (timer.timerId) sharedTimerUpdateMeta({ clientId: v, clientName: name }); };
+  const setAndSyncLead = (v, name) => { setLeadId(v); setLeadName(name); if (v) { setClientId(''); setClientName(''); } if (timer.timerId) sharedTimerUpdateMeta({ leadId: v, leadName: name }); };
 
   // Debounced DB sync
   useEffect(() => {
@@ -109,6 +127,7 @@ export default function LogTimeSidebar({ triggerOpen, onTriggerConsumed }) {
           category: category || '',
           projectTask: projectTask.trim() || '(Untitled session)',
           ...(clientId ? { clientId, clientName } : { clientId: '', clientName: '' }),
+          ...(leadId ? { leadId, leadName } : { leadId: '', leadName: '' }),
         });
       } catch {}
     }, 600);
@@ -136,14 +155,15 @@ export default function LogTimeSidebar({ triggerOpen, onTriggerConsumed }) {
 
   const finalizeSave = async (timerId, durationMinutes, cat, task) => {
     await sharedTimerCommit(timerId, {
-      category: cat, projectTask: task, clientId, clientName,
+      category: cat, projectTask: task, clientId, clientName, leadId, leadName,
       date: format(new Date(), 'yyyy-MM-dd'), durationMinutes, notes: notes.trim(),
       transcriptLink: transcriptLink.trim(), transcriptFileUrl, transcriptFileName,
     }, teamMember);
     await writeClientActivityLog({ clientId, clientName, teamMember, category: cat, projectTask: task, durationMinutes, notes: notes.trim(), transcriptLink: transcriptLink.trim() });
+    if (leadId) { writeLeadActivityLog({ leadId, leadName, teamMember, category: cat, projectTask: task, durationMinutes }); }
     logActivity({ teamMember, actionType: 'Logged a time entry via sidebar', section: 'Time & Capacity', recordName: task });
     setStoppedEntry(null); setSaveError('');
-    setCategory(''); setProjectTask(''); setClientId(''); setClientName(''); setNotes('');
+    setCategory(''); setProjectTask(''); setClientId(''); setClientName(''); setLeadId(''); setLeadName(''); setNotes('');
     setTranscriptLink(''); setTranscriptFileUrl(''); setTranscriptFileName('');
     setLogged(true); setTimeout(() => setLogged(false), 2000);
   };
@@ -181,10 +201,12 @@ export default function LogTimeSidebar({ triggerOpen, onTriggerConsumed }) {
         ...(startISO ? { timerStartedAt: startISO } : {}),
         ...(endISO ? { timerStoppedAt: endISO } : {}),
         ...(clientId ? { clientId, clientName } : {}),
+        ...(leadId ? { leadId, leadName } : {}),
       });
       await writeClientActivityLog({ clientId, clientName, teamMember, category: category || 'Other', projectTask: projectTask.trim(), durationMinutes: totalMin, notes: notes.trim(), transcriptLink: transcriptLink.trim() });
+      if (leadId) { writeLeadActivityLog({ leadId, leadName, teamMember, category: category || 'Other', projectTask: projectTask.trim(), durationMinutes: totalMin }); }
       logActivity({ teamMember, actionType: 'Logged a time entry via sidebar', section: 'Time & Capacity', recordName: projectTask.trim(), details: `${category || 'Other'} — ${formatDuration(totalMin)}` });
-      setProjectTask(''); setStartTime(''); setEndTime(''); setNotes(''); setTranscriptLink(''); setTranscriptFileUrl(''); setTranscriptFileName(''); setCategory(''); setClientId(''); setClientName('');
+      setProjectTask(''); setStartTime(''); setEndTime(''); setNotes(''); setTranscriptLink(''); setTranscriptFileUrl(''); setTranscriptFileName(''); setCategory(''); setClientId(''); setClientName(''); setLeadId(''); setLeadName('');
       setLogged(true); setTimeout(() => setLogged(false), 2000);
     } catch {}
     setLogging(false);
@@ -257,6 +279,16 @@ export default function LogTimeSidebar({ triggerOpen, onTriggerConsumed }) {
               <option value="">None</option>
               {clients.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
             </select>
+          </div>
+
+          {/* Sales Company (Prospect) */}
+          <div>
+            <label className="block text-[10px] font-semibold text-[#5777AB] uppercase tracking-[0.06em] mb-1">Sales Company <span className="font-normal normal-case text-[#9CA3AF]">(optional — prospect)</span></label>
+            <LeadSelect
+              value={leadId}
+              onChange={setAndSyncLead}
+              className="w-full px-3 py-2 text-sm border border-[#EBEBF5] rounded-lg bg-white focus:outline-none"
+            />
           </div>
 
           {/* Time — only for manual log (not timer) */}
