@@ -58,7 +58,10 @@ export default function RequestBoard({ refresh }) {
   const [currentUser, setCurrentUser] = useState(null);
 
   // View
-  const [view, setView] = useState(() => localStorage.getItem('request-board-view') || 'kanban');
+  const [view, setView] = useState(() => {
+    const saved = localStorage.getItem('request-board-view');
+    return (saved === 'list' || saved === 'grouped') ? saved : 'kanban';
+  });
 
   // Sort (list/grouped view)
   const [sortField, setSortField] = useState('priority');
@@ -405,10 +408,10 @@ function CardMenu({ req, onArchive }) {
 // ── Kanban View ──
 function KanbanView({ columns, onDragEnd, onSelect, isValidCategory, onArchive, doneCount, onBulkArchive }) {
   return (
-    <DragDropContext onDragEnd={onDragEnd}>
-      <div className="flex gap-4 overflow-x-auto pb-2" style={{ minHeight: 0 }}>
+    <DragDropContext onDragEnd={onDragEnd} style={{ height: '100%' }}>
+      <div className="flex gap-4 h-full overflow-x-auto pb-2">
         {BOARD_STATUSES.map(status => (
-          <div key={status} className="flex-shrink-0 w-72 flex flex-col" style={{ maxHeight: 'calc(100vh - 220px)' }}>
+          <div key={status} className="flex-shrink-0 w-72 flex flex-col h-full">
             <div className="flex items-center justify-between mb-3 shrink-0">
               <div className="flex items-center gap-1.5">
                 <span className="text-sm">{COLUMN_ICONS[status]}</span>
