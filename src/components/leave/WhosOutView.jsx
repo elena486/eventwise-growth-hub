@@ -3,6 +3,8 @@ import { base44 } from '@/api/base44Client';
 import { format, parseISO, startOfWeek, endOfWeek, startOfMonth, endOfMonth, addMonths } from 'date-fns';
 import { List, CalendarDays } from 'lucide-react';
 import LeaveCalendar from './LeaveCalendar';
+import LeaveDetailModal from './LeaveDetailModal';
+import { useAuth } from '@/lib/AuthContext';
 
 const TYPE_STYLES = {
   'Annual Leave': 'bg-[#E8F7F2] text-[#1D9E75]',
@@ -59,6 +61,8 @@ const DATE_FILTERS = [
 // showAllStatuses = true means show all (for Time Off tab which shows history)
 // default = false means only Confirmed/Approved (for Leave tab who's out view)
 export default function WhosOutView({ refresh, showAllStatuses = false }) {
+  const { user } = useAuth();
+  const currentUserName = user?.full_name?.split(' ')[0] || '';
   const [entries, setEntries] = useState([]);
   const [loading, setLoading] = useState(true);
   const [dateFilter, setDateFilter] = useState('this_month');
@@ -66,6 +70,7 @@ export default function WhosOutView({ refresh, showAllStatuses = false }) {
   const [customEnd, setCustomEnd] = useState('');
   const [personFilters, setPersonFilters] = useState([]);
   const [viewMode, setViewMode] = useState('list'); // 'list' | 'calendar'
+  const [selectedEntry, setSelectedEntry] = useState(null);
 
   const load = async () => {
     setLoading(true);
@@ -182,6 +187,7 @@ export default function WhosOutView({ refresh, showAllStatuses = false }) {
           dateFilter={dateFilter}
           customStart={customStart}
           customEnd={customEnd}
+          onEntryClick={setSelectedEntry}
         />
       )}
 
@@ -211,7 +217,7 @@ export default function WhosOutView({ refresh, showAllStatuses = false }) {
                   const color = getAvatarColor(entry.personName);
                   const initials = getInitials(entry.personName);
                   return (
-                    <tr key={entry.id} className="border-b border-[#EBEBF5] hover:bg-[#F9FAFB] transition-colors">
+                    <tr key={entry.id} className="border-b border-[#EBEBF5] hover:bg-[#F9FAFB] transition-colors cursor-pointer" onClick={() => setSelectedEntry(entry)}>
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-2.5">
                           <div className="w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-bold text-white shrink-0" style={{ backgroundColor: color }}>
@@ -243,6 +249,22 @@ export default function WhosOutView({ refresh, showAllStatuses = false }) {
             </table>
           </div>
         )
+      )}
+
+      {selectedEntry && (
+        <LeaveDetailModal
+          entry={selectedEntry}
+          currentUserName={currentUserName}
+          onClose={() => setSelectedEntry(null)}
+          onUpdated={(updated) => {
+            setEntries(prev => prev.map(e => e.id === updated.id ? updated : e));
+            setSelectedEntry(null);
+          }}
+          onDeleted={(id) => {
+            setEntries(prev => prev.filter(e => e.id !== id));
+            setSelectedEntry(null);
+          }}
+        />
       )}
     </div>
   );

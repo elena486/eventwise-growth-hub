@@ -29,7 +29,7 @@ function Tooltip({ entry }) {
   );
 }
 
-function EntryChip({ entry, showName = true }) {
+function EntryChip({ entry, showName = true, onClick }) {
   const [hover, setHover] = useState(false);
   const colors = TYPE_COLORS[entry.type] || TYPE_COLORS['Other'];
   return (
@@ -39,7 +39,8 @@ function EntryChip({ entry, showName = true }) {
       onMouseLeave={() => setHover(false)}
     >
       <div
-        className="text-[10px] font-semibold px-1.5 py-0.5 rounded truncate cursor-default select-none"
+        onClick={(e) => { e.stopPropagation(); onClick?.(entry); }}
+        className="text-[10px] font-semibold px-1.5 py-0.5 rounded truncate cursor-pointer select-none hover:opacity-80 transition-opacity"
         style={{ backgroundColor: colors.bg, color: colors.text, borderLeft: `2px solid ${colors.border}` }}
       >
         {showName ? entry.personName.split(' ')[0] : getInitials(entry.personName)}
@@ -50,7 +51,7 @@ function EntryChip({ entry, showName = true }) {
 }
 
 // ── Month View ──────────────────────────────────────────
-function MonthGrid({ entries, currentMonth }) {
+function MonthGrid({ entries, currentMonth, onEntryClick }) {
   const monthStart = startOfMonth(currentMonth);
   const monthEnd = endOfMonth(currentMonth);
   const gridStart = startOfWeek(monthStart, { weekStartsOn: 1 });
@@ -91,7 +92,7 @@ function MonthGrid({ entries, currentMonth }) {
                 </div>
                 <div className="space-y-0.5">
                   {dayEntries.slice(0, 3).map(e => (
-                    <EntryChip key={e.id} entry={e} showName />
+                    <EntryChip key={e.id} entry={e} showName onClick={onEntryClick} />
                   ))}
                   {dayEntries.length > 3 && (
                     <div className="text-[9px] text-[#9CA3AF] font-medium">+{dayEntries.length - 3} more</div>
@@ -107,7 +108,7 @@ function MonthGrid({ entries, currentMonth }) {
 }
 
 // ── Week View ───────────────────────────────────────────
-function WeekGrid({ entries, weekStart }) {
+function WeekGrid({ entries, weekStart, onEntryClick }) {
   const days = Array.from({ length: 7 }, (_, i) => addDays(weekStart, i));
 
   return (
@@ -131,7 +132,7 @@ function WeekGrid({ entries, weekStart }) {
               </div>
               <div className="p-2 min-h-[120px] space-y-1">
                 {dayEntries.map(e => (
-                  <EntryChip key={e.id} entry={e} showName />
+                  <EntryChip key={e.id} entry={e} showName onClick={onEntryClick} />
                 ))}
               </div>
             </div>
@@ -143,7 +144,7 @@ function WeekGrid({ entries, weekStart }) {
 }
 
 // ── Main Calendar Component ─────────────────────────────
-export default function LeaveCalendar({ entries, dateFilter, customStart, customEnd }) {
+export default function LeaveCalendar({ entries, dateFilter, customStart, customEnd, onEntryClick }) {
   const now = new Date();
   const [currentMonth, setCurrentMonth] = useState(
     dateFilter === 'next_month' ? addMonths(now, 1) : now
@@ -205,8 +206,8 @@ export default function LeaveCalendar({ entries, dateFilter, customStart, custom
       </div>
 
       {isWeekView
-        ? <WeekGrid entries={entries} weekStart={weekStart} />
-        : <MonthGrid entries={entries} currentMonth={currentMonth} />
+        ? <WeekGrid entries={entries} weekStart={weekStart} onEntryClick={onEntryClick} />
+        : <MonthGrid entries={entries} currentMonth={currentMonth} onEntryClick={onEntryClick} />
       }
     </div>
   );
