@@ -1,13 +1,24 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { base44 } from '@/api/base44Client';
 import { addRecentlyViewed } from '@/utils/recentlyViewed';
-import { format } from 'date-fns';
+import { format, isPast, isToday, parseISO } from 'date-fns';
 import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
-import { Plus, Search, Filter, Columns, List, Users, ArrowUpDown, ChevronDown, ChevronRight } from 'lucide-react';
+import { Plus, Search, Filter, Columns, List, Users, ArrowUpDown, ChevronDown, ChevronRight, Archive, RotateCcw, MoreHorizontal, Pencil, Trash2 } from 'lucide-react';
 import AddTaskModal from './AddTaskModal';
 import RequestDetail from './RequestDetail';
 import { PRIORITY_STYLES, STATUS_STYLES, CATEGORY_STYLES, PRIORITY_ORDER, BOARD_STATUSES, PRIORITIES, TEAM_MEMBERS, NEW_CATEGORIES, STATUS_MAP } from './requestStyles';
 import { logActivity } from '@/lib/logActivity';
+
+// Overdue helpers
+function getDeadlineStatus(deadline, status) {
+  if (!deadline || status === 'Done') return null;
+  try {
+    const d = parseISO(deadline);
+    if (isToday(d)) return 'today';
+    if (isPast(d)) return 'overdue';
+  } catch {}
+  return null;
+}
 
 const COLUMN_LABELS = { 'To Do': 'To Do', 'In Progress': 'In Progress', 'Done': 'Done', 'Blocked': 'Blocked' };
 const COLUMN_ICONS = { 'To Do': '📋', 'In Progress': '🔄', 'Done': '✅', 'Blocked': '🚫' };
@@ -61,6 +72,8 @@ export default function RequestBoard({ refresh }) {
   const [filterCategory, setFilterCategory] = useState([]);
   const [search, setSearch] = useState('');
   const [openDropdown, setOpenDropdown] = useState(null);
+  const [showArchived, setShowArchived] = useState(false);
+  const [confirmBulkArchive, setConfirmBulkArchive] = useState(false);
 
   // Grouped view: collapsed sections
   const [collapsedGroups, setCollapsedGroups] = useState({});
@@ -103,11 +116,10 @@ export default function RequestBoard({ refresh }) {
   const normalizeStatus = (status) => STATUS_MAP[status] || status;
 
   const displayRequests = useMemo(() => {
-    return requests.filter(r => !r.archived).map(r => ({
-      ...r,
-      _displayStatus: normalizeStatus(r.status),
-    }));
-  }, [requests]);
+    return requests
+      .filter(r => showArchived ? r.archived : !r.archived)
+      .map(r => ({ ...r, _displayStatus: normalizeStatus(r.status) }));
+  }, [requests, showArchived]);
 
   const filtered = useMemo(() => {
     let result = displayRequests.filter(r => r._displayStatus !== 'Cancelled');
@@ -210,6 +222,25 @@ export default function RequestBoard({ refresh }) {
     if (task) logActivity({ teamMember: currentUser || '', actionType: 'Updated a task status', section: 'To-Do Board', recordName: task.title || '', details: `→ ${newStatus}` });
   };
 
+  const handleArchive = async (id) => {
+    setRequests(prev => prev.map(r => r.id === id ? { ...r, archived: true } : r));
+    await base44.entities.Request.update(id, { archived: true });
+  };
+
+  const handleRestore = async (id) => {
+    setRequests(prev => prev.map(r => r.id === id ? { ...r, archived: false, status: 'Done' } : r));
+    await base44.entities.Request.update(id, { archived: false, status: 'Done' });
+  };
+
+  const handleBulkArchiveDone = async () => {
+    const doneIds = requests.filter(r => !r.archived && normalizeStatus(r.status) === 'Done').map(r => r.id);
+    setRequests(prev => prev.map(r => doneIds.includes(r.id) ? { ...r, archived: true } : r));
+    await Promise.all(doneIds.map(id => base44.entities.Request.update(id, { archived: true })));
+    setConfirmBulkArchive(false);
+  };
+
+  const doneCount = useMemo(() => requests.filter(r => !r.archived && normalizeStatus(r.status) === 'Done').length, [requests]);
+
   const hasAnyFilter = myTasks || filterAssignee.length > 0 || filterStatus.length > 0 || filterPriority.length > 0 || filterCategory.length > 0 || search;
   const clearFilters = () => { setMyTasks(false); setFilterAssignee([]); setFilterStatus([]); setFilterPriority([]); setFilterCategory([]); setSearch(''); };
   const toggleFilter = (setter, arr, val) => { setter(arr.includes(val) ? arr.filter(v => v !== val) : [...arr, val]); setOpenDropdown(null); };
@@ -259,7 +290,7 @@ export default function RequestBoard({ refresh }) {
   }
 
   return (
-    <div className="flex-1 bg-[#F6F6FB] overflow-hidden flex flex-col font-dm">
+    <div className="flex-1 bg-[#F6F6FB] overflow-hidden flex flex-col font-dm min-h-0">
       {/* Filter bar */}
       <div className="shrink-0 px-8 pt-5 pb-3">
         <div className="flex items-center justify-between mb-0.5">
@@ -298,6 +329,11 @@ export default function RequestBoard({ refresh }) {
           <FilterDropdown label="Status" options={BOARD_STATUSES} selected={filterStatus} setter={setFilterStatus} styleMap={STATUS_STYLES} />
           <FilterDropdown label="Priority" options={PRIORITIES} selected={filterPriority} setter={setFilterPriority} styleMap={PRIORITY_STYLES} />
           <FilterDropdown label="Category" options={NEW_CATEGORIES} selected={filterCategory} setter={setFilterCategory} styleMap={CATEGORY_STYLES} />
+          <button
+            onClick={() => { setShowArchived(s => !s); clearFilters(); }}
+            className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg border transition-colors ${showArchived ? 'bg-[#242450] text-white border-[#242450]' : 'bg-white text-[#5777AB] border-[#EBEBF5] hover:border-[#D8D8EE]'}`}>
+            <Archive className="w-3 h-3" /> Archived
+          </button>
           {hasAnyFilter && (
             <button onClick={clearFilters} className="px-3 py-1.5 text-xs font-medium text-[#DC2626] hover:underline">Clear all filters</button>
           )}
@@ -305,13 +341,15 @@ export default function RequestBoard({ refresh }) {
       </div>
 
       {/* Content area */}
-      <div className="flex-1 overflow-hidden px-8 pb-8">
+      <div className="flex-1 min-h-0 overflow-auto px-8 pb-8">
         {loading ? (
           <div className="flex items-center justify-center h-48">
             <div className="w-6 h-6 border-2 border-[#8403C5]/20 border-t-[#8403C5] rounded-full animate-spin" />
           </div>
+        ) : showArchived ? (
+          <ArchivedView requests={displayRequests} onRestore={handleRestore} onSelect={setSelectedReq} isValidCategory={isValidCategory} fmtDate={fmtDate} />
         ) : view === 'kanban' ? (
-          <KanbanView columns={columns} onDragEnd={handleDragEnd} onSelect={setSelectedReq} isValidCategory={isValidCategory} />
+          <KanbanView columns={columns} onDragEnd={handleDragEnd} onSelect={setSelectedReq} isValidCategory={isValidCategory} onArchive={handleArchive} doneCount={doneCount} onBulkArchive={() => setConfirmBulkArchive(true)} />
         ) : view === 'list' ? (
           <ListView sorted={sorted} sortField={sortField} sortDir={sortDir} onSort={handleSort} onSelect={setSelectedReq} isValidCategory={isValidCategory} fmtDate={fmtDate} onStatusChange={handleStatusChange} />
         ) : (
@@ -319,56 +357,110 @@ export default function RequestBoard({ refresh }) {
         )}
       </div>
 
+      {/* Bulk archive confirmation */}
+      {confirmBulkArchive && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4" onClick={() => setConfirmBulkArchive(false)}>
+          <div className="bg-white rounded-xl p-6 w-full max-w-sm" onClick={e => e.stopPropagation()}>
+            <h3 className="text-base font-bold text-[#242450] mb-2">Archive all done tasks?</h3>
+            <p className="text-sm text-[#5777AB] mb-5">Archive {doneCount} completed task{doneCount !== 1 ? 's' : ''}? They won't appear on the board but can be restored from the archive.</p>
+            <div className="flex gap-2 justify-end">
+              <button onClick={() => setConfirmBulkArchive(false)} className="px-4 py-2 text-sm font-medium text-[#5777AB] hover:bg-[#F6F6FB] rounded-lg transition-colors">Cancel</button>
+              <button onClick={handleBulkArchiveDone} className="px-4 py-2 text-sm font-semibold bg-[#242450] text-white rounded-lg hover:bg-[#1A1A3A] transition-colors flex items-center gap-1.5"><Archive className="w-3.5 h-3.5" /> Archive all</button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {showModal && <AddTaskModal onClose={() => setShowModal(false)} onSubmit={handleAddTask} />}
       {openDropdown && <div className="fixed inset-0 z-40" onClick={() => setOpenDropdown(null)} />}
     </div>
   );
 }
 
+// ── Kanban Card overflow menu ──
+function CardMenu({ req, onArchive }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div className="relative" onClick={e => e.stopPropagation()}>
+      <button onClick={() => setOpen(o => !o)} className="p-1 rounded hover:bg-[#F6F6FB] text-[#9CA3AF] hover:text-[#5777AB] transition-colors">
+        <MoreHorizontal className="w-3.5 h-3.5" />
+      </button>
+      {open && (
+        <>
+          <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
+          <div className="absolute right-0 top-full mt-1 bg-white border border-[#EBEBF5] rounded-lg shadow-lg z-50 w-36 py-1">
+            {req._displayStatus === 'Done' && (
+              <button onClick={() => { onArchive(req.id); setOpen(false); }}
+                className="w-full flex items-center gap-2 px-3 py-1.5 text-xs text-[#5777AB] hover:bg-[#F6F6FB] transition-colors">
+                <Archive className="w-3 h-3" /> Archive
+              </button>
+            )}
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
 // ── Kanban View ──
-function KanbanView({ columns, onDragEnd, onSelect, isValidCategory }) {
+function KanbanView({ columns, onDragEnd, onSelect, isValidCategory, onArchive, doneCount, onBulkArchive }) {
   return (
     <DragDropContext onDragEnd={onDragEnd}>
-      <div className="flex gap-4 h-full overflow-x-auto pb-2">
+      <div className="flex gap-4 overflow-x-auto pb-2" style={{ minHeight: 0 }}>
         {BOARD_STATUSES.map(status => (
-          <div key={status} className="flex-shrink-0 w-72 flex flex-col">
+          <div key={status} className="flex-shrink-0 w-72 flex flex-col" style={{ maxHeight: 'calc(100vh - 220px)' }}>
             <div className="flex items-center justify-between mb-3 shrink-0">
               <div className="flex items-center gap-1.5">
                 <span className="text-sm">{COLUMN_ICONS[status]}</span>
                 <span className="text-xs font-bold text-[#5777AB] uppercase tracking-[0.06em]">{COLUMN_LABELS[status]}</span>
+                <span className="text-xs font-medium text-[#9CA3AF] bg-[#EBEBF5] px-2 py-0.5 rounded-full">{columns[status].length}</span>
               </div>
-              <span className="text-xs font-medium text-[#9CA3AF] bg-[#EBEBF5] px-2 py-0.5 rounded-full">{columns[status].length}</span>
+              {status === 'Done' && doneCount > 0 && (
+                <button onClick={onBulkArchive} className="text-[10px] text-[#9CA3AF] hover:text-[#5777AB] flex items-center gap-1 transition-colors">
+                  <Archive className="w-3 h-3" /> Archive all
+                </button>
+              )}
             </div>
             <Droppable droppableId={status}>
               {(provided, snapshot) => (
                 <div ref={provided.innerRef} {...provided.droppableProps}
-                  className={`flex-1 rounded-xl flex flex-col gap-2 p-2 transition-colors min-h-[200px] ${snapshot.isDraggingOver ? 'bg-[#8403C5]/5 border border-dashed border-[#8403C5]/30' : 'bg-[#F6F6FB]/60'}`}>
-                  {columns[status].map((req, index) => (
-                    <Draggable key={req.id} draggableId={req.id} index={index}>
-                      {(provided, snapshot) => (
-                        <div ref={provided.innerRef} {...provided.draggableProps} {...provided.dragHandleProps}
-                          onClick={() => onSelect(req)}
-                          className={`bg-white border rounded-xl p-3.5 cursor-pointer hover:border-[#8403C5]/30 transition-all ${snapshot.isDragging ? 'shadow-lg border-[#8403C5]/40 rotate-1' : 'border-[#EBEBF5]'}`}>
-                          <p className="text-sm font-semibold text-[#242450] mb-2.5 leading-snug">{req.title || <span className="text-[#9CA3AF] italic">Untitled</span>}</p>
-                          <div className="flex items-center gap-2 flex-wrap mb-2">
+                  className={`flex-1 overflow-y-auto rounded-xl flex flex-col gap-2 p-2 transition-colors min-h-[120px] ${snapshot.isDraggingOver ? 'bg-[#8403C5]/5 border border-dashed border-[#8403C5]/30' : 'bg-[#F6F6FB]/60'}`}>
+                  {columns[status].map((req, index) => {
+                    const dlStatus = getDeadlineStatus(req.deadline, req._displayStatus);
+                    return (
+                      <Draggable key={req.id} draggableId={req.id} index={index}>
+                        {(provided, snapshot) => (
+                          <div ref={provided.innerRef} {...provided.draggableProps} {...provided.dragHandleProps}
+                            onClick={() => onSelect(req)}
+                            className={`bg-white border rounded-xl p-3.5 cursor-pointer hover:border-[#8403C5]/30 transition-all ${snapshot.isDragging ? 'shadow-lg border-[#8403C5]/40 rotate-1' : 'border-[#EBEBF5]'}`}>
+                            <div className="flex items-start justify-between gap-1 mb-2.5">
+                              <p className="text-sm font-semibold text-[#242450] leading-snug flex-1">{req.title || <span className="text-[#9CA3AF] italic">Untitled</span>}</p>
+                              <CardMenu req={req} onArchive={onArchive} />
+                            </div>
                             {req.assignedTo && (
-                              <div className="flex items-center gap-1.5">
+                              <div className="flex items-center gap-1.5 mb-2">
                                 <div className="w-5 h-5 rounded-full bg-[#F3E8FF] text-[#8403C5] text-[10px] font-bold flex items-center justify-center shrink-0">
                                   {req.assignedTo.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase()}
                                 </div>
                                 <span className="text-[11px] font-medium text-[#5777AB]">{req.assignedTo}</span>
                               </div>
                             )}
+                            <div className="flex items-center gap-1.5 flex-wrap">
+                              {req.priority && <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${PRIORITY_STYLES[req.priority] || ''}`}>{req.priority}</span>}
+                              {req.category && isValidCategory(req.category) && <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${CATEGORY_STYLES[req.category] || 'bg-[#EBEBF5] text-[#242450]'}`}>{req.category}</span>}
+                            </div>
+                            {req.deadline && (
+                              <div className={`flex items-center gap-1.5 mt-2 ${dlStatus === 'overdue' ? 'text-[#DC2626]' : dlStatus === 'today' ? 'text-[#A16207]' : 'text-[#5777AB]'}`}>
+                                <span className="text-[11px]">Due {format(new Date(req.deadline), 'd MMM yyyy')}</span>
+                                {dlStatus === 'overdue' && <span className="text-[9px] font-bold bg-[#FEF2F2] text-[#DC2626] px-1.5 py-0.5 rounded-full uppercase tracking-wide">Overdue</span>}
+                                {dlStatus === 'today' && <span className="text-[9px] font-bold bg-[#FFFBEB] text-[#A16207] px-1.5 py-0.5 rounded-full uppercase tracking-wide">Due today</span>}
+                              </div>
+                            )}
                           </div>
-                          <div className="flex items-center gap-1.5 flex-wrap">
-                            {req.priority && <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${PRIORITY_STYLES[req.priority] || ''}`}>{req.priority}</span>}
-                            {req.category && isValidCategory(req.category) && <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${CATEGORY_STYLES[req.category] || 'bg-[#EBEBF5] text-[#242450]'}`}>{req.category}</span>}
-                          </div>
-                          {req.deadline && <p className="text-[11px] text-[#5777AB] mt-2">Due {format(new Date(req.deadline), 'd MMM yyyy')}</p>}
-                        </div>
-                      )}
-                    </Draggable>
-                  ))}
+                        )}
+                      </Draggable>
+                    );
+                  })}
                   {provided.placeholder}
                   {columns[status].length === 0 && !snapshot.isDraggingOver && (
                     <div className="flex-1 flex items-center justify-center"><p className="text-xs text-[#9CA3AF] italic">No tasks</p></div>
@@ -441,6 +533,56 @@ function ListView({ sorted, sortField, sortDir, onSort, onSelect, isValidCategor
               </td>
               <td className="px-3 py-3 text-xs text-[#5777AB] whitespace-nowrap">{fmtDate(req.deadline)}</td>
               <td className="px-3 py-3 text-xs text-[#5777AB] whitespace-nowrap">{req.submittedAt ? format(new Date(req.submittedAt), 'd MMM yy') : '—'}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+// ── Archived View ──
+function ArchivedView({ requests, onRestore, onSelect, isValidCategory, fmtDate }) {
+  if (requests.length === 0) {
+    return (
+      <div className="flex flex-col items-center justify-center h-48 gap-2">
+        <Archive className="w-8 h-8 text-[#D8D8EE]" />
+        <p className="text-sm text-[#9CA3AF]">No archived tasks</p>
+      </div>
+    );
+  }
+  return (
+    <div className="bg-white rounded-xl border border-[#EBEBF5] overflow-hidden">
+      <table className="w-full text-sm min-w-[700px]">
+        <thead>
+          <tr className="border-b border-[#EBEBF5]">
+            <th className="px-3 py-3 text-left text-[11px] font-bold text-[#5777AB] uppercase tracking-[0.08em]">Task</th>
+            <th className="px-3 py-3 text-left text-[11px] font-bold text-[#5777AB] uppercase tracking-[0.08em]">Assigned to</th>
+            <th className="px-3 py-3 text-left text-[11px] font-bold text-[#5777AB] uppercase tracking-[0.08em]">Category</th>
+            <th className="px-3 py-3 text-left text-[11px] font-bold text-[#5777AB] uppercase tracking-[0.08em]">Priority</th>
+            <th className="px-3 py-3 text-left text-[11px] font-bold text-[#5777AB] uppercase tracking-[0.08em]">Due date</th>
+            <th className="px-3 py-3"></th>
+          </tr>
+        </thead>
+        <tbody>
+          {requests.map(req => (
+            <tr key={req.id} onClick={() => onSelect(req)} className="border-b border-[#F2F2F4] last:border-0 hover:bg-[#F6F6FB] transition-colors cursor-pointer">
+              <td className="px-3 py-3 min-w-[180px] max-w-[240px]">
+                <p className="font-medium text-[#9CA3AF] text-sm truncate">{req.title || <span className="italic">Untitled</span>}</p>
+              </td>
+              <td className="px-3 py-3 text-xs text-[#9CA3AF] whitespace-nowrap">{req.assignedTo || '—'}</td>
+              <td className="px-3 py-3">
+                {req.category && isValidCategory(req.category) ? <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full opacity-60 bg-[#EBEBF5] text-[#5777AB]`}>{req.category}</span> : <span className="text-xs text-[#9CA3AF]">—</span>}
+              </td>
+              <td className="px-3 py-3">
+                {req.priority ? <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-[#EBEBF5] text-[#9CA3AF]">{req.priority}</span> : <span className="text-xs text-[#9CA3AF]">—</span>}
+              </td>
+              <td className="px-3 py-3 text-xs text-[#9CA3AF] whitespace-nowrap">{fmtDate(req.deadline)}</td>
+              <td className="px-3 py-3" onClick={e => e.stopPropagation()}>
+                <button onClick={() => onRestore(req.id)} className="flex items-center gap-1 text-xs font-semibold text-[#5777AB] hover:text-[#8403C5] transition-colors">
+                  <RotateCcw className="w-3 h-3" /> Restore
+                </button>
+              </td>
             </tr>
           ))}
         </tbody>

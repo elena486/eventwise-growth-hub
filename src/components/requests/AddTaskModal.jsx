@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { X } from 'lucide-react';
 import { TEAM_MEMBERS, NEW_CATEGORIES, PRIORITIES } from './requestStyles';
+import { base44 } from '@/api/base44Client';
 
 const PRIORITY_PILL_STYLES = {
   Low: 'bg-[#EBEBF5] text-[#242450] border-[#D8D8EE]',
@@ -18,6 +19,13 @@ export default function AddTaskModal({ onClose, onSubmit }) {
   const [deadline, setDeadline] = useState('');
   const [description, setDescription] = useState('');
   const [submitting, setSubmitting] = useState(false);
+
+  useEffect(() => {
+    base44.auth.me().then(me => {
+      const first = (me?.full_name || '').split(' ')[0];
+      if (TEAM_MEMBERS.includes(first)) setRequestedBy(first);
+    }).catch(() => {});
+  }, []);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -136,7 +144,7 @@ export default function AddTaskModal({ onClose, onSubmit }) {
             </button>
             <button type="submit" disabled={submitting}
               className="px-5 py-2 text-sm font-semibold bg-[#8403C5] text-white rounded-lg hover:bg-[#6B02A0] transition-colors disabled:opacity-60">
-              {submitting ? 'Submitting…' : 'Submit Request'}
+              {submitting ? 'Adding…' : 'Add Task'}
             </button>
           </div>
         </form>

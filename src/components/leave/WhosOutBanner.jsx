@@ -21,9 +21,11 @@ function getInitials(name) {
   return (name || '?').split(' ').map(w => w[0]).slice(0, 2).join('').toUpperCase();
 }
 
-function fmtShort(d) {
+const THIS_YEAR = new Date().getFullYear();
+
+function fmtShort(d, showYear) {
   if (!d) return '—';
-  try { return format(parseISO(d), 'd MMM'); } catch { return d; }
+  try { return format(parseISO(d), showYear ? 'd MMM yyyy' : 'd MMM'); } catch { return d; }
 }
 
 export default function WhosOutBanner({ onNavigate }) {
@@ -72,7 +74,11 @@ export default function WhosOutBanner({ onNavigate }) {
                 <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded-full ${TYPE_STYLES[entry.type] || 'bg-[#EBEBF5] text-[#5777AB]'}`}>
                   {entry.type}
                 </span>
-                <span className="text-[11px] text-[#9CA3AF]">{fmtShort(entry.startDate)}–{fmtShort(entry.endDate)}</span>
+                <span className="text-[11px] text-[#9CA3AF]">{(() => {
+                  const endYear = entry.endDate ? new Date(entry.endDate).getFullYear() : THIS_YEAR;
+                  const showYear = endYear !== THIS_YEAR;
+                  return `${fmtShort(entry.startDate)}–${fmtShort(entry.endDate, showYear)}`;
+                })()}</span>
               </div>
             );
           })}
