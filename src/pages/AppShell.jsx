@@ -45,6 +45,7 @@ import LogTimeSidebar from '@/components/time/LogTimeSidebar';
 import PasswordModal from '@/components/activity/PasswordModal';
 import Leave from './Leave';
 import WhosOutBanner from '@/components/leave/WhosOutBanner';
+import UpdateBanner from '@/components/UpdateBanner';
 
 const GROUPS = [
   { id: 'sales', label: 'Sales', tabs: [
@@ -300,6 +301,7 @@ export default function AppShell() {
 
   return (
     <div className="flex flex-col h-screen font-dm overflow-hidden">
+      <UpdateBanner />
       {/* Top nav */}
       <nav className="bg-[#0F0F1A] shrink-0 px-6 flex items-center justify-between h-[52px] border-b border-[#1E1E32]">
         <div className="flex items-center gap-6 min-w-0">
