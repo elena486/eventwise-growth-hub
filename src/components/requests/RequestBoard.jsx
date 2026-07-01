@@ -293,7 +293,7 @@ export default function RequestBoard({ refresh }) {
   }
 
   return (
-    <div className="flex-1 bg-[#F6F6FB] overflow-hidden flex flex-col font-dm min-h-0">
+    <div style={{ height: '100%', overflow: 'hidden', display: 'flex', flexDirection: 'column' }} className="bg-[#F6F6FB] font-dm">
       {/* Filter bar */}
       <div className="shrink-0 px-8 pt-5 pb-3">
         <div className="flex items-center justify-between mb-0.5">
@@ -344,7 +344,7 @@ export default function RequestBoard({ refresh }) {
       </div>
 
       {/* Content area */}
-      <div className="flex-1 min-h-0 overflow-auto px-8 pb-8">
+      <div style={{ flex: 1, minHeight: 0, overflow: 'auto', padding: '0 32px 32px' }}>
         {loading ? (
           <div className="flex items-center justify-center h-48">
             <div className="w-6 h-6 border-2 border-[#8403C5]/20 border-t-[#8403C5] rounded-full animate-spin" />
@@ -409,9 +409,9 @@ function CardMenu({ req, onArchive }) {
 function KanbanView({ columns, onDragEnd, onSelect, isValidCategory, onArchive, doneCount, onBulkArchive }) {
   return (
     <DragDropContext onDragEnd={onDragEnd} style={{ height: '100%' }}>
-      <div className="flex gap-4 h-full overflow-x-auto pb-2">
+      <div className="flex gap-4 overflow-x-auto pb-4" style={{ height: '100%' }}>
         {BOARD_STATUSES.map(status => (
-          <div key={status} className="flex-shrink-0 w-72 flex flex-col h-full">
+          <div key={status} className="flex-shrink-0 w-72 flex flex-col" style={{ height: '100%' }}>
             <div className="flex items-center justify-between mb-3 shrink-0">
               <div className="flex items-center gap-1.5">
                 <span className="text-sm">{COLUMN_ICONS[status]}</span>
@@ -427,7 +427,8 @@ function KanbanView({ columns, onDragEnd, onSelect, isValidCategory, onArchive, 
             <Droppable droppableId={status}>
               {(provided, snapshot) => (
                 <div ref={provided.innerRef} {...provided.droppableProps}
-                  className={`flex-1 overflow-y-auto rounded-xl flex flex-col gap-2 p-2 transition-colors min-h-[120px] ${snapshot.isDraggingOver ? 'bg-[#8403C5]/5 border border-dashed border-[#8403C5]/30' : 'bg-[#F6F6FB]/60'}`}>
+                  style={{ overflowY: 'auto', minHeight: 120 }}
+                  className={`flex-1 rounded-xl flex flex-col gap-2 p-2 transition-colors ${snapshot.isDraggingOver ? 'bg-[#8403C5]/5 border border-dashed border-[#8403C5]/30' : 'bg-[#F6F6FB]/60'}`}>
                   {columns[status].map((req, index) => {
                     const dlStatus = getDeadlineStatus(req.deadline, req._displayStatus);
                     return (

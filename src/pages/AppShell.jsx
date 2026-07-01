@@ -541,11 +541,11 @@ export default function AppShell() {
         {tab === 'renewals' && <Renewals />}
         {tab === 'deals' && <Deals onRenewalProposal={(data) => { handleProposalHandoff(data); }} onViewClient={(clientId) => { setTab('clients'); }} onNavigate={setTab} focusDealId={searchFocus?.focusType === 'deal' ? searchFocus.focusId : null} onFocusConsumed={() => setSearchFocus(null)} />}
         {tab === 'team-board' && (
-          <div className="flex flex-col flex-1 min-h-0 overflow-hidden">
+          <div className="flex flex-col w-full" style={{ height: '100%', overflow: 'hidden' }}>
             <div className="px-8 pt-6 shrink-0">
               <WhosOutBanner onNavigate={setTab} />
             </div>
-            <div className="flex-1 min-h-0 overflow-hidden">
+            <div style={{ flex: 1, minHeight: 0, overflow: 'hidden' }}>
               <RequestBoard refresh={teamBoardRefresh} />
             </div>
           </div>
