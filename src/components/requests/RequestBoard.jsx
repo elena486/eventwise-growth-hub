@@ -260,7 +260,7 @@ export default function RequestBoard({ refresh }) {
   const FilterDropdown = ({ label, options, selected, setter, styleMap }) => (
     <div className="relative">
       <button onClick={() => setOpenDropdown(openDropdown === label ? null : label)}
-        className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg border transition-colors ${selected.length > 0 ? 'bg-[#F3E8FF] text-[#8403C5] border-[#8403C5]/30' : 'bg-white text-[#5777AB] border-[#EBEBF5] hover:border-[#D8D8EE]'}`}>
+        className={`shrink-0 flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg border transition-colors ${selected.length > 0 ? 'bg-[#F3E8FF] text-[#8403C5] border-[#8403C5]/30' : 'bg-white text-[#5777AB] border-[#EBEBF5] hover:border-[#D8D8EE]'}`}>
         <Filter className="w-3 h-3" /> {label}
         {selected.length > 0 && <span className="bg-[#8403C5] text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full leading-none">{selected.length}</span>}
       </button>
@@ -323,14 +323,14 @@ export default function RequestBoard({ refresh }) {
             </button>
           </div>
         </div>
-        <div className="flex items-center gap-2 flex-wrap mt-3">
+        <div className="flex items-center gap-2 mt-3 overflow-x-auto pb-1" style={{ scrollbarWidth: 'none' }}>
           <div className="relative min-w-[160px]">
             <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-[#9CA3AF]" />
             <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search tasks…"
               className="w-full pl-8 pr-3 py-1.5 text-sm border border-[#EBEBF5] rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-[#8403C5]/20 focus:border-[#8403C5] transition-colors" />
           </div>
           <button onClick={() => setMyTasks(m => !m)}
-            className={`px-3 py-1.5 text-xs font-medium rounded-lg border transition-colors ${myTasks ? 'bg-[#242450] text-white border-[#242450]' : 'bg-white text-[#5777AB] border-[#EBEBF5] hover:border-[#D8D8EE]'}`}>
+            className={`shrink-0 px-3 py-1.5 text-xs font-medium rounded-lg border transition-colors ${myTasks ? 'bg-[#242450] text-white border-[#242450]' : 'bg-white text-[#5777AB] border-[#EBEBF5] hover:border-[#D8D8EE]'}`}>
             My Tasks
           </button>
           <FilterDropdown label="Assignee" options={TEAM_MEMBERS} selected={filterAssignee} setter={setFilterAssignee} />
@@ -339,7 +339,7 @@ export default function RequestBoard({ refresh }) {
           <FilterDropdown label="Category" options={NEW_CATEGORIES} selected={filterCategory} setter={setFilterCategory} styleMap={CATEGORY_STYLES} />
           <button
             onClick={() => { setShowArchived(s => !s); clearFilters(); }}
-            className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg border transition-colors ${showArchived ? 'bg-[#242450] text-white border-[#242450]' : 'bg-white text-[#5777AB] border-[#EBEBF5] hover:border-[#D8D8EE]'}`}>
+            className={`shrink-0 flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg border transition-colors ${showArchived ? 'bg-[#242450] text-white border-[#242450]' : 'bg-white text-[#5777AB] border-[#EBEBF5] hover:border-[#D8D8EE]'}`}>
             <Archive className="w-3 h-3" /> Archived
           </button>
           {hasAnyFilter && (
