@@ -251,34 +251,10 @@ export default function RequestBoard({ refresh }) {
 
   const hasAnyFilter = myTasks || filterAssignee.length > 0 || filterStatus.length > 0 || filterPriority.length > 0 || filterCategory.length > 0 || search;
   const clearFilters = () => { setMyTasks(false); setFilterAssignee([]); setFilterStatus([]); setFilterPriority([]); setFilterCategory([]); setSearch(''); };
-  const toggleFilter = (setter, arr, val) => { setter(arr.includes(val) ? arr.filter(v => v !== val) : [...arr, val]); setOpenDropdown(null); };
+  const toggleFilter = (setter, arr, val) => { setter(arr.includes(val) ? arr.filter(v => v !== val) : [...arr, val]); };
   const isValidCategory = (cat) => NEW_CATEGORIES.includes(cat);
 
   const fmtDate = (d) => d ? format(new Date(d), 'd MMM yyyy') : 'No date';
-  const fmtShort = (d) => d ? format(new Date(d), 'd MMM yy') : '—';
-
-  const FilterDropdown = ({ label, options, selected, setter, styleMap }) => (
-    <div className="relative">
-      <button onClick={() => setOpenDropdown(openDropdown === label ? null : label)}
-        className={`shrink-0 flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg border transition-colors ${selected.length > 0 ? 'bg-[#F3E8FF] text-[#8403C5] border-[#8403C5]/30' : 'bg-white text-[#5777AB] border-[#EBEBF5] hover:border-[#D8D8EE]'}`}>
-        <Filter className="w-3 h-3" /> {label}
-        {selected.length > 0 && <span className="bg-[#8403C5] text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full leading-none">{selected.length}</span>}
-      </button>
-      {openDropdown === label && (
-        <div className="absolute top-full left-0 mt-1 bg-white border border-[#EBEBF5] rounded-lg shadow-lg z-50 w-48 py-1 max-h-52 overflow-y-auto">
-          {options.map(opt => (
-            <button key={opt} onClick={() => toggleFilter(setter, selected, opt)}
-              className="w-full flex items-center gap-2 px-3 py-1.5 text-xs text-[#242450] hover:bg-[#F6F6FB] transition-colors text-left">
-              <span className={`w-3.5 h-3.5 rounded border flex items-center justify-center shrink-0 ${selected.includes(opt) ? 'bg-[#8403C5] border-[#8403C5]' : 'border-[#D8D8EE]'}`}>
-                {selected.includes(opt) && <span className="text-white text-[9px]">✓</span>}
-              </span>
-              {styleMap ? <span className={`text-[11px] font-semibold px-1.5 py-0.5 rounded-full ${styleMap[opt] || ''}`}>{opt}</span> : opt}
-            </button>
-          ))}
-        </div>
-      )}
-    </div>
-  );
 
   const SortHeader = ({ col }) => {
     const isActive = sortField === col.key;
@@ -324,7 +300,7 @@ export default function RequestBoard({ refresh }) {
           </div>
         </div>
         <div className="flex items-center gap-2 mt-3 overflow-x-auto pb-1" style={{ scrollbarWidth: 'none' }}>
-          <div className="relative min-w-[160px]">
+          <div className="relative min-w-[160px] shrink-0">
             <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-[#9CA3AF]" />
             <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search tasks…"
               className="w-full pl-8 pr-3 py-1.5 text-sm border border-[#EBEBF5] rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-[#8403C5]/20 focus:border-[#8403C5] transition-colors" />
@@ -333,17 +309,25 @@ export default function RequestBoard({ refresh }) {
             className={`shrink-0 px-3 py-1.5 text-xs font-medium rounded-lg border transition-colors ${myTasks ? 'bg-[#242450] text-white border-[#242450]' : 'bg-white text-[#5777AB] border-[#EBEBF5] hover:border-[#D8D8EE]'}`}>
             My Tasks
           </button>
-          <FilterDropdown label="Assignee" options={TEAM_MEMBERS} selected={filterAssignee} setter={setFilterAssignee} />
-          <FilterDropdown label="Status" options={BOARD_STATUSES} selected={filterStatus} setter={setFilterStatus} styleMap={STATUS_STYLES} />
-          <FilterDropdown label="Priority" options={PRIORITIES} selected={filterPriority} setter={setFilterPriority} styleMap={PRIORITY_STYLES} />
-          <FilterDropdown label="Category" options={NEW_CATEGORIES} selected={filterCategory} setter={setFilterCategory} styleMap={CATEGORY_STYLES} />
+          <FilterDropdown label="Assignee" options={TEAM_MEMBERS} selected={filterAssignee} setter={setFilterAssignee} openDropdown={openDropdown} setOpenDropdown={setOpenDropdown} />
+          <FilterDropdown label="Status" options={BOARD_STATUSES} selected={filterStatus} setter={setFilterStatus} styleMap={STATUS_STYLES} openDropdown={openDropdown} setOpenDropdown={setOpenDropdown} />
+          <FilterDropdown label="Priority" options={PRIORITIES} selected={filterPriority} setter={setFilterPriority} styleMap={PRIORITY_STYLES} openDropdown={openDropdown} setOpenDropdown={setOpenDropdown} />
+          <FilterDropdown label="Category" options={NEW_CATEGORIES} selected={filterCategory} setter={setFilterCategory} styleMap={CATEGORY_STYLES} openDropdown={openDropdown} setOpenDropdown={setOpenDropdown} />
+          <div className="w-px h-5 bg-[#EBEBF5] shrink-0" />
+          {!showArchived && doneCount > 0 && (
+            <button
+              onClick={() => setConfirmBulkArchive(true)}
+              className="shrink-0 flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg border border-[#E8A020]/40 bg-[#FFFBEB] text-[#A16207] hover:bg-[#FEF3C7] transition-colors">
+              <Archive className="w-3 h-3" /> Archive Done ({doneCount})
+            </button>
+          )}
           <button
             onClick={() => { setShowArchived(s => !s); clearFilters(); }}
             className={`shrink-0 flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg border transition-colors ${showArchived ? 'bg-[#242450] text-white border-[#242450]' : 'bg-white text-[#5777AB] border-[#EBEBF5] hover:border-[#D8D8EE]'}`}>
             <Archive className="w-3 h-3" /> Archived
           </button>
           {hasAnyFilter && (
-            <button onClick={clearFilters} className="px-3 py-1.5 text-xs font-medium text-[#DC2626] hover:underline">Clear all filters</button>
+            <button onClick={clearFilters} className="shrink-0 px-3 py-1.5 text-xs font-medium text-[#DC2626] hover:underline">Clear filters</button>
           )}
         </div>
       </div>
@@ -380,7 +364,49 @@ export default function RequestBoard({ refresh }) {
       )}
 
       {showModal && <AddTaskModal onClose={() => setShowModal(false)} onSubmit={handleAddTask} />}
-      {openDropdown && <div className="fixed inset-0 z-40" onClick={() => setOpenDropdown(null)} />}
+      {openDropdown && <div className="fixed inset-0 z-[45]" onClick={() => setOpenDropdown(null)} />}
+    </div>
+  );
+}
+
+// ── Filter Dropdown ──
+function FilterDropdown({ label, options, selected, setter, styleMap, openDropdown, setOpenDropdown, toggleFilter }) {
+  const isOpen = openDropdown === label;
+  const btnRef = React.useRef(null);
+  const [pos, setPos] = React.useState({ top: 0, left: 0 });
+
+  const handleOpen = () => {
+    if (!isOpen && btnRef.current) {
+      const rect = btnRef.current.getBoundingClientRect();
+      setPos({ top: rect.bottom + 4, left: rect.left });
+    }
+    setOpenDropdown(isOpen ? null : label);
+  };
+
+  return (
+    <div className="relative shrink-0">
+      <button
+        ref={btnRef}
+        onClick={handleOpen}
+        className={`shrink-0 flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg border transition-colors ${selected.length > 0 ? 'bg-[#F3E8FF] text-[#8403C5] border-[#8403C5]/30' : 'bg-white text-[#5777AB] border-[#EBEBF5] hover:border-[#D8D8EE]'}`}
+      >
+        <Filter className="w-3 h-3" /> {label}
+        {selected.length > 0 && <span className="bg-[#8403C5] text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full leading-none">{selected.length}</span>}
+      </button>
+      {isOpen && (
+        <div className="fixed z-[46] bg-white border border-[#EBEBF5] rounded-lg shadow-xl w-48 py-1 max-h-52 overflow-y-auto"
+          style={{ top: pos.top, left: pos.left }}>
+          {options.map(opt => (
+            <button key={opt} onClick={() => { setter(selected.includes(opt) ? selected.filter(v => v !== opt) : [...selected, opt]); }}
+              className="w-full flex items-center gap-2 px-3 py-1.5 text-xs text-[#242450] hover:bg-[#F6F6FB] transition-colors text-left">
+              <span className={`w-3.5 h-3.5 rounded border flex items-center justify-center shrink-0 ${selected.includes(opt) ? 'bg-[#8403C5] border-[#8403C5]' : 'border-[#D8D8EE]'}`}>
+                {selected.includes(opt) && <span className="text-white text-[9px]">✓</span>}
+              </span>
+              {styleMap ? <span className={`text-[11px] font-semibold px-1.5 py-0.5 rounded-full ${styleMap[opt] || ''}`}>{opt}</span> : opt}
+            </button>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
