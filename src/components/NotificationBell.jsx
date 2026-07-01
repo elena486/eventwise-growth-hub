@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { Bell, CheckCheck, Clock, ListTodo, Activity, Zap, AtSign } from 'lucide-react';
+import { Bell, CheckCheck, Clock, ListTodo, Activity, Zap, AtSign, CalendarCheck } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
 import { markNotificationRead, markAllNotificationsRead } from '@/lib/notifications';
 import { formatDistanceToNow } from 'date-fns';
@@ -10,8 +10,13 @@ const TYPE_CONFIG = {
   task_completed:     { icon: CheckCheck,color: '#1D9E75', bg: '#E8F7F2', label: 'Task completed' },
   sprint_submitted:   { icon: Zap,       color: '#E8A020', bg: '#FFFBEB', label: 'Sprint update' },
   sprint_overdue:     { icon: Clock,     color: '#DC2626', bg: '#FEF2F2', label: 'Sprint overdue' },
-  time_logged_cs:     { icon: Clock,     color: '#5777AB', bg: '#EEF2F8', label: 'Time logged' },
-  mention:            { icon: AtSign,    color: '#8403C5', bg: '#F3E8FF', label: 'Mention' },
+  time_logged_cs:     { icon: Clock,        color: '#5777AB', bg: '#EEF2F8', label: 'Time logged' },
+  mention:            { icon: AtSign,       color: '#8403C5', bg: '#F3E8FF', label: 'Mention' },
+  leave_approved:     { icon: CalendarCheck,color: '#1D9E75', bg: '#E8F7F2', label: 'Leave approved' },
+  leave_declined:     { icon: CalendarCheck,color: '#DC2626', bg: '#FEF2F2', label: 'Leave declined' },
+  leave_requested:    { icon: CalendarCheck,color: '#A16207', bg: '#FFFBEB', label: 'Leave request' },
+  leave_today:        { icon: CalendarCheck,color: '#5777AB', bg: '#EEF2F8', label: 'Out today' },
+  leave_reminder:     { icon: CalendarCheck,color: '#8403C5', bg: '#F3E8FF', label: 'Leave reminder' },
 };
 
 function timeAgo(isoStr) {

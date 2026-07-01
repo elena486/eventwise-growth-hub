@@ -107,6 +107,63 @@ Deno.serve(async (req) => {
       }
     }
 
+    // ── LEAVE ENTRY ───────────────────────────────────────────────────────────
+    if (entityName === 'LeaveEntry') {
+      const person = data?.personName || '';
+      const startDate = data?.startDate || '';
+      const endDate = data?.endDate || '';
+      const status = data?.status || '';
+      const oldStatus = old_data?.status || '';
+
+      // Format dates nicely: "3 Jul"
+      function fmtDate(d) {
+        if (!d) return d;
+        try {
+          const parts = d.split('-');
+          const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+          return `${parseInt(parts[2])} ${months[parseInt(parts[1]) - 1]}`;
+        } catch { return d; }
+      }
+      const fStart = fmtDate(startDate);
+      const fEnd = fmtDate(endDate);
+
+      // TRIGGER 1 — Approved (notify the person)
+      if (eventType === 'update' && status === 'Approved' && oldStatus !== 'Approved' && person) {
+        await notify({
+          recipientName: person,
+          type: 'leave_approved',
+          message: `${person}, your leave request for ${fStart} to ${fEnd} has been approved.`,
+          navigateTo: 'leave',
+          recordId: event?.entity_id || '',
+          actorName: '',
+        });
+      }
+
+      // TRIGGER 2 — Declined (notify the person)
+      if (eventType === 'update' && status === 'Declined' && oldStatus !== 'Declined' && person) {
+        await notify({
+          recipientName: person,
+          type: 'leave_declined',
+          message: `${person}, your leave request for ${fStart} to ${fEnd} was not approved. Contact Elena if you have questions.`,
+          navigateTo: 'leave',
+          recordId: event?.entity_id || '',
+          actorName: '',
+        });
+      }
+
+      // TRIGGER 3 — New request requiring approval (notify Elena)
+      if (eventType === 'create' && status === 'Requested' && person) {
+        await notify({
+          recipientName: 'Elena',
+          type: 'leave_requested',
+          message: `${person} has requested leave from ${fStart} to ${fEnd}. Review in the Approval Queue.`,
+          navigateTo: 'leave',
+          recordId: event?.entity_id || '',
+          actorName: person,
+        });
+      }
+    }
+
     // ── TIME ENTRY — notify CS owner when logged against a client ──
     if (entityName === 'TimeEntry' && eventType === 'create') {
       const clientId = data?.clientId;

@@ -44,6 +44,7 @@ import NavTimer from '@/components/time/NavTimer';
 import LogTimeSidebar from '@/components/time/LogTimeSidebar';
 import PasswordModal from '@/components/activity/PasswordModal';
 import Leave from './Leave';
+import WhosOutBanner from '@/components/leave/WhosOutBanner';
 
 const GROUPS = [
   { id: 'sales', label: 'Sales', tabs: [
@@ -539,7 +540,16 @@ export default function AppShell() {
         {tab === 'health' && <HealthRenewals focusClientId={focusClientId} />}
         {tab === 'renewals' && <Renewals />}
         {tab === 'deals' && <Deals onRenewalProposal={(data) => { handleProposalHandoff(data); }} onViewClient={(clientId) => { setTab('clients'); }} onNavigate={setTab} focusDealId={searchFocus?.focusType === 'deal' ? searchFocus.focusId : null} onFocusConsumed={() => setSearchFocus(null)} />}
-        {tab === 'team-board' && <RequestBoard refresh={teamBoardRefresh} />}
+        {tab === 'team-board' && (
+          <div className="flex flex-col flex-1 overflow-hidden">
+            <div className="px-8 pt-6 shrink-0">
+              <WhosOutBanner onNavigate={setTab} />
+            </div>
+            <div className="flex-1 overflow-hidden">
+              <RequestBoard refresh={teamBoardRefresh} />
+            </div>
+          </div>
+        )}
         {tab === 'submit-request' && <SubmitRequestForm onSubmitted={() => { setTeamBoardRefresh(n => n + 1); setTab('team-board'); }} />}
         {tab === 'sprints' && <Sprints />}
         {tab === 'leave' && <Leave />}

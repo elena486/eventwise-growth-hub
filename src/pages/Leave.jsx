@@ -4,6 +4,7 @@ import { Plus } from 'lucide-react';
 import LeaveLogForm from '@/components/leave/LeaveLogForm';
 import ApprovalQueue from '@/components/leave/ApprovalQueue';
 import WhosOutView from '@/components/leave/WhosOutView';
+import WhosOutBanner from '@/components/leave/WhosOutBanner';
 
 // Only Elena can see the approval queue
 const CAN_APPROVE = ['Elena'];
