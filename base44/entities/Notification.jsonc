@@ -1,0 +1,48 @@
+{
+  "name": "Notification",
+  "type": "object",
+  "properties": {
+    "recipientName": {
+      "type": "string",
+      "description": "First name of the recipient team member"
+    },
+    "type": {
+      "type": "string",
+      "enum": [
+        "task_assigned",
+        "task_status_changed",
+        "task_completed",
+        "sprint_submitted",
+        "sprint_overdue",
+        "time_logged_cs",
+        "mention"
+      ],
+      "description": "Notification type"
+    },
+    "message": {
+      "type": "string",
+      "description": "Plain English description, e.g. 'Elena assigned you a task: Refresh competitor analysis'"
+    },
+    "isRead": {
+      "type": "boolean",
+      "default": false
+    },
+    "navigateTo": {
+      "type": "string",
+      "description": "Tab/route to navigate to when clicked, e.g. 'team-board'"
+    },
+    "recordId": {
+      "type": "string",
+      "description": "Optional ID of the related record"
+    },
+    "actorName": {
+      "type": "string",
+      "description": "Who triggered the notification"
+    }
+  },
+  "required": [
+    "recipientName",
+    "type",
+    "message"
+  ]
+}

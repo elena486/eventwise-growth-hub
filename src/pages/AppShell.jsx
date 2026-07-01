@@ -101,7 +101,7 @@ export default function AppShell() {
   const { showWarning, countdown, reload, dismiss } = useAutoRefresh();
   const [avatarOpen, setAvatarOpen] = useState(false);
 
-  // Changelog / notification state
+  // Changelog / what's new state (separate from the notification bell)
   const [changelogEntries, setChangelogEntries] = useState([]);
   const [postRefreshBanner, setPostRefreshBanner] = useState(false);
   const [showFirstVisitModal, setShowFirstVisitModal] = useState(false);
@@ -237,8 +237,8 @@ export default function AppShell() {
   const { shortcutsModalOpen, setShortcutsModalOpen } = useKeyboardShortcuts({
     searchOpen,
     onToggleSearch: () => setSearchOpen(prev => !prev),
-    notificationPanelOpen,
-    onCloseNotificationPanel: () => setNotificationPanelOpen(false),
+    notificationPanelOpen: false,
+    onCloseNotificationPanel: () => {},
     fullPanelOpen: !!fullPanelClient,
     onCloseFullPanel: () => setFullPanelClient(null),
     detailClientOpen: !!detailClient,
@@ -410,11 +410,11 @@ export default function AppShell() {
         <div className="flex items-center gap-2 shrink-0 ml-4">
           <NavTimer onStopAndLog={() => setSearchParams({ tab: 'time-log' })} onLogTime={() => setLogTimeTrigger(n => n + 1)} />
           <NotificationBell
-            unreadCount={unreadCount}
-            entries={changelogEntries}
-            onOpenPanel={handleOpenNotificationPanel}
-            onMarkAllRead={markAllRead}
-            onViewAll={() => setTab('changelog')}
+            currentUserName={user?.full_name?.split(' ')[0] || ''}
+            onNavigate={(tabId, recordId) => {
+              setTab(tabId);
+              if (recordId) setSearchFocus({ tab: tabId, focusType: tabId === 'team-board' ? 'request' : 'client', focusId: recordId });
+            }}
           />
           <button
             onClick={() => setDark(d => !d)}
