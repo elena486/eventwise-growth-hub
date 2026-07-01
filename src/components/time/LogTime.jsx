@@ -193,7 +193,7 @@ export default function LogTime({ onLogged }) {
     setStoppedEntry(null); setSaveError('');
     const me = await base44.auth.me().catch(() => null);
     const firstName = me?.full_name?.split(' ')[0] || '';
-    await sharedTimerStart({ teamMember: firstName, category: quickCat, projectTask: quickDesc, clientId: quickClientId, clientName: quickClientName, userId: me?.id });
+    await sharedTimerStart({ teamMember: firstName, category: quickCat, projectTask: quickDesc, clientId: quickClientId, clientName: quickClientName, leadId: quickLeadId, leadName: quickLeadName, userId: me?.id });
     logActivity({ teamMember: firstName, actionType: 'Started a timer', section: 'Time & Capacity', recordName: quickDesc.trim() || '(Untitled session)' });
   };
 

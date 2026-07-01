@@ -138,7 +138,7 @@ export default function LogTimeSidebar({ triggerOpen, onTriggerConsumed }) {
   const handleStartTimer = async () => {
     if (timer.timerId) return;
     setStoppedEntry(null); setSaveError('');
-    await sharedTimerStart({ teamMember, category, projectTask, clientId, clientName, userId: userIdRef.current });
+    await sharedTimerStart({ teamMember, category, projectTask, clientId, clientName, leadId, leadName, userId: userIdRef.current });
     logActivity({ teamMember, actionType: 'Started a timer', section: 'Time & Capacity', recordName: projectTask.trim() || '(Untitled session)' });
   };
 

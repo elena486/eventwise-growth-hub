@@ -12,6 +12,26 @@ import {
   sharedTimerStop, sharedTimerCommit, sharedTimerBootstrap, sharedTimerUpdateMeta
 } from '@/hooks/useSharedTimer';
 
+function formatDuration(minutes) {
+  const h = Math.floor(minutes / 60); const m = minutes % 60;
+  if (h === 0 && m === 0) return '0m';
+  if (h === 0) return `${m}m`;
+  if (m === 0) return `${h}h`;
+  return `${h}h ${m}m`;
+}
+
+async function writeLeadActivityLog({ leadId, teamMember, category, projectTask, durationMinutes }) {
+  if (!leadId) return;
+  try {
+    const lead = await base44.entities.Lead.get(leadId);
+    if (!lead) return;
+    const log = (() => { try { return JSON.parse(lead.activityLog || '[]'); } catch { return []; } })();
+    const now = new Date().toISOString();
+    log.unshift({ id: Date.now(), type: 'Time logged', createdAt: now, addedBy: teamMember, category, duration: formatDuration(durationMinutes), description: projectTask, summary: '', transcriptLink: '', transcriptFileUrl: '', transcriptFileName: '' });
+    await base44.entities.Lead.update(leadId, { activityLog: JSON.stringify(log), lastActivity: now });
+  } catch {}
+}
+
 const TEAM_MEMBERS = ['Chris', 'Elena', 'George', 'Martinique', 'Sreeja', 'Ramesh'];
 const CATEGORIES = [
   'Sales & Outbound', 'Customer Success & Onboarding', 'Marketing & Content',
@@ -33,6 +53,8 @@ export default function NavTimer({ onStopAndLog, onLogTime }) {
   const [projectTask, setProjectTask] = useState(timer.projectTask || '');
   const [clientId, setClientId] = useState(timer.clientId || '');
   const [clientName, setClientName] = useState(timer.clientName || '');
+  const [leadId, setLeadId] = useState(timer.leadId || '');
+  const [leadName, setLeadName] = useState(timer.leadName || '');
   const [clients, setClients] = useState([]);
   const panelRef = useRef(null);
   const userIdRef = useRef(null);
@@ -58,8 +80,10 @@ export default function NavTimer({ onStopAndLog, onLogTime }) {
       setProjectTask(timer.projectTask || '');
       setClientId(timer.clientId || '');
       setClientName(timer.clientName || '');
+      setLeadId(timer.leadId || '');
+      setLeadName(timer.leadName || '');
     }
-  }, [timer.timerId, timer.category, timer.projectTask]);
+  }, [timer.timerId, timer.category, timer.projectTask, timer.leadId]);
 
   const setAndSyncCategory = (v) => { setCategory(v); setProjectTask(''); if (timer.timerId) sharedTimerUpdateMeta({ category: v }); };
   const setAndSyncTask = (v) => { setProjectTask(v); if (timer.timerId) sharedTimerUpdateMeta({ projectTask: v }); };
@@ -94,15 +118,20 @@ export default function NavTimer({ onStopAndLog, onLogTime }) {
 
   const handleStopAndLog = async () => {
     const result = await sharedTimerStop();
-    // Auto-commit if fields are filled, otherwise just navigate so the Today tab can show the inline validation
+    // Auto-commit if fields are filled, otherwise navigate so the Today tab shows inline validation
     if (result.category && result.projectTask) {
       await sharedTimerCommit(result.timerId, {
         category: result.category, projectTask: result.projectTask,
-        clientId: result.clientId, clientName: result.clientName,
+        clientId: result.clientId || '', clientName: result.clientName || '',
+        leadId: result.leadId || '', leadName: result.leadName || '',
         date: new Date().toISOString().slice(0, 10),
         durationMinutes: result.durationMinutes,
         notes: '', transcriptLink: '',
       }, teamMember);
+      // Write to lead activity log if a sales prospect was linked
+      if (result.leadId) {
+        writeLeadActivityLog({ leadId: result.leadId, teamMember, category: result.category, projectTask: result.projectTask, durationMinutes: result.durationMinutes });
+      }
     }
     setOpen(false);
     onStopAndLog?.();
