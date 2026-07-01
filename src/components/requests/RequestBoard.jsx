@@ -235,6 +235,11 @@ export default function RequestBoard({ refresh }) {
     await base44.entities.Request.update(id, { archived: false, status: 'Done' });
   };
 
+  const handleDeletePermanently = async (id) => {
+    setRequests(prev => prev.filter(r => r.id !== id));
+    await base44.entities.Request.delete(id);
+  };
+
   const handleBulkArchiveDone = async () => {
     const doneIds = requests.filter(r => !r.archived && normalizeStatus(r.status) === 'Done').map(r => r.id);
     setRequests(prev => prev.map(r => doneIds.includes(r.id) ? { ...r, archived: true } : r));
@@ -350,7 +355,7 @@ export default function RequestBoard({ refresh }) {
             <div className="w-6 h-6 border-2 border-[#8403C5]/20 border-t-[#8403C5] rounded-full animate-spin" />
           </div>
         ) : showArchived ? (
-          <ArchivedView requests={displayRequests} onRestore={handleRestore} onSelect={setSelectedReq} isValidCategory={isValidCategory} fmtDate={fmtDate} />
+          <ArchivedView requests={displayRequests} onRestore={handleRestore} onDelete={handleDeletePermanently} onSelect={setSelectedReq} isValidCategory={isValidCategory} fmtDate={fmtDate} />
         ) : view === 'kanban' ? (
           <KanbanView columns={columns} onDragEnd={handleDragEnd} onSelect={setSelectedReq} isValidCategory={isValidCategory} onArchive={handleArchive} doneCount={doneCount} onBulkArchive={() => setConfirmBulkArchive(true)} />
         ) : view === 'list' ? (
@@ -545,8 +550,47 @@ function ListView({ sorted, sortField, sortDir, onSort, onSelect, isValidCategor
   );
 }
 
+// ── Archived Row Menu ──
+function ArchivedRowMenu({ id, onDelete }) {
+  const [open, setOpen] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  return (
+    <div className="relative" onClick={e => e.stopPropagation()}>
+      <button onClick={() => setOpen(o => !o)} className="p-1 rounded hover:bg-[#F6F6FB] text-[#9CA3AF] hover:text-[#5777AB] transition-colors">
+        <MoreHorizontal className="w-3.5 h-3.5" />
+      </button>
+      {open && (
+        <>
+          <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
+          <div className="absolute right-0 top-full mt-1 bg-white border border-[#EBEBF5] rounded-lg shadow-lg z-50 w-44 py-1">
+            <button onClick={() => { setOpen(false); setConfirmDelete(true); }}
+              className="w-full flex items-center gap-2 px-3 py-1.5 text-xs text-[#DC2626] hover:bg-[#FEF2F2] transition-colors">
+              <Trash2 className="w-3 h-3" /> Delete permanently
+            </button>
+          </div>
+        </>
+      )}
+      {confirmDelete && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4" onClick={() => setConfirmDelete(false)}>
+          <div className="bg-white rounded-xl p-6 w-full max-w-sm" onClick={e => e.stopPropagation()}>
+            <h3 className="text-base font-bold text-[#242450] mb-2">Delete permanently?</h3>
+            <p className="text-sm text-[#5777AB] mb-5">This task will be permanently deleted and cannot be recovered.</p>
+            <div className="flex gap-2 justify-end">
+              <button onClick={() => setConfirmDelete(false)} className="px-4 py-2 text-sm font-medium text-[#5777AB] hover:bg-[#F6F6FB] rounded-lg transition-colors">Cancel</button>
+              <button onClick={() => { onDelete(id); setConfirmDelete(false); }}
+                className="px-4 py-2 text-sm font-semibold bg-[#DC2626] text-white rounded-lg hover:bg-[#B91C1C] transition-colors flex items-center gap-1.5">
+                <Trash2 className="w-3.5 h-3.5" /> Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ── Archived View ──
-function ArchivedView({ requests, onRestore, onSelect, isValidCategory, fmtDate }) {
+function ArchivedView({ requests, onRestore, onDelete, onSelect, isValidCategory, fmtDate }) {
   if (requests.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center h-48 gap-2">
@@ -557,7 +601,7 @@ function ArchivedView({ requests, onRestore, onSelect, isValidCategory, fmtDate 
   }
   return (
     <div className="bg-white rounded-xl border border-[#EBEBF5] overflow-hidden">
-      <table className="w-full text-sm min-w-[700px]">
+      <table className="w-full text-sm min-w-[800px]">
         <thead>
           <tr className="border-b border-[#EBEBF5]">
             <th className="px-3 py-3 text-left text-[11px] font-bold text-[#5777AB] uppercase tracking-[0.08em]">Task</th>
@@ -565,6 +609,7 @@ function ArchivedView({ requests, onRestore, onSelect, isValidCategory, fmtDate 
             <th className="px-3 py-3 text-left text-[11px] font-bold text-[#5777AB] uppercase tracking-[0.08em]">Category</th>
             <th className="px-3 py-3 text-left text-[11px] font-bold text-[#5777AB] uppercase tracking-[0.08em]">Priority</th>
             <th className="px-3 py-3 text-left text-[11px] font-bold text-[#5777AB] uppercase tracking-[0.08em]">Due date</th>
+            <th className="px-3 py-3 text-left text-[11px] font-bold text-[#5777AB] uppercase tracking-[0.08em]">Archived</th>
             <th className="px-3 py-3"></th>
           </tr>
         </thead>
@@ -576,16 +621,22 @@ function ArchivedView({ requests, onRestore, onSelect, isValidCategory, fmtDate 
               </td>
               <td className="px-3 py-3 text-xs text-[#9CA3AF] whitespace-nowrap">{req.assignedTo || '—'}</td>
               <td className="px-3 py-3">
-                {req.category && isValidCategory(req.category) ? <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full opacity-60 bg-[#EBEBF5] text-[#5777AB]`}>{req.category}</span> : <span className="text-xs text-[#9CA3AF]">—</span>}
+                {req.category && isValidCategory(req.category) ? <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full opacity-60 bg-[#EBEBF5] text-[#5777AB]">{req.category}</span> : <span className="text-xs text-[#9CA3AF]">—</span>}
               </td>
               <td className="px-3 py-3">
                 {req.priority ? <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-[#EBEBF5] text-[#9CA3AF]">{req.priority}</span> : <span className="text-xs text-[#9CA3AF]">—</span>}
               </td>
               <td className="px-3 py-3 text-xs text-[#9CA3AF] whitespace-nowrap">{fmtDate(req.deadline)}</td>
+              <td className="px-3 py-3 text-xs text-[#9CA3AF] whitespace-nowrap">
+                {req.updated_date ? format(new Date(req.updated_date), 'd MMM yyyy') : '—'}
+              </td>
               <td className="px-3 py-3" onClick={e => e.stopPropagation()}>
-                <button onClick={() => onRestore(req.id)} className="flex items-center gap-1 text-xs font-semibold text-[#5777AB] hover:text-[#8403C5] transition-colors">
-                  <RotateCcw className="w-3 h-3" /> Restore
-                </button>
+                <div className="flex items-center gap-2">
+                  <button onClick={() => onRestore(req.id)} className="flex items-center gap-1 text-xs font-semibold text-[#5777AB] hover:text-[#8403C5] transition-colors whitespace-nowrap">
+                    <RotateCcw className="w-3 h-3" /> Restore
+                  </button>
+                  <ArchivedRowMenu id={req.id} onDelete={onDelete} />
+                </div>
               </td>
             </tr>
           ))}
