@@ -43,6 +43,7 @@ import { getRecentlyViewed, addRecentlyViewed, clearRecentlyViewed, TYPE_META, f
 import NavTimer from '@/components/time/NavTimer';
 import LogTimeSidebar from '@/components/time/LogTimeSidebar';
 import PasswordModal from '@/components/activity/PasswordModal';
+import Leave from './Leave';
 
 const GROUPS = [
   { id: 'sales', label: 'Sales', tabs: [
@@ -63,6 +64,7 @@ const GROUPS = [
     { id: 'team-board', label: "Team To Do's" },
     { id: 'submit-request', label: 'Submit a Request' },
     { id: 'sprints', label: 'Sprints' },
+    { id: 'leave', label: 'Leave' },
     { id: 'time-off', label: 'Time Off' },
     { id: 'competitors', label: 'Competitors' },
   ]},
@@ -540,6 +542,7 @@ export default function AppShell() {
         {tab === 'team-board' && <RequestBoard refresh={teamBoardRefresh} />}
         {tab === 'submit-request' && <SubmitRequestForm onSubmitted={() => { setTeamBoardRefresh(n => n + 1); setTab('team-board'); }} />}
         {tab === 'sprints' && <Sprints />}
+        {tab === 'leave' && <Leave />}
         {tab === 'time-off' && <TimeOffTracker />}
         {tab === 'competitors' && <Competitors focusCompetitorId={searchFocus?.focusType === 'competitor' ? searchFocus.focusId : null} onFocusConsumed={() => setSearchFocus(null)} />}
         {tab === 'time-log' && <TimeCapacity subTab="log" onSubTabChange={(id) => setSearchParams({ tab: id })} />}

@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { base44 } from '@/api/base44Client';
 import { format, isToday, isPast, differenceInDays, addDays, startOfWeek, parseISO } from 'date-fns';
 import { RefreshCw, UserPlus, Plus, FileText, ClipboardList, ArrowRight, Clock, AlertTriangle } from 'lucide-react';
+import WhosOutWidget from '@/components/leave/WhosOutWidget';
 import { PRIORITY_STYLES } from '@/components/requests/requestStyles';
 import { MEMBERS, currentWeekStart } from '@/lib/sprintConfig';
 
@@ -383,7 +384,12 @@ export default function HQDashboard({ user, onNavigate, onRefresh }) {
               </button>
             </div>
 
-            {/* Section 5: Latest updates */}
+            {/* Section 5: Who's Out */}
+            <div className={cardClass} style={cardShadow}>
+              <WhosOutWidget onNavigate={onNavigate} />
+            </div>
+
+            {/* Section 6: Latest updates */}
             <div className={cardClass} style={cardShadow}>
               <h2 className={sectionTitleClass}>✨ Latest updates</h2>
               {changelogs.length === 0 ? (

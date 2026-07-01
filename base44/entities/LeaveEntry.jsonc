@@ -1,0 +1,57 @@
+{
+  "name": "LeaveEntry",
+  "type": "object",
+  "properties": {
+    "personName": {
+      "type": "string",
+      "description": "Name of the team member taking leave"
+    },
+    "startDate": {
+      "type": "string",
+      "format": "date"
+    },
+    "endDate": {
+      "type": "string",
+      "format": "date"
+    },
+    "type": {
+      "type": "string",
+      "enum": [
+        "Annual Leave",
+        "Sick",
+        "Other"
+      ]
+    },
+    "entryMethod": {
+      "type": "string",
+      "enum": [
+        "Self-Logged",
+        "Requires Approval"
+      ],
+      "description": "Set automatically by form logic \u2014 never shown in UI"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "Confirmed",
+        "Requested",
+        "Approved",
+        "Declined"
+      ],
+      "default": "Requested"
+    },
+    "approvedBy": {
+      "type": "string",
+      "description": "Name of the approver \u2014 set automatically on approval"
+    },
+    "notes": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "personName",
+    "startDate",
+    "endDate",
+    "type"
+  ]
+}
