@@ -169,6 +169,10 @@ export default function DemoFormResponses() {
             setRecords(prev => prev.map(r => r.id === updated.id ? updated : r));
             setSelected(updated);
           }}
+          onDeleted={(id) => {
+            setRecords(prev => prev.filter(r => r.id !== id));
+            setSelected(null);
+          }}
         />
       )}
 
