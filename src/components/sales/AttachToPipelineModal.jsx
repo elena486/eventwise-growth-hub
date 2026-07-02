@@ -1,10 +1,11 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { Search, X } from 'lucide-react';
+import { X, ChevronDown, Search } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
 
 export default function AttachToPipelineModal({ record, onClose, onAttached }) {
   const [leads, setLeads] = useState([]);
   const [query, setQuery] = useState('');
+  const [dropdownOpen, setDropdownOpen] = useState(false);
   const [selected, setSelected] = useState(null);
   const [confirming, setConfirming] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -15,19 +16,30 @@ export default function AttachToPipelineModal({ record, onClose, onAttached }) {
       .catch(() => {});
   }, []);
 
-  const results = useMemo(() => {
-    if (!query.trim()) return [];
+  const filtered = useMemo(() => {
+    if (!query.trim()) return leads;
     const q = query.toLowerCase();
     return leads.filter(l =>
       (l.companyName || '').toLowerCase().includes(q) ||
       (l.contactName || '').toLowerCase().includes(q) ||
       (l.firstName || '').toLowerCase().includes(q) ||
       (l.lastName || '').toLowerCase().includes(q)
-    ).slice(0, 20);
+    );
   }, [leads, query]);
+
+  const displayName = (lead) =>
+    lead.companyName || `${lead.firstName || ''} ${lead.lastName || ''}`.trim() || '—';
+
+  const contactName = (lead) => {
+    if (lead.contactName) return lead.contactName;
+    const fn = `${lead.firstName || ''} ${lead.lastName || ''}`.trim();
+    return fn || null;
+  };
 
   const handleSelect = (lead) => {
     setSelected(lead);
+    setDropdownOpen(false);
+    setQuery('');
     setConfirming(true);
   };
 
@@ -38,24 +50,11 @@ export default function AttachToPipelineModal({ record, onClose, onAttached }) {
       await base44.entities.DemoFormResponse.update(record.id, {
         status: 'Attached',
         attachedToId: selected.id,
-        attachedToName: selected.companyName || `${selected.firstName || ''} ${selected.lastName || ''}`.trim(),
+        attachedToName: displayName(selected),
       });
-      onAttached(
-        record.id,
-        selected.id,
-        selected.companyName || `${selected.firstName || ''} ${selected.lastName || ''}`.trim()
-      );
+      onAttached(record.id, selected.id, displayName(selected));
     } catch {}
     setSaving(false);
-  };
-
-  const displayName = (lead) =>
-    lead.companyName || `${lead.firstName || ''} ${lead.lastName || ''}`.trim() || '—';
-
-  const contactName = (lead) => {
-    if (lead.contactName) return lead.contactName;
-    const fn = `${lead.firstName || ''} ${lead.lastName || ''}`.trim();
-    return fn || '—';
   };
 
   return (
@@ -69,76 +68,107 @@ export default function AttachToPipelineModal({ record, onClose, onAttached }) {
           </button>
         </div>
 
-        {confirming && selected ? (
-          /* Confirmation step */
-          <div className="px-5 py-6">
-            <p className="text-sm text-[#242450] mb-1">Attach this response to:</p>
-            <div className="bg-[#F6F6FB] rounded-lg px-4 py-3 mb-5">
-              <p className="text-sm font-bold text-[#242450]">{displayName(selected)}</p>
-              <p className="text-xs text-[#5777AB] mt-0.5">{contactName(selected)} · {selected.stage || 'Unknown stage'}</p>
-            </div>
-            <p className="text-sm text-[#5777AB] mb-5">
-              Attach <span className="font-semibold text-[#242450]">{record.name}</span> to <span className="font-semibold text-[#242450]">{displayName(selected)}</span>?
-            </p>
-            <div className="flex gap-2 justify-end">
-              <button
-                onClick={() => setConfirming(false)}
-                className="px-4 py-2 text-sm font-medium text-[#5777AB] hover:bg-[#F6F6FB] rounded-lg transition-colors">
-                Cancel
-              </button>
-              <button
-                onClick={handleConfirm}
-                disabled={saving}
-                className="px-4 py-2 text-sm font-semibold bg-[#8403C5] hover:bg-[#6B02A0] disabled:bg-[#D8D8EE] text-white rounded-lg transition-colors">
-                {saving ? 'Saving…' : 'Confirm'}
-              </button>
-            </div>
-          </div>
-        ) : (
-          /* Search step */
-          <div>
-            <div className="px-5 py-3 border-b border-[#EBEBF5]">
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#9CA3AF]" />
-                <input
-                  autoFocus
-                  type="text"
-                  value={query}
-                  onChange={e => setQuery(e.target.value)}
-                  placeholder="Search pipeline..."
-                  className="w-full pl-9 pr-3 py-2 text-sm border border-[#EBEBF5] rounded-lg focus:outline-none focus:border-[#8403C5] focus:ring-2 focus:ring-[#8403C5]/20 transition-colors"
-                />
+        <div className="px-5 py-5">
+          {confirming && selected ? (
+            /* Confirmation step */
+            <div>
+              <p className="text-sm text-[#5777AB] mb-3">
+                Attach <span className="font-semibold text-[#242450]">{record.name}</span> to:
+              </p>
+              <div className="bg-[#F6F6FB] rounded-lg px-4 py-3 mb-5">
+                <p className="text-sm font-bold text-[#242450]">{displayName(selected)}</p>
+                {contactName(selected) && (
+                  <p className="text-xs text-[#5777AB] mt-0.5">{contactName(selected)}</p>
+                )}
+                {selected.stage && (
+                  <span className="inline-block mt-1.5 text-[10px] font-semibold bg-[#EBEBF5] text-[#242450] px-1.5 py-0.5 rounded">
+                    {selected.stage}
+                  </span>
+                )}
+              </div>
+              <div className="flex gap-2 justify-end">
+                <button
+                  onClick={() => setConfirming(false)}
+                  className="px-4 py-2 text-sm font-medium text-[#5777AB] hover:bg-[#F6F6FB] rounded-lg transition-colors">
+                  Back
+                </button>
+                <button
+                  onClick={handleConfirm}
+                  disabled={saving}
+                  className="px-4 py-2 text-sm font-semibold bg-[#8403C5] hover:bg-[#6B02A0] disabled:bg-[#D8D8EE] text-white rounded-lg transition-colors">
+                  {saving ? 'Saving…' : 'Confirm'}
+                </button>
               </div>
             </div>
-            <div className="max-h-72 overflow-y-auto">
-              {query.trim() === '' ? (
-                <p className="text-center text-xs text-[#9CA3AF] py-8">Start typing to search pipeline records</p>
-              ) : results.length === 0 ? (
-                <p className="text-center text-xs text-[#9CA3AF] py-8">No matching pipeline records found</p>
-              ) : (
-                results.map(lead => (
-                  <button
-                    key={lead.id}
-                    onClick={() => handleSelect(lead)}
-                    className="w-full flex items-start gap-3 px-5 py-3 border-b border-[#F2F2F4] hover:bg-[#F6F6FB] transition-colors text-left last:border-0">
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-bold text-[#242450] truncate">{displayName(lead)}</p>
-                      <p className="text-xs text-[#5777AB] mt-0.5">{contactName(lead)}</p>
-                      <div className="flex items-center gap-2 mt-1 flex-wrap">
-                        {lead.stage && (
-                          <span className="text-[10px] font-semibold bg-[#EBEBF5] text-[#242450] px-1.5 py-0.5 rounded">{lead.stage}</span>
-                        )}
-                        {lead.dealValueMonthly && (
-                          <span className="text-[10px] text-[#5777AB]">£{lead.dealValueMonthly}/mo</span>
+          ) : (
+            /* Dropdown select step */
+            <div>
+              <p className="text-sm text-[#5777AB] mb-3">
+                Select a pipeline record to link to <span className="font-semibold text-[#242450]">{record.name}</span>:
+              </p>
+
+              {/* Custom searchable dropdown */}
+              <div className="relative">
+                <button
+                  onClick={() => setDropdownOpen(o => !o)}
+                  className="w-full flex items-center justify-between px-3 py-2.5 text-sm border border-[#EBEBF5] rounded-lg bg-white hover:border-[#D8D8EE] focus:outline-none focus:border-[#8403C5] transition-colors text-left">
+                  <span className={selected ? 'text-[#242450] font-medium' : 'text-[#9CA3AF]'}>
+                    {selected ? displayName(selected) : 'Select a pipeline record…'}
+                  </span>
+                  <ChevronDown className={`w-4 h-4 text-[#9CA3AF] shrink-0 transition-transform ${dropdownOpen ? 'rotate-180' : ''}`} />
+                </button>
+
+                {dropdownOpen && (
+                  <>
+                    <div className="fixed inset-0 z-10" onClick={() => { setDropdownOpen(false); setQuery(''); }} />
+                    <div className="absolute left-0 right-0 top-full mt-1 bg-white border border-[#EBEBF5] rounded-lg shadow-xl z-20 overflow-hidden">
+                      {/* Search within dropdown */}
+                      <div className="px-3 py-2 border-b border-[#F2F2F4]">
+                        <div className="relative">
+                          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-[#9CA3AF]" />
+                          <input
+                            autoFocus
+                            type="text"
+                            value={query}
+                            onChange={e => setQuery(e.target.value)}
+                            placeholder="Filter records…"
+                            className="w-full pl-8 pr-3 py-1.5 text-sm border border-[#EBEBF5] rounded-md focus:outline-none focus:border-[#8403C5] transition-colors"
+                          />
+                        </div>
+                      </div>
+
+                      {/* Options list */}
+                      <div className="max-h-60 overflow-y-auto">
+                        {filtered.length === 0 ? (
+                          <p className="text-center text-xs text-[#9CA3AF] py-6">No records found</p>
+                        ) : (
+                          filtered.map(lead => (
+                            <button
+                              key={lead.id}
+                              onClick={() => handleSelect(lead)}
+                              className="w-full flex items-start gap-3 px-4 py-2.5 hover:bg-[#F6F6FB] transition-colors text-left border-b border-[#F2F2F4] last:border-0">
+                              <div className="flex-1 min-w-0">
+                                <p className="text-sm font-semibold text-[#242450] truncate">{displayName(lead)}</p>
+                                <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+                                  {contactName(lead) && (
+                                    <span className="text-xs text-[#5777AB]">{contactName(lead)}</span>
+                                  )}
+                                  {lead.stage && (
+                                    <span className="text-[10px] font-semibold bg-[#EBEBF5] text-[#242450] px-1.5 py-0.5 rounded">{lead.stage}</span>
+                                  )}
+                                </div>
+                              </div>
+                            </button>
+                          ))
                         )}
                       </div>
                     </div>
-                  </button>
-                ))
-              )}
+                  </>
+                )}
+              </div>
             </div>
-          </div>
-        )}
+          )}
+        </div>
       </div>
     </div>
   );
