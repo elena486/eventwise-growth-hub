@@ -4,16 +4,22 @@ import { base44 } from '@/api/base44Client';
 
 export default function AttachToPipelineModal({ record, onClose, onAttached }) {
   const [leads, setLeads] = useState([]);
+  const [attachedLeadIds, setAttachedLeadIds] = useState(new Set());
   const [query, setQuery] = useState('');
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [selected, setSelected] = useState(null);
   const [confirming, setConfirming] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [alreadyAttachedWarning, setAlreadyAttachedWarning] = useState(false);
 
   useEffect(() => {
-    base44.entities.Lead.list('-created_date', 500)
-      .then(data => setLeads(data))
-      .catch(() => {});
+    Promise.all([
+      base44.entities.Lead.list('-created_date', 500),
+      base44.entities.DemoFormResponse.filter({ status: 'Attached' }),
+    ]).then(([leadsData, responses]) => {
+      setLeads(leadsData);
+      setAttachedLeadIds(new Set(responses.map(r => r.attachedToId).filter(Boolean)));
+    }).catch(() => {});
   }, []);
 
   const filtered = useMemo(() => {
@@ -37,9 +43,14 @@ export default function AttachToPipelineModal({ record, onClose, onAttached }) {
   };
 
   const handleSelect = (lead) => {
-    setSelected(lead);
     setDropdownOpen(false);
     setQuery('');
+    if (attachedLeadIds.has(lead.id)) {
+      setSelected(lead);
+      setAlreadyAttachedWarning(true);
+      return;
+    }
+    setSelected(lead);
     setConfirming(true);
   };
 
@@ -69,7 +80,26 @@ export default function AttachToPipelineModal({ record, onClose, onAttached }) {
         </div>
 
         <div className="px-5 py-5">
-          {confirming && selected ? (
+          {alreadyAttachedWarning && selected ? (
+          <div>
+            <div className="flex items-start gap-3 bg-[#FFFBEB] border border-[#E8A020]/40 rounded-lg px-4 py-3 mb-5">
+              <span className="text-lg shrink-0">⚠️</span>
+              <div>
+                <p className="text-sm font-semibold text-[#A16207]">Already has a pre-demo form attached</p>
+                <p className="text-sm text-[#A16207] mt-0.5">
+                  <span className="font-semibold">{displayName(selected)}</span> already has a pre-demo form response linked. Detach the existing one from the Demo Responses tab first, then attach a new one.
+                </p>
+              </div>
+            </div>
+            <div className="flex justify-end">
+              <button
+                onClick={() => { setAlreadyAttachedWarning(false); setSelected(null); }}
+                className="px-4 py-2 text-sm font-medium text-[#5777AB] hover:bg-[#F6F6FB] rounded-lg transition-colors">
+                OK
+              </button>
+            </div>
+          </div>
+        ) : confirming && selected ? (
             /* Confirmation step */
             <div>
               <p className="text-sm text-[#5777AB] mb-3">
@@ -155,6 +185,9 @@ export default function AttachToPipelineModal({ record, onClose, onAttached }) {
                                   )}
                                   {lead.stage && (
                                     <span className="text-[10px] font-semibold bg-[#EBEBF5] text-[#242450] px-1.5 py-0.5 rounded">{lead.stage}</span>
+                                  )}
+                                  {attachedLeadIds.has(lead.id) && (
+                                    <span className="text-[10px] font-semibold bg-[#FFFBEB] text-[#A16207] px-1.5 py-0.5 rounded">Form attached</span>
                                   )}
                                 </div>
                               </div>

@@ -8,6 +8,7 @@ import {
 } from 'lucide-react';
 import MultiFileUpload from '@/components/shared/MultiFileUpload';
 import StageBadge from './Stagebadge';
+import PreDemoFormTab from './PreDemoFormTab';
 import { logActivity } from '@/lib/logActivity';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -629,6 +630,7 @@ export default function LeadDetailPanel({ lead, onClose, onUpdate, onDelete, onC
     { id: 'objections', label: 'Objections & Intel' },
     { id: 'nextsteps', label: isNextActionOverdue ? 'Next Steps ⚠' : 'Next Steps' },
     { id: 'files', label: 'Files & Docs' },
+    { id: 'predemof', label: 'Pre-Demo Form' },
   ];
 
   const handleQuickNote = () => {
@@ -1048,6 +1050,20 @@ export default function LeadDetailPanel({ lead, onClose, onUpdate, onDelete, onC
               </div>
             )}
           </div>
+        )}
+
+        {/* PRE-DEMO FORM TAB */}
+        {activeTab === 'predemof' && (
+          <PreDemoFormTab
+            leadId={data.id}
+            onNavigateToDemoResponses={() => {
+              // navigate app to demo-responses tab — use URL search param
+              const url = new URL(window.location.href);
+              url.searchParams.set('tab', 'demo-responses');
+              window.history.pushState({}, '', url);
+              window.dispatchEvent(new PopStateEvent('popstate'));
+            }}
+          />
         )}
 
         {/* FILES & DOCUMENTS TAB */}
