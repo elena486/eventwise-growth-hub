@@ -59,7 +59,7 @@ export default function AttachToPipelineModal({ record, onClose, onAttached }) {
 
   return (
     <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-[60] p-4" onClick={onClose}>
-      <div className="bg-white rounded-xl w-full max-w-md overflow-hidden" onClick={e => e.stopPropagation()}>
+      <div className="bg-white rounded-xl w-full max-w-md" onClick={e => e.stopPropagation()}>
         {/* Header */}
         <div className="flex items-center justify-between px-5 py-4 border-b border-[#EBEBF5]">
           <h3 className="text-base font-bold text-[#242450]">Attach to Pipeline Item</h3>
@@ -120,8 +120,8 @@ export default function AttachToPipelineModal({ record, onClose, onAttached }) {
 
                 {dropdownOpen && (
                   <>
-                    <div className="fixed inset-0 z-10" onClick={() => { setDropdownOpen(false); setQuery(''); }} />
-                    <div className="absolute left-0 right-0 top-full mt-1 bg-white border border-[#EBEBF5] rounded-lg shadow-xl z-20 overflow-hidden">
+                    <div className="fixed inset-0 z-[69]" onClick={() => { setDropdownOpen(false); setQuery(''); }} />
+                    <div className="absolute left-0 right-0 top-full mt-1 bg-white border border-[#EBEBF5] rounded-lg shadow-xl z-[70] overflow-hidden">
                       {/* Search within dropdown */}
                       <div className="px-3 py-2 border-b border-[#F2F2F4]">
                         <div className="relative">
