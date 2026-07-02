@@ -19,6 +19,7 @@ import TimeOffTracker from '@/components/hr/TimeOffTracker';
 import SalesAssets from './SalesAssets';
 import MQLTracker from './MQLTracker';
 import OutreachAnalytics from './OutreachAnalytics';
+import DemoFormResponses from './DemoFormResponses';
 import Competitors from './Competitors';
 import TimeCapacity from './TimeCapacity';
 import LinkSpace from './LinkSpace';
@@ -54,6 +55,7 @@ const GROUPS = [
     { id: 'deals', label: 'Deals' },
     { id: 'assets', label: 'Assets' },
     { id: 'outreach', label: 'Outreach Analytics' },
+    { id: 'demo-responses', label: 'Demo Responses' },
   ]},
   { id: 'cs', label: 'Customer Success', tabs: [
     { id: 'clients', label: 'Clients' },
@@ -568,6 +570,7 @@ export default function AppShell() {
         {tab === 'bugs' && <BugTracker focusBugId={searchFocus?.focusType === 'bug' ? searchFocus.focusId : null} onFocusConsumed={() => setSearchFocus(null)} />}
         {tab === 'assets' && <SalesAssets focusAssetId={searchFocus?.focusType === 'asset' ? searchFocus.focusId : null} onFocusConsumed={() => setSearchFocus(null)} />}
         {tab === 'outreach' && <OutreachAnalytics />}
+        {tab === 'demo-responses' && <DemoFormResponses />}
         {tab === 'links' && <LinkSpace user={user} />}
         {tab === 'changelog' && <ChangelogView />}
         {tab === 'changelog-admin' && <ChangelogAdmin />}
