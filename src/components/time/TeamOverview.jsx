@@ -4,6 +4,7 @@ import { format, parseISO, isWithinInterval, startOfWeek, endOfWeek, startOfMont
 import { Download, Filter, ChevronDown, ChevronRight, Clock, Users, Hash, Building2 } from 'lucide-react';
 import { CATEGORY_COLORS, CATEGORY_LABELS } from './categoryColors';
 import MemberDetailModal from './MemberDetailModal';
+import LiveNowSection from './LiveNowSection';
 
 const TEAM_MEMBERS = ['Chris', 'Elena', 'George', 'Martinique', 'Sreeja', 'Ramesh'];
 const CATEGORIES = [
@@ -332,6 +333,9 @@ export default function TeamOverview({ refresh }) {
 
   return (
     <div className="pt-6 space-y-8">
+      {/* Live Now section — admin only */}
+      <LiveNowSection />
+
       {/* Top stat cards — filter-aware */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         {[
