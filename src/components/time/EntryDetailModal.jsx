@@ -8,6 +8,7 @@ import { format, parseISO } from 'date-fns';
 import { X, Pencil, Trash2, Link } from 'lucide-react';
 import { CATEGORY_LABELS } from './categoryColors';
 import LeadSelect from './LeadSelect';
+import TaskPresetSelect from './TaskPresetSelect';
 
 const CATEGORIES = CATEGORY_LABELS;
 
@@ -41,7 +42,8 @@ export default function EntryDetailModal({ entry, onClose, onUpdated, onDeleted,
   useEffect(() => {
     if (entry) {
       setCategory(entry.category || '');
-      setProjectTask(entry.projectTask || '');
+      // Untitled sessions created by calendar dragging store "(Untitled session)" — show an empty dropdown instead
+      setProjectTask(entry.projectTask && entry.projectTask !== '(Untitled session)' ? entry.projectTask : '');
       setClientId(entry.clientId || '');
       setClientName(entry.clientName || '');
       setLeadId(entry.leadId || '');
@@ -156,8 +158,13 @@ export default function EntryDetailModal({ entry, onClose, onUpdated, onDeleted,
               </div>
               <div>
                 <label className="block text-[10px] font-semibold text-[#5777AB] uppercase tracking-[0.06em] mb-1">Project / Task *</label>
-                <input value={projectTask} onChange={e => setProjectTask(e.target.value)}
-                  className={`w-full px-3 py-2 text-sm border rounded-lg bg-white focus:outline-none ${!projectTask.trim() ? 'border-[#DC2626]' : 'border-[#EBEBF5]'}`} />
+                <TaskPresetSelect
+                  category={category}
+                  value={projectTask}
+                  onChange={setProjectTask}
+                  placeholder="Select a task…"
+                  className={`w-full px-3 py-2 text-sm border rounded-lg bg-white focus:outline-none ${!projectTask.trim() ? 'border-[#DC2626]' : 'border-[#EBEBF5]'}`}
+                />
               </div>
               <div>
                 <label className="block text-[10px] font-semibold text-[#5777AB] uppercase tracking-[0.06em] mb-1">Client</label>
