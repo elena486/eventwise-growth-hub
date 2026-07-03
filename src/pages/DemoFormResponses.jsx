@@ -131,7 +131,7 @@ export default function DemoFormResponses() {
             <table className="w-full text-sm min-w-[800px]">
               <thead>
                 <tr className="border-b border-[#EBEBF5]">
-                  {['Name', 'Company', 'Date Submitted', 'Accounting Platform', 'Tech Score', 'Status', 'Attached To', ''].map(h => (
+                  {['Name', 'Company', 'Date Submitted', 'Accounting Platform', 'Ticketing Platform(s)', 'Tech Score', 'Status', 'Attached To', ''].map(h => (
                     <th key={h} className="px-4 py-3 text-left text-[11px] font-bold text-[#5777AB] uppercase tracking-[0.08em] whitespace-nowrap">{h}</th>
                   ))}
                 </tr>
@@ -145,6 +145,7 @@ export default function DemoFormResponses() {
                     <td className="px-4 py-3 text-[#5777AB] whitespace-nowrap">{r.company || '—'}</td>
                     <td className="px-4 py-3 text-[#5777AB] whitespace-nowrap">{fmtDate(r.dateSubmitted)}</td>
                     <td className="px-4 py-3 text-[#242450] whitespace-nowrap">{r.accountingPlatform || '—'}</td>
+                    <td className="px-4 py-3 text-[#5777AB] whitespace-nowrap">{r.ticketingPlatforms || '—'}</td>
                     <td className="px-4 py-3"><TechScoreChip score={r.techForwardScore} /></td>
                     <td className="px-4 py-3"><StatusPill status={r.status} /></td>
                     <td className="px-4 py-3 text-[#5777AB] whitespace-nowrap text-xs">{r.attachedToName || '—'}</td>
