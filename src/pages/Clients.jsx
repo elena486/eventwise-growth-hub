@@ -9,7 +9,7 @@ import InlineCell from '@/components/shared/InlineCell';
 import SmartAlertsPanel from '@/components/cs/SmartAlertsPanel';
 import AINextActionPanel from '@/components/cs/AINextActionPanel';
 import AIEmailDraftModal from '@/components/cs/AIEmailDraftModal';
-import { STATUS_STYLES, HEALTH_DOT, OWNER_INITIALS, OWNER_COLORS, initTasks } from '@/lib/csData';
+import { STATUS_STYLES, HEALTH_DOT, OWNER_INITIALS, OWNER_COLORS, PRODUCT_OPTIONS, PRODUCT_STYLES, initTasks } from '@/lib/csData';
 
 const STATUS_ORDER = ['Live', 'Onboarding', 'Trial', 'Churn'];
 const STATUSES = ['Trial', 'Onboarding', 'Live', 'Churn'];
@@ -92,6 +92,7 @@ export default function Clients({ onViewHealth, onViewOnboarding, onViewDetail, 
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState('All');
   const [tierFilter, setTierFilter] = useState('All');
+  const [productFilter, setProductFilter] = useState('All');
   const [showAddModal, setShowAddModal] = useState(false);
   const [aiPanelClient, setAiPanelClient] = useState(null);
   const [aiPanelAlert, setAiPanelAlert] = useState(null);
@@ -193,7 +194,8 @@ export default function Clients({ onViewHealth, onViewOnboarding, onViewDetail, 
       return (a.healthScore || 0) - (b.healthScore || 0);
     })
     .filter(c => filter === 'All' || c.status === filter)
-    .filter(c => tierFilter === 'All' || c.priorityTier === tierFilter);
+    .filter(c => tierFilter === 'All' || c.priorityTier === tierFilter)
+    .filter(c => productFilter === 'All' || c.product === productFilter);
 
   const stats = {
     total: clients.length,
@@ -272,6 +274,13 @@ export default function Clients({ onViewHealth, onViewOnboarding, onViewDetail, 
             {f === 'All' ? 'All Tiers' : f}
           </button>
         ))}
+        <span className="w-px h-5 bg-[#EBEBEB] mx-1" />
+        {['All', ...PRODUCT_OPTIONS].map(f => (
+          <button key={f} onClick={() => setProductFilter(f)}
+            className={`px-3.5 py-2 text-xs font-medium rounded-lg transition-colors ${productFilter === f ? 'bg-[#242450] text-white' : 'bg-white border border-[#E5E7EB] text-[#374151] hover:bg-[#F9FAFB]'}`} style={{ borderWidth: productFilter === f ? undefined : '1.5px' }}>
+            {f === 'All' ? 'All Products' : f}
+          </button>
+        ))}
       </div>
 
       {/* Table */}
@@ -282,7 +291,7 @@ export default function Clients({ onViewHealth, onViewOnboarding, onViewDetail, 
           <table className="w-full text-sm">
             <thead className="border-b border-[#EBEBEB]">
               <tr>
-                {['Client', 'Client Tier', 'Status', 'Plan', 'Owner', 'Health', 'Last Contacted', 'Renewal', 'Notes', 'Actions'].map(h => (
+                {['Client', 'Client Tier', 'Status', 'Product', 'Plan', 'Owner', 'Health', 'Last Contacted', 'Renewal', 'Notes', 'Actions'].map(h => (
                   <th key={h} className="px-4 py-3.5 text-left text-[11px] font-bold text-[#9CA3AF] uppercase tracking-[0.08em]">{h}</th>
                 ))}
               </tr>
@@ -324,6 +333,20 @@ export default function Clients({ onViewHealth, onViewOnboarding, onViewDetail, 
                       type="select"
                       options={STATUSES}
                       displayEl={<span className={`text-[11px] font-semibold px-2.5 py-1 rounded-full ${STATUS_STYLES[c.status] || 'bg-gray-100 text-gray-600'}`}>{c.status}</span>}
+                    />
+                  </td>
+
+                  {/* Product */}
+                  <td className="px-4 py-3 min-w-[130px]" onClick={e => e.stopPropagation()}>
+                    <InlineCell
+                      value={c.product || ''}
+                      onSave={save(c.id, 'product')}
+                      type="select"
+                      options={['', ...PRODUCT_OPTIONS]}
+                      placeholder="Set product"
+                      displayEl={c.product
+                        ? <span className={`text-[11px] font-semibold px-2.5 py-1 rounded-full whitespace-nowrap ${PRODUCT_STYLES[c.product] || 'bg-gray-100 text-gray-600'}`}>{c.product}</span>
+                        : <span className="text-xs text-ew-muted">—</span>}
                     />
                   </td>
 
@@ -444,7 +467,7 @@ export default function Clients({ onViewHealth, onViewOnboarding, onViewDetail, 
                 </tr>
               ))}
               {sorted.length === 0 && (
-                <tr><td colSpan={10} className="px-4 py-16 text-center text-[#9CA3AF] text-sm">No clients found</td></tr>
+                <tr><td colSpan={11} className="px-4 py-16 text-center text-[#9CA3AF] text-sm">No clients found</td></tr>
               )}
             </tbody>
           </table>

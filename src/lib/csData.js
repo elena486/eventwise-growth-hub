@@ -78,6 +78,15 @@ export const STATUS_STYLES = {
   Churn: 'bg-[#FEE2E2] text-[#B91C1C]',
 };
 
+export const PRODUCT_OPTIONS = ['Only ITL', 'Only ITL - pursue EW', 'EW + ITL', 'Only EW'];
+
+export const PRODUCT_STYLES = {
+  'Only ITL': 'bg-[#EEF2F8] text-[#5777AB]',
+  'Only ITL - pursue EW': 'bg-[#FFFBEB] text-[#A16207]',
+  'EW + ITL': 'bg-[#E8F7F2] text-[#1D9E75]',
+  'Only EW': 'bg-[#F3E8FF] text-[#8403C5]',
+};
+
 export const HEALTH_DOT = {
   Green: 'bg-emerald-500',
   Yellow: 'bg-amber-400',

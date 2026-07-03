@@ -39,6 +39,16 @@
         "Churn"
       ]
     },
+    "product": {
+      "type": "string",
+      "enum": [
+        "Only ITL",
+        "Only ITL - pursue EW",
+        "EW + ITL",
+        "Only EW"
+      ],
+      "description": "Which product/service the client uses \u2014 set manually per client"
+    },
     "trialStartDate": {
       "type": "string",
       "format": "date"

@@ -7,7 +7,7 @@ import { format, differenceInDays, isToday, isYesterday, isWithinInterval, start
 import {
   X, Mail, Phone, Check, ChevronDown, ChevronUp, Trash2, AlertTriangle, MessageSquareOff, Plus, ExternalLink
 } from 'lucide-react';
-import { STATUS_STYLES, HEALTH_DOT, OWNER_INITIALS, OWNER_COLORS, ONBOARDING_PHASES, calcHealth, initTasks } from '@/lib/csData';
+import { STATUS_STYLES, HEALTH_DOT, OWNER_INITIALS, OWNER_COLORS, ONBOARDING_PHASES, calcHealth, initTasks, PRODUCT_OPTIONS, PRODUCT_STYLES } from '@/lib/csData';
 import { useToast } from '@/lib/toast';
 import TranscriptSection from '@/components/shared/TranscriptSection';
 import { logActivity } from '@/lib/logActivity';
@@ -236,6 +236,29 @@ function NewBugForm({ client, onClose, onCreated }) {
 
 // ─── Main Component ───────────────────────────────────────────────────────────
 
+function ProductPill({ client, onSave }) {
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState('');
+  if (editing) {
+    return (
+      <select className="text-[11px] font-semibold px-2 py-1 rounded-full border-2 border-[#8403C5] bg-white focus:outline-none"
+        value={draft} autoFocus
+        onChange={e => { onSave(e.target.value); setEditing(false); }}
+        onBlur={() => setEditing(false)}>
+        <option value="">Unset</option>
+        {PRODUCT_OPTIONS.map(o => <option key={o} value={o}>{o}</option>)}
+      </select>
+    );
+  }
+  return (
+    <button type="button" onClick={() => { setDraft(client.product || ''); setEditing(true); }}
+      className={`text-[11px] font-semibold px-2.5 py-1 rounded-full transition-colors ${client.product ? PRODUCT_STYLES[client.product] : 'bg-[#F3F4F6] text-[#6B7280] border border-[#E5E7EB]'}`}
+      title="Click to change product">
+      {client.product || 'Set product'}
+    </button>
+  );
+}
+
 export default function ClientFullPanel({ client: initialClient, onClose, onUpdated, onDelete, onViewOnboarding }) {
   const [client, setClient] = useState(initialClient);
   const [healthRecord, setHealthRecord] = useState(null);
@@ -413,6 +436,7 @@ export default function ClientFullPanel({ client: initialClient, onClose, onUpda
           </div>
           <div className="flex items-center gap-2 mt-2 flex-wrap">
             {client.status && <span className={`text-[11px] font-semibold px-2.5 py-0.5 rounded-full ${STATUS_STYLES[client.status] || 'bg-[#F3F4F6] text-[#6B7280]'}`}>{client.status}</span>}
+            <ProductPill client={client} onSave={(v) => autoSave('product', v)} />
             {client.priorityTier && <span className={`text-[11px] font-semibold px-2.5 py-0.5 rounded-full ${TIER_STYLES[client.priorityTier] || 'bg-[#F3F4F6] text-[#6B7280]'}`}>{client.priorityTier} priority</span>}
             {latestNoReply && (
               <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-[#FEF9C3] text-[#A16207] border border-amber-200 flex items-center gap-1">
