@@ -19,22 +19,32 @@ Deno.serve(async (req) => {
     // ── REQUEST / TASK (To-Do Board) ──────────────────────────────────────────
     if (entityName === 'Request') {
       const assignee = data?.assignedTo;
-      const creator = data?.requestedBy;
+      const requestedBy = data?.requestedBy;
       const title = data?.title || 'Untitled task';
-      // Use requestedBy as the actor (who made the change) — best available proxy
-      const actor = old_data?.assignedTo !== data?.assignedTo
-        ? (creator || 'Someone')
-        : (creator || 'Someone');
+      const recordId = event?.entity_id || '';
+
+      // Resolve the requester — "Requested By" field, falling back to the task
+      // creator (created_by_id → User.full_name) when Requested By is blank.
+      let requester = requestedBy;
+      if (!requester) {
+        const creatorId = data?.created_by_id;
+        if (creatorId) {
+          try {
+            const creatorUser = await base44.asServiceRole.entities.User.get(creatorId);
+            if (creatorUser?.full_name) requester = creatorUser.full_name.split(' ')[0];
+          } catch {}
+        }
+      }
 
       if (eventType === 'create' && assignee) {
-        if (assignee !== creator) {
+        if (assignee !== requester) {
           await notify({
             recipientName: assignee,
             type: 'task_assigned',
-            message: `${creator || 'Someone'} assigned you a task: ${title}`,
+            message: `${requester || 'Someone'} assigned you a task: ${title}`,
             navigateTo: 'team-board',
-            recordId: event?.entity_id || '',
-            actorName: creator || '',
+            recordId,
+            actorName: requester || '',
           });
         }
       }
@@ -44,44 +54,55 @@ Deno.serve(async (req) => {
         const assigneeChanged = old_data?.assignedTo !== data?.assignedTo;
 
         // Newly assigned — notify new assignee
-        if (assigneeChanged && assignee && assignee !== creator) {
+        if (assigneeChanged && assignee && assignee !== requester) {
           await notify({
             recipientName: assignee,
             type: 'task_assigned',
-            message: `${creator || 'Someone'} assigned you a task: ${title}`,
+            message: `${requester || 'Someone'} assigned you a task: ${title}`,
             navigateTo: 'team-board',
-            recordId: event?.entity_id || '',
-            actorName: creator || '',
+            recordId,
+            actorName: requester || '',
           });
         }
 
-        // Status changed
-        if (statusChanged && assignee) {
+        // Requester notifications at two key moments — work started & work done.
+        // Skip when the requester is also the assignee (someone self-assigned):
+        // no point telling someone they completed their own task.
+        if (statusChanged && requester && assignee && requester !== assignee) {
           const newStatus = data.status;
           if (newStatus === 'Done') {
-            // Notify creator that their task is done
-            if (creator && creator !== assignee) {
-              await notify({
-                recipientName: creator,
-                type: 'task_completed',
-                message: `${assignee} marked your task as done: ${title}`,
-                navigateTo: 'team-board',
-                recordId: event?.entity_id || '',
-                actorName: assignee,
-              });
-            }
-          } else {
-            // Notify assignee of status change (if not self-update)
-            if (assignee !== creator) {
-              await notify({
-                recipientName: assignee,
-                type: 'task_status_changed',
-                message: `Your task "${title}" was updated to ${newStatus}`,
-                navigateTo: 'team-board',
-                recordId: event?.entity_id || '',
-                actorName: creator || '',
-              });
-            }
+            await notify({
+              recipientName: requester,
+              type: 'task_completed',
+              message: `Your request has been completed: ${title}`,
+              navigateTo: 'team-board',
+              recordId,
+              actorName: assignee,
+            });
+          } else if (newStatus === 'In Progress') {
+            await notify({
+              recipientName: requester,
+              type: 'task_status_changed',
+              message: `${assignee} has started working on your request: ${title}`,
+              navigateTo: 'team-board',
+              recordId,
+              actorName: assignee,
+            });
+          }
+        }
+
+        // Other status changes (Blocked, Waiting, etc.) — keep the assignee informed
+        if (statusChanged && assignee && assignee !== requester) {
+          const newStatus = data.status;
+          if (newStatus !== 'Done' && newStatus !== 'In Progress') {
+            await notify({
+              recipientName: assignee,
+              type: 'task_status_changed',
+              message: `Your task "${title}" was updated to ${newStatus}`,
+              navigateTo: 'team-board',
+              recordId,
+              actorName: requester || '',
+            });
           }
         }
       }
