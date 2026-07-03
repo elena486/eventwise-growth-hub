@@ -1,4 +1,6 @@
 {
+  "name": "User",
+  "type": "object",
   "properties": {
     "role": {
       "type": "string",
@@ -7,11 +9,13 @@
         "admin",
         "user"
       ]
+    },
+    "columnPreferences": {
+      "type": "string",
+      "description": "JSON object mapping viewKey -> array of visible column keys, persisted per user for cross-device column visibility"
     }
   },
   "required": [
     "role"
-  ],
-  "name": "User",
-  "type": "object"
+  ]
 }

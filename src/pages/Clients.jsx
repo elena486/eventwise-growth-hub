@@ -10,6 +10,23 @@ import SmartAlertsPanel from '@/components/cs/SmartAlertsPanel';
 import AINextActionPanel from '@/components/cs/AINextActionPanel';
 import AIEmailDraftModal from '@/components/cs/AIEmailDraftModal';
 import { STATUS_STYLES, HEALTH_DOT, OWNER_INITIALS, OWNER_COLORS, PRODUCT_OPTIONS, PRODUCT_STYLES, initTasks } from '@/lib/csData';
+import ColumnSelector from '@/components/shared/ColumnSelector';
+import { useColumnVisibility } from '@/hooks/useColumnVisibility';
+
+const CLIENT_COLUMNS = [
+  { key: 'name', label: 'Client', locked: true },
+  { key: 'tier', label: 'Client Tier' },
+  { key: 'status', label: 'Status' },
+  { key: 'product', label: 'Product' },
+  { key: 'plan', label: 'Plan' },
+  { key: 'owner', label: 'Owner' },
+  { key: 'health', label: 'Health' },
+  { key: 'lastContacted', label: 'Last Contacted' },
+  { key: 'renewal', label: 'Renewal' },
+  { key: 'notes', label: 'Notes' },
+  { key: 'actions', label: 'Actions' },
+];
+const CLIENT_DEFAULT_VISIBLE = ['tier', 'status', 'product', 'plan', 'owner', 'health', 'lastContacted', 'renewal', 'actions'];
 
 const STATUS_ORDER = ['Live', 'Onboarding', 'Trial', 'Churn'];
 const STATUSES = ['Trial', 'Onboarding', 'Live', 'Churn'];
@@ -100,6 +117,11 @@ export default function Clients({ onViewHealth, onViewOnboarding, onViewDetail, 
   const [activeClientId, setActiveClientId] = useState(null);
   const [deleteConfirmId, setDeleteConfirmId] = useState(null);
   const aiPanelRef = useRef(null);
+  const { visible: visibleCols, isVisible, toggle, reset } = useColumnVisibility({
+    viewKey: 'clients',
+    columns: CLIENT_COLUMNS,
+    defaultVisible: CLIENT_DEFAULT_VISIBLE,
+  });
 
   const load = async () => {
     const data = await base44.entities.Client.list('-created_date');
@@ -281,6 +303,9 @@ export default function Clients({ onViewHealth, onViewOnboarding, onViewDetail, 
             {f === 'All' ? 'All Products' : f}
           </button>
         ))}
+        <div className="ml-auto">
+          <ColumnSelector columns={CLIENT_COLUMNS} visible={visibleCols} onToggle={toggle} onReset={reset} />
+        </div>
       </div>
 
       {/* Table */}
@@ -291,8 +316,10 @@ export default function Clients({ onViewHealth, onViewOnboarding, onViewDetail, 
           <table className="w-full text-sm">
             <thead className="border-b border-[#EBEBEB]">
               <tr>
-                {['Client', 'Client Tier', 'Status', 'Product', 'Plan', 'Owner', 'Health', 'Last Contacted', 'Renewal', 'Notes', 'Actions'].map(h => (
-                  <th key={h} className="px-4 py-3.5 text-left text-[11px] font-bold text-[#9CA3AF] uppercase tracking-[0.08em]">{h}</th>
+                {CLIENT_COLUMNS.map(col => (
+                  isVisible(col.key) && (
+                    <th key={col.key} className="px-4 py-3.5 text-left text-[11px] font-bold text-[#9CA3AF] uppercase tracking-[0.08em] whitespace-nowrap">{col.label}</th>
+                  )
                 ))}
               </tr>
             </thead>
@@ -301,6 +328,7 @@ export default function Clients({ onViewHealth, onViewOnboarding, onViewDetail, 
                 <tr key={c.id} className={`border-b border-[#F2F2F4] last:border-0 hover:bg-[#F9FAFB] transition-colors cursor-pointer group ${activeClientId === c.id ? 'bg-[#FAF5FF]' : ''}`}
                   onClick={(e) => { setActiveClientId(c.id); onOpenFullPanel && onOpenFullPanel(c, clients); }}>
                   {/* Client name / contact */}
+                  {isVisible('name') && (
                   <td className="px-4 py-3 min-w-[180px]">
                     <InlineCell value={c.name} onSave={save(c.id, 'name')} placeholder="Company name" className="font-semibold text-navy text-sm" />
                     <InlineCell value={c.contactName} onSave={save(c.id, 'contactName')} placeholder="Contact name" className="text-xs text-ew-muted mt-0.5" />
@@ -311,8 +339,10 @@ export default function Clients({ onViewHealth, onViewOnboarding, onViewDetail, 
                       </span>
                     )}
                   </td>
+                  )}
 
                   {/* Client Tier */}
+                  {isVisible('tier') && (
                   <td className="px-4 py-3 min-w-[110px]" onClick={e => { e.stopPropagation(); setActiveClientId(c.id); onOpenFullPanel && onOpenFullPanel(c, clients); }}>
                     <InlineCell
                       value={c.priorityTier}
@@ -324,8 +354,10 @@ export default function Clients({ onViewHealth, onViewOnboarding, onViewDetail, 
                         : <span className="text-xs text-ew-muted">—</span>}
                     />
                   </td>
+                  )}
 
                   {/* Status */}
+                  {isVisible('status') && (
                   <td className="px-4 py-3" onClick={e => { e.stopPropagation(); setActiveClientId(c.id); onOpenFullPanel && onOpenFullPanel(c, clients); }}>
                     <InlineCell
                       value={c.status}
@@ -335,8 +367,10 @@ export default function Clients({ onViewHealth, onViewOnboarding, onViewDetail, 
                       displayEl={<span className={`text-[11px] font-semibold px-2.5 py-1 rounded-full ${STATUS_STYLES[c.status] || 'bg-gray-100 text-gray-600'}`}>{c.status}</span>}
                     />
                   </td>
+                  )}
 
                   {/* Product */}
+                  {isVisible('product') && (
                   <td className="px-4 py-3 min-w-[130px]" onClick={e => e.stopPropagation()}>
                     <InlineCell
                       value={c.product || ''}
@@ -349,8 +383,10 @@ export default function Clients({ onViewHealth, onViewOnboarding, onViewDetail, 
                         : <span className="text-xs text-ew-muted">—</span>}
                     />
                   </td>
+                  )}
 
                   {/* Plan */}
+                  {isVisible('plan') && (
                   <td className="px-4 py-3" onClick={e => e.stopPropagation()}>
                     <InlineCell
                       value={c.plan}
@@ -361,8 +397,10 @@ export default function Clients({ onViewHealth, onViewOnboarding, onViewDetail, 
                       className="text-sm text-ew-body"
                     />
                   </td>
+                  )}
 
                   {/* Owner */}
+                  {isVisible('owner') && (
                   <td className="px-4 py-3" onClick={e => e.stopPropagation()}>
                     <InlineCell
                       value={c.owner}
@@ -372,13 +410,17 @@ export default function Clients({ onViewHealth, onViewOnboarding, onViewDetail, 
                       displayEl={<OwnerAvatar owner={c.owner} />}
                     />
                   </td>
+                  )}
 
                   {/* Health */}
+                  {isVisible('health') && (
                   <td className="px-4 py-3 min-w-[100px] cursor-pointer" onClick={e => { e.stopPropagation(); setActiveClientId(c.id); onOpenFullPanel && onOpenFullPanel(c, clients); }}>
                     <HealthCell client={c} />
                   </td>
+                  )}
 
                   {/* Last Contacted */}
+                  {isVisible('lastContacted') && (
                   <td className="px-4 py-3 min-w-[180px]" onClick={e => e.stopPropagation()}>
                     <div className="flex flex-col gap-0.5">
                       <InlineCell
@@ -389,8 +431,10 @@ export default function Clients({ onViewHealth, onViewOnboarding, onViewDetail, 
                       />
                     </div>
                   </td>
+                  )}
 
                   {/* Renewal date */}
+                  {isVisible('renewal') && (
                   <td className="px-4 py-3 min-w-[130px]" onClick={e => e.stopPropagation()}>
                     <InlineCell
                       value={c.renewalDate || ''}
@@ -400,8 +444,10 @@ export default function Clients({ onViewHealth, onViewOnboarding, onViewDetail, 
                       placeholder="Set date"
                     />
                   </td>
+                  )}
 
                   {/* Notes */}
+                  {isVisible('notes') && (
                   <td className="px-4 py-3 max-w-[180px]" onClick={e => { e.stopPropagation(); setActiveClientId(c.id); onOpenFullPanel && onOpenFullPanel(c, clients); }}>
                     <InlineCell
                       value={c.notes}
@@ -411,8 +457,10 @@ export default function Clients({ onViewHealth, onViewOnboarding, onViewDetail, 
                       displayEl={c.notes ? <p className="text-sm text-ew-body truncate max-w-[160px]" title={c.notes}>{c.notes}</p> : null}
                     />
                   </td>
+                  )}
 
                   {/* Actions */}
+                  {isVisible('actions') && (
                   <td className="px-4 py-3" onClick={e => e.stopPropagation()}>
                     <div className="flex items-center gap-1 flex-wrap">
                       {deleteConfirmId === c.id ? (
@@ -464,10 +512,11 @@ export default function Clients({ onViewHealth, onViewOnboarding, onViewDetail, 
                       </button>
                     </div>
                   </td>
+                  )}
                 </tr>
               ))}
               {sorted.length === 0 && (
-                <tr><td colSpan={11} className="px-4 py-16 text-center text-[#9CA3AF] text-sm">No clients found</td></tr>
+                <tr><td colSpan={visibleCols.length || 1} className="px-4 py-16 text-center text-[#9CA3AF] text-sm">No clients found</td></tr>
               )}
             </tbody>
           </table>

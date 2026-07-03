@@ -8,6 +8,8 @@ import AddTaskModal from './AddTaskModal';
 import RequestDetail from './RequestDetail';
 import { PRIORITY_STYLES, STATUS_STYLES, CATEGORY_STYLES, PRIORITY_ORDER, BOARD_STATUSES, PRIORITIES, TEAM_MEMBERS, NEW_CATEGORIES, STATUS_MAP } from './requestStyles';
 import { logActivity } from '@/lib/logActivity';
+import ColumnSelector from '@/components/shared/ColumnSelector';
+import { useColumnVisibility } from '@/hooks/useColumnVisibility';
 
 // Overdue helpers
 function getDeadlineStatus(deadline, status) {
@@ -30,7 +32,7 @@ const VIEW_OPTIONS = [
 ];
 
 const LIST_COLUMNS = [
-  { key: 'title', label: 'Task', sortable: true },
+  { key: 'title', label: 'Task', sortable: true, locked: true },
   { key: 'assignedTo', label: 'Assigned to', sortable: true },
   { key: 'requestedBy', label: 'Requested by', sortable: true },
   { key: 'category', label: 'Category', sortable: true },
@@ -39,6 +41,7 @@ const LIST_COLUMNS = [
   { key: 'deadline', label: 'Due date', sortable: true },
   { key: 'submittedAt', label: 'Created', sortable: true },
 ];
+const LIST_DEFAULT_VISIBLE = ['title', 'assignedTo', 'requestedBy', 'category', 'priority', '_displayStatus', 'deadline', 'submittedAt'];
 
 // Resolve current user's team name from auth data — strict exact match only
 function resolveUserName(me) {
@@ -80,6 +83,11 @@ export default function RequestBoard({ refresh }) {
 
   // Grouped view: collapsed sections
   const [collapsedGroups, setCollapsedGroups] = useState({});
+  const { visible: visibleListCols, isVisible: isColVisible, toggle: toggleCol, reset: resetCols } = useColumnVisibility({
+    viewKey: 'team-board',
+    columns: LIST_COLUMNS,
+    defaultVisible: LIST_DEFAULT_VISIBLE,
+  });
 
   const load = async () => {
     try {
@@ -329,6 +337,9 @@ export default function RequestBoard({ refresh }) {
           {hasAnyFilter && (
             <button onClick={clearFilters} className="shrink-0 px-3 py-1.5 text-xs font-medium text-[#DC2626] hover:underline">Clear filters</button>
           )}
+          {!showArchived && (view === 'list' || view === 'grouped') && (
+            <ColumnSelector columns={LIST_COLUMNS} visible={visibleListCols} onToggle={toggleCol} onReset={resetCols} />
+          )}
         </div>
       </div>
 
@@ -343,9 +354,9 @@ export default function RequestBoard({ refresh }) {
         ) : view === 'kanban' ? (
           <KanbanView columns={columns} onDragEnd={handleDragEnd} onSelect={setSelectedReq} isValidCategory={isValidCategory} onArchive={handleArchive} doneCount={doneCount} onBulkArchive={() => setConfirmBulkArchive(true)} />
         ) : view === 'list' ? (
-          <ListView sorted={sorted} sortField={sortField} sortDir={sortDir} onSort={handleSort} onSelect={setSelectedReq} isValidCategory={isValidCategory} fmtDate={fmtDate} onStatusChange={handleStatusChange} />
+          <ListView sorted={sorted} sortField={sortField} sortDir={sortDir} onSort={handleSort} onSelect={setSelectedReq} isValidCategory={isValidCategory} fmtDate={fmtDate} onStatusChange={handleStatusChange} isVisible={isColVisible} />
         ) : (
-          <GroupedView sorted={sorted} currentUser={currentUser} collapsedGroups={collapsedGroups} setCollapsedGroups={setCollapsedGroups} sortField={sortField} sortDir={sortDir} onSort={handleSort} onSelect={setSelectedReq} isValidCategory={isValidCategory} fmtDate={fmtDate} onStatusChange={handleStatusChange} />
+          <GroupedView sorted={sorted} currentUser={currentUser} collapsedGroups={collapsedGroups} setCollapsedGroups={setCollapsedGroups} sortField={sortField} sortDir={sortDir} onSort={handleSort} onSelect={setSelectedReq} isValidCategory={isValidCategory} fmtDate={fmtDate} onStatusChange={handleStatusChange} isVisible={isColVisible} />
         )}
       </div>
 
@@ -511,7 +522,7 @@ function KanbanView({ columns, onDragEnd, onSelect, isValidCategory, onArchive, 
 }
 
 // ── List View ──
-function ListView({ sorted, sortField, sortDir, onSort, onSelect, isValidCategory, fmtDate, onStatusChange }) {
+function ListView({ sorted, sortField, sortDir, onSort, onSelect, isValidCategory, fmtDate, onStatusChange, isVisible }) {
   const handleSort = (field) => onSort(field);
 
   if (sorted.length === 0) {
@@ -524,13 +535,15 @@ function ListView({ sorted, sortField, sortDir, onSort, onSelect, isValidCategor
         <thead>
           <tr className="border-b border-[#EBEBF5]">
             {LIST_COLUMNS.map(col => (
-              <th key={col.key} onClick={() => col.sortable && handleSort(col.key)}
-                className={`px-3 py-3 text-left text-[11px] font-bold text-[#5777AB] uppercase tracking-[0.08em] select-none whitespace-nowrap ${col.sortable ? 'cursor-pointer hover:text-[#242450] transition-colors' : ''}`}>
-                <span className="inline-flex items-center gap-1">
-                  {col.label}
-                  {sortField === col.key && <ArrowUpDown className={`w-3 h-3 text-[#8403C5]`} />}
-                </span>
-              </th>
+              isVisible(col.key) && (
+                <th key={col.key} onClick={() => col.sortable && handleSort(col.key)}
+                  className={`px-3 py-3 text-left text-[11px] font-bold text-[#5777AB] uppercase tracking-[0.08em] select-none whitespace-nowrap ${col.sortable ? 'cursor-pointer hover:text-[#242450] transition-colors' : ''}`}>
+                  <span className="inline-flex items-center gap-1">
+                    {col.label}
+                    {sortField === col.key && <ArrowUpDown className={`w-3 h-3 text-[#8403C5]`} />}
+                  </span>
+                </th>
+              )
             ))}
           </tr>
         </thead>
@@ -538,9 +551,12 @@ function ListView({ sorted, sortField, sortDir, onSort, onSelect, isValidCategor
           {sorted.map(req => (
             <tr key={req.id} onClick={() => onSelect(req)}
               className="border-b border-[#F2F2F4] last:border-0 hover:bg-[#F6F6FB] transition-colors cursor-pointer">
+              {isVisible('title') && (
               <td className="px-3 py-3 min-w-[180px] max-w-[240px]">
                 <p className="font-medium text-[#242450] text-sm truncate">{req.title || <span className="text-[#9CA3AF] italic">Untitled</span>}</p>
               </td>
+              )}
+              {isVisible('assignedTo') && (
               <td className="px-3 py-3 whitespace-nowrap">
                 {req.assignedTo ? (
                   <div className="flex items-center gap-1.5">
@@ -551,23 +567,30 @@ function ListView({ sorted, sortField, sortDir, onSort, onSelect, isValidCategor
                   </div>
                 ) : <span className="text-xs text-[#9CA3AF]">—</span>}
               </td>
-              <td className="px-3 py-3 text-xs text-[#5777AB] whitespace-nowrap">{req.requestedBy || '—'}</td>
+              )}
+              {isVisible('requestedBy') && <td className="px-3 py-3 text-xs text-[#5777AB] whitespace-nowrap">{req.requestedBy || '—'}</td>}
+              {isVisible('category') && (
               <td className="px-3 py-3">
                 {req.category && isValidCategory(req.category) ? (
                   <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${CATEGORY_STYLES[req.category] || 'bg-[#EBEBF5] text-[#242450]'}`}>{req.category}</span>
                 ) : <span className="text-xs text-[#9CA3AF]">—</span>}
               </td>
+              )}
+              {isVisible('priority') && (
               <td className="px-3 py-3">
                 {req.priority ? <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${PRIORITY_STYLES[req.priority] || ''}`}>{req.priority}</span> : <span className="text-xs text-[#9CA3AF]">—</span>}
               </td>
+              )}
+              {isVisible('_displayStatus') && (
               <td className="px-3 py-3" onClick={e => e.stopPropagation()}>
                 <select value={req._displayStatus} onChange={e => onStatusChange(req.id, e.target.value)}
                   className={`text-[10px] font-semibold px-2 py-1 rounded-full border-0 outline-none cursor-pointer appearance-none ${STATUS_STYLES[req._displayStatus] || ''}`}>
                   {BOARD_STATUSES.map(s => <option key={s} value={s}>{s}</option>)}
                 </select>
               </td>
-              <td className="px-3 py-3 text-xs text-[#5777AB] whitespace-nowrap">{fmtDate(req.deadline)}</td>
-              <td className="px-3 py-3 text-xs text-[#5777AB] whitespace-nowrap">{req.submittedAt ? format(new Date(req.submittedAt), 'd MMM yy') : '—'}</td>
+              )}
+              {isVisible('deadline') && <td className="px-3 py-3 text-xs text-[#5777AB] whitespace-nowrap">{fmtDate(req.deadline)}</td>}
+              {isVisible('submittedAt') && <td className="px-3 py-3 text-xs text-[#5777AB] whitespace-nowrap">{req.submittedAt ? format(new Date(req.submittedAt), 'd MMM yy') : '—'}</td>}
             </tr>
           ))}
         </tbody>
@@ -673,7 +696,7 @@ function ArchivedView({ requests, onRestore, onDelete, onSelect, isValidCategory
 }
 
 // ── Grouped View ──
-function GroupedView({ sorted, currentUser, collapsedGroups, setCollapsedGroups, sortField, sortDir, onSort, onSelect, isValidCategory, fmtDate, onStatusChange }) {
+function GroupedView({ sorted, currentUser, collapsedGroups, setCollapsedGroups, sortField, sortDir, onSort, onSelect, isValidCategory, fmtDate, onStatusChange, isVisible }) {
   // Group by assignedTo
   const groups = useMemo(() => {
     const map = {};
@@ -727,13 +750,15 @@ function GroupedView({ sorted, currentUser, collapsedGroups, setCollapsedGroups,
                 <thead>
                   <tr className="border-t border-b border-[#EBEBF5] bg-[#FAFAFD]">
                     {LIST_COLUMNS.filter(c => c.key !== 'assignedTo').map(col => (
-                      <th key={col.key} onClick={() => col.sortable && onSort(col.key)}
-                        className={`px-3 py-2.5 text-left text-[11px] font-bold text-[#5777AB] uppercase tracking-[0.08em] select-none whitespace-nowrap ${col.sortable ? 'cursor-pointer hover:text-[#242450] transition-colors' : ''}`}>
-                        <span className="inline-flex items-center gap-1">
-                          {col.label}
-                          {sortField === col.key && <ArrowUpDown className="w-3 h-3 text-[#8403C5]" />}
-                        </span>
-                      </th>
+                      isVisible(col.key) && (
+                        <th key={col.key} onClick={() => col.sortable && onSort(col.key)}
+                          className={`px-3 py-2.5 text-left text-[11px] font-bold text-[#5777AB] uppercase tracking-[0.08em] select-none whitespace-nowrap ${col.sortable ? 'cursor-pointer hover:text-[#242450] transition-colors' : ''}`}>
+                          <span className="inline-flex items-center gap-1">
+                            {col.label}
+                            {sortField === col.key && <ArrowUpDown className="w-3 h-3 text-[#8403C5]" />}
+                          </span>
+                        </th>
+                      )
                     ))}
                   </tr>
                 </thead>
@@ -741,26 +766,34 @@ function GroupedView({ sorted, currentUser, collapsedGroups, setCollapsedGroups,
                   {group.items.map(req => (
                     <tr key={req.id} onClick={() => onSelect(req)}
                       className="border-b border-[#F2F2F4] last:border-0 hover:bg-[#F6F6FB] transition-colors cursor-pointer">
+                      {isVisible('title') && (
                       <td className="px-3 py-3 min-w-[180px] max-w-[240px]">
                         <p className="font-medium text-[#242450] text-sm truncate">{req.title || <span className="text-[#9CA3AF] italic">Untitled</span>}</p>
                       </td>
-                      <td className="px-3 py-3 text-xs text-[#5777AB] whitespace-nowrap">{req.requestedBy || '—'}</td>
+                      )}
+                      {isVisible('requestedBy') && <td className="px-3 py-3 text-xs text-[#5777AB] whitespace-nowrap">{req.requestedBy || '—'}</td>}
+                      {isVisible('category') && (
                       <td className="px-3 py-3">
                         {req.category && isValidCategory(req.category) ? (
                           <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${CATEGORY_STYLES[req.category] || 'bg-[#EBEBF5] text-[#242450]'}`}>{req.category}</span>
                         ) : <span className="text-xs text-[#9CA3AF]">—</span>}
                       </td>
+                      )}
+                      {isVisible('priority') && (
                       <td className="px-3 py-3">
                         {req.priority ? <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${PRIORITY_STYLES[req.priority] || ''}`}>{req.priority}</span> : <span className="text-xs text-[#9CA3AF]">—</span>}
                       </td>
+                      )}
+                      {isVisible('_displayStatus') && (
                       <td className="px-3 py-3" onClick={e => e.stopPropagation()}>
                         <select value={req._displayStatus} onChange={e => onStatusChange(req.id, e.target.value)}
                           className={`text-[10px] font-semibold px-2 py-1 rounded-full border-0 outline-none cursor-pointer appearance-none ${STATUS_STYLES[req._displayStatus] || ''}`}>
                           {BOARD_STATUSES.map(s => <option key={s} value={s}>{s}</option>)}
                         </select>
                       </td>
-                      <td className="px-3 py-3 text-xs text-[#5777AB] whitespace-nowrap">{fmtDate(req.deadline)}</td>
-                      <td className="px-3 py-3 text-xs text-[#5777AB] whitespace-nowrap">{req.submittedAt ? format(new Date(req.submittedAt), 'd MMM yy') : '—'}</td>
+                      )}
+                      {isVisible('deadline') && <td className="px-3 py-3 text-xs text-[#5777AB] whitespace-nowrap">{fmtDate(req.deadline)}</td>}
+                      {isVisible('submittedAt') && <td className="px-3 py-3 text-xs text-[#5777AB] whitespace-nowrap">{req.submittedAt ? format(new Date(req.submittedAt), 'd MMM yy') : '—'}</td>}
                     </tr>
                   ))}
                   {group.items.length === 0 && (

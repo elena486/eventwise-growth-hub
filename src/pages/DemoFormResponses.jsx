@@ -4,6 +4,20 @@ import { format, parseISO } from 'date-fns';
 import { MoreHorizontal, Link2 } from 'lucide-react';
 import DemoResponseDetailPanel from '@/components/sales/DemoResponseDetailPanel';
 import AttachToPipelineModal from '@/components/sales/AttachToPipelineModal';
+import ColumnSelector from '@/components/shared/ColumnSelector';
+import { useColumnVisibility } from '@/hooks/useColumnVisibility';
+
+const DEMO_COLUMNS = [
+  { key: 'name', label: 'Name', locked: true },
+  { key: 'company', label: 'Company' },
+  { key: 'dateSubmitted', label: 'Date Submitted' },
+  { key: 'accountingPlatform', label: 'Accounting Platform' },
+  { key: 'ticketingPlatforms', label: 'Ticketing Platform(s)' },
+  { key: 'techScore', label: 'Tech Score' },
+  { key: 'status', label: 'Status' },
+  { key: 'attachedTo', label: 'Attached To' },
+];
+const DEMO_DEFAULT_VISIBLE = ['name', 'company', 'dateSubmitted', 'accountingPlatform', 'ticketingPlatforms', 'techScore', 'status', 'attachedTo'];
 
 function fmtDate(d) {
   if (!d) return '—';
@@ -65,6 +79,11 @@ export default function DemoFormResponses() {
   const [filter, setFilter] = useState('all');
   const [selected, setSelected] = useState(null);
   const [attachTarget, setAttachTarget] = useState(null);
+  const { visible: visibleCols, isVisible, toggle, reset } = useColumnVisibility({
+    viewKey: 'demo-form-responses',
+    columns: DEMO_COLUMNS,
+    defaultVisible: DEMO_DEFAULT_VISIBLE,
+  });
 
   const load = async () => {
     setLoading(true);
@@ -112,6 +131,9 @@ export default function DemoFormResponses() {
             New only
           </button>
           <span className="text-xs text-[#9CA3AF] ml-2">{displayed.length} record{displayed.length !== 1 ? 's' : ''}</span>
+          <div className="ml-auto">
+            <ColumnSelector columns={DEMO_COLUMNS} visible={visibleCols} onToggle={toggle} onReset={reset} />
+          </div>
         </div>
       </div>
 
@@ -131,9 +153,12 @@ export default function DemoFormResponses() {
             <table className="w-full text-sm min-w-[800px]">
               <thead>
                 <tr className="border-b border-[#EBEBF5]">
-                  {['Name', 'Company', 'Date Submitted', 'Accounting Platform', 'Ticketing Platform(s)', 'Tech Score', 'Status', 'Attached To', ''].map(h => (
-                    <th key={h} className="px-4 py-3 text-left text-[11px] font-bold text-[#5777AB] uppercase tracking-[0.08em] whitespace-nowrap">{h}</th>
+                  {DEMO_COLUMNS.map(col => (
+                    isVisible(col.key) && (
+                      <th key={col.key} className="px-4 py-3 text-left text-[11px] font-bold text-[#5777AB] uppercase tracking-[0.08em] whitespace-nowrap">{col.label}</th>
+                    )
                   ))}
+                  <th className="px-4 py-3 text-left text-[11px] font-bold text-[#5777AB] uppercase tracking-[0.08em] whitespace-nowrap"></th>
                 </tr>
               </thead>
               <tbody>
@@ -141,14 +166,14 @@ export default function DemoFormResponses() {
                   <tr key={r.id}
                     onClick={() => setSelected(r)}
                     className="border-b border-[#F2F2F4] last:border-0 hover:bg-[#F6F6FB] transition-colors cursor-pointer">
-                    <td className="px-4 py-3 font-semibold text-[#242450] whitespace-nowrap">{r.name || '—'}</td>
-                    <td className="px-4 py-3 text-[#5777AB] whitespace-nowrap">{r.company || '—'}</td>
-                    <td className="px-4 py-3 text-[#5777AB] whitespace-nowrap">{fmtDate(r.dateSubmitted)}</td>
-                    <td className="px-4 py-3 text-[#242450] whitespace-nowrap">{r.accountingPlatform || '—'}</td>
-                    <td className="px-4 py-3 text-[#5777AB] whitespace-nowrap">{r.ticketingPlatforms || '—'}</td>
-                    <td className="px-4 py-3"><TechScoreChip score={r.techForwardScore} /></td>
-                    <td className="px-4 py-3"><StatusPill status={r.status} /></td>
-                    <td className="px-4 py-3 text-[#5777AB] whitespace-nowrap text-xs">{r.attachedToName || '—'}</td>
+                    {isVisible('name') && <td className="px-4 py-3 font-semibold text-[#242450] whitespace-nowrap">{r.name || '—'}</td>}
+                    {isVisible('company') && <td className="px-4 py-3 text-[#5777AB] whitespace-nowrap">{r.company || '—'}</td>}
+                    {isVisible('dateSubmitted') && <td className="px-4 py-3 text-[#5777AB] whitespace-nowrap">{fmtDate(r.dateSubmitted)}</td>}
+                    {isVisible('accountingPlatform') && <td className="px-4 py-3 text-[#242450] whitespace-nowrap">{r.accountingPlatform || '—'}</td>}
+                    {isVisible('ticketingPlatforms') && <td className="px-4 py-3 text-[#5777AB] whitespace-nowrap">{r.ticketingPlatforms || '—'}</td>}
+                    {isVisible('techScore') && <td className="px-4 py-3"><TechScoreChip score={r.techForwardScore} /></td>}
+                    {isVisible('status') && <td className="px-4 py-3"><StatusPill status={r.status} /></td>}
+                    {isVisible('attachedTo') && <td className="px-4 py-3 text-[#5777AB] whitespace-nowrap text-xs">{r.attachedToName || '—'}</td>}
                     <td className="px-4 py-3">
                       <RowMenu record={r} onAttach={setAttachTarget} />
                     </td>

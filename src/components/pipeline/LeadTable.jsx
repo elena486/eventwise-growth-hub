@@ -3,6 +3,8 @@ import { format } from 'date-fns';
 import StageBadge from './Stagebadge';
 import PlanBadge from './PlanBadge';
 import InlineCell from '@/components/shared/InlineCell';
+import ColumnSelector from '@/components/shared/ColumnSelector';
+import { useColumnVisibility } from '@/hooks/useColumnVisibility';
 import { ChevronUp, ChevronDown, ChevronsUpDown, FileText, Trash2, Check, X, Pencil, Settings2, RotateCcw, AlertTriangle, Undo2, Clock } from 'lucide-react';
 
 const STAGE_ORDER = ['New Lead', 'Contacted', 'Discovery Call', 'Demo Booked', 'Proposal Sent', 'Negotiation', 'Closed Won', 'Closed Lost', 'On Hold'];
@@ -184,7 +186,7 @@ function MarkLostCell({ lead, onMarkLost }) {
 
 // Column visibility dropdown
 const ALL_COLUMNS = [
-  { key: 'company', label: 'Company' },
+  { key: 'company', label: 'Company', locked: true },
   { key: 'owner', label: 'Owner' },
   { key: 'plan', label: 'Plan' },
   { key: 'deal', label: 'Deal value' },
@@ -198,47 +200,6 @@ const ALL_COLUMNS = [
 ];
 
 const DEFAULT_VISIBLE = ['company', 'owner', 'plan', 'deal', 'stage', 'probability', 'nextAction', 'activity', 'notes'];
-
-const STORAGE_KEY = 'pipeline_columns_v1';
-
-function loadVisibleCols() {
-  try { const s = localStorage.getItem(STORAGE_KEY); if (s) return new Set(JSON.parse(s)); } catch {}
-  return new Set(DEFAULT_VISIBLE);
-}
-
-function ColumnToggle({ visible, onToggle, onReset }) {
-  const [open, setOpen] = useState(false);
-  const ref = useRef(null);
-  useEffect(() => {
-    const h = (e) => { if (ref.current && !ref.current.contains(e.target)) setOpen(false); };
-    document.addEventListener('mousedown', h);
-    return () => document.removeEventListener('mousedown', h);
-  }, []);
-
-  return (
-    <div className="relative" ref={ref}>
-      <button onClick={() => setOpen(v => !v)}
-        className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-ew-body border border-ew-border bg-white rounded-lg hover:bg-ew-bg transition-colors">
-        <Settings2 className="w-3.5 h-3.5" /> Columns
-      </button>
-      {open && (
-        <div className="absolute right-0 top-full mt-1 bg-white border border-ew-border rounded-xl shadow-lg z-30 py-2 min-w-[180px]">
-          {ALL_COLUMNS.map(col => (
-            <label key={col.key} className="flex items-center gap-2.5 px-3 py-1.5 cursor-pointer hover:bg-ew-bg transition-colors">
-              <input type="checkbox" checked={visible.has(col.key)} onChange={() => onToggle(col.key)} className="rounded" />
-              <span className="text-sm text-ew-body">{col.label}</span>
-            </label>
-          ))}
-          <div className="border-t border-ew-border mt-1 pt-1 px-3">
-            <button onClick={() => { onReset(); setOpen(false); }} className="flex items-center gap-1.5 text-xs text-ew-muted hover:text-navy py-1 transition-colors">
-              <RotateCcw className="w-3 h-3" /> Reset to default
-            </button>
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
 
 // Undo Toast
 function UndoToast({ message, onUndo, onDismiss }) {
@@ -257,7 +218,11 @@ export default function LeadTable({ leads, onDelete, onProposal, onUpdateField, 
   const [sortCol, setSortCol] = useState('stage');
   const [sortDir, setSortDir] = useState('asc');
   const [deletingId, setDeletingId] = useState(null);
-  const [visibleCols, setVisibleCols] = useState(() => loadVisibleCols());
+  const { visible: visibleCols, isVisible: show, toggle: toggleCol, reset: resetCols } = useColumnVisibility({
+    viewKey: 'pipeline-leads',
+    columns: ALL_COLUMNS,
+    defaultVisible: DEFAULT_VISIBLE,
+  });
   const [undoToast, setUndoToast] = useState(null); // { lead, timer }
   const undoRef = useRef(null);
 
@@ -281,24 +246,6 @@ export default function LeadTable({ leads, onDelete, onProposal, onUpdateField, 
     await b44.entities.Lead.create(rest);
     window.dispatchEvent(new CustomEvent('pipeline-refresh'));
   };
-
-  const toggleCol = (key) => {
-    setVisibleCols(prev => {
-      const next = new Set(prev);
-      if (next.has(key)) next.delete(key);
-      else next.add(key);
-      localStorage.setItem(STORAGE_KEY, JSON.stringify([...next]));
-      return next;
-    });
-  };
-
-  const resetCols = () => {
-    const def = new Set(DEFAULT_VISIBLE);
-    setVisibleCols(def);
-    localStorage.setItem(STORAGE_KEY, JSON.stringify([...def]));
-  };
-
-  const show = (key) => visibleCols.has(key);
 
   const handleSort = (col) => {
     if (sortCol === col) setSortDir(d => d === 'asc' ? 'desc' : 'asc');
@@ -465,7 +412,7 @@ export default function LeadTable({ leads, onDelete, onProposal, onUpdateField, 
       <div className="bg-white border border-ew-border rounded-xl overflow-x-auto">
         {/* Column toggle toolbar */}
         <div className="flex justify-end px-4 py-2 border-b border-ew-border">
-          <ColumnToggle visible={visibleCols} onToggle={toggleCol} onReset={resetCols} />
+          <ColumnSelector columns={ALL_COLUMNS} visible={visibleCols} onToggle={toggleCol} onReset={resetCols} />
         </div>
         <table className="w-full text-sm">
           <thead className="bg-ew-footer border-b border-ew-border">

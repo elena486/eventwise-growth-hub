@@ -6,6 +6,17 @@ import { CATEGORY_COLORS, CATEGORY_LABELS } from './categoryColors';
 import QuickEntryModal from './QuickEntryModal';
 import EntryDetailModal from './EntryDetailModal';
 import CalendarView from './CalendarView';
+import ColumnSelector from '@/components/shared/ColumnSelector';
+import { useColumnVisibility } from '@/hooks/useColumnVisibility';
+
+const HISTORY_COLUMNS = [
+  { key: 'date', label: 'Date', locked: true },
+  { key: 'category', label: 'Category' },
+  { key: 'client', label: 'Client' },
+  { key: 'task', label: 'Project / Task' },
+  { key: 'duration', label: 'Duration' },
+];
+const HISTORY_DEFAULT_VISIBLE = ['date', 'category', 'client', 'task', 'duration'];
 
 const PERIOD_OPTIONS = [
   { id: 'this_week', label: 'This week' },
@@ -48,6 +59,11 @@ export default function MyTimesheet({ refresh }) {
   // Category drill-down
   const [catDrillCat, setCatDrillCat] = useState(null);
   const [drillEntry, setDrillEntry] = useState(null);
+  const { visible: visibleCols, isVisible, toggle, reset } = useColumnVisibility({
+    viewKey: 'my-history',
+    columns: HISTORY_COLUMNS,
+    defaultVisible: HISTORY_DEFAULT_VISIBLE,
+  });
 
   const load = async () => {
     setLoading(true);
@@ -350,7 +366,8 @@ export default function MyTimesheet({ refresh }) {
         </div>
       ) : view === 'list' ? (
         <div>
-          <div className="flex justify-end mb-3">
+          <div className="flex justify-end items-center gap-2 mb-3">
+            <ColumnSelector columns={HISTORY_COLUMNS} visible={visibleCols} onToggle={toggle} onReset={reset} />
             <button onClick={() => handleOpenForDate(format(new Date(), 'yyyy-MM-dd'))}
               className="flex items-center gap-1.5 px-3 py-2 text-xs font-semibold bg-[#8403C5] text-white rounded-lg hover:bg-[#6B02A0] transition-colors">
               <Plus className="w-3.5 h-3.5" /> Add entry
@@ -366,20 +383,23 @@ export default function MyTimesheet({ refresh }) {
               <table className="w-full text-sm">
                 <thead>
                   <tr>
-                    {['Date', 'Category', 'Client', 'Project / Task', 'Duration', ''].map(h => (
-                      <th key={h} className="px-3 py-3 text-left text-[11px] font-bold text-[#5777AB] uppercase tracking-[0.08em]">{h}</th>
+                    {HISTORY_COLUMNS.map(col => (
+                      isVisible(col.key) && (
+                        <th key={col.key} className="px-3 py-3 text-left text-[11px] font-bold text-[#5777AB] uppercase tracking-[0.08em]">{col.label}</th>
+                      )
                     ))}
+                    <th className="px-3 py-3 text-left text-[11px] font-bold text-[#5777AB] uppercase tracking-[0.08em]"></th>
                   </tr>
                 </thead>
                 <tbody>
                   {weekEntries.map(e => (
                     <tr key={e.id} onClick={() => handleOpenForEntry(e)}
                       className="border-t border-[#F2F2F4] hover:bg-[#F6F6FB] transition-colors cursor-pointer group">
-                      <td className="px-3 py-2.5 text-xs text-[#242450]">{format(parseISO(e.date), 'd MMM')}</td>
-                      <td className="px-3 py-2.5 text-xs text-[#5777AB]">{e.category}</td>
-                      <td className="px-3 py-2.5 text-xs text-[#5777AB]">{e.clientName || '—'}</td>
-                      <td className="px-3 py-2.5 text-xs text-[#242450] font-medium max-w-[200px] truncate">{e.projectTask}</td>
-                      <td className="px-3 py-2.5 text-xs font-semibold text-[#242450]">{fmtHours(e.durationMinutes)}</td>
+                      {isVisible('date') && <td className="px-3 py-2.5 text-xs text-[#242450]">{format(parseISO(e.date), 'd MMM')}</td>}
+                      {isVisible('category') && <td className="px-3 py-2.5 text-xs text-[#5777AB]">{e.category}</td>}
+                      {isVisible('client') && <td className="px-3 py-2.5 text-xs text-[#5777AB]">{e.clientName || '—'}</td>}
+                      {isVisible('task') && <td className="px-3 py-2.5 text-xs text-[#242450] font-medium max-w-[200px] truncate">{e.projectTask}</td>}
+                      {isVisible('duration') && <td className="px-3 py-2.5 text-xs font-semibold text-[#242450]">{fmtHours(e.durationMinutes)}</td>}
                       <td className="px-3 py-2.5 opacity-0 group-hover:opacity-100 transition-opacity">
                         <Pencil className="w-3 h-3 text-[#9CA3AF]" />
                       </td>
