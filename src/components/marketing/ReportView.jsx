@@ -27,7 +27,7 @@ function momCalc(curr, prev) {
 
 function MoMTag({ curr, prev }) {
   const m = momCalc(curr, prev);
-  if (!m) return <span className="text-[11px] text-gray-400">No prior data</span>;
+  if (!m) return null;
   return (
     <span className={`text-[11px] font-semibold ${m.up ? 'text-[#15803D]' : 'text-[#B91C1C]'}`}>
       {m.up ? '↑' : '↓'} {m.pct}% vs prev
@@ -131,6 +131,8 @@ export default function ReportView({ report, prevReport, onBack, onEdit, onSent 
   const pli = parse(prevReport, 'chrisLinkedInData');
   const pcp = parse(prevReport, 'companyPageData');
   const pnl = parse(prevReport, 'newsletterData');
+
+  const hasNl = nl.openRate || nl.clickRate || nl.listSize || nl.unsubscribes || nl.sendDate || nl.subjectLine;
 
   // Calculated metrics
   const gscCtr = w.gscImpressions && w.gscClicks
@@ -238,9 +240,9 @@ export default function ReportView({ report, prevReport, onBack, onEdit, onSent 
             </div>
 
             {/* GSC sub-section */}
-            {(w.gscImpressions || w.gscClicks || w.gscAvgPosition) && (
-              <>
-                <SubDivider label="Google Search Console" />
+            <>
+              <SubDivider label="Google Search Console" />
+              {(w.gscImpressions || w.gscClicks || w.gscAvgPosition) ? (
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                   <StatChip label="Impressions"  value={fmt(w.gscImpressions)} curr={w.gscImpressions} prev={pw.gscImpressions} />
                   <StatChip label="Clicks"       value={fmt(w.gscClicks)}      curr={w.gscClicks}      prev={pw.gscClicks} />
@@ -261,8 +263,10 @@ export default function ReportView({ report, prevReport, onBack, onEdit, onSent 
                     </div>
                   )}
                 </div>
-              </>
-            )}
+              ) : (
+                <p className="text-[13px] text-gray-400 italic py-3">Data not available for this period — check integration connection</p>
+              )}
+            </>
             <Narrative text={w.notes} />
           </SectionCard>
 
@@ -324,6 +328,8 @@ export default function ReportView({ report, prevReport, onBack, onEdit, onSent 
               SECTION 4 — NEWSLETTER
           ═══════════════════════════════════════════════════ */}
           <SectionCard icon="✉️" title="Newsletter — Beehiiv">
+            {hasNl ? (
+              <>
             {(nl.subjectLine || nl.sendDate) && (
               <div className="flex items-center gap-4 mb-4 text-[12px] text-[#9CA3AF]">
                 {nl.sendDate && <span>Sent: {nl.sendDate}</span>}
@@ -374,6 +380,10 @@ export default function ReportView({ report, prevReport, onBack, onEdit, onSent 
             )}
 
             <Narrative text={nl.notes} />
+              </>
+            ) : (
+              <p className="text-[13px] text-gray-400 italic py-3">Data not available for this period — check integration connection</p>
+            )}
           </SectionCard>
 
         </div>
