@@ -1,18 +1,15 @@
 import React, { useState } from 'react';
 import { useAuth } from '@/lib/AuthContext';
-import { Plus } from 'lucide-react';
 import LeaveLogForm from '@/components/leave/LeaveLogForm';
 import ApprovalQueue from '@/components/leave/ApprovalQueue';
 import WhosOutView from '@/components/leave/WhosOutView';
-import WhosOutBanner from '@/components/leave/WhosOutBanner';
 import MyAvailability from '@/components/leave/MyAvailability';
 
-// Only Elena can see the approval queue
-const CAN_APPROVE = ['Elena'];
+// Elena and Chris can see the Requests (approval) tab
+const CAN_APPROVE = ['Elena', 'Chris'];
 
 export default function Leave() {
   const { user } = useAuth();
-  const [showForm, setShowForm] = useState(false);
   const [refresh, setRefresh] = useState(0);
   const [activeTab, setActiveTab] = useState('team-availability');
 
@@ -21,38 +18,21 @@ export default function Leave() {
 
   const handleSaved = () => {
     setRefresh(n => n + 1);
-    setShowForm(false);
   };
 
   const tabs = [
     { id: 'team-availability', label: 'Team Availability' },
-    { id: 'time-off-requests', label: 'Time Off Requests' },
     { id: 'my-availability', label: 'My Availability' },
-    ...(canApprove ? [{ id: 'approval', label: 'Approval Queue' }] : []),
+    { id: 'log-time-off', label: 'Log Time Off' },
+    ...(canApprove ? [{ id: 'requests', label: 'Requests' }] : []),
   ];
 
   return (
     <div className="bg-[#F6F6FB] p-8 font-dm min-h-full overflow-y-auto">
       {/* Header */}
-      <div className="flex items-start justify-between mb-6">
-        <div>
-          <h1 className="text-2xl font-bold text-[#242450]">Leave & Availability</h1>
-          <p className="text-sm text-[#5777AB] mt-0.5">Team leave and working availability</p>
-        </div>
-        <div className="flex items-center gap-2">
-          <button
-            onClick={() => setShowForm(true)}
-            className="flex items-center gap-1.5 px-4 py-2 bg-[#8403C5] text-white text-sm font-semibold rounded-lg hover:bg-[#6B02A0] transition-colors"
-          >
-            <Plus className="w-4 h-4" /> Log Time Off
-          </button>
-          <button
-            onClick={() => setActiveTab('my-availability')}
-            className="flex items-center gap-1.5 px-4 py-2 bg-white text-[#8403C5] text-sm font-semibold rounded-lg border border-[#8403C5]/30 hover:bg-[#F3E8FF] transition-colors"
-          >
-            <Plus className="w-4 h-4" /> Log Availability
-          </button>
-        </div>
+      <div className="mb-6">
+        <h1 className="text-2xl font-bold text-[#242450]">Time Off & Availability</h1>
+        <p className="text-sm text-[#5777AB] mt-0.5">Team leave and working availability</p>
       </div>
 
       {/* Tabs */}
@@ -67,18 +47,12 @@ export default function Leave() {
       </div>
 
       {activeTab === 'team-availability' && <WhosOutView refresh={refresh} />}
-      {activeTab === 'time-off-requests' && <WhosOutView refresh={refresh} showAllStatuses={true} showWorkingDays={false} />}
       {activeTab === 'my-availability' && <MyAvailability />}
-      {activeTab === 'approval' && canApprove && (
-        <ApprovalQueue currentUserName={firstName} onApproved={() => setRefresh(n => n + 1)} />
+      {activeTab === 'log-time-off' && (
+        <LeaveLogForm currentUserName={firstName} inline onSaved={handleSaved} onClose={() => setActiveTab('team-availability')} />
       )}
-
-      {showForm && (
-        <LeaveLogForm
-          currentUserName={firstName}
-          onClose={() => setShowForm(false)}
-          onSaved={handleSaved}
-        />
+      {activeTab === 'requests' && canApprove && (
+        <ApprovalQueue currentUserName={firstName} onApproved={() => setRefresh(n => n + 1)} />
       )}
     </div>
   );

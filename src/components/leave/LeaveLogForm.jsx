@@ -18,7 +18,7 @@ function calcWorkingDays(start, end) {
 const ic = 'w-full px-3 py-2 text-sm border border-[#EBEBF5] rounded-lg bg-white focus:outline-none focus:border-[#8403C5]';
 const label = 'block text-[11px] font-semibold text-[#5777AB] uppercase tracking-[0.06em] mb-1';
 
-export default function LeaveLogForm({ currentUserName, onClose, onSaved }) {
+export default function LeaveLogForm({ currentUserName, onClose, onSaved, inline = false }) {
   const isAdmin = ADMINS.includes(currentUserName);
   const [form, setForm] = useState({ personName: currentUserName, startDate: '', endDate: '', type: '', notes: '' });
   const [saving, setSaving] = useState(false);
@@ -68,10 +68,16 @@ export default function LeaveLogForm({ currentUserName, onClose, onSaved }) {
     setPendingEntry(null);
   };
 
+  const resetForm = () => {
+    setSubmitted(false);
+    setPendingEntry(null);
+    setForm({ personName: currentUserName, startDate: '', endDate: '', type: '', notes: '' });
+  };
+
   // ── Quick-approve prompt (admin only, after submitting for George/Martinique) ──
   if (pendingEntry) {
     return (
-      <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4" onClick={e => e.stopPropagation()}>
+      <div className={inline ? "" : "fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4"} onClick={e => e.stopPropagation()}>
         <div className="bg-white rounded-xl shadow-2xl w-full max-w-sm p-8 text-center">
           <div className="w-12 h-12 rounded-full bg-[#FFFBEB] flex items-center justify-center mx-auto mb-4 text-2xl">⏳</div>
           <h3 className="text-base font-bold text-[#242450] mb-2">This request requires approval</h3>
@@ -95,26 +101,29 @@ export default function LeaveLogForm({ currentUserName, onClose, onSaved }) {
 
   // ── Success screen ──
   if (submitted) {
+    const isAwaitingApproval = needsApproval && !isAdmin;
     return (
-      <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4" onClick={onClose}>
+      <div className={inline ? "" : "fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4"} onClick={inline ? undefined : onClose}>
         <div className="bg-white rounded-xl shadow-2xl w-full max-w-sm p-8 text-center" onClick={e => e.stopPropagation()}>
-          <div className="w-12 h-12 rounded-full bg-[#E8F7F2] flex items-center justify-center mx-auto mb-4 text-2xl">✅</div>
-          <h3 className="text-base font-bold text-[#242450] mb-2">Leave logged</h3>
+          <div className={`w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-4 text-2xl ${isAwaitingApproval ? 'bg-[#FFFBEB]' : 'bg-[#E8F7F2]'}`}>{isAwaitingApproval ? '⏳' : '✅'}</div>
+          <h3 className="text-base font-bold text-[#242450] mb-2">{isAwaitingApproval ? 'Request submitted' : 'Time off logged'}</h3>
           <p className="text-sm text-[#5777AB] mb-6">
-            {days} working day{days!==1?'s':''} recorded for {form.personName}.
+            {isAwaitingApproval
+              ? 'Your time off request has been submitted and is awaiting approval.'
+              : `${days} working day${days!==1?'s':''} recorded for ${form.personName}.`}
           </p>
-          <button onClick={onClose} className="px-6 py-2 bg-[#8403C5] text-white text-sm font-semibold rounded-lg hover:bg-[#6B02A0]">Done</button>
+          <button onClick={inline ? resetForm : onClose} className="px-6 py-2 bg-[#8403C5] text-white text-sm font-semibold rounded-lg hover:bg-[#6B02A0]">{inline ? 'Log another' : 'Done'}</button>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4" onClick={onClose}>
+    <div className={inline ? "" : "fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4"} onClick={inline ? undefined : onClose}>
       <div className="bg-white rounded-xl shadow-2xl w-full max-w-md p-6" onClick={e => e.stopPropagation()}>
         <div className="flex items-center justify-between mb-5">
           <h3 className="text-base font-bold text-[#242450]">Log Time Off</h3>
-          <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-[#F6F6FB] text-[#9CA3AF]"><X className="w-4 h-4" /></button>
+          {!inline && <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-[#F6F6FB] text-[#9CA3AF]"><X className="w-4 h-4" /></button>}
         </div>
         <div className="space-y-4">
           {/* Admin: person selector */}

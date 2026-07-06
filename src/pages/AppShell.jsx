@@ -15,7 +15,6 @@ import Marketing from './Marketing';
 import Handbook from './Handbook';
 import RequestBoard from '@/components/requests/RequestBoard';
 import SubmitRequestForm from '@/components/requests/SubmitRequestForm';
-import TimeOffTracker from '@/components/hr/TimeOffTracker';
 import SalesAssets from './SalesAssets';
 import MQLTracker from './MQLTracker';
 import OutreachAnalytics from './OutreachAnalytics';
@@ -69,7 +68,6 @@ const GROUPS = [
     { id: 'submit-request', label: 'Submit a Request' },
     { id: 'sprints', label: 'Sprints' },
     { id: 'leave', label: 'Time Off & Availability' },
-    { id: 'time-off', label: 'Time Off' },
     { id: 'competitors', label: 'Competitors' },
   ]},
   { id: 'time', label: 'Time & Capacity', tabs: [
@@ -557,7 +555,6 @@ export default function AppShell() {
         {tab === 'submit-request' && <SubmitRequestForm onSubmitted={() => { setTeamBoardRefresh(n => n + 1); setTab('team-board'); }} />}
         {tab === 'sprints' && <Sprints />}
         {tab === 'leave' && <Leave />}
-        {tab === 'time-off' && <TimeOffTracker />}
         {tab === 'competitors' && <Competitors focusCompetitorId={searchFocus?.focusType === 'competitor' ? searchFocus.focusId : null} onFocusConsumed={() => setSearchFocus(null)} />}
         {tab === 'time-log' && <TimeCapacity subTab="log" onSubTabChange={(id) => setSearchParams({ tab: id })} />}
         {tab === 'time-timesheet' && <TimeCapacity subTab="timesheet" onSubTabChange={(id) => setSearchParams({ tab: id })} />}
