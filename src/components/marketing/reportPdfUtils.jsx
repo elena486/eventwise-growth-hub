@@ -19,27 +19,27 @@ function mom(curr, prev) {
   return { pct: Math.abs(pct).toFixed(1), up: c >= p };
 }
 
-// ASCII-only text guaranteed to render in jsPDF standard fonts (WinAnsi/Latin-1).
-// No emoji, no arrow glyphs (U+2191/U+2193), no check marks — only Latin-1 + em dash.
-const NO_DATA_MSG = 'Data not available for this period — check integration connection';
+// ASCII / Latin-1 only — renders reliably in jsPDF standard fonts.
+const NO_DATA_MSG = 'Data not available this period — check integration connection';
+
+// Brand colours
+const NAVY   = [36, 36, 80];      // #242450
+const NAVY_TINT = [240, 241, 248]; // #F0F1F8
+const GREY   = [107, 114, 128];
+const LGREY  = [156, 163, 175];
+const BLACK  = [51, 51, 51];       // #333333 body text
+const WHITE  = [255, 255, 255];
+const GREEN  = [29, 158, 117];     // #1D9E75
+const RED    = [220, 38, 38];
+const BORDER = [229, 231, 240];
 
 export function generateReportPDF(report, prevReport) {
-  // A4 landscape — jsPDF embeds standard 14 fonts (helvetica) which are Latin-1/WinAnsi.
-  // All text below is ASCII / Latin-1 only, so no garbled character codes appear.
-  const doc = new jsPDF({ unit: 'mm', format: 'a4', orientation: 'landscape' });
-  const PAGE_W = 297;
-  const PAGE_H = 210;
-  const MARGIN = 14;
-  const COL_W = (PAGE_W - MARGIN * 2 - 9) / 2; // 2 columns with 9mm gap
-
-  const NAVY   = [36, 36, 80];
-  const PURPLE = [132, 3, 197];
-  const GREY   = [107, 114, 128];
-  const LGREY  = [249, 250, 251];
-  const BLACK  = [17, 24, 39];
-  const WHITE  = [255, 255, 255];
-  const GREEN  = [21, 128, 61];
-  const RED    = [185, 28, 28];
+  // A4 portrait, 20mm margins
+  const doc = new jsPDF({ unit: 'mm', format: 'a4', orientation: 'portrait' });
+  const PAGE_W = 210;
+  const PAGE_H = 297;
+  const MARGIN = 20;
+  const CONTENT_W = PAGE_W - MARGIN * 2; // 170mm
 
   const w  = parse(report, 'websiteData');
   const li = parse(report, 'chrisLinkedInData');
@@ -51,279 +51,313 @@ export function generateReportPDF(report, prevReport) {
   const pcp = prevReport ? parse(prevReport, 'companyPageData') : {};
   const pnl = prevReport ? parse(prevReport, 'newsletterData') : {};
 
-  // ── Header ─────────────────────────────────────────────────────────────────
-  doc.setFillColor(...NAVY);
-  doc.rect(0, 0, PAGE_W, 22, 'F');
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(15);
-  doc.setTextColor(...WHITE);
-  doc.text('Eventwise', MARGIN, 10);
-  doc.setFont('helvetica', 'normal');
-  doc.setFontSize(9);
-  doc.setTextColor(200, 200, 220);
-  doc.text('Monthly Marketing Report', MARGIN, 16);
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(13);
-  doc.setTextColor(...WHITE);
-  doc.text(`${report.month} ${report.year}`, PAGE_W - MARGIN, 10, { align: 'right' });
-  doc.setFont('helvetica', 'normal');
-  doc.setFontSize(9);
-  doc.setTextColor(200, 200, 220);
-  doc.text(`Status: ${report.status || 'Draft'}`, PAGE_W - MARGIN, 16, { align: 'right' });
+  let y = MARGIN;
 
-  let y = 28;
+  // ── Helper: ensure space, add page if needed ──
+  const ensure = (need) => {
+    if (y + need > PAGE_H - MARGIN - 12) {
+      addFooter();
+      doc.addPage();
+      y = MARGIN;
+    }
+  };
 
-  // ── Section card renderer ──────────────────────────────────────────────────
-  function drawCard(x, cardY, cardW, cardH) {
-    doc.setFillColor(255, 255, 255);
-    doc.roundedRect(x, cardY, cardW, cardH, 3, 3, 'F');
-    doc.setDrawColor(230, 232, 240);
+  // ── Footer (called at end of each page) ──
+  function addFooter() {
+    const fy = PAGE_H - 14;
+    doc.setDrawColor(...BORDER);
     doc.setLineWidth(0.2);
-    doc.roundedRect(x, cardY, cardW, cardH, 3, 3, 'S');
+    doc.line(MARGIN, fy - 4, PAGE_W - MARGIN, fy - 4);
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(7.5);
+    doc.setTextColor(...GREY);
+    doc.text(`Eventwise Monthly Marketing Report — ${report.month} ${report.year} — Confidential`, MARGIN, fy);
+    doc.text('hello@eventwise.com · eventwise.com', PAGE_W - MARGIN, fy, { align: 'right' });
+    const pageNum = doc.internal.getNumberOfPages();
+    doc.text(String(pageNum), PAGE_W / 2, fy, { align: 'center' });
   }
 
-  // Section title uses a coloured left bar (renders reliably) — no emoji prefix.
-  function sectionTitle(x, sy, _icon, title) {
-    doc.setFillColor(...PURPLE);
-    doc.rect(x, sy, 2.5, 7, 'F');
+  // ── Report Header ──
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(16);
+  doc.setTextColor(...NAVY);
+  doc.text('Eventwise', MARGIN, y + 5);
+
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(10);
+  doc.setTextColor(...GREY);
+  doc.text('Monthly Marketing Report', MARGIN, y + 11);
+
+  // Month/year + status (right aligned)
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(14);
+  doc.setTextColor(...NAVY);
+  doc.text(`${report.month} ${report.year}`, PAGE_W - MARGIN, y + 5, { align: 'right' });
+
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(9);
+  doc.setTextColor(...GREY);
+  doc.text(`Status: ${report.status || 'Draft'}`, PAGE_W - MARGIN, y + 11, { align: 'right' });
+
+  y += 16;
+
+  // Divider
+  doc.setDrawColor(...BORDER);
+  doc.setLineWidth(0.3);
+  doc.line(MARGIN, y, PAGE_W - MARGIN, y);
+  y += 8;
+
+  // ── Section header bar ──
+  function sectionHeader(title) {
+    ensure(14);
+    // Light navy tint background bar with navy left accent
+    doc.setFillColor(...NAVY_TINT);
+    doc.rect(MARGIN, y, CONTENT_W, 9, 'F');
+    doc.setFillColor(...NAVY);
+    doc.rect(MARGIN, y, 2.5, 9, 'F');
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(11);
     doc.setTextColor(...NAVY);
-    doc.text(title, x + 6, sy + 5.5);
-    return sy + 12;
+    doc.text(title, MARGIN + 6, y + 6.2);
+    y += 13;
   }
 
-  function noDataMessage(x, sy, maxW) {
+  // ── No-data message ──
+  function noDataMessage() {
+    ensure(10);
     doc.setFont('helvetica', 'italic');
-    doc.setFontSize(8);
-    doc.setTextColor(...GREY);
-    const lines = doc.splitTextToSize(NO_DATA_MSG, maxW);
-    doc.text(lines, x, sy + 4);
-    return sy + Math.max(10, lines.length * 4 + 4);
+    doc.setFontSize(10);
+    doc.setTextColor(...LGREY);
+    doc.text(NO_DATA_MSG, MARGIN + 2, y + 4);
+    y += 10;
   }
 
-  function statBlock(x, sy, label, value, prevVal) {
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(16);
-    doc.setTextColor(...NAVY);
-    doc.text(String(value || '—'), x, sy + 5);
-    doc.setFont('helvetica', 'normal');
-    doc.setFontSize(8);
-    doc.setTextColor(...GREY);
-    doc.text(label, x, sy + 10);
-    const m = mom(value, prevVal);
-    if (m) {
-      doc.setFontSize(7.5);
-      doc.setTextColor(...(m.up ? GREEN : RED));
+  // ── Metrics row: stat cards side by side within section ──
+  function metricsRow(stats) {
+    // stats: [{ label, value, prev }]
+    const valid = stats.filter(s => s.value != null && s.value !== '' && s.value !== '—');
+    if (valid.length === 0) {
+      noDataMessage();
+      return;
+    }
+    const count = valid.length;
+    const gap = 4;
+    const cardW = (CONTENT_W - gap * (count - 1)) / count;
+    const cardH = 22;
+    ensure(cardH + 4);
+
+    valid.forEach((s, i) => {
+      const cx = MARGIN + i * (cardW + gap);
+      // Card background
+      doc.setFillColor(249, 250, 251);
+      doc.roundedRect(cx, y, cardW, cardH, 2, 2, 'F');
+      doc.setDrawColor(...BORDER);
+      doc.setLineWidth(0.2);
+      doc.roundedRect(cx, y, cardW, cardH, 2, 2, 'S');
+
+      // Value (large, bold, navy)
       doc.setFont('helvetica', 'bold');
-      doc.text(`${m.up ? '+' : '-'}${m.pct}% vs prev`, x, sy + 14.5);
-    }
-    // No prior data -> show nothing (no "No prior data" text)
-    return sy + 18;
-  }
+      doc.setFontSize(15);
+      doc.setTextColor(...NAVY);
+      const valStr = String(s.value);
+      doc.text(valStr, cx + 4, y + 8);
 
-  function narrative(x, ny, text, maxW) {
-    if (!text) return ny;
-    doc.setFillColor(249, 250, 251);
-    const lines = doc.splitTextToSize(text, maxW - 8);
-    const boxH = lines.length * 4 + 6;
-    doc.roundedRect(x, ny, maxW, boxH, 1.5, 1.5, 'F');
-    doc.setFillColor(...PURPLE);
-    doc.rect(x, ny, 2, boxH, 'F');
-    doc.setFont('helvetica', 'normal');
-    doc.setFontSize(8);
-    doc.setTextColor(...BLACK);
-    doc.text(lines, x + 5, ny + 4.5, { lineHeightFactor: 1.5 });
-    return ny + boxH + 3;
-  }
-
-  function subDivider(x, dy, maxW, label) {
-    doc.setDrawColor(220, 222, 234);
-    doc.setLineWidth(0.3);
-    doc.line(x, dy, x + maxW, dy);
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(7);
-    doc.setTextColor(156, 163, 175);
-    doc.text(label.toUpperCase(), x + maxW / 2, dy + 3.5, { align: 'center' });
-    return dy + 7;
-  }
-
-  // ═══════════════════════════════════════════════════════════════
-  // LEFT COLUMN: Website + Newsletter
-  // ═══════════════════════════════════════════════════════════════
-  const LX = MARGIN;
-  const RX = MARGIN + COL_W + 9;
-  const CARD_H = 83;
-
-  // ── WEBSITE CARD ──────────────────────────────────────────────
-  drawCard(LX, y, COL_W, CARD_H);
-  let ly = sectionTitle(LX + 4, y + 3, null, 'Website');
-  const hasWebsite = w.activeUsers || w.sessions || w.newUsers || w.engagedSessions;
-  if (hasWebsite) {
-    // 4 stats in a row
-    const wStatW = (COL_W - 8) / 4;
-    statBlock(LX + 4,                     ly, 'Active Users',     fmtNum(w.activeUsers),    pw.activeUsers);
-    statBlock(LX + 4 + wStatW,            ly, 'Sessions',         fmtNum(w.sessions),       pw.sessions);
-    statBlock(LX + 4 + wStatW * 2,        ly, 'New Users',        fmtNum(w.newUsers),       pw.newUsers);
-    statBlock(LX + 4 + wStatW * 3,        ly, 'Engaged Sessions', w.engagedSessions ? w.engagedSessions + (String(w.engagedSessions).includes('%') ? '' : '%') : '—', pw.engagedSessions);
-    ly += 18;
-  } else {
-    ly = noDataMessage(LX + 4, ly, COL_W - 8) + 6;
-  }
-
-  // GSC row
-  ly = subDivider(LX + 4, ly, COL_W - 8, 'Search Console');
-  const hasGsc = w.gscImpressions || w.gscClicks || w.gscAvgPosition;
-  if (hasGsc) {
-    const gscW = (COL_W - 8) / 4;
-    statBlock(LX + 4,              ly, 'Impressions',  fmtNum(w.gscImpressions), pw.gscImpressions);
-    statBlock(LX + 4 + gscW,      ly, 'Clicks',       fmtNum(w.gscClicks),      pw.gscClicks);
-    statBlock(LX + 4 + gscW * 2,  ly, 'Avg Position', w.gscAvgPosition || '—',  null);
-
-    const gscCtr = w.gscImpressions && w.gscClicks
-      ? ((parseFloat(w.gscClicks) / parseFloat(w.gscImpressions)) * 100).toFixed(2) + '%' : null;
-    statBlock(LX + 4 + gscW * 3,  ly, 'CTR',          gscCtr || '—',            null);
-    ly += 18;
-  } else {
-    ly = noDataMessage(LX + 4, ly, COL_W - 8) + 4;
-  }
-
-  if (w.notes) narrative(LX + 4, ly, w.notes, COL_W - 8);
-
-  // ── NEWSLETTER CARD ────────────────────────────────────────────
-  const NL_Y = y + CARD_H + 5;
-  const NL_H = 73;
-  drawCard(LX, NL_Y, COL_W, NL_H);
-  let nly = sectionTitle(LX + 4, NL_Y + 3, null, 'Newsletter — Beehiiv');
-  const hasNl = nl.openRate || nl.clickRate || nl.listSize || nl.unsubscribes || nl.sendDate || nl.subjectLine;
-
-  if (!hasNl) {
-    noDataMessage(LX + 4, nly, COL_W - 8);
-  } else {
-    if (nl.sendDate || nl.subjectLine) {
-      doc.setFont('helvetica', 'normal');
-      doc.setFontSize(7.5);
-      doc.setTextColor(...GREY);
-      doc.text([nl.sendDate, nl.subjectLine ? `"${nl.subjectLine}"` : ''].filter(Boolean).join('   '), LX + 4, nly);
-      nly += 5;
-    }
-
-    const nlW = (COL_W - 8) / 4;
-    const openRate = parseFloat(nl.openRate) || 0;
-    const openBenchmark = openRate > 40 ? true : openRate >= 30 ? null : false;
-
-    statBlock(LX + 4,            nly, 'Open Rate',     nl.openRate ? nl.openRate + '%' : '—', null);
-    statBlock(LX + 4 + nlW,      nly, 'Click Rate',    nl.clickRate ? nl.clickRate + '%' : '—', null);
-    statBlock(LX + 4 + nlW * 2,  nly, 'Total Subs',   fmtNum(nl.listSize), pnl.listSize);
-    statBlock(LX + 4 + nlW * 3,  nly, 'Unsubscribes', fmtNum(nl.unsubscribes), null);
-    nly += 18;
-
-    // Open rate bar
-    if (nl.openRate) {
-      const barW = COL_W - 10;
-      doc.setFillColor(240, 240, 248);
-      doc.roundedRect(LX + 4, nly, barW, 4, 1, 1, 'F');
-      const fillW = Math.min(barW, (openRate / 100) * barW);
-      doc.setFillColor(...(openBenchmark === true ? GREEN : openBenchmark === false ? RED : [161, 98, 7]));
-      doc.roundedRect(LX + 4, nly, fillW, 4, 1, 1, 'F');
+      // Label (small caps, grey)
       doc.setFont('helvetica', 'normal');
       doc.setFontSize(7);
       doc.setTextColor(...GREY);
-      doc.text('Open Rate — Industry avg: 35%', LX + 4, nly + 7.5);
-      const benchLabel = openBenchmark === true ? 'Above average' : openBenchmark === false ? 'Below average' : 'Average';
-      doc.setTextColor(...(openBenchmark === true ? GREEN : openBenchmark === false ? RED : [161, 98, 7]));
-      doc.setFont('helvetica', 'bold');
-      doc.text(benchLabel, LX + 4 + barW, nly + 7.5, { align: 'right' });
-      nly += 10;
-    }
+      const label = s.label.toUpperCase();
+      doc.text(label, cx + 4, y + 13);
 
-    if (nl.notes) narrative(LX + 4, nly, nl.notes, COL_W - 8);
+      // Comparison
+      const m = mom(s.value, s.prev);
+      if (m) {
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(7.5);
+        doc.setTextColor(...(m.up ? GREEN : RED));
+        doc.text(`${m.up ? '+' : '-'}${m.pct}% vs prev`, cx + 4, y + 18.5);
+      }
+    });
+    y += cardH + 6;
   }
 
-  // ═══════════════════════════════════════════════════════════════
-  // RIGHT COLUMN: Chris LinkedIn + Company Page
-  // ═══════════════════════════════════════════════════════════════
+  // ── Narrative paragraph (full width) ──
+  function narrative(text) {
+    if (!text) return;
+    ensure(14);
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(11);
+    doc.setTextColor(...BLACK);
+    const lines = doc.splitTextToSize(text, CONTENT_W);
+    // Check each line for page break
+    lines.forEach(line => {
+      ensure(6);
+      doc.text(line, MARGIN, y + 4);
+      y += 5.5;
+    });
+    y += 4;
+  }
 
-  // ── LINKEDIN CARD ──────────────────────────────────────────────
-  drawCard(RX, y, COL_W, CARD_H);
-  let ry = sectionTitle(RX + 4, y + 3, null, 'Chris LinkedIn — Personal');
+  // ── Sub-metrics label (for supporting metrics under a main row) ──
+  function subLabel(text) {
+    ensure(8);
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(8);
+    doc.setTextColor(...LGREY);
+    doc.text(text.toUpperCase(), MARGIN + 2, y + 3);
+    y += 6;
+  }
+
+  // ── Section divider ──
+  function sectionDivider() {
+    ensure(6);
+    doc.setDrawColor(...BORDER);
+    doc.setLineWidth(0.2);
+    doc.line(MARGIN, y, PAGE_W - MARGIN, y);
+    y += 8;
+  }
+
+  // ════════════════════════════════════════════════════════════════
+  // SECTION 1 — WEBSITE (GA4)
+  // ════════════════════════════════════════════════════════════════
+  sectionHeader('Website (GA4)');
+  const hasWebsite = w.activeUsers || w.sessions || w.newUsers || w.engagedSessions;
+  if (hasWebsite) {
+    metricsRow([
+      { label: 'Active Users',     value: fmtNum(w.activeUsers),    prev: pw.activeUsers },
+      { label: 'Sessions',         value: fmtNum(w.sessions),       prev: pw.sessions },
+      { label: 'New Users',        value: fmtNum(w.newUsers),       prev: pw.newUsers },
+      { label: 'Engaged Sessions', value: w.engagedSessions ? w.engagedSessions + (String(w.engagedSessions).includes('%') ? '' : '%') : null, prev: pw.engagedSessions },
+    ]);
+    narrative(w.notes);
+  } else {
+    noDataMessage();
+  }
+  sectionDivider();
+
+  // ════════════════════════════════════════════════════════════════
+  // SECTION 2 — SEARCH CONSOLE
+  // ════════════════════════════════════════════════════════════════
+  sectionHeader('Search Console');
+  const hasGsc = w.gscImpressions || w.gscClicks || w.gscAvgPosition;
+  if (hasGsc) {
+    const gscCtr = w.gscImpressions && w.gscClicks
+      ? ((parseFloat(w.gscClicks) / parseFloat(w.gscImpressions)) * 100).toFixed(2) + '%' : null;
+    metricsRow([
+      { label: 'Impressions',  value: fmtNum(w.gscImpressions), prev: pw.gscImpressions },
+      { label: 'Clicks',       value: fmtNum(w.gscClicks),      prev: pw.gscClicks },
+      { label: 'Avg Position', value: w.gscAvgPosition || null, prev: null },
+      { label: 'CTR',          value: gscCtr,                   prev: null },
+    ]);
+  } else {
+    noDataMessage();
+  }
+  sectionDivider();
+
+  // ════════════════════════════════════════════════════════════════
+  // SECTION 3 — NEWSLETTER — BEEHIIV
+  // ════════════════════════════════════════════════════════════════
+  sectionHeader('Newsletter — Beehiiv');
+  const hasNl = nl.openRate || nl.clickRate || nl.listSize || nl.unsubscribes || nl.sendDate || nl.subjectLine;
+  if (hasNl) {
+    if (nl.sendDate || nl.subjectLine) {
+      ensure(6);
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(8);
+      doc.setTextColor(...GREY);
+      doc.text([nl.sendDate, nl.subjectLine ? `"${nl.subjectLine}"` : ''].filter(Boolean).join('   '), MARGIN + 2, y + 3);
+      y += 6;
+    }
+    metricsRow([
+      { label: 'Open Rate',     value: nl.openRate ? nl.openRate + '%' : null, prev: null },
+      { label: 'Click Rate',    value: nl.clickRate ? nl.clickRate + '%' : null, prev: null },
+      { label: 'Total Subs',    value: fmtNum(nl.listSize),     prev: pnl.listSize },
+      { label: 'Unsubscribes',  value: fmtNum(nl.unsubscribes), prev: null },
+    ]);
+    narrative(nl.notes);
+  } else {
+    noDataMessage();
+  }
+  sectionDivider();
+
+  // ════════════════════════════════════════════════════════════════
+  // SECTION 4 — CHRIS LINKEDIN — PERSONAL
+  // ════════════════════════════════════════════════════════════════
+  sectionHeader('Chris LinkedIn — Personal');
   const hasLI = li.totalImpressions || li.uniqueMembersReached || li.reactions || li.comments;
   if (hasLI) {
-    const liW = (COL_W - 8) / 4;
-    statBlock(RX + 4,             ry, 'Impressions',   fmtNum(li.totalImpressions),    pli.totalImpressions);
-    statBlock(RX + 4 + liW,       ry, 'Members Reach', fmtNum(li.uniqueMembersReached), pli.uniqueMembersReached);
-    statBlock(RX + 4 + liW * 2,   ry, 'Reactions',     fmtNum(li.reactions),           pli.reactions);
-    statBlock(RX + 4 + liW * 3,   ry, 'Comments',      fmtNum(li.comments),            pli.comments);
-    ry += 18;
+    metricsRow([
+      { label: 'Impressions',   value: fmtNum(li.totalImpressions),    prev: pli.totalImpressions },
+      { label: 'Members Reach', value: fmtNum(li.uniqueMembersReached), prev: pli.uniqueMembersReached },
+      { label: 'Reactions',     value: fmtNum(li.reactions),           prev: pli.reactions },
+      { label: 'Comments',      value: fmtNum(li.comments),            prev: pli.comments },
+    ]);
 
-    // Eng rate
+    // Supporting metrics
     const liImp = parseFloat(li.totalImpressions) || 0;
     const liEng = (parseFloat(li.reactions) || 0) + (parseFloat(li.comments) || 0) + (parseFloat(li.reposts) || 0);
     const liEngRate = liImp > 0 ? ((liEng / liImp) * 100).toFixed(2) + '%' : null;
-
-    ry = subDivider(RX + 4, ry, COL_W - 8, 'Engagement');
-    const engW = (COL_W - 8) / 3;
-    statBlock(RX + 4,             ry, 'New Connections', fmtNum(li.newFollowers), pli.newFollowers);
-    statBlock(RX + 4 + engW,      ry, 'Reposts',         fmtNum(li.reposts),     null);
-    statBlock(RX + 4 + engW * 2,  ry, 'Engagement Rate', liEngRate || '—',       null);
-    ry += 18;
-
-    if (li.topPostTitle) {
-      doc.setFillColor(243, 232, 255);
-      doc.roundedRect(RX + 4, ry, COL_W - 8, 7, 1.5, 1.5, 'F');
-      doc.setFont('helvetica', 'bold');
-      doc.setFontSize(7.5);
-      doc.setTextColor(...PURPLE);
-      doc.text('Top Post:', RX + 7, ry + 4);
-      doc.setTextColor(...NAVY);
-      doc.text(doc.splitTextToSize(li.topPostTitle, COL_W - 30)[0], RX + 22, ry + 4);
-      ry += 9;
+    if (li.newFollowers || li.reposts || liEngRate) {
+      subLabel('Engagement');
+      metricsRow([
+        { label: 'New Connections', value: fmtNum(li.newFollowers), prev: pli.newFollowers },
+        { label: 'Reposts',         value: fmtNum(li.reposts),      prev: null },
+        { label: 'Engagement Rate', value: liEngRate,               prev: null },
+      ]);
     }
 
-    if (li.notes) narrative(RX + 4, ry, li.notes, COL_W - 8);
-  } else {
-    noDataMessage(RX + 4, ry, COL_W - 8);
-  }
+    if (li.topPostTitle) {
+      ensure(10);
+      doc.setFillColor(243, 232, 255);
+      doc.roundedRect(MARGIN, y, CONTENT_W, 8, 1.5, 1.5, 'F');
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(8);
+      doc.setTextColor(132, 3, 197);
+      doc.text('Top Post:', MARGIN + 4, y + 5);
+      doc.setTextColor(...NAVY);
+      const titleLines = doc.splitTextToSize(li.topPostTitle, CONTENT_W - 30);
+      doc.text(titleLines[0], MARGIN + 22, y + 5);
+      y += 10;
+    }
 
-  // ── COMPANY PAGE CARD ──────────────────────────────────────────
-  const CP_Y = y + CARD_H + 5;
-  const CP_H = 73;
-  drawCard(RX, CP_Y, COL_W, CP_H);
-  let cy = sectionTitle(RX + 4, CP_Y + 3, null, 'Eventwise Company Page');
+    narrative(li.notes);
+  } else {
+    noDataMessage();
+  }
+  sectionDivider();
+
+  // ════════════════════════════════════════════════════════════════
+  // SECTION 5 — EVENTWISE COMPANY PAGE
+  // ════════════════════════════════════════════════════════════════
+  sectionHeader('Eventwise Company Page');
   const hasCP = cp.totalImpressions || cp.newFollowers || cp.reactions || cp.clicks;
   if (hasCP) {
-    const cpW = (COL_W - 8) / 4;
-    statBlock(RX + 4,            cy, 'Impressions',  fmtNum(cp.totalImpressions), pcp.totalImpressions);
-    statBlock(RX + 4 + cpW,      cy, 'New Followers', fmtNum(cp.newFollowers),    pcp.newFollowers);
-    statBlock(RX + 4 + cpW * 2,  cy, 'Reactions',    fmtNum(cp.reactions),        pcp.reactions);
-    statBlock(RX + 4 + cpW * 3,  cy, 'Clicks',       fmtNum(cp.clicks),           pcp.clicks);
-    cy += 18;
+    metricsRow([
+      { label: 'Impressions',   value: fmtNum(cp.totalImpressions), prev: pcp.totalImpressions },
+      { label: 'New Followers', value: fmtNum(cp.newFollowers),     prev: pcp.newFollowers },
+      { label: 'Reactions',     value: fmtNum(cp.reactions),        prev: pcp.reactions },
+      { label: 'Clicks',        value: fmtNum(cp.clicks),           prev: pcp.clicks },
+    ]);
 
     const cpImp = parseFloat(cp.totalImpressions) || 0;
     const cpEng = (parseFloat(cp.reactions) || 0) + (parseFloat(cp.clicks) || 0);
     const cpEngRate = cpImp > 0 ? ((cpEng / cpImp) * 100).toFixed(2) + '%' : null;
+    if (cp.uniqueVisitors || cp.postsPublished || cpEngRate) {
+      subLabel('Supporting Metrics');
+      metricsRow([
+        { label: 'Unique Visitors',  value: fmtNum(cp.uniqueVisitors), prev: pcp.uniqueVisitors },
+        { label: 'Posts Published',  value: cp.postsPublished || null, prev: null },
+        { label: 'Engagement Rate',  value: cpEngRate,                 prev: null },
+      ]);
+    }
 
-    cy = subDivider(RX + 4, cy, COL_W - 8, 'Supporting Metrics');
-    const csmW = (COL_W - 8) / 3;
-    statBlock(RX + 4,             cy, 'Unique Visitors',  fmtNum(cp.uniqueVisitors), pcp.uniqueVisitors);
-    statBlock(RX + 4 + csmW,      cy, 'Posts Published',  cp.postsPublished || '—',  null);
-    statBlock(RX + 4 + csmW * 2,  cy, 'Engagement Rate',  cpEngRate || '—',          null);
-    cy += 18;
-
-    if (cp.notes) narrative(RX + 4, cy, cp.notes, COL_W - 8);
+    narrative(cp.notes);
   } else {
-    noDataMessage(RX + 4, cy, COL_W - 8);
+    noDataMessage();
   }
 
-  // ── Footer ─────────────────────────────────────────────────────────────────
-  doc.setFillColor(...NAVY);
-  doc.rect(0, PAGE_H - 11, PAGE_W, 11, 'F');
-  doc.setFont('helvetica', 'normal');
-  doc.setFontSize(8);
-  doc.setTextColor(...WHITE);
-  doc.text(`Eventwise Monthly Marketing Report — ${report.month} ${report.year} — Confidential`, PAGE_W / 2, PAGE_H - 4, { align: 'center' });
-  doc.setTextColor(200, 200, 220);
-  doc.text('hello@eventwise.com · eventwise.com', PAGE_W - MARGIN, PAGE_H - 4, { align: 'right' });
+  // ── Final footer on last page ──
+  addFooter();
 
   doc.save(`Eventwise_Marketing_Report_${report.month}_${report.year}.pdf`);
 }
