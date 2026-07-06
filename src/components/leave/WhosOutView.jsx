@@ -153,21 +153,6 @@ export default function WhosOutView({ refresh, showAllStatuses = false }) {
           </div>
         )}
 
-        {/* Person filter */}
-        {allPeople.length > 1 && (
-          <div className="flex items-center gap-1 flex-wrap">
-            {allPeople.map(p => (
-              <button key={p} onClick={() => togglePerson(p)}
-                className={`px-2.5 py-1 text-xs font-medium rounded-lg border transition-colors ${personFilters.includes(p) ? 'bg-[#242450] text-white border-[#242450]' : 'bg-white text-[#5777AB] border-[#EBEBF5] hover:bg-[#F6F6FB]'}`}>
-                {p}
-              </button>
-            ))}
-            {personFilters.length > 0 && (
-              <button onClick={() => setPersonFilters([])} className="px-2 py-1 text-xs text-[#DC2626] hover:bg-[#FEF2F2] rounded-lg border border-[#FECACA]">Clear</button>
-            )}
-          </div>
-        )}
-
         {/* View toggle */}
         <div className="ml-auto flex border border-[#EBEBF5] rounded-lg overflow-hidden bg-white shrink-0">
           <button onClick={() => setViewMode('list')}

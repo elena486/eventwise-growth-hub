@@ -38,12 +38,20 @@ export default function Leave() {
           <h1 className="text-2xl font-bold text-[#242450]">Leave & Availability</h1>
           <p className="text-sm text-[#5777AB] mt-0.5">Team leave and working availability</p>
         </div>
-        <button
-          onClick={() => setShowForm(true)}
-          className="flex items-center gap-1.5 px-4 py-2 bg-[#8403C5] text-white text-sm font-semibold rounded-lg hover:bg-[#6B02A0] transition-colors"
-        >
-          <Plus className="w-4 h-4" /> Log Leave
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setShowForm(true)}
+            className="flex items-center gap-1.5 px-4 py-2 bg-[#8403C5] text-white text-sm font-semibold rounded-lg hover:bg-[#6B02A0] transition-colors"
+          >
+            <Plus className="w-4 h-4" /> Log Leave
+          </button>
+          <button
+            onClick={() => setActiveTab('my-availability')}
+            className="flex items-center gap-1.5 px-4 py-2 bg-white text-[#8403C5] text-sm font-semibold rounded-lg border border-[#8403C5]/30 hover:bg-[#F3E8FF] transition-colors"
+          >
+            <Plus className="w-4 h-4" /> Log Availability
+          </button>
+        </div>
       </div>
 
       {/* Tabs */}

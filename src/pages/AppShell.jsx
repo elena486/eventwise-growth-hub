@@ -68,7 +68,7 @@ const GROUPS = [
     { id: 'team-board', label: "Team To Do's" },
     { id: 'submit-request', label: 'Submit a Request' },
     { id: 'sprints', label: 'Sprints' },
-    { id: 'leave', label: 'Leave' },
+    { id: 'leave', label: 'Time Off & Availability' },
     { id: 'time-off', label: 'Time Off' },
     { id: 'competitors', label: 'Competitors' },
   ]},

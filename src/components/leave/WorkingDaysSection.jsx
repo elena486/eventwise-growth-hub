@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
-import { format, parseISO, addWeeks, startOfWeek } from 'date-fns';
+import { format, parseISO, addWeeks, addDays, startOfWeek } from 'date-fns';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 
 const DAYS = [
@@ -52,7 +52,9 @@ export default function WorkingDaysSection() {
   const allNames = [...new Set([...loggedNames, ...requiredNames])].sort();
   const getEntry = (name) => entries.find(e => e.personName === name);
 
-  const weekLabel = `${format(parseISO(weekCommencing), 'd MMM')} – ${format(addWeeks(parseISO(weekCommencing), 0), 'd MMM')}`;
+  const weekMonday = parseISO(weekCommencing);
+  const weekFriday = addDays(weekMonday, 4);
+  const weekLabel = `${format(weekMonday, 'd MMM')} – ${format(weekFriday, 'd MMM yyyy')}`;
 
   return (
     <div className="bg-white border border-[#EBEBF5] rounded-xl overflow-hidden">
