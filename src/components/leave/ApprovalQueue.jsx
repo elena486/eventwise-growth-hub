@@ -99,7 +99,7 @@ export default function ApprovalQueue({ currentUserName, onApproved }) {
   return (
     <div>
       <div className="flex items-center gap-2 mb-4">
-        <h2 className="text-[15px] font-bold text-[#242450]">Approval Queue</h2>
+        <h2 className="text-[15px] font-bold text-[#242450]">Pending Approval</h2>
         {entries.length > 0 && (
           <span className="px-2 py-0.5 text-xs font-bold bg-[#FEF9C3] text-[#A16207] rounded-full">{entries.length} pending</span>
         )}
@@ -107,7 +107,7 @@ export default function ApprovalQueue({ currentUserName, onApproved }) {
 
       {entries.length === 0 ? (
         <div className="bg-white border border-[#EBEBF5] rounded-xl px-6 py-10 text-center">
-          <p className="text-sm font-medium text-[#5777AB]">No pending leave requests</p>
+          <p className="text-sm font-medium text-[#5777AB]">No pending requests ✓</p>
         </div>
       ) : (
         <div className="bg-white border border-[#EBEBF5] rounded-xl overflow-hidden">

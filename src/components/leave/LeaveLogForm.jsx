@@ -43,8 +43,8 @@ export default function LeaveLogForm({ currentUserName, onClose, onSaved, inline
       status: needsApproval ? 'Requested' : 'Confirmed',
     });
     setSaving(false);
-    // Admin assigning to George/Martinique → show quick-approve prompt
-    if (isAdmin && needsApproval) {
+    // Admin assigning to George/Martinique → show quick-approve prompt (never for self-submissions)
+    if (isAdmin && needsApproval && targetPerson !== currentUserName) {
       setPendingEntry(entry);
       return;
     }
@@ -91,7 +91,7 @@ export default function LeaveLogForm({ currentUserName, onClose, onSaved, inline
             </button>
             <button onClick={handleSendToQueue}
               className="w-full py-2.5 text-sm font-medium text-[#5777AB] hover:bg-[#F6F6FB] border border-[#EBEBF5] rounded-lg transition-colors">
-              Send to approval queue
+              Send to Approval Requests
             </button>
           </div>
         </div>

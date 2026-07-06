@@ -27,7 +27,7 @@ export default function Leave() {
     { id: 'team-availability', label: 'Team Availability' },
     { id: 'my-availability', label: 'My Availability' },
     { id: 'log-time-off', label: 'Log Time Off' },
-    ...(canApprove ? [{ id: 'requests', label: 'Requests' }] : []),
+    ...(canApprove ? [{ id: 'requests', label: 'Approval Requests' }] : []),
   ];
 
   return (
