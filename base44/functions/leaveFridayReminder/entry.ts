@@ -56,12 +56,13 @@ Deno.serve(async (req) => {
       if (email) {
         await base44.asServiceRole.integrations.Core.SendEmail({
           to: email,
-          subject: 'Reminder: log your availability for next week',
+          subject: 'Reminder: Log your availability for next week',
           body:
             `<p>Hi ${member.name},</p>` +
-            `<p>This is a quick reminder to log your availability for next week (commencing <strong>${weekCommencing}</strong>) by end of day today.</p>` +
-            `<p>Please go to <strong>Leave → My Availability</strong> in the Eventwise Hub.</p>` +
-            `<p>Thanks!<br>Eventwise HQ</p>`,
+            `<p>Just a quick reminder to log your working days for next week before end of day today.</p>` +
+            `<p>The team uses this to know when they can reach you — it only takes a minute.</p>` +
+            `<p>Log your availability here:<br><a href="https://eventwise-hq.base44.app">https://eventwise-hq.base44.app</a></p>` +
+            `<p>Thanks,<br>Eventwise HQ</p>`,
           from_name: 'Eventwise HQ',
         });
       }
