@@ -7,6 +7,7 @@ import LeaveDetailModal from './LeaveDetailModal';
 import WorkingDaysSection from './WorkingDaysSection';
 import LeaveRowActions from './LeaveRowActions';
 import LeaveDeleteConfirm from './LeaveDeleteConfirm';
+import LeaveSummarySection from './LeaveSummary';
 import { useAuth } from '@/lib/AuthContext';
 
 const TYPE_STYLES = {
@@ -141,6 +142,8 @@ export default function WhosOutView({ refresh, showAllStatuses = false, showWork
 
   return (
     <div>
+      <LeaveSummarySection />
+
       {/* Toolbar: filters + view toggle */}
       <div className="flex flex-wrap items-center gap-3 mb-5">
         {/* Date filter pills */}
