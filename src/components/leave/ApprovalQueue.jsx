@@ -25,6 +25,13 @@ const AVATAR_COLORS = {
   George: 'bg-[#1D4ED8]', Martinique: 'bg-[#8403C5]',
 };
 
+const STATUS_STYLES = {
+  Confirmed: 'bg-[#E8F7F2] text-[#1D9E75]',
+  Approved:  'bg-[#EEF2F8] text-[#5777AB]',
+  Requested: 'bg-[#FFFBEB] text-[#A16207]',
+  Declined:  'bg-[#FEF2F2] text-[#DC2626]',
+};
+
 function Avatar({ name }) {
   const initials = (name || '?').split(' ').map(w => w[0]).slice(0, 2).join('').toUpperCase();
   const color = AVATAR_COLORS[name] || 'bg-[#5777AB]';
@@ -37,13 +44,18 @@ function Avatar({ name }) {
 
 export default function ApprovalQueue({ currentUserName, onApproved }) {
   const [entries, setEntries] = useState([]);
+  const [history, setHistory] = useState([]);
   const [loading, setLoading] = useState(true);
   const [declineConfirm, setDeclineConfirm] = useState(null);
 
   const load = async () => {
     setLoading(true);
-    const data = await base44.entities.LeaveEntry.filter({ status: 'Requested' }, 'startDate', 200);
-    setEntries(data);
+    const [pending, hist] = await Promise.all([
+      base44.entities.LeaveEntry.filter({ status: 'Requested' }, 'startDate', 200),
+      base44.entities.LeaveEntry.filter({ personName: { $in: ['George', 'Martinique'] } }, '-created_date', 500),
+    ]);
+    setEntries(pending);
+    setHistory(hist);
     setLoading(false);
   };
 
@@ -59,8 +71,8 @@ export default function ApprovalQueue({ currentUserName, onApproved }) {
       navigateTo: 'leave',
       recordId: entry.id,
     });
-    setEntries(prev => prev.filter(e => e.id !== entry.id));
     onApproved?.();
+    await load();
   };
 
   const handleDecline = async (entry) => {
@@ -73,8 +85,9 @@ export default function ApprovalQueue({ currentUserName, onApproved }) {
       navigateTo: 'leave',
       recordId: entry.id,
     });
-    setEntries(prev => prev.filter(e => e.id !== entry.id));
     setDeclineConfirm(null);
+    onApproved?.();
+    await load();
   };
 
   if (loading) return (
@@ -149,6 +162,57 @@ export default function ApprovalQueue({ currentUserName, onApproved }) {
           </table>
         </div>
       )}
+
+      {/* Full Request History */}
+      <div className="mt-8">
+        <h2 className="text-[15px] font-bold text-[#242450] mb-3">Full Request History</h2>
+        {history.length === 0 ? (
+          <div className="bg-white border border-[#EBEBF5] rounded-xl px-6 py-8 text-center">
+            <p className="text-sm text-[#5777AB]">No historical requests</p>
+          </div>
+        ) : (
+          <div className="bg-white border border-[#EBEBF5] rounded-xl overflow-hidden">
+            <table className="w-full">
+              <thead>
+                <tr className="border-b border-[#EBEBF5] bg-[#F6F6FB]">
+                  <th className="px-4 py-3 text-left text-[11px] font-semibold text-[#5777AB] uppercase tracking-[0.08em]">Person</th>
+                  <th className="px-4 py-3 text-left text-[11px] font-semibold text-[#5777AB] uppercase tracking-[0.08em]">Type</th>
+                  <th className="px-4 py-3 text-left text-[11px] font-semibold text-[#5777AB] uppercase tracking-[0.08em]">Start</th>
+                  <th className="px-4 py-3 text-left text-[11px] font-semibold text-[#5777AB] uppercase tracking-[0.08em]">End</th>
+                  <th className="px-4 py-3 text-left text-[11px] font-semibold text-[#5777AB] uppercase tracking-[0.08em]">Days</th>
+                  <th className="px-4 py-3 text-left text-[11px] font-semibold text-[#5777AB] uppercase tracking-[0.08em]">Status</th>
+                  <th className="px-4 py-3 text-left text-[11px] font-semibold text-[#5777AB] uppercase tracking-[0.08em]">Notes</th>
+                </tr>
+              </thead>
+              <tbody>
+                {history.map(entry => {
+                  const days = calcWorkingDays(entry.startDate, entry.endDate);
+                  return (
+                    <tr key={entry.id} className="border-b border-[#EBEBF5] hover:bg-[#F9FAFB] transition-colors">
+                      <td className="px-4 py-3">
+                        <div className="flex items-center gap-2">
+                          <Avatar name={entry.personName} />
+                          <span className="text-sm font-semibold text-[#242450]">{entry.personName}</span>
+                        </div>
+                      </td>
+                      <td className="px-4 py-3">
+                        <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-[#EEF2F8] text-[#5777AB]">{entry.type}</span>
+                      </td>
+                      <td className="px-4 py-3 text-sm text-[#1A1A3A]">{fmtDate(entry.startDate)}</td>
+                      <td className="px-4 py-3 text-sm text-[#1A1A3A]">{fmtDate(entry.endDate)}</td>
+                      <td className="px-4 py-3 text-sm font-semibold text-[#242450]">{days}</td>
+                      <td className="px-4 py-3">
+                        <span className={`text-[11px] font-semibold px-2.5 py-1 rounded-full ${STATUS_STYLES[entry.status] || 'bg-[#EBEBF5] text-[#5777AB]'}`}>{entry.status}</span>
+                      </td>
+                      <td className="px-4 py-3 text-xs text-[#5777AB] max-w-[200px]"><span className="line-clamp-2">{entry.notes || '—'}</span></td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
 
       {declineConfirm && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4" onClick={() => setDeclineConfirm(null)}>

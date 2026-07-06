@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useAuth } from '@/lib/AuthContext';
+import { Plus } from 'lucide-react';
 import LeaveLogForm from '@/components/leave/LeaveLogForm';
 import ApprovalQueue from '@/components/leave/ApprovalQueue';
 import WhosOutView from '@/components/leave/WhosOutView';
@@ -12,12 +13,14 @@ export default function Leave() {
   const { user } = useAuth();
   const [refresh, setRefresh] = useState(0);
   const [activeTab, setActiveTab] = useState('team-availability');
+  const [showForm, setShowForm] = useState(false);
 
   const firstName = user?.full_name?.split(' ')[0] || '';
   const canApprove = CAN_APPROVE.includes(firstName);
 
   const handleSaved = () => {
     setRefresh(n => n + 1);
+    setShowForm(false);
   };
 
   const tabs = [
@@ -30,9 +33,25 @@ export default function Leave() {
   return (
     <div className="bg-[#F6F6FB] p-8 font-dm min-h-full overflow-y-auto">
       {/* Header */}
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold text-[#242450]">Time Off & Availability</h1>
-        <p className="text-sm text-[#5777AB] mt-0.5">Team leave and working availability</p>
+      <div className="flex items-start justify-between mb-6">
+        <div>
+          <h1 className="text-2xl font-bold text-[#242450]">Time Off & Availability</h1>
+          <p className="text-sm text-[#5777AB] mt-0.5">Team leave and working availability</p>
+        </div>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setShowForm(true)}
+            className="flex items-center gap-1.5 px-4 py-2 bg-[#8403C5] text-white text-sm font-semibold rounded-lg hover:bg-[#6B02A0] transition-colors"
+          >
+            <Plus className="w-4 h-4" /> Log Time Off
+          </button>
+          <button
+            onClick={() => setActiveTab('my-availability')}
+            className="flex items-center gap-1.5 px-4 py-2 bg-white text-[#8403C5] text-sm font-semibold rounded-lg border border-[#8403C5]/30 hover:bg-[#F3E8FF] transition-colors"
+          >
+            <Plus className="w-4 h-4" /> Log Availability
+          </button>
+        </div>
       </div>
 
       {/* Tabs */}
@@ -53,6 +72,14 @@ export default function Leave() {
       )}
       {activeTab === 'requests' && canApprove && (
         <ApprovalQueue currentUserName={firstName} onApproved={() => setRefresh(n => n + 1)} />
+      )}
+
+      {showForm && (
+        <LeaveLogForm
+          currentUserName={firstName}
+          onClose={() => setShowForm(false)}
+          onSaved={handleSaved}
+        />
       )}
     </div>
   );
