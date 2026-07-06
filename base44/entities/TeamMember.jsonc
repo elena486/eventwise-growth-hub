@@ -1,0 +1,18 @@
+{
+  "name": "TeamMember",
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string",
+      "description": "Team member first name"
+    },
+    "availabilityRequired": {
+      "type": "boolean",
+      "default": false,
+      "description": "True if this person must log weekly availability (fractional team members e.g. Ramesh)"
+    }
+  },
+  "required": [
+    "name"
+  ]
+}

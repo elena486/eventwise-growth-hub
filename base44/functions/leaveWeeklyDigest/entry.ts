@@ -12,7 +12,6 @@ Deno.serve(async (req) => {
     } catch { /* no body — normal scheduled invocation */ }
 
     // ── Pull recipients dynamically from the Users table ──
-    // Send to every app user EXCEPT the external VA.
     const EXCLUDE_EMAILS = ['monnie@intheloopva.com'];
     const allUsers = await base44.asServiceRole.entities.User.list('-created_date', 100);
     const recipients = allUsers.filter(
@@ -38,12 +37,23 @@ Deno.serve(async (req) => {
     const weekEndStr = isoDate(sunday);
 
     // ── Query leave entries overlapping this week ──
-    // Entry overlaps the week when startDate <= weekEnd AND endDate >= weekStart
     const entries = await base44.asServiceRole.entities.LeaveEntry.filter({
       status: { $in: ['Confirmed', 'Approved'] },
       startDate: { $lte: weekEndStr },
       endDate: { $gte: weekStartStr },
     });
+
+    // ── Query working availability for this week + required team members ──
+    const [availability, teamMembers] = await Promise.all([
+      base44.asServiceRole.entities.WeeklyAvailability.filter({ weekCommencing: weekStartStr }),
+      base44.asServiceRole.entities.TeamMember.list(),
+    ]);
+    const requiredNames = teamMembers
+      .filter((m) => m.availabilityRequired)
+      .map((m) => m.name);
+    const loggedNames = [...new Set(availability.map((a) => a.personName).filter(Boolean))];
+    const workingNames = [...new Set([...loggedNames, ...requiredNames])].sort();
+    const getAvail = (name) => availability.find((a) => a.personName === name);
 
     const fmtDate = (d) => {
       if (!d) return '';
@@ -53,47 +63,87 @@ Deno.serve(async (req) => {
         return `${parseInt(parts[2])} ${months[parseInt(parts[1]) - 1]}`;
       } catch { return d; }
     };
+    const fmtDateFull = (d) => {
+      if (!d) return '';
+      try {
+        const parts = d.split('-');
+        const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+        return `${parseInt(parts[2])} ${months[parseInt(parts[1]) - 1]} ${parts[0]}`;
+      } catch { return d; }
+    };
+
+    const DAY_KEYS = ['monday','tuesday','wednesday','thursday','friday'];
+    const DAY_LABELS = ['Mon','Tue','Wed','Thu','Fri'];
+    const fmtDayLine = (a) => {
+      return DAY_KEYS.map((k, i) => {
+        if (a[k]) {
+          const hours = a[`${k}Hours`];
+          return hours ? `${DAY_LABELS[i]} ✓ (${hours})` : `${DAY_LABELS[i]} ✓`;
+        }
+        return `${DAY_LABELS[i]} –`;
+      }).join(' · ');
+    };
 
     entries.sort((a, b) => (a.startDate || '').localeCompare(b.startDate || ''));
 
-    const subject = `Eventwise — Leave digest for week of ${fmtDate(weekStartStr)}`;
+    const subject = `Team Availability This Week — ${fmtDateFull(weekStartStr)}`;
 
-    let body;
+    // ── Build ON LEAVE section ──
+    let leaveSection;
     if (entries.length === 0) {
-      body =
-        `<p>Hi,</p>` +
-        `<p>No team members are on leave this week (week of <strong>${fmtDate(weekStartStr)}</strong>).</p>` +
-        `<p>Have a great week!<br>Eventwise</p>`;
+      leaveSection = `<p>No one on leave this week.</p>`;
     } else {
-      const rows = entries
+      const leaveRows = entries
         .map((e) => {
           const person = e.personName || '—';
+          const type = e.type || 'Leave';
           const start = fmtDate(e.startDate);
           const end = fmtDate(e.endDate);
-          const type = e.type || 'Leave';
-          const dates = start === end ? start : `${start} – ${end}`;
-          return (
-            `<tr>` +
+          const dates = start === end ? start : `${start} to ${end}`;
+          return `<tr>` +
             `<td style="padding:6px 12px;font-weight:600;">${person}</td>` +
-            `<td style="padding:6px 12px;">${dates}</td>` +
             `<td style="padding:6px 12px;">${type}</td>` +
-            `</tr>`
-          );
+            `<td style="padding:6px 12px;">${dates}</td>` +
+            `</tr>`;
         })
         .join('');
-      body =
-        `<p>Hi,</p>` +
-        `<p>Here's the leave summary for the week of <strong>${fmtDate(weekStartStr)}</strong>:</p>` +
+      leaveSection =
         `<table style="border-collapse:collapse;font-size:14px;font-family:Arial,sans-serif;">` +
         `<thead><tr style="background:#F6F6FB;">` +
-        `<th style="padding:6px 12px;text-align:left;">Team member</th>` +
-        `<th style="padding:6px 12px;text-align:left;">Dates</th>` +
+        `<th style="padding:6px 12px;text-align:left;">Name</th>` +
         `<th style="padding:6px 12px;text-align:left;">Type</th>` +
+        `<th style="padding:6px 12px;text-align:left;">Dates</th>` +
         `</tr></thead>` +
-        `<tbody>${rows}</tbody>` +
-        `</table>` +
-        `<p style="margin-top:16px;">Have a great week!<br>Eventwise</p>`;
+        `<tbody>${leaveRows}</tbody>` +
+        `</table>`;
     }
+
+    // ── Build WORKING AVAILABILITY section ──
+    let workingSection;
+    if (workingNames.length === 0) {
+      workingSection = `<p>No working availability logged this week.</p>`;
+    } else {
+      const workingRows = workingNames
+        .map((name) => {
+          const a = getAvail(name);
+          const line = a
+            ? fmtDayLine(a)
+            : 'Not yet submitted for this week';
+          const style = a ? '' : 'color:#A16207;font-style:italic;';
+          return `<p style="margin:4px 0;${style}"><strong>${name}</strong> — ${line}</p>`;
+        })
+        .join('');
+      workingSection = workingRows;
+    }
+
+    const body =
+      `<p>Hi team,</p>` +
+      `<p>Here's a quick overview of team availability this week.</p>` +
+      `<h3 style="margin-top:20px;color:#242450;">ON LEAVE</h3>` +
+      leaveSection +
+      `<h3 style="margin-top:24px;color:#242450;">WORKING AVAILABILITY</h3>` +
+      workingSection +
+      `<p style="margin-top:20px;">Have a great week,<br>Eventwise HQ</p>`;
 
     if (dryRun) {
       return Response.json({
@@ -101,11 +151,14 @@ Deno.serve(async (req) => {
         dryRun: true,
         recipients: recipients.map((r) => ({ name: r.full_name, email: r.email })),
         recipientCount: recipients.length,
-        entries: entries.map((e) => ({ person: e.personName, start: e.startDate, end: e.endDate, type: e.type, status: e.status })),
-        entryCount: entries.length,
+        leaveEntries: entries.map((e) => ({ person: e.personName, start: e.startDate, end: e.endDate, type: e.type, status: e.status })),
+        leaveCount: entries.length,
+        workingNames,
+        availability: availability.map((a) => ({ personName: a.personName, weekCommencing: a.weekCommencing })),
         weekStart: weekStartStr,
         weekEnd: weekEndStr,
         subject,
+        bodyPreview: body.substring(0, 500),
       });
     }
 
@@ -115,7 +168,7 @@ Deno.serve(async (req) => {
         to: r.email,
         subject,
         body,
-        from_name: 'Eventwise Leave',
+        from_name: 'Eventwise HQ',
       });
       sent++;
     }
@@ -124,7 +177,8 @@ Deno.serve(async (req) => {
       ok: true,
       sent,
       recipients: recipients.map((r) => r.email),
-      entryCount: entries.length,
+      leaveCount: entries.length,
+      workingCount: workingNames.length,
       weekStart: weekStartStr,
       weekEnd: weekEndStr,
     });

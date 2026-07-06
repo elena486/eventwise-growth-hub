@@ -1,0 +1,68 @@
+{
+  "name": "WeeklyAvailability",
+  "type": "object",
+  "properties": {
+    "personName": {
+      "type": "string",
+      "description": "Team member name (first name, matching convention used across the hub)"
+    },
+    "weekCommencing": {
+      "type": "string",
+      "format": "date",
+      "description": "Monday of the relevant week (YYYY-MM-DD)"
+    },
+    "monday": {
+      "type": "boolean",
+      "default": false,
+      "description": "Working on Monday"
+    },
+    "mondayHours": {
+      "type": "string",
+      "description": "Optional hours, e.g. 9am-1pm"
+    },
+    "tuesday": {
+      "type": "boolean",
+      "default": false,
+      "description": "Working on Tuesday"
+    },
+    "tuesdayHours": {
+      "type": "string"
+    },
+    "wednesday": {
+      "type": "boolean",
+      "default": false,
+      "description": "Working on Wednesday"
+    },
+    "wednesdayHours": {
+      "type": "string"
+    },
+    "thursday": {
+      "type": "boolean",
+      "default": false,
+      "description": "Working on Thursday"
+    },
+    "thursdayHours": {
+      "type": "string"
+    },
+    "friday": {
+      "type": "boolean",
+      "default": false,
+      "description": "Working on Friday"
+    },
+    "fridayHours": {
+      "type": "string"
+    },
+    "notes": {
+      "type": "string",
+      "description": "Optional notes, e.g. travelling Thursday, online from 3pm"
+    },
+    "submittedAt": {
+      "type": "string",
+      "description": "ISO timestamp of submission (auto-set)"
+    }
+  },
+  "required": [
+    "personName",
+    "weekCommencing"
+  ]
+}

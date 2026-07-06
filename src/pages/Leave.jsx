@@ -5,6 +5,7 @@ import LeaveLogForm from '@/components/leave/LeaveLogForm';
 import ApprovalQueue from '@/components/leave/ApprovalQueue';
 import WhosOutView from '@/components/leave/WhosOutView';
 import WhosOutBanner from '@/components/leave/WhosOutBanner';
+import MyAvailability from '@/components/leave/MyAvailability';
 
 // Only Elena can see the approval queue
 const CAN_APPROVE = ['Elena'];
@@ -13,7 +14,7 @@ export default function Leave() {
   const { user } = useAuth();
   const [showForm, setShowForm] = useState(false);
   const [refresh, setRefresh] = useState(0);
-  const [activeTab, setActiveTab] = useState('whos-out');
+  const [activeTab, setActiveTab] = useState('team-availability');
 
   const firstName = user?.full_name?.split(' ')[0] || '';
   const canApprove = CAN_APPROVE.includes(firstName);
@@ -24,7 +25,8 @@ export default function Leave() {
   };
 
   const tabs = [
-    { id: 'whos-out', label: "Who's Out" },
+    { id: 'team-availability', label: 'Team Availability' },
+    { id: 'my-availability', label: 'My Availability' },
     ...(canApprove ? [{ id: 'approval', label: 'Approval Queue' }] : []),
   ];
 
@@ -33,8 +35,8 @@ export default function Leave() {
       {/* Header */}
       <div className="flex items-start justify-between mb-6">
         <div>
-          <h1 className="text-2xl font-bold text-[#242450]">Leave & Holiday</h1>
-          <p className="text-sm text-[#5777AB] mt-0.5">Team leave tracker</p>
+          <h1 className="text-2xl font-bold text-[#242450]">Leave & Availability</h1>
+          <p className="text-sm text-[#5777AB] mt-0.5">Team leave and working availability</p>
         </div>
         <button
           onClick={() => setShowForm(true)}
@@ -45,19 +47,18 @@ export default function Leave() {
       </div>
 
       {/* Tabs */}
-      {tabs.length > 1 && (
-        <div className="flex gap-1 mb-6 border-b border-[#EBEBF5]">
-          {tabs.map(t => (
-            <button key={t.id} onClick={() => setActiveTab(t.id)}
-              className={`px-4 py-2 text-sm font-medium transition-colors relative ${activeTab === t.id ? 'text-[#8403C5] font-semibold' : 'text-[#5777AB] hover:text-[#242450]'}`}>
-              {t.label}
-              {activeTab === t.id && <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-[#8403C5] rounded-t-full" />}
-            </button>
-          ))}
-        </div>
-      )}
+      <div className="flex gap-1 mb-6 border-b border-[#EBEBF5]">
+        {tabs.map(t => (
+          <button key={t.id} onClick={() => setActiveTab(t.id)}
+            className={`px-4 py-2 text-sm font-medium transition-colors relative ${activeTab === t.id ? 'text-[#8403C5] font-semibold' : 'text-[#5777AB] hover:text-[#242450]'}`}>
+            {t.label}
+            {activeTab === t.id && <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-[#8403C5] rounded-t-full" />}
+          </button>
+        ))}
+      </div>
 
-      {activeTab === 'whos-out' && <WhosOutView refresh={refresh} />}
+      {activeTab === 'team-availability' && <WhosOutView refresh={refresh} />}
+      {activeTab === 'my-availability' && <MyAvailability />}
       {activeTab === 'approval' && canApprove && (
         <ApprovalQueue currentUserName={firstName} onApproved={() => setRefresh(n => n + 1)} />
       )}

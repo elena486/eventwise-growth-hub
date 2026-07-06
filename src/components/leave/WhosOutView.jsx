@@ -4,6 +4,7 @@ import { format, parseISO, startOfWeek, endOfWeek, startOfMonth, endOfMonth, add
 import { List, CalendarDays } from 'lucide-react';
 import LeaveCalendar from './LeaveCalendar';
 import LeaveDetailModal from './LeaveDetailModal';
+import WorkingDaysSection from './WorkingDaysSection';
 import { useAuth } from '@/lib/AuthContext';
 
 const TYPE_STYLES = {
@@ -250,6 +251,11 @@ export default function WhosOutView({ refresh, showAllStatuses = false }) {
           </div>
         )
       )}
+
+      {/* Working Days section */}
+      <div className="mt-6">
+        <WorkingDaysSection />
+      </div>
 
       {selectedEntry && (
         <LeaveDetailModal
