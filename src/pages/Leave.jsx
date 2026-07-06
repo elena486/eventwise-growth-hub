@@ -5,6 +5,7 @@ import LeaveLogForm from '@/components/leave/LeaveLogForm';
 import ApprovalQueue from '@/components/leave/ApprovalQueue';
 import WhosOutView from '@/components/leave/WhosOutView';
 import MyAvailability from '@/components/leave/MyAvailability';
+import LeaveSummary from '@/components/leave/LeaveSummary';
 
 // Elena and Chris can see the Requests (approval) tab
 const CAN_APPROVE = ['Elena', 'Chris'];
@@ -28,6 +29,7 @@ export default function Leave() {
     { id: 'my-availability', label: 'My Availability' },
     { id: 'log-time-off', label: 'Log Time Off' },
     ...(canApprove ? [{ id: 'requests', label: 'Approval Requests' }] : []),
+    ...(canApprove ? [{ id: 'leave-summary', label: 'Leave Summary' }] : []),
   ];
 
   return (
@@ -69,6 +71,9 @@ export default function Leave() {
       {activeTab === 'my-availability' && <MyAvailability />}
       {activeTab === 'log-time-off' && (
         <LeaveLogForm currentUserName={firstName} inline onSaved={handleSaved} onClose={() => setActiveTab('team-availability')} />
+      )}
+      {activeTab === 'leave-summary' && canApprove && (
+        <LeaveSummary currentUserName={firstName} />
       )}
       {activeTab === 'requests' && canApprove && (
         <ApprovalQueue currentUserName={firstName} onApproved={() => setRefresh(n => n + 1)} />

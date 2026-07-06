@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
 import { Check, X } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
+import LeaveRowActions from './LeaveRowActions';
+import LeaveDeleteConfirm from './LeaveDeleteConfirm';
 
 function calcWorkingDays(start, end) {
   if (!start || !end) return 0;
@@ -47,6 +49,7 @@ export default function ApprovalQueue({ currentUserName, onApproved }) {
   const [history, setHistory] = useState([]);
   const [loading, setLoading] = useState(true);
   const [declineConfirm, setDeclineConfirm] = useState(null);
+  const [deleteTarget, setDeleteTarget] = useState(null);
 
   const load = async () => {
     setLoading(true);
@@ -88,6 +91,13 @@ export default function ApprovalQueue({ currentUserName, onApproved }) {
     setDeclineConfirm(null);
     onApproved?.();
     await load();
+  };
+
+  const handleDelete = async (entry) => {
+    await base44.entities.LeaveEntry.delete(entry.id);
+    setEntries(prev => prev.filter(e => e.id !== entry.id));
+    setHistory(prev => prev.filter(e => e.id !== entry.id));
+    setDeleteTarget(null);
   };
 
   if (loading) return (
@@ -153,6 +163,7 @@ export default function ApprovalQueue({ currentUserName, onApproved }) {
                         >
                           <X className="w-3 h-3" /> Decline
                         </button>
+                        <LeaveRowActions entry={entry} currentUserName={currentUserName} onDelete={setDeleteTarget} />
                       </div>
                     </td>
                   </tr>
@@ -182,6 +193,7 @@ export default function ApprovalQueue({ currentUserName, onApproved }) {
                   <th className="px-4 py-3 text-left text-[11px] font-semibold text-[#5777AB] uppercase tracking-[0.08em]">Days</th>
                   <th className="px-4 py-3 text-left text-[11px] font-semibold text-[#5777AB] uppercase tracking-[0.08em]">Status</th>
                   <th className="px-4 py-3 text-left text-[11px] font-semibold text-[#5777AB] uppercase tracking-[0.08em]">Notes</th>
+                  <th className="px-4 py-3"></th>
                 </tr>
               </thead>
               <tbody>
@@ -205,6 +217,9 @@ export default function ApprovalQueue({ currentUserName, onApproved }) {
                         <span className={`text-[11px] font-semibold px-2.5 py-1 rounded-full ${STATUS_STYLES[entry.status] || 'bg-[#EBEBF5] text-[#5777AB]'}`}>{entry.status}</span>
                       </td>
                       <td className="px-4 py-3 text-xs text-[#5777AB] max-w-[200px]"><span className="line-clamp-2">{entry.notes || '—'}</span></td>
+                      <td className="px-4 py-3 text-right">
+                        <LeaveRowActions entry={entry} currentUserName={currentUserName} onDelete={setDeleteTarget} />
+                      </td>
                     </tr>
                   );
                 })}
@@ -213,6 +228,10 @@ export default function ApprovalQueue({ currentUserName, onApproved }) {
           </div>
         )}
       </div>
+
+      {deleteTarget && (
+        <LeaveDeleteConfirm entry={deleteTarget} onConfirm={() => handleDelete(deleteTarget)} onClose={() => setDeleteTarget(null)} />
+      )}
 
       {declineConfirm && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4" onClick={() => setDeclineConfirm(null)}>

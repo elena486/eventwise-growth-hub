@@ -10,6 +10,15 @@
       "type": "boolean",
       "default": false,
       "description": "True if this person must log weekly availability (fractional team members e.g. Ramesh)"
+    },
+    "annualLeaveEntitlement": {
+      "type": "number",
+      "default": 25,
+      "description": "Annual leave entitlement in days"
+    },
+    "role": {
+      "type": "string",
+      "description": "Team member role or job title"
     }
   },
   "required": [

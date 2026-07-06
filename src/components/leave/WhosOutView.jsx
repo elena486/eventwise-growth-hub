@@ -5,6 +5,8 @@ import { List, CalendarDays } from 'lucide-react';
 import LeaveCalendar from './LeaveCalendar';
 import LeaveDetailModal from './LeaveDetailModal';
 import WorkingDaysSection from './WorkingDaysSection';
+import LeaveRowActions from './LeaveRowActions';
+import LeaveDeleteConfirm from './LeaveDeleteConfirm';
 import { useAuth } from '@/lib/AuthContext';
 
 const TYPE_STYLES = {
@@ -72,6 +74,7 @@ export default function WhosOutView({ refresh, showAllStatuses = false, showWork
   const [personFilters, setPersonFilters] = useState([]);
   const [viewMode, setViewMode] = useState('list'); // 'list' | 'calendar'
   const [selectedEntry, setSelectedEntry] = useState(null);
+  const [deleteTarget, setDeleteTarget] = useState(null);
 
   const load = async () => {
     setLoading(true);
@@ -81,6 +84,12 @@ export default function WhosOutView({ refresh, showAllStatuses = false, showWork
     const data = await base44.entities.LeaveEntry.filter(query, 'startDate', 500);
     setEntries(data);
     setLoading(false);
+  };
+
+  const handleDelete = async (entry) => {
+    await base44.entities.LeaveEntry.delete(entry.id);
+    setEntries(prev => prev.filter(e => e.id !== entry.id));
+    setDeleteTarget(null);
   };
 
   useEffect(() => { load(); }, [refresh]);
@@ -195,6 +204,7 @@ export default function WhosOutView({ refresh, showAllStatuses = false, showWork
                   <th className="px-4 py-3 text-left text-[11px] font-semibold text-[#5777AB] uppercase tracking-[0.08em]">Days</th>
                   {showAllStatuses && <th className="px-4 py-3 text-left text-[11px] font-semibold text-[#5777AB] uppercase tracking-[0.08em]">Status</th>}
                   {hasNotes && <th className="px-4 py-3 text-left text-[11px] font-semibold text-[#5777AB] uppercase tracking-[0.08em]">Notes</th>}
+                  <th className="px-4 py-3"></th>
                 </tr>
               </thead>
               <tbody>
@@ -228,6 +238,9 @@ export default function WhosOutView({ refresh, showAllStatuses = false, showWork
                         </td>
                       )}
                       {hasNotes && <td className="px-4 py-3 text-xs text-[#5777AB] max-w-[200px]"><span className="line-clamp-2">{entry.notes || '—'}</span></td>}
+                      <td className="px-4 py-3 text-right">
+                        <LeaveRowActions entry={entry} currentUserName={currentUserName} onEdit={setSelectedEntry} onDelete={setDeleteTarget} />
+                      </td>
                     </tr>
                   );
                 })}
@@ -258,6 +271,10 @@ export default function WhosOutView({ refresh, showAllStatuses = false, showWork
             setSelectedEntry(null);
           }}
         />
+      )}
+
+      {deleteTarget && (
+        <LeaveDeleteConfirm entry={deleteTarget} onConfirm={() => handleDelete(deleteTarget)} onClose={() => setDeleteTarget(null)} />
       )}
     </div>
   );
