@@ -26,6 +26,7 @@ export default function Leave() {
 
   const tabs = [
     { id: 'team-availability', label: 'Team Availability' },
+    { id: 'time-off-requests', label: 'Time Off Requests' },
     { id: 'my-availability', label: 'My Availability' },
     ...(canApprove ? [{ id: 'approval', label: 'Approval Queue' }] : []),
   ];
@@ -43,7 +44,7 @@ export default function Leave() {
             onClick={() => setShowForm(true)}
             className="flex items-center gap-1.5 px-4 py-2 bg-[#8403C5] text-white text-sm font-semibold rounded-lg hover:bg-[#6B02A0] transition-colors"
           >
-            <Plus className="w-4 h-4" /> Log Leave
+            <Plus className="w-4 h-4" /> Log Time Off
           </button>
           <button
             onClick={() => setActiveTab('my-availability')}
@@ -66,6 +67,7 @@ export default function Leave() {
       </div>
 
       {activeTab === 'team-availability' && <WhosOutView refresh={refresh} />}
+      {activeTab === 'time-off-requests' && <WhosOutView refresh={refresh} showAllStatuses={true} showWorkingDays={false} />}
       {activeTab === 'my-availability' && <MyAvailability />}
       {activeTab === 'approval' && canApprove && (
         <ApprovalQueue currentUserName={firstName} onApproved={() => setRefresh(n => n + 1)} />

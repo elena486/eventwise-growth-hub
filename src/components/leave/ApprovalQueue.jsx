@@ -51,12 +51,28 @@ export default function ApprovalQueue({ currentUserName, onApproved }) {
 
   const handleApprove = async (entry) => {
     await base44.entities.LeaveEntry.update(entry.id, { status: 'Approved', approvedBy: currentUserName });
+    await base44.entities.Notification.create({
+      recipientName: entry.personName,
+      type: 'task_status_changed',
+      message: `${currentUserName} approved your ${entry.type} request (${fmtDate(entry.startDate)} – ${fmtDate(entry.endDate)}).`,
+      actorName: currentUserName,
+      navigateTo: 'leave',
+      recordId: entry.id,
+    });
     setEntries(prev => prev.filter(e => e.id !== entry.id));
     onApproved?.();
   };
 
   const handleDecline = async (entry) => {
     await base44.entities.LeaveEntry.update(entry.id, { status: 'Declined' });
+    await base44.entities.Notification.create({
+      recipientName: entry.personName,
+      type: 'task_status_changed',
+      message: `${currentUserName} declined your ${entry.type} request (${fmtDate(entry.startDate)} – ${fmtDate(entry.endDate)}).`,
+      actorName: currentUserName,
+      navigateTo: 'leave',
+      recordId: entry.id,
+    });
     setEntries(prev => prev.filter(e => e.id !== entry.id));
     setDeclineConfirm(null);
   };

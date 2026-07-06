@@ -61,7 +61,7 @@ const DATE_FILTERS = [
 
 // showAllStatuses = true means show all (for Time Off tab which shows history)
 // default = false means only Confirmed/Approved (for Leave tab who's out view)
-export default function WhosOutView({ refresh, showAllStatuses = false }) {
+export default function WhosOutView({ refresh, showAllStatuses = false, showWorkingDays = true }) {
   const { user } = useAuth();
   const currentUserName = user?.full_name?.split(' ')[0] || '';
   const [entries, setEntries] = useState([]);
@@ -238,9 +238,11 @@ export default function WhosOutView({ refresh, showAllStatuses = false }) {
       )}
 
       {/* Working Days section */}
-      <div className="mt-6">
-        <WorkingDaysSection />
-      </div>
+      {showWorkingDays && (
+        <div className="mt-6">
+          <WorkingDaysSection />
+        </div>
+      )}
 
       {selectedEntry && (
         <LeaveDetailModal

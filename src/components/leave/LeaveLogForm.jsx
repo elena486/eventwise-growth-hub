@@ -113,7 +113,7 @@ export default function LeaveLogForm({ currentUserName, onClose, onSaved }) {
     <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4" onClick={onClose}>
       <div className="bg-white rounded-xl shadow-2xl w-full max-w-md p-6" onClick={e => e.stopPropagation()}>
         <div className="flex items-center justify-between mb-5">
-          <h3 className="text-base font-bold text-[#242450]">Log Leave</h3>
+          <h3 className="text-base font-bold text-[#242450]">Log Time Off</h3>
           <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-[#F6F6FB] text-[#9CA3AF]"><X className="w-4 h-4" /></button>
         </div>
         <div className="space-y-4">
@@ -164,7 +164,7 @@ export default function LeaveLogForm({ currentUserName, onClose, onSaved }) {
           <button onClick={onClose} className="px-4 py-2 text-sm font-medium text-[#5777AB] hover:bg-[#F6F6FB] rounded-lg">Cancel</button>
           <button onClick={handleSubmit} disabled={!isValid || saving}
             className="px-5 py-2 text-sm font-semibold bg-[#8403C5] text-white rounded-lg hover:bg-[#6B02A0] disabled:bg-[#D8D8EE] disabled:text-[#9CA3AF] transition-colors">
-            {saving ? 'Saving…' : (needsApproval && !isAdmin) ? 'Submit Request' : 'Log Leave'}
+            {saving ? 'Saving…' : (needsApproval && !isAdmin) ? 'Submit Request' : 'Log Time Off'}
           </button>
         </div>
       </div>
