@@ -251,7 +251,7 @@ export default function Sprints() {
     return true;
   });
 
-  const thisWeek = currentWeekStart();
+  const viewedWeek = effectiveTo;
 
   const memberRag = {};
   MEMBERS.forEach(m => {
@@ -276,8 +276,8 @@ export default function Sprints() {
     else if (worst === 'red') offTrack++;
   });
 
-  const submittedThisWeek = MEMBERS.filter(m => filteredSubs.some(s => s.memberName === m.name && s.weekStart === thisWeek));
-  const notSubmittedThisWeek = MEMBERS.filter(m => !filteredSubs.some(s => s.memberName === m.name && s.weekStart === thisWeek));
+  const submittedThisWeek = MEMBERS.filter(m => filteredSubs.some(s => s.memberName === m.name && s.weekStart === viewedWeek));
+  const notSubmittedThisWeek = MEMBERS.filter(m => !filteredSubs.some(s => s.memberName === m.name && s.weekStart === viewedWeek));
   const needsAttention = MEMBERS.filter(m => memberRag[m.id] === 'red').length;
   const pendingUpdates = notSubmittedThisWeek.length;
 
@@ -582,7 +582,7 @@ export default function Sprints() {
                   key={member.id}
                   member={member}
                   submissions={filteredSubs}
-                  thisWeek={thisWeek}
+                  thisWeek={viewedWeek}
                   onView={setSelectedMember}
                   periodLabel={periodLabel}
                 />
