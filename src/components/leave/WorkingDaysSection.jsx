@@ -29,6 +29,7 @@ function weekCommencingForDate(d) {
 export default function WorkingDaysSection() {
   const [weekOffset, setWeekOffset] = useState(0);
   const [entries, setEntries] = useState([]);
+  const [nextWeekEntries, setNextWeekEntries] = useState([]);
   const [teamMembers, setTeamMembers] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -37,11 +38,14 @@ export default function WorkingDaysSection() {
 
   useEffect(() => {
     setLoading(true);
+    const nextWeekCommencing = format(addWeeks(weekDate, 1), 'yyyy-MM-dd');
     Promise.all([
       base44.entities.WeeklyAvailability.filter({ weekCommencing }),
+      base44.entities.WeeklyAvailability.filter({ weekCommencing: nextWeekCommencing }),
       base44.entities.TeamMember.list(),
-    ]).then(([data, members]) => {
+    ]).then(([data, nextData, members]) => {
       setEntries(data);
+      setNextWeekEntries(nextData);
       setTeamMembers(members);
       setLoading(false);
     }).catch(() => setLoading(false));
@@ -140,7 +144,11 @@ export default function WorkingDaysSection() {
                     })
                   ) : (
                     <td colSpan={5} className="px-3 py-3 text-center">
-                      <span className="text-[11px] font-semibold text-[#A16207] bg-[#FFFBEB] px-2.5 py-1 rounded-full">Not submitted</span>
+                      {nextWeekEntries.find(e => e.personName === name) ? (
+                        <span className="text-[11px] font-semibold text-[#1D9E75] bg-[#E8F7F2] px-2.5 py-1 rounded-full">✓ Logged for next week</span>
+                      ) : (
+                        <span className="text-[11px] font-semibold text-[#A16207] bg-[#FFFBEB] px-2.5 py-1 rounded-full">Not submitted</span>
+                      )}
                     </td>
                   )}
                 </tr>

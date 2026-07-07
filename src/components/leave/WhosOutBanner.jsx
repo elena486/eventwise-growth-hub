@@ -33,6 +33,7 @@ const DAY_LABELS = ['Mon','Tue','Wed','Thu','Fri'];
 export default function WhosOutBanner({ onNavigate }) {
   const [entries, setEntries] = useState([]);
   const [availability, setAvailability] = useState([]);
+  const [nextWeekAvailability, setNextWeekAvailability] = useState([]);
   const [teamMembers, setTeamMembers] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -40,13 +41,16 @@ export default function WhosOutBanner({ onNavigate }) {
     const today = format(new Date(), 'yyyy-MM-dd');
     const inSevenDays = format(addDays(new Date(), 7), 'yyyy-MM-dd');
     const weekCommencing = format(startOfWeek(new Date(), { weekStartsOn: 1 }), 'yyyy-MM-dd');
+    const nextWeekCommencing = format(addDays(startOfWeek(new Date(), { weekStartsOn: 1 }), 7), 'yyyy-MM-dd');
     Promise.all([
       base44.entities.LeaveEntry.filter({ status: { $in: ['Confirmed', 'Approved'] } }, 'startDate', 100),
       base44.entities.WeeklyAvailability.filter({ weekCommencing }),
+      base44.entities.WeeklyAvailability.filter({ weekCommencing: nextWeekCommencing }),
       base44.entities.TeamMember.list(),
-    ]).then(([leaveData, availData, members]) => {
+    ]).then(([leaveData, availData, nextAvailData, members]) => {
       setEntries(leaveData.filter(e => e.startDate <= inSevenDays && e.endDate >= today));
       setAvailability(availData);
+      setNextWeekAvailability(nextAvailData);
       setTeamMembers(members);
       setLoading(false);
     }).catch(() => setLoading(false));
@@ -109,15 +113,17 @@ export default function WhosOutBanner({ onNavigate }) {
             const a = getAvail(name);
             const color = getAvatarColor(name);
             if (!a) {
-              // Required but not yet submitted
+              const hasNextWeek = nextWeekAvailability.find(n => n.personName === name);
               return (
-                <div key={name} className="flex items-center gap-2 px-3 py-1.5 bg-[#FFFBEB] rounded-full border border-[#FDE68A]">
+                <div key={name} className={`flex items-center gap-2 px-3 py-1.5 rounded-full border ${hasNextWeek ? 'bg-[#E8F7F2] border-[#BBF7D0]' : 'bg-[#FFFBEB] border-[#FDE68A]'}`}>
                   <div className="w-5 h-5 rounded-full flex items-center justify-center text-[9px] font-bold text-white shrink-0"
                     style={{ backgroundColor: color }}>
                     {getInitials(name)}
                   </div>
-                  <span className="text-[12px] font-semibold text-[#A16207]">{name}</span>
-                  <span className="text-[10px] text-[#A16207]">Availability not yet logged</span>
+                  <span className={`text-[12px] font-semibold ${hasNextWeek ? 'text-[#1D9E75]' : 'text-[#A16207]'}`}>{name}</span>
+                  <span className={`text-[10px] ${hasNextWeek ? 'text-[#1D9E75]' : 'text-[#A16207]'}`}>
+                    {hasNextWeek ? 'Logged for next week' : 'Availability not yet logged'}
+                  </span>
                 </div>
               );
             }
