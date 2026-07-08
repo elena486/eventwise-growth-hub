@@ -37,6 +37,26 @@ const TREND_CONFIG = {
 };
 
 // Per-metric hit/miss indicator
+function NotesCell({ text, expanded, onToggle }) {
+  const limit = 60;
+  if (expanded || text.length <= limit) {
+    return (
+      <div className="max-w-[220px]">
+        <p className="text-xs text-gray-600 dark:text-gray-300 whitespace-pre-wrap break-words">{text}</p>
+        {text.length > limit && (
+          <button onClick={onToggle} className="text-[10px] text-[#8403C5] hover:underline mt-0.5">show less</button>
+        )}
+      </div>
+    );
+  }
+  return (
+    <div className="max-w-[220px]">
+      <p className="text-xs text-gray-600 dark:text-gray-300">{text.slice(0, limit)}…</p>
+      <button onClick={onToggle} className="text-[10px] text-[#8403C5] hover:underline mt-0.5">read more</button>
+    </div>
+  );
+}
+
 function MetricStatus({ value, target }) {
   if (value == null) return <span className="flex items-center gap-1 text-[10px] text-gray-400"><span className="w-2 h-2 rounded-full bg-gray-300 inline-block" /> No data</span>;
   if (target == null) return <span className="flex items-center gap-1 text-[10px] text-gray-400"><span className="w-2 h-2 rounded-full bg-gray-300 inline-block" /> No target</span>;
@@ -92,6 +112,7 @@ function KpiChart({ data, kpiKey, target, label }) {
 
 export default function SprintMemberDetail({ member, history, allHistory, onBack, onDelete }) {
   const [confirmId, setConfirmId] = useState(null);
+  const [expandedNotes, setExpandedNotes] = useState({});
   const [aiSummary, setAiSummary] = useState('');
   const [aiLoading, setAiLoading] = useState(false);
   const [aiDate, setAiDate] = useState('');
@@ -223,6 +244,16 @@ Be specific and actionable. Reference actual numbers and targets. Use a direct, 
               </p>
             </div>
           )}
+
+          {/* Latest week notes */}
+          {latest?.notes && (
+            <div className="mt-3 bg-white dark:bg-[#1E1E2E] rounded-xl border border-gray-200 dark:border-gray-700 p-4 max-w-2xl">
+              <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wide mb-1.5">
+                Notes — Week of {format(new Date(latest.weekStart), 'd MMM yyyy')}
+              </p>
+              <p className="text-sm text-gray-700 dark:text-gray-200 leading-relaxed whitespace-pre-wrap">{latest.notes}</p>
+            </div>
+          )}
         </div>
 
         {/* SECTION 1 — Performance overview */}
@@ -286,6 +317,7 @@ Be specific and actionable. Reference actual numbers and targets. Use a direct, 
                     <th key={q.id} className="text-left text-xs font-semibold text-gray-400 px-4 py-2.5">{q.label}</th>
                   ))}
                   <th className="text-left text-xs font-semibold text-gray-400 px-4 py-2.5">Self-rated</th>
+                  <th className="text-left text-xs font-semibold text-gray-400 px-4 py-2.5">Notes</th>
                   <th />
                 </tr>
               </thead>
@@ -309,6 +341,13 @@ Be specific and actionable. Reference actual numbers and targets. Use a direct, 
                           <span className={`inline-flex items-center gap-1.5 text-xs font-semibold px-2 py-0.5 rounded-full ${srCfg.bg} ${srCfg.color} border ${srCfg.border}`}>
                             {srCfg.emoji} {srCfg.label}
                           </span>
+                        ) : (
+                          <span className="text-xs text-gray-400">—</span>
+                        )}
+                      </td>
+                      <td className="px-4 py-2.5">
+                        {sub.notes ? (
+                          <NotesCell text={sub.notes} expanded={!!expandedNotes[sub.id]} onToggle={() => setExpandedNotes(prev => ({ ...prev, [sub.id]: !prev[sub.id] }))} />
                         ) : (
                           <span className="text-xs text-gray-400">—</span>
                         )}

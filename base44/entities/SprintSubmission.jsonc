@@ -31,6 +31,10 @@
     "selfRatingReason": {
       "type": "string",
       "description": "Required reason if selfRating is at_risk or off_track"
+    },
+    "notes": {
+      "type": "string",
+      "description": "Optional qualitative notes/commentary for the week"
     }
   },
   "required": [

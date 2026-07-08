@@ -32,6 +32,7 @@ export default function SprintSubmitModal({ onClose, onSaved }) {
   const [showDuplicateWarning, setShowDuplicateWarning] = useState(false);
   const [lastSubmission, setLastSubmission] = useState(null);
   const [draftSaved, setDraftSaved] = useState(false);
+  const [notes, setNotes] = useState('');
 
   const weekStart = selectedWeek;
   const weekNum = getWeekNumber(weekStart);
@@ -54,6 +55,7 @@ export default function SprintSubmitModal({ onClose, onSaved }) {
     setSubmitted(false);
     setSelfRating('');
     setSelfRatingReason('');
+    setNotes('');
 
     base44.entities.SprintSubmission.filter({ memberName: member.name, weekStart }).then(results => {
       if (results.length > 0) {
@@ -80,6 +82,7 @@ export default function SprintSubmitModal({ onClose, onSaved }) {
     try { setAnswers(JSON.parse(existingData.answers || '{}')); } catch {}
     setSelfRating(existingData.selfRating || '');
     setSelfRatingReason(existingData.selfRatingReason || '');
+    setNotes(existingData.notes || '');
     setShowDuplicateWarning(false);
   };
 
@@ -111,6 +114,7 @@ export default function SprintSubmitModal({ onClose, onSaved }) {
       kpi2Value: kpi2 != null ? Number(kpi2) : undefined,
       selfRating,
       selfRatingReason: needsReason ? selfRatingReason.trim() : '',
+      notes: notes.trim(),
     };
     if (existingId) await base44.entities.SprintSubmission.update(existingId, payload);
     else await base44.entities.SprintSubmission.create(payload);
@@ -121,7 +125,7 @@ export default function SprintSubmitModal({ onClose, onSaved }) {
 
   const handleSaveDraft = () => {
     if (!member) return;
-    localStorage.setItem(`sprint_draft_${member.id}_${weekStart}`, JSON.stringify({ answers, selfRating, selfRatingReason }));
+    localStorage.setItem(`sprint_draft_${member.id}_${weekStart}`, JSON.stringify({ answers, selfRating, selfRatingReason, notes }));
     setDraftSaved(true);
     setTimeout(() => setDraftSaved(false), 2000);
   };
@@ -143,6 +147,7 @@ export default function SprintSubmitModal({ onClose, onSaved }) {
         setAnswers(parsed.answers || {});
         setSelfRating(parsed.selfRating || '');
         setSelfRatingReason(parsed.selfRatingReason || '');
+        setNotes(parsed.notes || '');
       } catch {}
     }
   }, [selectedMemberId, selectedWeek, existingId]);
@@ -337,6 +342,16 @@ export default function SprintSubmitModal({ onClose, onSaved }) {
                   {member.questions.filter(q => q.section === sec).map(q => renderQuestion(q))}
                 </div>
               )) : member.questions.map(q => renderQuestion(q))}
+
+              {/* ── Notes / Commentary — optional ── */}
+              <div className="mb-5">
+                <label className="block text-sm font-semibold text-gray-800 dark:text-gray-200 mb-1.5">
+                  Notes / Commentary <span className="text-xs font-normal text-gray-400">(optional)</span>
+                </label>
+                <textarea rows={3} placeholder="Any context, highlights, blockers or additional detail for this week..."
+                  className="w-full border border-gray-300 dark:border-gray-600 dark:bg-[#2A2A3E] dark:text-gray-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-[#8403C5] resize-none transition-colors"
+                  value={notes} onChange={e => { setNotes(e.target.value); setDraftSaved(false); }} />
+              </div>
             </>
           )}
 
