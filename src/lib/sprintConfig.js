@@ -97,7 +97,7 @@ export const MEMBERS = [
       { id: 'q4', label: 'Any blockers or issues to flag', type: 'text' },
     ],
     kpi1: { questionId: 'q1', label: 'Test cases', target: 20, unit: '' },
-    kpi2: { questionId: 'q2', label: 'Bugs identified', target: 0, unit: '' },
+    kpi2: { questionId: 'q2', label: 'Bugs identified', target: 10, unit: '' },
     qualitativeIds: ['q4'],
     duplicateLastMonth: false,
   },
