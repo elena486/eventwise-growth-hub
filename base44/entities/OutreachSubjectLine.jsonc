@@ -1,0 +1,35 @@
+{
+  "name": "OutreachSubjectLine",
+  "type": "object",
+  "properties": {
+    "weekCommencing": {
+      "type": "string",
+      "format": "date",
+      "description": "Monday of the week (YYYY-MM-DD)"
+    },
+    "subjectLine": {
+      "type": "string",
+      "description": "The subject line text"
+    },
+    "openRate": {
+      "type": "number",
+      "description": "Open rate percentage"
+    },
+    "replyRate": {
+      "type": "number",
+      "description": "Reply rate percentage"
+    },
+    "variantNote": {
+      "type": "string",
+      "description": "Variant or note e.g. Variant A, Events only"
+    },
+    "campaign": {
+      "type": "string",
+      "description": "Campaign name this subject line belongs to"
+    }
+  },
+  "required": [
+    "weekCommencing",
+    "subjectLine"
+  ]
+}

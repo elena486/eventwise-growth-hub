@@ -23,6 +23,10 @@
       "type": "string",
       "description": "Stored file URL (first file if multiple)"
     },
+    "fileUrls": {
+      "type": "string",
+      "description": "JSON array of {url, name} objects for all uploaded files"
+    },
     "subjectLines": {
       "type": "string",
       "description": "JSON string of manually entered subject lines array"

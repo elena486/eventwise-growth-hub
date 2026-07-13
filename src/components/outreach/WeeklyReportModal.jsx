@@ -8,7 +8,13 @@ const RECIPIENTS = ['chris@eventwise.com', 'ramesh@eventwise.com', 'elena@eventw
 const MAX_FILES = 5;
 const ACCEPTED_EXTS = ['.csv', '.xlsx', '.pdf', '.png', '.jpg', '.jpeg'];
 
-export default function WeeklyReportModal({ onClose }) {
+function parseRate(val) {
+  if (val == null || val === '') return null;
+  const num = parseFloat(String(val).replace('%', ''));
+  return isNaN(num) ? null : num;
+}
+
+export default function WeeklyReportModal({ onClose, onSaved }) {
   const { user } = useAuth();
   const fileInputRef = useRef(null);
   const [selectedWeek, setSelectedWeek] = useState(1);
@@ -19,7 +25,6 @@ export default function WeeklyReportModal({ onClose }) {
     { subject_line: '', open_rate: '', reply_rate: '', variant: '' },
   ]);
   const [commentary, setCommentary] = useState('');
-  const [showInstructions, setShowInstructions] = useState(false);
   const [dragOver, setDragOver] = useState(false);
   const [busy, setBusy] = useState(false);
   const [phase, setPhase] = useState('');
@@ -65,7 +70,7 @@ export default function WeeklyReportModal({ onClose }) {
       const uploadResults = await Promise.all(uploadPromises);
       const uploadedFiles = uploadResults.map((res, i) => ({ url: res.file_url, name: files[i].name }));
 
-      // 2. Create record with Processing status
+      // 2. Create upload record with Processing status
       setPhase('Creating record...');
       const record = await base44.entities.ApolloWeeklyUpload.create({
         weekOf: weekOfDate,
@@ -73,6 +78,7 @@ export default function WeeklyReportModal({ onClose }) {
         uploadedAt: new Date().toISOString(),
         fileName: uploadedFiles.map(f => f.name).join(', '),
         fileUrl: uploadedFiles[0]?.url || '',
+        fileUrls: JSON.stringify(uploadedFiles.map(f => ({ url: f.url, name: f.name }))),
         subjectLines: JSON.stringify(subjectLines),
         aiSummary: '',
         georgesNotes: commentary.trim() || '',
@@ -100,18 +106,57 @@ export default function WeeklyReportModal({ onClose }) {
 
       const summary = aiResult.summary;
 
-      // 4. Update record to Processed
-      setPhase('Saving results...');
+      // 4. Save campaign snapshots to database
+      setPhase('Saving campaign data...');
+      const campaignSnapshots = (summary.campaign_snapshot || []).map(c => ({
+        weekCommencing: weekOfDate,
+        uploadedBy: user?.full_name || 'George Nell',
+        uploadedAt: new Date().toISOString(),
+        campaignName: c.name || 'Unknown',
+        audience: c.audience || null,
+        status: c.status || null,
+        touchpoint: c.touchpoint || null,
+        variant: c.variant || null,
+        emailsSent: c.emails_sent != null ? Number(c.emails_sent) : null,
+        openRate: parseRate(c.open_rate),
+        clickRate: parseRate(c.click_rate),
+        replyRate: parseRate(c.reply_rate),
+        deliveryRate: parseRate(c.delivery_rate),
+        meetingsBooked: c.meetings_booked != null ? Number(c.meetings_booked) : null,
+        aiSummary: JSON.stringify(summary),
+        commentary: commentary.trim() || '',
+      }));
+
+      if (campaignSnapshots.length > 0) {
+        await base44.entities.OutreachWeeklySnapshot.bulkCreate(campaignSnapshots);
+      }
+
+      // 5. Save subject lines to database
+      const validSL = subjectLines.filter(s => s.subject_line && s.subject_line.trim());
+      const slRecords = validSL.map(s => ({
+        weekCommencing: weekOfDate,
+        subjectLine: s.subject_line,
+        openRate: s.open_rate ? parseFloat(s.open_rate) || null : null,
+        replyRate: s.reply_rate ? parseFloat(s.reply_rate) || null : null,
+        variantNote: s.variant || '',
+        campaign: '',
+      }));
+
+      if (slRecords.length > 0) {
+        await base44.entities.OutreachSubjectLine.bulkCreate(slRecords);
+      }
+
+      // 6. Update upload record to Processed
       await base44.entities.ApolloWeeklyUpload.update(record.id, {
         aiSummary: JSON.stringify(summary),
         status: 'Processed',
       });
 
-      // 5. Generate PDF
+      // 7. Generate PDF
       setPhase('Generating PDF...');
       const doc = generateAiReportPdf(summary, subjectLines, commentary, selectedWeek);
 
-      // 6. Output
+      // 8. Output
       if (sendEmail) {
         setPhase('Uploading PDF & sending email...');
         const pdfBlob = doc.output('blob');
@@ -129,11 +174,10 @@ export default function WeeklyReportModal({ onClose }) {
           body,
           from_name: 'George Nell',
         });
-        setDone('sent');
-      } else {
-        doc.save(filename);
-        setDone('downloaded');
       }
+
+      setDone(sendEmail ? 'sent' : 'downloaded');
+      if (!sendEmail) doc.save(filename);
     } catch (e) {
       setDone('error');
       setErrorMsg(e.message || 'Unknown error');
@@ -153,18 +197,18 @@ export default function WeeklyReportModal({ onClose }) {
             <div className="w-16 h-16 bg-green-100 dark:bg-green-900/30 rounded-full flex items-center justify-center mx-auto mb-4">
               <Check className="w-8 h-8 text-green-600" />
             </div>
-            <h2 className="text-lg font-bold text-navy dark:text-white mb-2">Report sent</h2>
-            <p className="text-sm text-ew-muted mb-6">Report sent to Chris, Ramesh and Elena.</p>
-            <button onClick={onClose} className="px-5 py-2.5 bg-[#8403C5] text-white rounded-xl text-sm font-semibold hover:bg-[#6d02a3] transition-colors">Done</button>
+            <h2 className="text-lg font-bold text-navy dark:text-white mb-2">Report generated and sent</h2>
+            <p className="text-sm text-ew-muted mb-6">Dashboard updated with this week's data. Report sent to Chris, Ramesh and Elena.</p>
+            <button onClick={onSaved} className="px-5 py-2.5 bg-[#8403C5] text-white rounded-xl text-sm font-semibold hover:bg-[#6d02a3] transition-colors">Done</button>
           </div>
         ) : done === 'downloaded' ? (
           <div className="p-8 text-center">
             <div className="w-16 h-16 bg-green-100 dark:bg-green-900/30 rounded-full flex items-center justify-center mx-auto mb-4">
               <Check className="w-8 h-8 text-green-600" />
             </div>
-            <h2 className="text-lg font-bold text-navy dark:text-white mb-2">PDF downloaded</h2>
-            <p className="text-sm text-ew-muted mb-6">Your weekly report has been downloaded.</p>
-            <button onClick={onClose} className="px-5 py-2.5 bg-[#8403C5] text-white rounded-xl text-sm font-semibold hover:bg-[#6d02a3] transition-colors">Done</button>
+            <h2 className="text-lg font-bold text-navy dark:text-white mb-2">Report generated</h2>
+            <p className="text-sm text-ew-muted mb-6">Dashboard updated with this week's data. PDF downloaded.</p>
+            <button onClick={onSaved} className="px-5 py-2.5 bg-[#8403C5] text-white rounded-xl text-sm font-semibold hover:bg-[#6d02a3] transition-colors">Done</button>
           </div>
         ) : (
           <div className="p-6">
@@ -251,7 +295,7 @@ export default function WeeklyReportModal({ onClose }) {
             {/* STEP 3 — Subject lines table */}
             <div className="mt-4">
               <label className="block text-sm font-semibold text-navy dark:text-gray-200 mb-0.5">Subject lines tested this week</label>
-              <p className="text-xs text-ew-muted mb-2">Find these in Apollo → Sequences → click your sequence → Report tab. Add each subject line you A/B tested this week.</p>
+              <p className="text-xs text-ew-muted mb-2">Apollo → Sequences → click your sequence → Report tab. Add each subject line you A/B tested this week.</p>
               <div className="border border-ew-border dark:border-gray-700 rounded-xl overflow-hidden">
                 <table className="w-full">
                   <thead>

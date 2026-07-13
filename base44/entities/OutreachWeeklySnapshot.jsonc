@@ -1,0 +1,87 @@
+{
+  "name": "OutreachWeeklySnapshot",
+  "type": "object",
+  "properties": {
+    "weekCommencing": {
+      "type": "string",
+      "format": "date",
+      "description": "Monday of the week (YYYY-MM-DD)"
+    },
+    "uploadedBy": {
+      "type": "string",
+      "description": "Name of the person who uploaded"
+    },
+    "uploadedAt": {
+      "type": "string",
+      "description": "ISO timestamp of upload"
+    },
+    "campaignName": {
+      "type": "string",
+      "description": "Campaign or sequence name"
+    },
+    "audience": {
+      "type": "string",
+      "enum": [
+        "Events",
+        "Agencies",
+        "Mixed",
+        "Suppliers"
+      ],
+      "description": "Target audience segment"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "Active",
+        "Paused",
+        "Completed",
+        "Killed"
+      ],
+      "description": "Campaign status"
+    },
+    "touchpoint": {
+      "type": "string",
+      "description": "Touchpoint identifier e.g. TP1, TP2"
+    },
+    "variant": {
+      "type": "string",
+      "description": "Variant identifier e.g. A, B"
+    },
+    "emailsSent": {
+      "type": "number",
+      "description": "Total emails sent"
+    },
+    "openRate": {
+      "type": "number",
+      "description": "Open rate percentage"
+    },
+    "clickRate": {
+      "type": "number",
+      "description": "Click rate percentage"
+    },
+    "replyRate": {
+      "type": "number",
+      "description": "Reply rate percentage"
+    },
+    "deliveryRate": {
+      "type": "number",
+      "description": "Delivery rate percentage"
+    },
+    "meetingsBooked": {
+      "type": "number",
+      "description": "Meetings booked"
+    },
+    "aiSummary": {
+      "type": "string",
+      "description": "JSON string of full AI summary for the week"
+    },
+    "commentary": {
+      "type": "string",
+      "description": "George's commentary for the week"
+    }
+  },
+  "required": [
+    "weekCommencing",
+    "campaignName"
+  ]
+}

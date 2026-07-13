@@ -15,6 +15,8 @@ RULES:
 - If a metric is not available, return null
 - Use exact campaign names from the data — no truncation or placeholder text
 - Keep ai_observations to 2-3 factual sentences only
+- Infer audience (Events/Agencies/Mixed/Suppliers) from sequence names if possible
+- Extract status, touchpoint, and variant from the data if available
 
 Return ONLY a JSON object, no preamble or markdown:
 {
@@ -46,10 +48,16 @@ Return ONLY a JSON object, no preamble or markdown:
   "campaign_snapshot": [
     {
       "name": string,
+      "audience": "Events" | "Agencies" | "Mixed" | "Suppliers" | null,
+      "status": "Active" | "Paused" | "Completed" | "Killed" | null,
+      "touchpoint": string or null,
+      "variant": string or null,
       "emails_sent": number or null,
       "open_rate": string or null,
+      "click_rate": string or null,
       "reply_rate": string or null,
-      "delivery_rate": string or null
+      "delivery_rate": string or null,
+      "meetings_booked": number or null
     }
   ],
   "ai_observations": string,
@@ -84,7 +92,6 @@ Deno.serve(async (req) => {
 
     const contentBlocks = [];
 
-    // Process each uploaded file
     for (const f of files) {
       const fileRes = await fetch(f.url);
       if (!fileRes.ok) continue;
@@ -122,7 +129,6 @@ Deno.serve(async (req) => {
       }
     }
 
-    // Add manually entered subject lines as structured text
     const validSubjectLines = (subjectLines || []).filter(s => s.subject_line && s.subject_line.trim());
     if (validSubjectLines.length > 0) {
       const slText = validSubjectLines.map((s, i) =>
@@ -131,15 +137,12 @@ Deno.serve(async (req) => {
       contentBlocks.push({ type: 'text', text: `Subject lines tested this week (manually entered):\n${slText}` });
     }
 
-    // Add George's commentary
     if (commentary && commentary.trim()) {
       contentBlocks.push({ type: 'text', text: `George's commentary: ${commentary.trim()}` });
     }
 
-    // Add final instruction
     contentBlocks.push({ type: 'text', text: 'Analyze all the data above and return the JSON summary as specified.' });
 
-    // Call Anthropic API
     const apiKey = Deno.env.get('ANTHROPIC_API_KEY');
     if (!apiKey) {
       return Response.json({ error: 'ANTHROPIC_API_KEY secret is not configured' }, { status: 500 });
@@ -177,7 +180,6 @@ Deno.serve(async (req) => {
       return Response.json({ error: 'Empty response from Claude' }, { status: 500 });
     }
 
-    // Parse JSON from response (handle markdown code blocks)
     let summary;
     try {
       const codeBlockMatch = responseText.match(/```(?:json)?\s*([\s\S]*?)```/);
