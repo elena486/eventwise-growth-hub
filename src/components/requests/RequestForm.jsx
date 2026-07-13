@@ -5,8 +5,8 @@ import { useToast } from '@/components/shared/Toast';
 import MultiFileUpload from '@/components/shared/MultiFileUpload';
 import MentionTextarea from '@/components/shared/MentionTextarea';
 
-const REQUESTERS = ['Chris', 'Martinique', 'George', 'Ramesh', 'Sreeja', 'David', 'Elena'];
-const RECIPIENTS = ['Elena', 'George', 'Chris', 'Martinique', 'Sreeja', 'Ramesh', 'David'];
+const REQUESTERS = ['Chris', 'Martinique', 'George', 'Ramesh', 'Sreeja', 'David', 'Elena', 'Eleanor'];
+const RECIPIENTS = ['Elena', 'George', 'Chris', 'Martinique', 'Sreeja', 'Ramesh', 'Eleanor', 'David'];
 const CATEGORIES = ['Marketing', 'Design', 'Content', 'Ops', 'Tech', 'Other'];
 const PRIORITIES = [
   { label: 'Low', cls: 'bg-gray-100 text-gray-600 border-gray-300' },

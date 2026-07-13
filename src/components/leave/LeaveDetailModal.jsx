@@ -5,7 +5,7 @@ import { format, parseISO } from 'date-fns';
 
 const ADMINS = ['Elena', 'Chris'];
 const REQUIRES_APPROVAL = ['George', 'Martinique'];
-const ALL_MEMBERS = ['Chris', 'Elena', 'George', 'Martinique', 'Sreeja', 'Ramesh', 'David'];
+const ALL_MEMBERS = ['Chris', 'Elena', 'George', 'Martinique', 'Sreeja', 'Ramesh', 'Eleanor', 'David'];
 
 const TYPE_STYLES = {
   'Annual Leave': 'bg-[#E8F7F2] text-[#1D9E75]',

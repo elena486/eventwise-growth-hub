@@ -3,7 +3,7 @@ import { format, parseISO, startOfWeek, endOfWeek, startOfMonth, endOfMonth, sub
 import { Search, X } from 'lucide-react';
 import { SECTION_COLORS } from '@/lib/logActivity';
 
-const TEAM_MEMBERS = ['Chris', 'Elena', 'George', 'Martinique', 'Sreeja', 'Ramesh'];
+const TEAM_MEMBERS = ['Chris', 'Elena', 'George', 'Martinique', 'Sreeja', 'Ramesh', 'Eleanor'];
 const SECTIONS = ['Sprints', 'Time & Capacity', 'To-Do Board', 'Customer Success', 'Sales', 'Competitors', 'Time Off', 'Authentication'];
 
 function fmtTimestamp(dateStr) {

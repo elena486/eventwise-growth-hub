@@ -13,7 +13,7 @@ const TYPE_STYLES = {
   'Sick Day': 'bg-amber-50 text-amber-700',
   Other:      'bg-gray-100 text-gray-600',
 };
-const MEMBERS = ['Chris', 'Elena', 'Martinique', 'George', 'Ramesh', 'Sreeja', 'David'];
+const MEMBERS = ['Chris', 'Elena', 'Martinique', 'George', 'Ramesh', 'Sreeja', 'Eleanor', 'David'];
 const inputCls = 'w-full text-sm border border-ew-border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-navy/20 bg-white';
 const labelCls = 'block text-xs font-semibold text-ew-muted uppercase tracking-[0.08em] mb-1';
 

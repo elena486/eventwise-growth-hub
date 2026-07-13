@@ -3,7 +3,7 @@ import { base44 } from '@/api/base44Client';
 import { ExternalLink, Plus, Pencil, Trash2, Check } from 'lucide-react';
 
 const CATEGORIES = ['Booking', 'Calendar', 'Sales', 'CS', 'Marketing', 'Other'];
-const OWNERS = ['Chris', 'Elena', 'Martinique', 'George', 'Ramesh', 'Sreeja', 'David', 'Shared'];
+const OWNERS = ['Chris', 'Elena', 'Martinique', 'George', 'Ramesh', 'Sreeja', 'Eleanor', 'David', 'Shared'];
 const CATEGORY_COLORS = {
   Booking: 'bg-[#DBEAFE] text-[#1D4ED8]',
   Calendar: 'bg-[#F3E8FF] text-[#7E22CE]',

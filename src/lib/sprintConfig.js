@@ -101,6 +101,16 @@ export const MEMBERS = [
     qualitativeIds: ['q4'],
     duplicateLastMonth: false,
   },
+  {
+    id: 'eleanor',
+    name: 'Eleanor',
+    role: 'CTO',
+    questions: [],
+    kpi1: { questionId: '', label: 'TBD', target: null },
+    kpi2: { questionId: '', label: 'TBD', target: null },
+    qualitativeIds: [],
+    duplicateLastMonth: false,
+  },
 ];
 
 export function getMemberById(id) {

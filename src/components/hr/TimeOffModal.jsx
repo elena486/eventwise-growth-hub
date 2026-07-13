@@ -5,7 +5,7 @@ import { parseISO } from 'date-fns';
 
 const inputCls = 'w-full text-sm border border-ew-border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-navy/20 bg-white';
 const labelCls = 'block text-xs font-medium text-ew-body mb-1';
-const MEMBERS = ['Chris', 'Elena', 'Martinique', 'George', 'Ramesh', 'Sreeja', 'David'];
+const MEMBERS = ['Chris', 'Elena', 'Martinique', 'George', 'Ramesh', 'Sreeja', 'Eleanor', 'David'];
 const STATUSES = ['Approved', 'Pending', 'Declined'];
 
 function calcWorkingDays(start, end) {

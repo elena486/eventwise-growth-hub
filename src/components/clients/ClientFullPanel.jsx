@@ -156,8 +156,8 @@ function NewBugForm({ client, onClose, onCreated }) {
 
   const CATEGORIES = ['Platform Bug', 'Integration Issue', 'Onboarding Issue', 'Data Issue', 'UI Issue', 'Other'];
   const PRIORITIES = ['Low', 'Medium', 'High', 'Critical'];
-  const REPORTERS = ['Chris', 'Martinique', 'George', 'Sreeja', 'Elena'];
-  const ASSIGNEES = ['Chris', 'Martinique', 'Sreeja', 'Elena'];
+  const REPORTERS = ['Chris', 'Martinique', 'George', 'Sreeja', 'Elena', 'Eleanor'];
+  const ASSIGNEES = ['Chris', 'Martinique', 'Sreeja', 'Elena', 'Eleanor'];
 
   const handleSave = async () => {
     if (!form.title.trim()) return;
@@ -735,7 +735,7 @@ export default function ClientFullPanel({ client: initialClient, onClose, onUpda
 
 // ─── Activity Log Tab ─────────────────────────────────────────────────────────
 
-const TEAM_MEMBER_COLORS = { Chris: '#8403C5', Elena: '#1D9E75', George: '#E8A020', Martinique: '#0EA5E9', Sreeja: '#DC2626', Ramesh: '#5777AB' };
+const TEAM_MEMBER_COLORS = { Chris: '#8403C5', Elena: '#1D9E75', George: '#E8A020', Martinique: '#0EA5E9', Sreeja: '#DC2626', Ramesh: '#5777AB', Eleanor: '#EC4899' };
 const CAT_COLORS_ACT = { 'Sales & Outbound': '#3B82F6', 'Customer Success & Onboarding': '#22C55E', 'Marketing & Content': '#A855F7', 'Operations & Admin': '#F97316', 'Product & Tech': '#14B8A6', 'Finance': '#EAB308', 'Strategy & Planning': '#1E3A5F', 'Other': '#9CA3AF' };
 
 function fmtDurAct(min) {

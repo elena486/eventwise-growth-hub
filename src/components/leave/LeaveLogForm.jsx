@@ -4,7 +4,7 @@ import { X } from 'lucide-react';
 
 const REQUIRES_APPROVAL = ['George', 'Martinique'];
 const ADMINS = ['Elena', 'Chris'];
-const ALL_MEMBERS = ['Chris', 'Elena', 'George', 'Martinique', 'Sreeja', 'Ramesh', 'David'];
+const ALL_MEMBERS = ['Chris', 'Elena', 'George', 'Martinique', 'Sreeja', 'Ramesh', 'Eleanor', 'David'];
 
 function calcWorkingDays(start, end) {
   if (!start || !end) return 0;

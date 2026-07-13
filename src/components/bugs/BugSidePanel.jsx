@@ -4,8 +4,8 @@ import { format } from 'date-fns';
 import { X, Trash2 } from 'lucide-react';
 import MultiFileUpload from '@/components/shared/MultiFileUpload';
 
-const REPORTERS = ['Chris', 'Martinique', 'George', 'Sreeja', 'Elena'];
-const ASSIGNEES = ['Chris', 'Martinique', 'Sreeja', 'Elena'];
+const REPORTERS = ['Chris', 'Martinique', 'George', 'Sreeja', 'Elena', 'Eleanor'];
+const ASSIGNEES = ['Chris', 'Martinique', 'Sreeja', 'Elena', 'Eleanor'];
 const CATEGORIES = ['Platform Bug', 'Integration Issue', 'Onboarding Issue', 'Data Issue', 'UI Issue', 'Other'];
 const STATUSES = ['Open', 'In Progress', 'Waiting on Client', 'Resolved', 'Closed'];
 const PRIORITIES = ['Low', 'Medium', 'High', 'Critical'];

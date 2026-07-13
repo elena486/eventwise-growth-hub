@@ -825,7 +825,7 @@ function BudgetSection() {
 
 // ─── Section 6: Action Tracker ────────────────────────────────────────────────
 
-const ACTION_OWNERS = ['Chris', 'Elena', 'Monnie', 'Chris + Elena'];
+const ACTION_OWNERS = ['Chris', 'Elena', 'Monnie', 'Chris + Elena', 'Eleanor'];
 const ACTION_STATUSES = ['Not Started', 'In Progress', 'Done', 'Blocked'];
 const INITIAL_ACTIONS = [
   { id: 1, action: 'Finalise pilot event date', owner: 'Chris', due: '', status: 'Not Started', notes: '' },

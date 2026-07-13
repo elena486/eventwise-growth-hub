@@ -5,7 +5,7 @@ import TaskPresetSelect from './TaskPresetSelect';
 import { Link } from 'lucide-react';
 import LeadSelect from './LeadSelect';
 
-const TEAM_MEMBERS = ['Chris', 'Elena', 'George', 'Martinique', 'Sreeja', 'Ramesh'];
+const TEAM_MEMBERS = ['Chris', 'Elena', 'George', 'Martinique', 'Sreeja', 'Ramesh', 'Eleanor'];
 
 export default function QuickEntryModal({ open, onClose, onSaved, initial }) {
   const [date, setDate] = useState('');

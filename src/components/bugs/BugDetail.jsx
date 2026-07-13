@@ -5,8 +5,8 @@ import { ChevronLeft } from 'lucide-react';
 import MultiFileUpload from '@/components/shared/MultiFileUpload';
 import MentionTextarea, { sendMentionNotifications } from '@/components/shared/MentionTextarea';
 
-const REPORTERS = ['Chris', 'Martinique', 'George', 'Sreeja', 'Elena'];
-const ASSIGNEES = ['Chris', 'Martinique', 'Sreeja', 'Elena'];
+const REPORTERS = ['Chris', 'Martinique', 'George', 'Sreeja', 'Elena', 'Eleanor'];
+const ASSIGNEES = ['Chris', 'Martinique', 'Sreeja', 'Elena', 'Eleanor'];
 const CATEGORIES = ['Platform Bug', 'Integration Issue', 'Onboarding Issue', 'Data Issue', 'UI Issue', 'Other'];
 const STATUSES = ['Open', 'In Progress', 'Waiting on Client', 'Resolved', 'Closed'];
 const PRIORITIES = ['Low', 'Medium', 'High', 'Critical'];

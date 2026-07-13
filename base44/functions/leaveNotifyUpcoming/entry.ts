@@ -38,7 +38,7 @@ Deno.serve(async (req) => {
       const fEnd = fmtDate(entry.endDate);
       const msg = `Reminder: ${person} is on leave from ${fStart} to ${fEnd} starting in 2 days.`;
 
-      for (const recipient of ['Elena', 'Chris']) {
+      for (const recipient of ['Elena', 'Chris', 'Eleanor']) {
         if (recipient === person) continue;
         await base44.asServiceRole.entities.Notification.create({
           recipientName: recipient,

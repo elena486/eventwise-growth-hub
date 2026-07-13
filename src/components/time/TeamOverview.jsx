@@ -6,14 +6,14 @@ import { CATEGORY_COLORS, CATEGORY_LABELS } from './categoryColors';
 import MemberDetailModal from './MemberDetailModal';
 import LiveNowSection from './LiveNowSection';
 
-const TEAM_MEMBERS = ['Chris', 'Elena', 'George', 'Martinique', 'Sreeja', 'Ramesh'];
+const TEAM_MEMBERS = ['Chris', 'Elena', 'George', 'Martinique', 'Sreeja', 'Ramesh', 'Eleanor'];
 const CATEGORIES = [
   'Sales & Outbound', 'Customer Success & Onboarding', 'Marketing & Content',
   'Operations & Admin', 'Product & Tech', 'Finance', 'Strategy & Planning', 'Other',
 ];
 const MEMBER_COLORS = {
   'Chris': '#8403C5', 'Elena': '#1D9E75', 'George': '#E8A020',
-  'Martinique': '#0EA5E9', 'Sreeja': '#DC2626', 'Ramesh': '#5777AB',
+  'Martinique': '#0EA5E9', 'Sreeja': '#DC2626', 'Ramesh': '#5777AB', 'Eleanor': '#EC4899',
 };
 const BAR_COLORS = {
   'Sales & Outbound': '#3B82F6',

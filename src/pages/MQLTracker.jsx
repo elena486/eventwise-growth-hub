@@ -6,7 +6,7 @@ import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 
 import { downloadCSV, fmtCsvDate, safe, todayStr } from '@/lib/csvExport';
 
 const SOURCES = ['Website Form', 'Budget Health Check', 'Event Budget Template', 'ROI Calculator', 'EPS 2026', 'LinkedIn', 'Newsletter', 'Referral', 'Other Event', 'Other'];
-const ASSIGNEES = ['Chris', 'George', 'Ramesh', 'Elena'];
+const ASSIGNEES = ['Chris', 'George', 'Ramesh', 'Elena', 'Eleanor'];
 const STATUSES = ['New MQL', 'SQL Accepted', 'SQL Rejected', 'Converted', 'Not qualified'];
 
 const STATUS_STYLES = {

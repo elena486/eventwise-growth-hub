@@ -37,7 +37,7 @@ export const PRIORITY_ORDER = { Urgent: 0, High: 1, Medium: 2, Low: 3 };
 export const BOARD_STATUSES = ['To Do', 'In Progress', 'Done', 'Blocked'];
 export const NEW_CATEGORIES = ['Marketing', 'Sales', 'Operations', 'Customer Success', 'Tech/Product', 'Admin'];
 export const PRIORITIES = ['Low', 'Medium', 'High', 'Urgent'];
-export const TEAM_MEMBERS = ['Chris', 'Elena', 'George', 'Martinique', 'Sreeja', 'Ramesh'];
+export const TEAM_MEMBERS = ['Chris', 'Elena', 'George', 'Martinique', 'Sreeja', 'Ramesh', 'Eleanor'];
 
 // Map old statuses to new ones for display
 export const STATUS_MAP = {

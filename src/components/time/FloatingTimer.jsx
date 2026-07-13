@@ -3,7 +3,7 @@ import { base44 } from '@/api/base44Client';
 import { Clock, Play, Square, Pause, ChevronDown } from 'lucide-react';
 import TaskPresetSelect from './TaskPresetSelect';
 
-const TEAM_MEMBERS = ['Chris', 'Elena', 'George', 'Martinique', 'Sreeja', 'Ramesh'];
+const TEAM_MEMBERS = ['Chris', 'Elena', 'George', 'Martinique', 'Sreeja', 'Ramesh', 'Eleanor'];
 const CATEGORIES = [
   'Sales & Outbound', 'Customer Success & Onboarding', 'Marketing & Content',
   'Operations & Admin', 'Product & Tech', 'Finance', 'Strategy & Planning', 'Other',

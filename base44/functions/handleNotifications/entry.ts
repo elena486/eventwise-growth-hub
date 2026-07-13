@@ -114,7 +114,7 @@ Deno.serve(async (req) => {
       const weekStart = data?.weekStart || '';
       const msg = `${member} submitted their sprint update${weekStart ? ` for w/c ${weekStart}` : ''}`;
 
-      for (const recipient of ['Elena', 'Chris']) {
+      for (const recipient of ['Elena', 'Chris', 'Eleanor']) {
         if (recipient !== member) {
           await notify({
             recipientName: recipient,

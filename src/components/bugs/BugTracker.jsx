@@ -23,7 +23,7 @@ const PRIORITY_ORDER = { Critical: 0, High: 1, Medium: 2, Low: 3 };
 const STATUS_OPEN_ORDER = { Open: 0, 'In Progress': 1, 'Waiting on Client': 2, Resolved: 3, Closed: 4 };
 const STATUSES = ['Open', 'In Progress', 'Waiting on Client', 'Resolved', 'Closed'];
 const PRIORITIES = ['Low', 'Medium', 'High', 'Critical'];
-const ASSIGNEES = ['Chris', 'Martinique', 'Sreeja', 'Elena'];
+const ASSIGNEES = ['Chris', 'Martinique', 'Sreeja', 'Elena', 'Eleanor'];
 
 function fmtDate(d) {
   if (!d) return '—';

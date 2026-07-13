@@ -21,7 +21,7 @@ Deno.serve(async (req) => {
       return Response.json({ ok: true, sent: 0 });
     }
 
-    const ALL_MEMBERS = ['Chris', 'Elena', 'George', 'Martinique', 'Sreeja', 'Ramesh', 'David'];
+    const ALL_MEMBERS = ['Chris', 'Elena', 'George', 'Martinique', 'Sreeja', 'Ramesh', 'Eleanor', 'David'];
 
     function fmtDate(d) {
       if (!d) return d;

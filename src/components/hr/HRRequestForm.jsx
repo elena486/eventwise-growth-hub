@@ -3,7 +3,7 @@ import { base44 } from '@/api/base44Client';
 import { CheckCircle2 } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 
-const MEMBERS = ['Chris', 'Elena', 'Martinique', 'George', 'Ramesh', 'Sreeja', 'David'];
+const MEMBERS = ['Chris', 'Elena', 'Martinique', 'George', 'Ramesh', 'Sreeja', 'Eleanor', 'David'];
 const inputCls = 'w-full text-sm border border-ew-border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-navy/20 bg-white';
 const labelCls = 'block text-xs font-medium text-ew-body mb-1';
 

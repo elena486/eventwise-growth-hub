@@ -19,7 +19,8 @@
       "type": "string",
       "enum": [
         "Chris Carter",
-        "Martinique Keeler"
+        "Martinique Keeler",
+        "Eleanor"
       ]
     },
     "secondaryOwner": {
@@ -27,6 +28,7 @@
       "enum": [
         "Chris Carter",
         "Martinique Keeler",
+        "Eleanor",
         "None"
       ]
     },

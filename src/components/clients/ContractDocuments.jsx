@@ -3,7 +3,7 @@ import { base44 } from '@/api/base44Client';
 import { format } from 'date-fns';
 import { Upload, Download, Trash2, FileText, X, AlertTriangle } from 'lucide-react';
 
-const TEAM_MEMBERS = ['Chris', 'Elena', 'George', 'Martinique', 'Sreeja', 'Ramesh'];
+const TEAM_MEMBERS = ['Chris', 'Elena', 'George', 'Martinique', 'Sreeja', 'Ramesh', 'Eleanor'];
 const ACCEPTED = '.pdf,.docx,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document';
 
 function fmtDate(iso) {

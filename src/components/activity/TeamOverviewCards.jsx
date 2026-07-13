@@ -9,6 +9,7 @@ const TEAM = [
   { name: 'Martinique', role: 'Customer Success' },
   { name: 'Sreeja', role: 'Product & Tech' },
   { name: 'Ramesh', role: 'Sales' },
+  { name: 'Eleanor', role: 'CTO' },
 ];
 
 function fmtRelative(dateStr) {

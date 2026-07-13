@@ -15,7 +15,8 @@
       "type": "string",
       "enum": [
         "Elena",
-        "George"
+        "George",
+        "Eleanor"
       ],
       "description": "Who the request is assigned/sent to"
     },
@@ -27,7 +28,8 @@
         "Chris",
         "Martinique",
         "Sreeja",
-        "Ramesh"
+        "Ramesh",
+        "Eleanor"
       ]
     },
     "category": {
