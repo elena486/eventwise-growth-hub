@@ -19,6 +19,10 @@ function scoreColor(score) {
   return RED;
 }
 
+function cleanSubj(s) {
+  return (s || '(no subject)').replace(/\{\{contact\.first_name\}\}/gi, '[First name]');
+}
+
 function getWeekRange(weeksAgo = 0) {
   const monday = startOfWeek(new Date(), { weekStartsOn: 1 });
   const adjusted = subWeeks(monday, weeksAgo);
@@ -110,9 +114,9 @@ export function generateWeeklyReportPdf(campaigns, commentary, weeksAgo = 0) {
   // ── SECTION 1 — HEADLINE NUMBERS ──
   sectionHeader('Headline Numbers');
   const stats = [
-    { label: 'Total Sent (Active Campaigns)', val: fmtVal('sent', m.sent) },
-    { label: 'Avg Open Rate', val: fmtVal('open', m.open) },
-    { label: 'Avg Reply Rate', val: fmtVal('reply', m.reply) },
+    { label: 'Total Emails Sent', val: fmtVal('sent', m.sent), sub: 'across all active campaigns (cumulative)' },
+    { label: 'Avg Open Rate', val: fmtVal('open', m.open), sub: 'across active campaigns' },
+    { label: 'Avg Reply Rate', val: fmtVal('reply', m.reply), sub: 'across active campaigns' },
     { label: 'Meetings Booked', val: fmtVal('meetings', m.meetings) },
   ];
   const gap = 4;
@@ -130,8 +134,24 @@ export function generateWeeklyReportPdf(campaigns, commentary, weeksAgo = 0) {
     doc.setFontSize(15);
     doc.setTextColor(...NAVY);
     doc.text(s.val, cx + 3, y + 11);
+    if (s.sub) {
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(5);
+      doc.setTextColor(...LGREY);
+      const subLines = doc.splitTextToSize(s.sub, cardW - 6);
+      doc.text(subLines[0], cx + 3, y + 17);
+    }
   });
   y += cardH + 7;
+
+  // Context line
+  const uniqueCampaigns = new Set(active.map(c => c.campaignName).filter(Boolean)).size;
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(8);
+  doc.setTextColor(...GREY);
+  const contextLine = `${active.length} active campaigns · ${uniqueCampaigns} unique sequences · Data reflects all campaigns currently running as of ${format(new Date(), 'd MMM yyyy')}`;
+  doc.text(contextLine, MARGIN, y);
+  y += 6;
 
   // ── Scored entries across all active campaigns ──
   const scored = active
@@ -151,7 +171,7 @@ export function generateWeeklyReportPdf(campaigns, commentary, weeksAgo = 0) {
       doc.setFont('helvetica', 'bold');
       doc.setFontSize(9.5);
       doc.setTextColor(...NAVY);
-      const subjLines = doc.splitTextToSize(c.subjectLine || '(no subject)', CONTENT_W - 55);
+      const subjLines = doc.splitTextToSize(cleanSubj(c.subjectLine), CONTENT_W - 55);
       doc.text(subjLines[0], MARGIN + 9, y + 4);
       doc.setFont('helvetica', 'normal');
       doc.setFontSize(7.5);
@@ -176,31 +196,35 @@ export function generateWeeklyReportPdf(campaigns, commentary, weeksAgo = 0) {
   const underperforming = scored.filter(c => c._score < 3.0).sort((a, b) => a._score - b._score).slice(0, 3);
   if (underperforming.length > 0) {
     sectionHeader('Underperforming - Consider Pausing');
-    underperforming.forEach(c => {
+    underperforming.forEach((c, i) => {
       const chipW = 12;
-      doc.setFillColor(...RED);
-      doc.roundedRect(MARGIN + 2, y + 1, chipW, 6, 1.5, 1.5, 'F');
       doc.setFont('helvetica', 'bold');
-      doc.setFontSize(7.5);
-      doc.setTextColor(255, 255, 255);
-      doc.text(c._score.toFixed(1), MARGIN + 2 + chipW / 2, y + 5.2, { align: 'center' });
+      doc.setFontSize(10);
+      doc.setTextColor(...LGREY);
+      doc.text(`${i + 1}.`, MARGIN + 2, y + 4);
       doc.setFont('helvetica', 'bold');
       doc.setFontSize(9.5);
       doc.setTextColor(...NAVY);
-      const subjLines = doc.splitTextToSize(c.subjectLine || '(no subject)', CONTENT_W - 28);
-      doc.text(subjLines[0], MARGIN + 18, y + 4.5);
+      const subjLines = doc.splitTextToSize(cleanSubj(c.subjectLine), CONTENT_W - 55);
+      doc.text(subjLines[0], MARGIN + 9, y + 4);
       doc.setFont('helvetica', 'normal');
       doc.setFontSize(7.5);
       doc.setTextColor(...GREY);
-      doc.text(c.campaignName || '', MARGIN + 18, y + 8.5);
+      doc.text(c.campaignName || '', MARGIN + 9, y + 8);
       const reason = (c.openRate != null && c.openRate < 25)
         ? `Low open rate - ${c.openRate}%`
         : `Low reply rate - ${c._prr.toFixed(1)}%`;
       doc.setFont('helvetica', 'normal');
       doc.setFontSize(8);
       doc.setTextColor(...RED);
-      doc.text(reason, MARGIN + 18, y + 12.5);
-      y += 16;
+      doc.text(reason, MARGIN + 9, y + 12);
+      doc.setFillColor(...RED);
+      doc.roundedRect(PAGE_W - MARGIN - chipW, y + 1, chipW, 6, 1.5, 1.5, 'F');
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(7.5);
+      doc.setTextColor(255, 255, 255);
+      doc.text(c._score.toFixed(1), PAGE_W - MARGIN - chipW / 2, y + 5.2, { align: 'center' });
+      y += 15;
     });
     y += 3;
   }
@@ -210,11 +234,17 @@ export function generateWeeklyReportPdf(campaigns, commentary, weeksAgo = 0) {
   const activeMap = {};
   activeThisWeek.forEach(c => {
     if (!activeMap[c.campaignName]) {
-      activeMap[c.campaignName] = { name: c.campaignName, audience: c.audienceSegment, tps: [], sent: 0, status: c.status };
+      activeMap[c.campaignName] = { name: c.campaignName, audience: c.audienceSegment, tps: [], sent: 0, status: c.status, openRates: [] };
     }
     const g = activeMap[c.campaignName];
     if (c.touchPoint) g.tps.push(c.touchPoint);
     g.sent += parseFloat(c.emailsSent) || 0;
+    if ((parseFloat(c.emailsSent) || 0) > 0 && c.openRate != null && !isNaN(parseFloat(c.openRate))) {
+      g.openRates.push(parseFloat(c.openRate));
+    }
+  });
+  Object.values(activeMap).forEach(g => {
+    g.avgOpen = g.openRates.length ? g.openRates.reduce((s, r) => s + r, 0) / g.openRates.length : null;
   });
   const tpOrder = { TP1: 1, TP2: 2, TP3: 3, TP4: 4, TP5: 5, TP6: 6 };
   const maxTP = (tps) => {
@@ -235,7 +265,7 @@ export function generateWeeklyReportPdf(campaigns, commentary, weeksAgo = 0) {
       doc.setFont('helvetica', 'normal');
       doc.setFontSize(7.5);
       doc.setTextColor(...GREY);
-      const detail = `${c.audience || '—'}   ·   ${maxTP(c.tps)}   ·   ${Math.round(c.sent).toLocaleString()} sent`;
+      const detail = `${c.audience || '—'}   ·   ${maxTP(c.tps)}   ·   ${Math.round(c.sent).toLocaleString()} sent   ·   ${c.avgOpen != null ? c.avgOpen.toFixed(1) + '% open' : '—'}`;
       doc.text(detail, MARGIN + 70, y + 4);
       doc.setFont('helvetica', 'bold');
       doc.setFontSize(7.5);
@@ -247,7 +277,7 @@ export function generateWeeklyReportPdf(campaigns, commentary, weeksAgo = 0) {
       doc.setFont('helvetica', 'italic');
       doc.setFontSize(7.5);
       doc.setTextColor(...LGREY);
-      doc.text(`${activeList.length - 8} more campaigns active - see HQ for full view`, MARGIN + 2, y + 4);
+      doc.text(`+ ${activeList.length - 8} more active campaigns · Full breakdown at eventwise-hq.base44.app`, MARGIN + 2, y + 4);
       y += 7;
     }
     y += 3;
