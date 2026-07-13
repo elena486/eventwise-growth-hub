@@ -1,65 +1,199 @@
-import React, { useState } from 'react';
-import { X, Mail, Download, Loader2, Check, AlertCircle } from 'lucide-react';
+import React, { useState, useRef } from 'react';
+import { X, Mail, Download, Loader2, Check, AlertCircle, Upload, FileText, ChevronDown, ChevronUp, Sparkles } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
-import { generateWeeklyReportPdf, getWeekLabel, getWeekOptions } from './weeklyReportPdf';
+import { useAuth } from '@/lib/AuthContext';
+import { generateAiReportPdf, getWeekLabel, getWeekOptions } from './weeklyReportPdf';
 
 const RECIPIENTS = ['chris@eventwise.com', 'ramesh@eventwise.com', 'elena@eventwise.com'];
 
-export default function WeeklyReportModal({ campaigns, onClose }) {
+const SYSTEM_PROMPT = `You are an outreach analytics assistant for Eventwise, a B2B SaaS company. Eventwise's sales rep George runs cold email sequences via Apollo targeting event organisers and agencies in the UK.
+
+You will be given Apollo sequence analytics data (as a CSV, spreadsheet, PDF or screenshot). Extract the key metrics and produce a clean plain-English weekly summary.
+
+Return ONLY a JSON object with exactly these fields, no preamble or markdown:
+{
+  "headline_numbers": {
+    "emails_sent": number or null,
+    "avg_open_rate": string e.g. "52.3%" or null,
+    "avg_click_rate": string or null,
+    "avg_reply_rate": string or null,
+    "meetings_booked": number or null
+  },
+  "top_performing": [
+    {
+      "subject_line": string,
+      "campaign": string,
+      "open_rate": string,
+      "click_rate": string,
+      "reply_rate": string,
+      "why": string (one sentence plain English)
+    }
+  ],
+  "underperforming": [
+    {
+      "subject_line": string,
+      "campaign": string,
+      "issue": string (one sentence plain English)
+    }
+  ],
+  "campaign_snapshot": [
+    {
+      "name": string,
+      "status": string,
+      "emails_sent": number,
+      "open_rate": string
+    }
+  ],
+  "ai_observations": string (2-3 sentences plain English — patterns, what is working, what to change next week),
+  "data_quality_note": string or null
+}`;
+
+const RESPONSE_SCHEMA = {
+  type: "object",
+  properties: {
+    headline_numbers: {
+      type: "object",
+      properties: {
+        emails_sent: { type: "number" },
+        avg_open_rate: { type: "string" },
+        avg_click_rate: { type: "string" },
+        avg_reply_rate: { type: "string" },
+        meetings_booked: { type: "number" }
+      }
+    },
+    top_performing: {
+      type: "array",
+      items: {
+        type: "object",
+        properties: {
+          subject_line: { type: "string" },
+          campaign: { type: "string" },
+          open_rate: { type: "string" },
+          click_rate: { type: "string" },
+          reply_rate: { type: "string" },
+          why: { type: "string" }
+        }
+      }
+    },
+    underperforming: {
+      type: "array",
+      items: {
+        type: "object",
+        properties: {
+          subject_line: { type: "string" },
+          campaign: { type: "string" },
+          issue: { type: "string" }
+        }
+      }
+    },
+    campaign_snapshot: {
+      type: "array",
+      items: {
+        type: "object",
+        properties: {
+          name: { type: "string" },
+          status: { type: "string" },
+          emails_sent: { type: "number" },
+          open_rate: { type: "string" }
+        }
+      }
+    },
+    ai_observations: { type: "string" },
+    data_quality_note: { type: "string" }
+  }
+};
+
+export default function WeeklyReportModal({ onClose }) {
+  const { user } = useAuth();
+  const fileInputRef = useRef(null);
+  const [selectedWeek, setSelectedWeek] = useState(1); // default to last week
+  const [file, setFile] = useState(null);
   const [commentary, setCommentary] = useState('');
-  const [selectedWeek, setSelectedWeek] = useState(0);
+  const [showInstructions, setShowInstructions] = useState(false);
+  const [dragOver, setDragOver] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [phase, setPhase] = useState('');
   const [done, setDone] = useState(null); // 'sent' | 'downloaded' | 'error' | null
 
   const weekOptions = getWeekOptions(8);
-  const { weekOf, fridayDate, fridayFile } = getWeekLabel(selectedWeek);
+  const { weekOf, fridayDate, fridayFile, weekOfDate } = getWeekLabel(selectedWeek);
   const filename = `Outreach_Weekly_Report_w-e_${fridayFile}.pdf`;
 
-  const buildPdf = () => generateWeeklyReportPdf(campaigns, commentary, selectedWeek);
-
-  const handleSend = async () => {
-    setBusy(true);
-    setDone(null);
-    try {
-      const doc = buildPdf();
-      const pdfBlob = doc.output('blob');
-      const file = new File([pdfBlob], filename, { type: 'application/pdf' });
-      const uploadRes = await base44.integrations.Core.UploadFile({ file });
-      const file_url = uploadRes.file_url;
-
-      let body = 'Hi all,\n\n';
-      body += `Please find this week's outreach report here: ${file_url}\n\n`;
-      body += 'All campaign data is available in full in Eventwise HQ under Sales > Outreach Analytics.\n';
-      if (commentary.trim()) {
-        body += '\n' + commentary.trim() + '\n';
-      }
-      body += '\nGeorge';
-
-      await base44.integrations.Core.SendEmail({
-        to: RECIPIENTS.join(', '),
-        subject: `Outreach Weekly Report — w/e ${fridayDate}`,
-        body,
-        from_name: 'George Nell',
-      });
-
-      setDone('sent');
-    } catch (e) {
-      setDone('error');
-    }
-    setBusy(false);
+  const handleFileSelect = (f) => {
+    if (!f) return;
+    const validTypes = ['.csv', '.xlsx', '.pdf', '.png', '.jpg', '.jpeg'];
+    const ext = '.' + (f.name.split('.').pop() || '').toLowerCase();
+    if (!validTypes.includes(ext)) return;
+    setFile(f);
   };
 
-  const handleDownload = () => {
+  const processAndGenerate = async (sendEmail) => {
+    if (!file) return;
     setBusy(true);
     setDone(null);
     try {
-      const doc = buildPdf();
-      doc.save(filename);
-      setDone('downloaded');
+      // 1. Upload file
+      setPhase('Uploading file...');
+      const uploadRes = await base44.integrations.Core.UploadFile({ file });
+      const fileUrl = uploadRes.file_url;
+
+      // 2. AI analysis via Claude
+      setPhase('AI is analyzing your data...');
+      const aiResult = await base44.integrations.Core.InvokeLLM({
+        prompt: SYSTEM_PROMPT,
+        model: 'claude_sonnet_4_6',
+        file_urls: [fileUrl],
+        response_json_schema: RESPONSE_SCHEMA,
+      });
+
+      // 3. Generate PDF
+      setPhase('Generating PDF...');
+      const doc = generateAiReportPdf(aiResult, commentary, selectedWeek);
+
+      // 4. Store record
+      setPhase('Saving record...');
+      await base44.entities.ApolloWeeklyUpload.create({
+        weekOf: weekOfDate,
+        uploadedBy: user?.full_name || 'George Nell',
+        uploadedAt: new Date().toISOString(),
+        fileName: file.name,
+        fileUrl,
+        aiSummary: JSON.stringify(aiResult),
+        georgesNotes: commentary.trim() || '',
+        status: 'Processed',
+      });
+
+      // 5. Output
+      if (sendEmail) {
+        setPhase('Uploading PDF & sending email...');
+        const pdfBlob = doc.output('blob');
+        const pdfFile = new File([pdfBlob], filename, { type: 'application/pdf' });
+        const pdfUploadRes = await base44.integrations.Core.UploadFile({ file: pdfFile });
+        const pdfUrl = pdfUploadRes.file_url;
+
+        let body = 'Hi all,\n\n';
+        body += `Please find this week's outreach report here: ${pdfUrl}\n\n`;
+        if (commentary.trim()) {
+          body += commentary.trim() + '\n\n';
+        }
+        body += 'George';
+
+        await base44.integrations.Core.SendEmail({
+          to: RECIPIENTS.join(', '),
+          subject: `Outreach Weekly Report — w/e ${fridayDate}`,
+          body,
+          from_name: 'George Nell',
+        });
+        setDone('sent');
+      } else {
+        doc.save(filename);
+        setDone('downloaded');
+      }
     } catch (e) {
       setDone('error');
     }
     setBusy(false);
+    setPhase('');
   };
 
   const handleClose = () => {
@@ -70,65 +204,38 @@ export default function WeeklyReportModal({ campaigns, onClose }) {
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={handleClose}>
       <div
-        className="bg-white dark:bg-[#1E1E2E] rounded-2xl w-full max-w-lg shadow-2xl animate-modal-in"
+        className="bg-white dark:bg-[#1E1E2E] rounded-2xl w-full max-w-lg shadow-2xl animate-modal-in max-h-[90vh] overflow-y-auto"
         onClick={e => e.stopPropagation()}
       >
         {done === 'sent' ? (
-          // Success — sent
           <div className="p-8 text-center">
             <div className="w-16 h-16 bg-green-100 dark:bg-green-900/30 rounded-full flex items-center justify-center mx-auto mb-4">
               <Check className="w-8 h-8 text-green-600" />
             </div>
             <h2 className="text-lg font-bold text-navy dark:text-white mb-2">Report sent</h2>
-            <p className="text-sm text-ew-muted mb-6">
-              Report sent to Chris, Ramesh and Elena ✓
-            </p>
-            <button onClick={onClose}
-              className="px-5 py-2.5 bg-[#8403C5] text-white rounded-xl text-sm font-semibold hover:bg-[#6d02a3] transition-colors">
-              Done
-            </button>
+            <p className="text-sm text-ew-muted mb-6">Report sent to Chris, Ramesh and Elena ✓</p>
+            <button onClick={onClose} className="px-5 py-2.5 bg-[#8403C5] text-white rounded-xl text-sm font-semibold hover:bg-[#6d02a3] transition-colors">Done</button>
           </div>
         ) : done === 'downloaded' ? (
-          // Success — downloaded
           <div className="p-8 text-center">
             <div className="w-16 h-16 bg-green-100 dark:bg-green-900/30 rounded-full flex items-center justify-center mx-auto mb-4">
               <Check className="w-8 h-8 text-green-600" />
             </div>
             <h2 className="text-lg font-bold text-navy dark:text-white mb-2">PDF downloaded</h2>
-            <p className="text-sm text-ew-muted mb-6">
-              Your weekly report has been downloaded.
-            </p>
-            <button onClick={onClose}
-              className="px-5 py-2.5 bg-[#8403C5] text-white rounded-xl text-sm font-semibold hover:bg-[#6d02a3] transition-colors">
-              Done
-            </button>
+            <p className="text-sm text-ew-muted mb-6">Your weekly report has been downloaded.</p>
+            <button onClick={onClose} className="px-5 py-2.5 bg-[#8403C5] text-white rounded-xl text-sm font-semibold hover:bg-[#6d02a3] transition-colors">Done</button>
           </div>
         ) : (
-          // Form
           <div className="p-6">
+            {/* Header */}
             <div className="flex items-start justify-between mb-1">
               <div>
                 <h2 className="text-lg font-bold text-navy dark:text-white">Generate Weekly Report</h2>
+                <p className="text-sm text-ew-muted mt-0.5">Upload your Apollo analytics export and AI will create a clean summary report ready to send.</p>
               </div>
-              <button onClick={onClose} className="text-ew-muted hover:text-navy transition-colors">
+              <button onClick={onClose} className="text-ew-muted hover:text-navy transition-colors shrink-0 ml-3">
                 <X className="w-5 h-5" />
               </button>
-            </div>
-
-            {/* Week selector */}
-            <div className="mt-4 mb-1">
-              <label className="block text-sm font-semibold text-navy dark:text-gray-200 mb-1.5">
-                Report covers week of:
-              </label>
-              <select
-                value={selectedWeek}
-                onChange={e => setSelectedWeek(Number(e.target.value))}
-                className="w-full border border-ew-border dark:border-gray-600 dark:bg-[#2A2A3E] dark:text-gray-200 rounded-xl px-3 py-2.5 text-sm outline-none focus:border-[#8403C5] bg-white transition-colors"
-              >
-                {weekOptions.map(opt => (
-                  <option key={opt.value} value={opt.value}>{opt.label}</option>
-                ))}
-              </select>
             </div>
 
             {done === 'error' && (
@@ -138,36 +245,113 @@ export default function WeeklyReportModal({ campaigns, onClose }) {
               </div>
             )}
 
-            {/* Commentary field */}
-            <div className="mt-5 mb-5">
+            {/* Week selector */}
+            <div className="mt-5 mb-1">
+              <label className="block text-sm font-semibold text-navy dark:text-gray-200 mb-1.5">Which week does this cover?</label>
+              <select
+                value={selectedWeek}
+                onChange={e => setSelectedWeek(Number(e.target.value))}
+                disabled={busy}
+                className="w-full border border-ew-border dark:border-gray-600 dark:bg-[#2A2A3E] dark:text-gray-200 rounded-xl px-3 py-2.5 text-sm outline-none focus:border-[#8403C5] bg-white transition-colors disabled:opacity-60"
+              >
+                {weekOptions.map(opt => (
+                  <option key={opt.value} value={opt.value}>{opt.label}</option>
+                ))}
+              </select>
+            </div>
+
+            {/* Collapsible instructions */}
+            <div className="mt-3 mb-3">
+              <button
+                onClick={() => setShowInstructions(!showInstructions)}
+                className="flex items-center gap-1 text-xs font-semibold text-[#8403C5] hover:text-[#6d02a3] transition-colors"
+              >
+                How do I export from Apollo?
+                {showInstructions ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+              </button>
+              {showInstructions && (
+                <div className="mt-2 p-3 bg-[#F6F6FB] dark:bg-[#2A2A3E] rounded-xl text-xs text-ew-body dark:text-gray-300 leading-relaxed">
+                  <p>1. Go to Apollo → Sequences → Analytics</p>
+                  <p>2. Set the date filter to the past 7 days</p>
+                  <p>3. Export as CSV or take a screenshot of the analytics dashboard</p>
+                  <p>4. Upload the file below</p>
+                </div>
+              )}
+            </div>
+
+            {/* Upload field */}
+            <div
+              onDragOver={e => { e.preventDefault(); setDragOver(true); }}
+              onDragLeave={() => setDragOver(false)}
+              onDrop={e => { e.preventDefault(); setDragOver(false); handleFileSelect(e.dataTransfer.files[0]); }}
+              onClick={() => !busy && !file && fileInputRef.current?.click()}
+              className={`border-2 border-dashed rounded-xl p-6 text-center transition-colors ${
+                file ? 'border-[#1D9E75] bg-[#E8F7F2]' : dragOver ? 'border-[#8403C5] bg-[#F3E8FF] cursor-pointer' : 'border-ew-border dark:border-gray-600 hover:border-[#8403C5] cursor-pointer'
+              } ${busy ? 'opacity-60 pointer-events-none' : ''}`}
+            >
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept=".csv,.xlsx,.pdf,.png,.jpg,.jpeg"
+                className="hidden"
+                onChange={e => { if (e.target.files[0]) handleFileSelect(e.target.files[0]); }}
+              />
+              {file ? (
+                <div className="flex items-center justify-center gap-2">
+                  <FileText className="w-5 h-5 text-[#1D9E75]" />
+                  <span className="text-sm font-medium text-navy dark:text-white">{file.name}</span>
+                  <button
+                    onClick={e => { e.stopPropagation(); setFile(null); }}
+                    className="text-ew-muted hover:text-red-500 transition-colors"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+              ) : (
+                <div>
+                  <Upload className="w-8 h-8 text-ew-muted mx-auto mb-2" />
+                  <p className="text-sm font-medium text-navy dark:text-white">Drop your Apollo export here</p>
+                  <p className="text-xs text-ew-muted mt-1">CSV, XLSX, PDF, PNG or JPG · or click to browse</p>
+                </div>
+              )}
+            </div>
+
+            {/* Notes field */}
+            <div className="mt-4 mb-4">
               <label className="block text-sm font-semibold text-navy dark:text-gray-200 mb-1.5">
                 Your commentary for this week <span className="text-xs font-normal text-ew-muted">(optional)</span>
               </label>
               <textarea
-                rows={4}
-                placeholder="e.g. Agencies segment showing strong open rates, pivoting TP3 subject line next week, pausing Passed Events campaign..."
+                rows={3}
+                placeholder="e.g. Paused two campaigns, focused on Events segment, Agencies showing low engagement..."
                 value={commentary}
                 onChange={e => setCommentary(e.target.value)}
-                className="w-full border border-ew-border dark:border-gray-600 dark:bg-[#2A2A3E] dark:text-gray-200 rounded-xl px-3 py-2.5 text-sm outline-none focus:border-[#8403C5] resize-none transition-colors"
+                disabled={busy}
+                className="w-full border border-ew-border dark:border-gray-600 dark:bg-[#2A2A3E] dark:text-gray-200 rounded-xl px-3 py-2.5 text-sm outline-none focus:border-[#8403C5] resize-none transition-colors disabled:opacity-60"
               />
-              <p className="text-[11px] text-ew-muted mt-1.5">
-                If entered, this will appear in a "Notes from George" section of the report.
-              </p>
             </div>
+
+            {/* Processing indicator */}
+            {busy && (
+              <div className="flex items-center gap-2 mb-4 text-sm text-[#8403C5]">
+                <Sparkles className="w-4 h-4 animate-pulse" />
+                <span>{phase}</span>
+              </div>
+            )}
 
             {/* Actions */}
             <div className="flex gap-2 flex-wrap">
               <button
-                onClick={handleSend}
-                disabled={busy}
+                onClick={() => processAndGenerate(true)}
+                disabled={busy || !file}
                 className="flex-1 min-w-[180px] flex items-center justify-center gap-2 py-2.5 bg-[#1D9E75] text-white rounded-xl text-sm font-semibold hover:bg-[#17a35f] transition-colors disabled:opacity-60"
               >
                 {busy ? <Loader2 className="w-4 h-4 animate-spin" /> : <Mail className="w-4 h-4" />}
-                {busy ? 'Generating & sending...' : 'Generate & Send Report'}
+                {busy ? 'Processing...' : 'Generate & Send Report'}
               </button>
               <button
-                onClick={handleDownload}
-                disabled={busy}
+                onClick={() => processAndGenerate(false)}
+                disabled={busy || !file}
                 className="flex items-center justify-center gap-2 px-4 py-2.5 border border-ew-border dark:border-gray-600 text-ew-body dark:text-gray-300 rounded-xl text-sm font-medium hover:bg-ew-bg dark:hover:bg-[#252535] transition-colors disabled:opacity-60"
               >
                 {busy ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
@@ -176,16 +360,8 @@ export default function WeeklyReportModal({ campaigns, onClose }) {
             </div>
 
             <div className="flex justify-between items-center mt-4">
-              <button
-                onClick={onClose}
-                disabled={busy}
-                className="text-xs text-ew-muted hover:text-navy transition-colors disabled:opacity-50"
-              >
-                Cancel
-              </button>
-              <p className="text-[11px] text-ew-muted">
-                Recipients: Chris, Ramesh, Elena
-              </p>
+              <button onClick={onClose} disabled={busy} className="text-xs text-ew-muted hover:text-navy transition-colors disabled:opacity-50">Cancel</button>
+              <p className="text-[11px] text-ew-muted">Recipients: Chris, Ramesh, Elena</p>
             </div>
           </div>
         )}

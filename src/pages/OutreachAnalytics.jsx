@@ -4,6 +4,7 @@ import InputView from '@/components/outreach/InputView';
 import AnalyticsView from '@/components/outreach/AnalyticsView';
 import CampaignView from '@/components/outreach/CampaignView';
 import WeeklyReportModal from '@/components/outreach/WeeklyReportModal';
+import UploadHistory from '@/components/outreach/UploadHistory';
 import { FileText } from 'lucide-react';
 
 export default function OutreachAnalytics() {
@@ -41,14 +42,12 @@ export default function OutreachAnalytics() {
           <p className="text-xs text-ew-muted mt-0.5">Apollo campaign performance — subject lines, assets, trends</p>
         </div>
         <div className="flex items-center gap-3">
-          {(view === 'input' || view === 'campaign') && (
             <button
               onClick={() => setShowReport(true)}
               className="flex items-center gap-1.5 px-4 py-2 text-xs font-semibold bg-[#1D9E75] text-white rounded-lg hover:bg-[#17a35f] transition-colors"
             >
-              <FileText className="w-3.5 h-3.5" /> Generate Weekly Report
+              <FileText className="w-3.5 h-3.5" /> Weekly Report
             </button>
-          )}
           {/* Toggle */}
           <div className="flex items-center gap-1 bg-[#F7F7F8] border border-ew-border rounded-xl p-1">
             <button
@@ -85,10 +84,11 @@ export default function OutreachAnalytics() {
             {view === 'campaign' && <CampaignView campaigns={campaigns} />}
           </>
         )}
+        {!loading && <UploadHistory />}
       </div>
 
       {showReport && (
-        <WeeklyReportModal campaigns={campaigns} onClose={() => setShowReport(false)} />
+        <WeeklyReportModal onClose={() => setShowReport(false)} />
       )}
     </div>
   );

@@ -1,0 +1,51 @@
+{
+  "name": "ApolloWeeklyUpload",
+  "type": "object",
+  "properties": {
+    "weekOf": {
+      "type": "string",
+      "format": "date",
+      "description": "Monday of the selected week (YYYY-MM-DD)"
+    },
+    "uploadedBy": {
+      "type": "string",
+      "description": "Name of the person who uploaded"
+    },
+    "uploadedAt": {
+      "type": "string",
+      "description": "ISO timestamp of upload"
+    },
+    "fileName": {
+      "type": "string",
+      "description": "Original uploaded file name"
+    },
+    "fileUrl": {
+      "type": "string",
+      "description": "Stored file URL"
+    },
+    "aiSummary": {
+      "type": "string",
+      "description": "JSON stringified AI summary from Claude"
+    },
+    "georgesNotes": {
+      "type": "string",
+      "description": "George's optional commentary for the week"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "Processed",
+        "Failed"
+      ],
+      "default": "Processed",
+      "description": "Processing status of the upload"
+    }
+  },
+  "required": [
+    "weekOf",
+    "uploadedBy",
+    "fileName",
+    "fileUrl",
+    "status"
+  ]
+}
