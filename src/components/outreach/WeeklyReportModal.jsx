@@ -1,19 +1,21 @@
 import React, { useState } from 'react';
 import { X, Mail, Download, Loader2, Check, AlertCircle } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
-import { generateWeeklyReportPdf, getWeekLabel } from './weeklyReportPdf';
+import { generateWeeklyReportPdf, getWeekLabel, getWeekOptions } from './weeklyReportPdf';
 
 const RECIPIENTS = ['chris@eventwise.com', 'ramesh@eventwise.com', 'elena@eventwise.com'];
 
 export default function WeeklyReportModal({ campaigns, onClose }) {
   const [commentary, setCommentary] = useState('');
+  const [selectedWeek, setSelectedWeek] = useState(0);
   const [busy, setBusy] = useState(false);
   const [done, setDone] = useState(null); // 'sent' | 'downloaded' | 'error' | null
 
-  const { weekOf, fridayDate, fridayFile } = getWeekLabel();
+  const weekOptions = getWeekOptions(8);
+  const { weekOf, fridayDate, fridayFile } = getWeekLabel(selectedWeek);
   const filename = `Outreach_Weekly_Report_w-e_${fridayFile}.pdf`;
 
-  const buildPdf = () => generateWeeklyReportPdf(campaigns, commentary);
+  const buildPdf = () => generateWeeklyReportPdf(campaigns, commentary, selectedWeek);
 
   const handleSend = async () => {
     setBusy(true);
@@ -107,11 +109,26 @@ export default function WeeklyReportModal({ campaigns, onClose }) {
             <div className="flex items-start justify-between mb-1">
               <div>
                 <h2 className="text-lg font-bold text-navy dark:text-white">Generate Weekly Report</h2>
-                <p className="text-sm text-ew-muted mt-0.5">{weekOf}</p>
               </div>
               <button onClick={onClose} className="text-ew-muted hover:text-navy transition-colors">
                 <X className="w-5 h-5" />
               </button>
+            </div>
+
+            {/* Week selector */}
+            <div className="mt-4 mb-1">
+              <label className="block text-sm font-semibold text-navy dark:text-gray-200 mb-1.5">
+                Report covers week of:
+              </label>
+              <select
+                value={selectedWeek}
+                onChange={e => setSelectedWeek(Number(e.target.value))}
+                className="w-full border border-ew-border dark:border-gray-600 dark:bg-[#2A2A3E] dark:text-gray-200 rounded-xl px-3 py-2.5 text-sm outline-none focus:border-[#8403C5] bg-white transition-colors"
+              >
+                {weekOptions.map(opt => (
+                  <option key={opt.value} value={opt.value}>{opt.label}</option>
+                ))}
+              </select>
             </div>
 
             {done === 'error' && (

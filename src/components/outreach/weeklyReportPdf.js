@@ -33,14 +33,14 @@ function getWeekRange(weeksAgo = 0) {
   };
 }
 
-export function generateWeeklyReportPdf(campaigns, commentary) {
+export function generateWeeklyReportPdf(campaigns, commentary, weeksAgo = 0) {
   const doc = new jsPDF({ unit: 'mm', format: 'a4', orientation: 'portrait' });
   const PAGE_W = 210, PAGE_H = 297, MARGIN = 20;
   const CONTENT_W = PAGE_W - MARGIN * 2;
   let y = MARGIN;
 
-  const thisWeekRange = getWeekRange(0);
-  const lastWeekRange = getWeekRange(1);
+  const thisWeekRange = getWeekRange(weeksAgo);
+  const lastWeekRange = getWeekRange(weeksAgo + 1);
 
   const inRange = (c, r) => c.launchDate && c.launchDate >= r.monStr && c.launchDate <= r.sunStr;
   const thisWeek = campaigns.filter(c => inRange(c, thisWeekRange));
@@ -301,11 +301,20 @@ export function generateWeeklyReportPdf(campaigns, commentary) {
   return doc;
 }
 
-export function getWeekLabel() {
-  const r = getWeekRange(0);
+export function getWeekLabel(weeksAgo = 0) {
+  const r = getWeekRange(weeksAgo);
   return {
     weekOf: `Week of ${format(r.monday, 'd MMM')} – ${format(r.friday, 'd MMM yyyy')}`,
     fridayDate: format(r.friday, 'd MMM yyyy'),
     fridayFile: format(r.friday, 'yyyy-MM-dd'),
   };
+}
+
+export function getWeekOptions(count = 8) {
+  return Array.from({ length: count }, (_, i) => {
+    const r = getWeekRange(i);
+    const label = i === 0 ? 'This week' : i === 1 ? 'Last week' : `${i} weeks ago`;
+    const dateRange = `${format(r.monday, 'd MMM')} – ${format(r.friday, 'd MMM yyyy')}`;
+    return { value: i, label: `${label} (${dateRange})` };
+  });
 }
