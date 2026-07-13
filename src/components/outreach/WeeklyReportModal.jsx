@@ -35,6 +35,16 @@ export default function WeeklyReportModal({ onClose, onSaved }) {
   const { fridayDate, fridayFile, weekOfDate } = getWeekLabel(selectedWeek);
   const filename = `Outreach_Weekly_Report_w-e_${fridayFile}.pdf`;
 
+  const step2Done = files.length > 0;
+  const step3Done = subjectLines.some(s => s.subject_line.trim());
+  const currentStep = !step2Done ? 2 : !step3Done ? 3 : 4;
+  const steps = [
+    { num: 1, label: 'Week', done: true },
+    { num: 2, label: 'Upload', done: step2Done },
+    { num: 3, label: 'Subject Lines', done: step3Done },
+    { num: 4, label: 'Send', done: false },
+  ];
+
   const handleFileSelect = (f) => {
     if (!f || files.length >= MAX_FILES) return;
     const ext = '.' + (f.name.split('.').pop() || '').toLowerCase();
@@ -230,9 +240,28 @@ export default function WeeklyReportModal({ onClose, onSaved }) {
               </div>
             )}
 
+            {/* Step indicator */}
+            <div className="flex items-start mt-4 mb-5">
+              {steps.map((step, idx) => (
+                <React.Fragment key={step.num}>
+                  <div className="flex flex-col items-center gap-1 shrink-0">
+                    <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold transition-colors ${
+                      step.done ? 'bg-[#8403C5] text-white' : currentStep === step.num ? 'border-2 border-[#8403C5] text-[#8403C5] bg-white' : 'bg-[#EBEBF5] text-ew-muted'
+                    }`}>
+                      {step.done ? '✓' : step.num}
+                    </div>
+                    <span className={`text-[10px] font-medium whitespace-nowrap ${currentStep === step.num || step.done ? 'text-navy' : 'text-ew-muted'}`}>{step.label}</span>
+                  </div>
+                  {idx < steps.length - 1 && (
+                    <div className={`h-0.5 flex-1 mx-2 mt-3.5 rounded ${steps[idx].done ? 'bg-[#8403C5]' : 'bg-[#EBEBF5]'}`} />
+                  )}
+                </React.Fragment>
+              ))}
+            </div>
+
             {/* STEP 1 — Week selector */}
             <div className="mt-5 mb-1">
-              <label className="block text-sm font-semibold text-navy dark:text-gray-200 mb-1.5">Which week does this cover?</label>
+              <label className="block text-sm font-semibold text-navy dark:text-gray-200 mb-1.5">Week being reported on:</label>
               <select
                 value={selectedWeek}
                 onChange={e => setSelectedWeek(Number(e.target.value))}
@@ -241,6 +270,7 @@ export default function WeeklyReportModal({ onClose, onSaved }) {
               >
                 {weekOptions.map(opt => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
               </select>
+              <p className="text-[11px] text-ew-muted mt-1.5 italic">This is the week your Apollo data covers, not today's date</p>
             </div>
 
             {/* STEP 2 — Upload Apollo export */}
@@ -287,6 +317,13 @@ export default function WeeklyReportModal({ onClose, onSaved }) {
                     <Upload className="w-7 h-7 text-ew-muted mx-auto mb-2" />
                     <p className="text-sm font-medium text-navy dark:text-white">Drop your Apollo export here</p>
                     <p className="text-xs text-ew-muted mt-1">CSV, XLSX, PDF, PNG or JPG · up to {MAX_FILES} files · or click to browse</p>
+                    <div className="flex items-center justify-center gap-1.5 mt-2.5">
+                      <span className="text-[9px] font-bold text-ew-muted bg-[#EBEBF5] px-1.5 py-0.5 rounded">CSV</span>
+                      <span className="text-[9px] font-bold text-ew-muted bg-[#EBEBF5] px-1.5 py-0.5 rounded">XLSX</span>
+                      <span className="text-[9px] font-bold text-ew-muted bg-[#EBEBF5] px-1.5 py-0.5 rounded">PDF</span>
+                      <span className="text-[9px] font-bold text-ew-muted bg-[#EBEBF5] px-1.5 py-0.5 rounded">IMG</span>
+                    </div>
+                    <p className="text-[11px] text-ew-muted italic mt-2.5">Tip: Export from Apollo → Sequences → Analytics → filter last 7 days → Export</p>
                   </div>
                 )}
               </div>
@@ -303,7 +340,7 @@ export default function WeeklyReportModal({ onClose, onSaved }) {
                       <th className="px-3 py-2 text-left text-[10px] font-semibold text-ew-muted uppercase tracking-wider">Subject Line</th>
                       <th className="px-2 py-2 text-left text-[10px] font-semibold text-ew-muted uppercase tracking-wider w-16">Open %</th>
                       <th className="px-2 py-2 text-left text-[10px] font-semibold text-ew-muted uppercase tracking-wider w-16">Reply %</th>
-                      <th className="px-2 py-2 text-left text-[10px] font-semibold text-ew-muted uppercase tracking-wider w-24">Variant/Note</th>
+                      <th className="px-2 py-2 text-left text-[10px] font-semibold text-ew-muted uppercase tracking-wider w-24" title="e.g. Variant A, Events only, TP2 B">Variant/Note</th>
                       <th className="w-8"></th>
                     </tr>
                   </thead>
@@ -326,7 +363,7 @@ export default function WeeklyReportModal({ onClose, onSaved }) {
                             value={row.open_rate}
                             onChange={e => updateSubjectLine(i, 'open_rate', e.target.value)}
                             disabled={busy}
-                            placeholder="0.0"
+                            placeholder=""
                             className="w-full px-2 py-1.5 text-sm border-0 bg-transparent outline-none focus:bg-[#F6F6FB] dark:focus:bg-[#252535] dark:text-gray-200 rounded text-center text-[#242450]"
                           />
                         </td>
@@ -337,7 +374,7 @@ export default function WeeklyReportModal({ onClose, onSaved }) {
                             value={row.reply_rate}
                             onChange={e => updateSubjectLine(i, 'reply_rate', e.target.value)}
                             disabled={busy}
-                            placeholder="0.0"
+                            placeholder=""
                             className="w-full px-2 py-1.5 text-sm border-0 bg-transparent outline-none focus:bg-[#F6F6FB] dark:focus:bg-[#252535] dark:text-gray-200 rounded text-center text-[#242450]"
                           />
                         </td>
@@ -351,9 +388,11 @@ export default function WeeklyReportModal({ onClose, onSaved }) {
                           />
                         </td>
                         <td className="px-1 py-1.5 text-center">
-                          <button onClick={() => removeSubjectLine(i)} disabled={busy} className="text-ew-muted hover:text-red-500 transition-colors p-1 disabled:opacity-50">
-                            <X className="w-3.5 h-3.5" />
-                          </button>
+                          {subjectLines.length > 3 && (
+                            <button onClick={() => removeSubjectLine(i)} disabled={busy} className="text-ew-muted hover:text-red-500 transition-colors p-1 disabled:opacity-50">
+                              <X className="w-3.5 h-3.5" />
+                            </button>
+                          )}
                         </td>
                       </tr>
                     ))}
@@ -373,7 +412,7 @@ export default function WeeklyReportModal({ onClose, onSaved }) {
               </label>
               <textarea
                 rows={3}
-                placeholder="e.g. Paused Passed Events campaign, pivoting to Events segment next week, Agencies showing low engagement..."
+                placeholder="Any context, highlights or changes this week..."
                 value={commentary}
                 onChange={e => setCommentary(e.target.value)}
                 disabled={busy}
@@ -381,37 +420,36 @@ export default function WeeklyReportModal({ onClose, onSaved }) {
               />
             </div>
 
-            {/* Processing indicator */}
-            {busy && (
-              <div className="flex items-center gap-2 mt-4 text-sm text-[#8403C5]">
-                <Sparkles className="w-4 h-4 animate-pulse" />
-                <span>{phase}</span>
+            {/* Sticky footer */}
+            <div className="sticky bottom-0 bg-white dark:bg-[#1E1E2E] border-t border-ew-border dark:border-gray-700 -mx-6 px-6 py-3 mt-6">
+              {busy && (
+                <div className="flex items-center gap-2 mb-2 text-sm text-[#8403C5]">
+                  <Sparkles className="w-4 h-4 animate-pulse" />
+                  <span>{phase}</span>
+                </div>
+              )}
+              <div className="flex gap-2 flex-wrap">
+                <button
+                  onClick={() => processAndGenerate(true)}
+                  disabled={busy || files.length === 0}
+                  className="flex-1 min-w-[180px] flex items-center justify-center gap-2 py-2.5 bg-[#1D9E75] text-white rounded-xl text-sm font-semibold hover:bg-[#17a35f] transition-colors disabled:opacity-60"
+                >
+                  {busy ? <Loader2 className="w-4 h-4 animate-spin" /> : <Mail className="w-4 h-4" />}
+                  {busy ? 'Processing...' : 'Generate & Send Report'}
+                </button>
+                <button
+                  onClick={() => processAndGenerate(false)}
+                  disabled={busy || files.length === 0}
+                  className="flex items-center justify-center gap-2 px-4 py-2.5 border border-ew-border dark:border-gray-600 text-ew-body dark:text-gray-300 rounded-xl text-sm font-medium hover:bg-ew-bg dark:hover:bg-[#252535] transition-colors disabled:opacity-60"
+                >
+                  {busy ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
+                  Generate PDF only
+                </button>
               </div>
-            )}
-
-            {/* Actions */}
-            <div className="flex gap-2 flex-wrap mt-5">
-              <button
-                onClick={() => processAndGenerate(true)}
-                disabled={busy || files.length === 0}
-                className="flex-1 min-w-[180px] flex items-center justify-center gap-2 py-2.5 bg-[#1D9E75] text-white rounded-xl text-sm font-semibold hover:bg-[#17a35f] transition-colors disabled:opacity-60"
-              >
-                {busy ? <Loader2 className="w-4 h-4 animate-spin" /> : <Mail className="w-4 h-4" />}
-                {busy ? 'Processing...' : 'Generate & Send Report'}
-              </button>
-              <button
-                onClick={() => processAndGenerate(false)}
-                disabled={busy || files.length === 0}
-                className="flex items-center justify-center gap-2 px-4 py-2.5 border border-ew-border dark:border-gray-600 text-ew-body dark:text-gray-300 rounded-xl text-sm font-medium hover:bg-ew-bg dark:hover:bg-[#252535] transition-colors disabled:opacity-60"
-              >
-                {busy ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
-                Generate PDF only
-              </button>
-            </div>
-
-            <div className="flex justify-between items-center mt-4">
-              <button onClick={onClose} disabled={busy} className="text-xs text-ew-muted hover:text-navy transition-colors disabled:opacity-50">Cancel</button>
-              <p className="text-[11px] text-ew-muted">Recipients: Chris, Ramesh, Elena</p>
+              <div className="flex justify-between items-center mt-2">
+                <button onClick={onClose} disabled={busy} className="text-xs text-ew-muted hover:text-navy transition-colors disabled:opacity-50">Cancel</button>
+                <p className="text-[11px] text-ew-muted">Recipients: Chris, Ramesh, Elena</p>
+              </div>
             </div>
           </div>
         )}
