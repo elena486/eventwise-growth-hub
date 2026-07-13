@@ -6,103 +6,6 @@ import { generateAiReportPdf, getWeekLabel, getWeekOptions } from './weeklyRepor
 
 const RECIPIENTS = ['chris@eventwise.com', 'ramesh@eventwise.com', 'elena@eventwise.com'];
 
-const SYSTEM_PROMPT = `You are an outreach analytics assistant for Eventwise, a B2B SaaS company. Eventwise's sales rep George runs cold email sequences via Apollo targeting event organisers and agencies in the UK.
-
-You will be given Apollo sequence analytics data (as a CSV, spreadsheet, PDF or screenshot). Extract the key metrics and produce a clean plain-English weekly summary.
-
-Return ONLY a JSON object with exactly these fields, no preamble or markdown:
-{
-  "headline_numbers": {
-    "emails_sent": number or null,
-    "avg_open_rate": string e.g. "52.3%" or null,
-    "avg_click_rate": string or null,
-    "avg_reply_rate": string or null,
-    "meetings_booked": number or null
-  },
-  "top_performing": [
-    {
-      "subject_line": string,
-      "campaign": string,
-      "open_rate": string,
-      "click_rate": string,
-      "reply_rate": string,
-      "why": string (one sentence plain English)
-    }
-  ],
-  "underperforming": [
-    {
-      "subject_line": string,
-      "campaign": string,
-      "issue": string (one sentence plain English)
-    }
-  ],
-  "campaign_snapshot": [
-    {
-      "name": string,
-      "status": string,
-      "emails_sent": number,
-      "open_rate": string
-    }
-  ],
-  "ai_observations": string (2-3 sentences plain English — patterns, what is working, what to change next week),
-  "data_quality_note": string or null
-}`;
-
-const RESPONSE_SCHEMA = {
-  type: "object",
-  properties: {
-    headline_numbers: {
-      type: "object",
-      properties: {
-        emails_sent: { type: "number" },
-        avg_open_rate: { type: "string" },
-        avg_click_rate: { type: "string" },
-        avg_reply_rate: { type: "string" },
-        meetings_booked: { type: "number" }
-      }
-    },
-    top_performing: {
-      type: "array",
-      items: {
-        type: "object",
-        properties: {
-          subject_line: { type: "string" },
-          campaign: { type: "string" },
-          open_rate: { type: "string" },
-          click_rate: { type: "string" },
-          reply_rate: { type: "string" },
-          why: { type: "string" }
-        }
-      }
-    },
-    underperforming: {
-      type: "array",
-      items: {
-        type: "object",
-        properties: {
-          subject_line: { type: "string" },
-          campaign: { type: "string" },
-          issue: { type: "string" }
-        }
-      }
-    },
-    campaign_snapshot: {
-      type: "array",
-      items: {
-        type: "object",
-        properties: {
-          name: { type: "string" },
-          status: { type: "string" },
-          emails_sent: { type: "number" },
-          open_rate: { type: "string" }
-        }
-      }
-    },
-    ai_observations: { type: "string" },
-    data_quality_note: { type: "string" }
-  }
-};
-
 export default function WeeklyReportModal({ onClose }) {
   const { user } = useAuth();
   const fileInputRef = useRef(null);
@@ -114,6 +17,7 @@ export default function WeeklyReportModal({ onClose }) {
   const [busy, setBusy] = useState(false);
   const [phase, setPhase] = useState('');
   const [done, setDone] = useState(null); // 'sent' | 'downloaded' | 'error' | null
+  const [errorMsg, setErrorMsg] = useState('');
 
   const weekOptions = getWeekOptions(8);
   const { weekOf, fridayDate, fridayFile, weekOfDate } = getWeekLabel(selectedWeek);
@@ -131,39 +35,58 @@ export default function WeeklyReportModal({ onClose }) {
     if (!file) return;
     setBusy(true);
     setDone(null);
+    setErrorMsg('');
     try {
       // 1. Upload file
       setPhase('Uploading file...');
       const uploadRes = await base44.integrations.Core.UploadFile({ file });
       const fileUrl = uploadRes.file_url;
 
-      // 2. AI analysis via Claude
-      setPhase('AI is analyzing your data...');
-      const aiResult = await base44.integrations.Core.InvokeLLM({
-        prompt: SYSTEM_PROMPT,
-        model: 'claude_sonnet_4_6',
-        file_urls: [fileUrl],
-        response_json_schema: RESPONSE_SCHEMA,
-      });
-
-      // 3. Generate PDF
-      setPhase('Generating PDF...');
-      const doc = generateAiReportPdf(aiResult, commentary, selectedWeek);
-
-      // 4. Store record
-      setPhase('Saving record...');
-      await base44.entities.ApolloWeeklyUpload.create({
+      // 2. Create record with Processing status
+      setPhase('Creating record...');
+      const record = await base44.entities.ApolloWeeklyUpload.create({
         weekOf: weekOfDate,
         uploadedBy: user?.full_name || 'George Nell',
         uploadedAt: new Date().toISOString(),
         fileName: file.name,
         fileUrl,
-        aiSummary: JSON.stringify(aiResult),
+        aiSummary: '',
         georgesNotes: commentary.trim() || '',
+        status: 'Processing',
+      });
+
+      // 3. AI analysis via backend function
+      setPhase('AI is analyzing your data...');
+      const response = await base44.functions.invoke('processApolloUpload', {
+        fileUrl,
+        fileName: file.name,
+      });
+      const aiResult = response.data;
+
+      if (aiResult.error) {
+        await base44.entities.ApolloWeeklyUpload.update(record.id, {
+          status: 'Failed',
+          aiSummary: JSON.stringify({ error: aiResult.error }),
+        });
+        setDone('error');
+        setErrorMsg(aiResult.error);
+        return;
+      }
+
+      const summary = aiResult.summary;
+
+      // 4. Update record to Processed
+      setPhase('Saving results...');
+      await base44.entities.ApolloWeeklyUpload.update(record.id, {
+        aiSummary: JSON.stringify(summary),
         status: 'Processed',
       });
 
-      // 5. Output
+      // 5. Generate PDF
+      setPhase('Generating PDF...');
+      const doc = generateAiReportPdf(summary, commentary, selectedWeek);
+
+      // 6. Output
       if (sendEmail) {
         setPhase('Uploading PDF & sending email...');
         const pdfBlob = doc.output('blob');
@@ -191,6 +114,7 @@ export default function WeeklyReportModal({ onClose }) {
       }
     } catch (e) {
       setDone('error');
+      setErrorMsg(e.message || 'Unknown error');
     }
     setBusy(false);
     setPhase('');
@@ -241,7 +165,7 @@ export default function WeeklyReportModal({ onClose }) {
             {done === 'error' && (
               <div className="mt-4 flex items-start gap-2 p-3 bg-red-50 border border-red-200 rounded-xl">
                 <AlertCircle className="w-4 h-4 text-red-500 shrink-0 mt-0.5" />
-                <p className="text-xs text-red-700">Something went wrong. Please try again.</p>
+                <p className="text-xs text-red-700 break-words">{errorMsg || 'Something went wrong. Please try again.'}</p>
               </div>
             )}
 

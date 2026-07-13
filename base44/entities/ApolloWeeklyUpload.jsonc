@@ -34,10 +34,11 @@
     "status": {
       "type": "string",
       "enum": [
+        "Processing",
         "Processed",
         "Failed"
       ],
-      "default": "Processed",
+      "default": "Processing",
       "description": "Processing status of the upload"
     }
   },
