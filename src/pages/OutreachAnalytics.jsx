@@ -2,12 +2,13 @@ import React, { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
 import InputView from '@/components/outreach/InputView';
 import AnalyticsView from '@/components/outreach/AnalyticsView';
+import CampaignView from '@/components/outreach/CampaignView';
 
 export default function OutreachAnalytics() {
   const [campaigns, setCampaigns] = useState([]);
   const [salesAssets, setSalesAssets] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [view, setView] = useState('input'); // 'input' | 'analytics'
+  const [view, setView] = useState('input'); // 'input' | 'analytics' | 'campaign'
 
   const load = async () => {
     const [data, assets] = await Promise.all([
@@ -50,6 +51,12 @@ export default function OutreachAnalytics() {
           >
             📊 Analytics View
           </button>
+          <button
+            onClick={() => setView('campaign')}
+            className={`px-4 py-1.5 text-xs font-semibold rounded-lg transition-all ${view === 'campaign' ? 'bg-[#1D9E75] text-white shadow-sm' : 'text-ew-body hover:text-navy'}`}
+          >
+            🎯 Campaign View
+          </button>
         </div>
       </div>
 
@@ -62,6 +69,7 @@ export default function OutreachAnalytics() {
           <>
             {view === 'input' && <InputView campaigns={campaigns} onRefresh={load} />}
             {view === 'analytics' && <AnalyticsView campaigns={campaigns} salesAssets={salesAssets} />}
+            {view === 'campaign' && <CampaignView campaigns={campaigns} />}
           </>
         )}
       </div>
