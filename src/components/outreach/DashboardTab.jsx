@@ -5,6 +5,8 @@ import { base44 } from '@/api/base44Client';
 import { startOfWeek, subWeeks, addDays, format, parseISO } from 'date-fns';
 
 const DATE_PRESETS = ['This week', 'Last week', 'Last 4 weeks', 'Last 12 weeks', 'All time'];
+const HISTORICAL_WEEK = '2026-01-01';
+const isHistorical = (s) => s.weekCommencing === HISTORICAL_WEEK;
 
 function getRange(preset) {
   const thisMonday = startOfWeek(new Date(), { weekStartsOn: 1 });
@@ -78,12 +80,14 @@ export default function DashboardTab({ snapshots, subjectLines, uploads, onRefre
   const priorRange = getPriorRange(datePreset);
 
   const filtered = useMemo(() => {
-    return snapshots.filter(s => inRange(s.weekCommencing, range));
-  }, [snapshots, range]);
+    let result = snapshots.filter(s => inRange(s.weekCommencing, range));
+    if (datePreset !== 'All time') result = result.filter(s => !isHistorical(s));
+    return result;
+  }, [snapshots, range, datePreset]);
 
   const priorFiltered = useMemo(() => {
     if (!priorRange) return [];
-    return snapshots.filter(s => inRange(s.weekCommencing, priorRange));
+    return snapshots.filter(s => inRange(s.weekCommencing, priorRange) && !isHistorical(s));
   }, [snapshots, priorRange]);
 
   const current = calcStats(filtered);
@@ -99,10 +103,11 @@ export default function DashboardTab({ snapshots, subjectLines, uploads, onRefre
   const latestSummary = latestUpload ? JSON.parse(latestUpload.aiSummary || '{}') : {};
   const aiObservations = latestSummary.ai_observations || '';
 
-  // Trend data
+  // Trend data — always excludes historical records
   const trendData = useMemo(() => {
+    const trendFiltered = filtered.filter(s => !isHistorical(s));
     const byWeek = {};
-    filtered.forEach(s => {
+    trendFiltered.forEach(s => {
       const week = s.weekCommencing;
       if (!byWeek[week]) byWeek[week] = { week, openRates: [], replyRates: [] };
       if (s.openRate != null) byWeek[week].openRates.push(s.openRate);
@@ -116,7 +121,7 @@ export default function DashboardTab({ snapshots, subjectLines, uploads, onRefre
         replyRate: w.replyRates.length ? w.replyRates.reduce((a, b) => a + b, 0) / w.replyRates.length : null,
       }))
       .sort((a, b) => a.week.localeCompare(b.week));
-  }, [filtered]);
+  }, [filtered, datePreset]);
 
   // Subject lines for period
   const periodSubjectLines = useMemo(() => {
