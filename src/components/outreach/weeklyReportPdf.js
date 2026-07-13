@@ -40,38 +40,32 @@ export function generateWeeklyReportPdf(campaigns, commentary, weeksAgo = 0) {
   let y = MARGIN;
 
   const thisWeekRange = getWeekRange(weeksAgo);
-  const lastWeekRange = getWeekRange(weeksAgo + 1);
 
-  const inRange = (c, r) => c.launchDate && c.launchDate >= r.monStr && c.launchDate <= r.sunStr;
-  const thisWeek = campaigns.filter(c => inRange(c, thisWeekRange));
-  const lastWeek = campaigns.filter(c => inRange(c, lastWeekRange));
+  // Active campaigns = everything currently live, regardless of launch date.
+  // Data model stores cumulative totals, so the report reflects current state.
+  const active = campaigns.filter(c => c.status === 'Active');
 
   const sumKey = (arr, key) => arr.reduce((s, c) => s + (parseFloat(c[key]) || 0), 0);
-  const avgKey = (arr, key) => {
-    const valid = arr.filter(c => c[key] != null && !isNaN(parseFloat(c[key])));
-    return valid.length ? valid.reduce((s, c) => s + parseFloat(c[key]), 0) / valid.length : null;
-  };
-  const avgReplyRate = (arr) => arr.length ? arr.reduce((s, c) => s + calcPositiveReplyRate(c), 0) / arr.length : null;
+
+  // Avg Open Rate: exclude rows where Sent = 0 or Open % is blank/null
+  const openRows = active.filter(c => (parseFloat(c.emailsSent) || 0) > 0 && c.openRate != null && !isNaN(parseFloat(c.openRate)));
+  const avgOpen = openRows.length ? openRows.reduce((s, c) => s + parseFloat(c.openRate), 0) / openRows.length : null;
+
+  // Avg Reply Rate: exclude rows where +Reply % is blank/null
+  const replyRows = active.filter(c => (parseFloat(c.emailsSent) || 0) > 0 && c.positiveReplies != null);
+  const avgReply = replyRows.length ? replyRows.reduce((s, c) => s + calcPositiveReplyRate(c), 0) / replyRows.length : null;
 
   const m = {
-    sent: { this: sumKey(thisWeek, 'emailsSent'), last: sumKey(lastWeek, 'emailsSent') },
-    open: { this: avgKey(thisWeek, 'openRate'), last: avgKey(lastWeek, 'openRate') },
-    reply: { this: avgReplyRate(thisWeek), last: avgReplyRate(lastWeek) },
-    meetings: { this: sumKey(thisWeek, 'meetingsBooked'), last: sumKey(lastWeek, 'meetingsBooked') },
+    sent: sumKey(active, 'emailsSent'),
+    open: avgOpen,
+    reply: avgReply,
+    meetings: sumKey(active, 'meetingsBooked'),
   };
 
   const fmtVal = (key, val) => {
     if (val == null) return '—';
     if (key === 'sent' || key === 'meetings') return Math.round(val).toLocaleString('en-GB');
     return val.toFixed(1) + '%';
-  };
-
-  const fmtDiff = (curr, prev, isPct) => {
-    if (curr == null || prev == null) return null;
-    const d = curr - prev;
-    if (d === 0) return null;
-    const absD = isPct ? Math.abs(d).toFixed(1) : Math.round(Math.abs(d)).toString();
-    return { up: d > 0, text: `${d > 0 ? '+' : '-'}${absD}${isPct ? '%' : ''} vs last week` };
   };
 
   // ── HEADER ──
@@ -116,10 +110,10 @@ export function generateWeeklyReportPdf(campaigns, commentary, weeksAgo = 0) {
   // ── SECTION 1 — HEADLINE NUMBERS ──
   sectionHeader('Headline Numbers');
   const stats = [
-    { label: 'Emails Sent', val: fmtVal('sent', m.sent.this), diff: fmtDiff(m.sent.this, m.sent.last, false) },
-    { label: 'Avg Open Rate', val: fmtVal('open', m.open.this), diff: fmtDiff(m.open.this, m.open.last, true) },
-    { label: 'Avg Reply Rate', val: fmtVal('reply', m.reply.this), diff: fmtDiff(m.reply.this, m.reply.last, true) },
-    { label: 'Meetings Booked', val: fmtVal('meetings', m.meetings.this), diff: fmtDiff(m.meetings.this, m.meetings.last, false) },
+    { label: 'Total Sent (Active Campaigns)', val: fmtVal('sent', m.sent) },
+    { label: 'Avg Open Rate', val: fmtVal('open', m.open) },
+    { label: 'Avg Reply Rate', val: fmtVal('reply', m.reply) },
+    { label: 'Meetings Booked', val: fmtVal('meetings', m.meetings) },
   ];
   const gap = 4;
   const cardW = (CONTENT_W - gap * 3) / 4;
@@ -129,24 +123,19 @@ export function generateWeeklyReportPdf(campaigns, commentary, weeksAgo = 0) {
     doc.setFillColor(...BG_TINT);
     doc.roundedRect(cx, y, cardW, cardH, 2, 2, 'F');
     doc.setFont('helvetica', 'normal');
-    doc.setFontSize(6.5);
+    doc.setFontSize(5.5);
     doc.setTextColor(...GREY);
     doc.text(s.label.toUpperCase(), cx + 3, y + 4.5);
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(15);
     doc.setTextColor(...NAVY);
     doc.text(s.val, cx + 3, y + 11);
-    if (s.diff) {
-      doc.setFont('helvetica', 'bold');
-      doc.setFontSize(7);
-      doc.setTextColor(...(s.diff.up ? GREEN : RED));
-      doc.text(s.diff.text, cx + 3, y + 17);
-    }
   });
   y += cardH + 7;
 
-  // ── Scored entries this week ──
-  const scored = thisWeek.map(c => ({ ...c, _score: calcPerformanceScore(c), _prr: calcPositiveReplyRate(c) }))
+  // ── Scored entries across all active campaigns ──
+  const scored = active
+    .map(c => ({ ...c, _score: calcPerformanceScore(c), _prr: calcPositiveReplyRate(c) }))
     .sort((a, b) => b._score - a._score);
 
   // ── SECTION 2 — TOP SUBJECT LINES ──
@@ -217,7 +206,7 @@ export function generateWeeklyReportPdf(campaigns, commentary, weeksAgo = 0) {
   }
 
   // ── SECTION 4 — ACTIVE CAMPAIGNS ──
-  const activeThisWeek = thisWeek.filter(c => (parseFloat(c.emailsSent) || 0) > 0);
+  const activeThisWeek = active;
   const activeMap = {};
   activeThisWeek.forEach(c => {
     if (!activeMap[c.campaignName]) {
