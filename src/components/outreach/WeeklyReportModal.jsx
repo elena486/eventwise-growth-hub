@@ -1,10 +1,9 @@
 import React, { useState, useRef } from 'react';
-import { X, Mail, Download, Loader2, Check, AlertCircle, Upload, FileText, Plus, Sparkles } from 'lucide-react';
+import { X, Download, Loader2, Check, AlertCircle, Upload, FileText, Plus, Sparkles } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
 import { useAuth } from '@/lib/AuthContext';
 import { generateAiReportPdf, getWeekLabel, getWeekOptions } from './weeklyReportPdf';
 
-const RECIPIENTS = ['chris@eventwise.com', 'ramesh@eventwise.com', 'elena@eventwise.com'];
 const MAX_FILES = 5;
 const ACCEPTED_EXTS = ['.csv', '.xlsx', '.pdf', '.png', '.jpg', '.jpeg'];
 
@@ -42,7 +41,7 @@ export default function WeeklyReportModal({ onClose, onSaved }) {
     { num: 1, label: 'Week', done: true },
     { num: 2, label: 'Upload', done: step2Done },
     { num: 3, label: 'Subject Lines', done: step3Done },
-    { num: 4, label: 'Send', done: false },
+    { num: 4, label: 'Download', done: false },
   ];
 
   const handleFileSelect = (f) => {
@@ -68,7 +67,7 @@ export default function WeeklyReportModal({ onClose, onSaved }) {
     setSubjectLines(prev => prev.length > 1 ? prev.filter((_, i) => i !== index) : prev);
   };
 
-  const processAndGenerate = async (sendEmail) => {
+  const processAndGenerate = async () => {
     if (files.length === 0) return;
     setBusy(true);
     setDone(null);
@@ -166,28 +165,9 @@ export default function WeeklyReportModal({ onClose, onSaved }) {
       setPhase('Generating PDF...');
       const doc = generateAiReportPdf(summary, subjectLines, commentary, selectedWeek);
 
-      // 8. Output
-      if (sendEmail) {
-        setPhase('Uploading PDF & sending email...');
-        const pdfBlob = doc.output('blob');
-        const pdfFile = new File([pdfBlob], filename, { type: 'application/pdf' });
-        const pdfUploadRes = await base44.integrations.Core.UploadFile({ file: pdfFile });
-        const pdfUrl = pdfUploadRes.file_url;
-
-        let body = 'Hi all,\n\nPlease find this week\'s outreach report here: ' + pdfUrl + '\n\n';
-        if (commentary.trim()) body += commentary.trim() + '\n\n';
-        body += 'George';
-
-        await base44.integrations.Core.SendEmail({
-          to: RECIPIENTS.join(', '),
-          subject: `Outreach Weekly Report — w/e ${fridayDate}`,
-          body,
-          from_name: 'George Nell',
-        });
-      }
-
-      setDone(sendEmail ? 'sent' : 'downloaded');
-      if (!sendEmail) doc.save(filename);
+      // 8. Download PDF
+      doc.save(filename);
+      setDone('downloaded');
     } catch (e) {
       setDone('error');
       setErrorMsg(e.message || 'Unknown error');
@@ -202,22 +182,13 @@ export default function WeeklyReportModal({ onClose, onSaved }) {
         className="bg-white dark:bg-[#1E1E2E] rounded-2xl w-full max-w-2xl shadow-2xl animate-modal-in max-h-[90vh] overflow-y-auto"
         onClick={e => e.stopPropagation()}
       >
-        {done === 'sent' ? (
+        {done === 'downloaded' ? (
           <div className="p-8 text-center">
             <div className="w-16 h-16 bg-green-100 dark:bg-green-900/30 rounded-full flex items-center justify-center mx-auto mb-4">
               <Check className="w-8 h-8 text-green-600" />
             </div>
-            <h2 className="text-lg font-bold text-navy dark:text-white mb-2">Report generated and sent</h2>
-            <p className="text-sm text-ew-muted mb-6">Dashboard updated with this week's data. Report sent to Chris, Ramesh and Elena.</p>
-            <button onClick={onSaved} className="px-5 py-2.5 bg-[#8403C5] text-white rounded-xl text-sm font-semibold hover:bg-[#6d02a3] transition-colors">Done</button>
-          </div>
-        ) : done === 'downloaded' ? (
-          <div className="p-8 text-center">
-            <div className="w-16 h-16 bg-green-100 dark:bg-green-900/30 rounded-full flex items-center justify-center mx-auto mb-4">
-              <Check className="w-8 h-8 text-green-600" />
-            </div>
-            <h2 className="text-lg font-bold text-navy dark:text-white mb-2">Report generated</h2>
-            <p className="text-sm text-ew-muted mb-6">Dashboard updated with this week's data. PDF downloaded.</p>
+            <h2 className="text-lg font-bold text-navy dark:text-white mb-2">PDF generated successfully ✓</h2>
+            <p className="text-sm text-ew-muted mb-6">Check your downloads folder.</p>
             <button onClick={onSaved} className="px-5 py-2.5 bg-[#8403C5] text-white rounded-xl text-sm font-semibold hover:bg-[#6d02a3] transition-colors">Done</button>
           </div>
         ) : (
@@ -428,27 +399,18 @@ export default function WeeklyReportModal({ onClose, onSaved }) {
                   <span>{phase}</span>
                 </div>
               )}
-              <div className="flex gap-2 flex-wrap">
+              <div className="flex gap-2">
                 <button
-                  onClick={() => processAndGenerate(true)}
+                  onClick={() => processAndGenerate()}
                   disabled={busy || files.length === 0}
-                  className="flex-1 min-w-[180px] flex items-center justify-center gap-2 py-2.5 bg-[#1D9E75] text-white rounded-xl text-sm font-semibold hover:bg-[#17a35f] transition-colors disabled:opacity-60"
-                >
-                  {busy ? <Loader2 className="w-4 h-4 animate-spin" /> : <Mail className="w-4 h-4" />}
-                  {busy ? 'Processing...' : 'Generate & Send Report'}
-                </button>
-                <button
-                  onClick={() => processAndGenerate(false)}
-                  disabled={busy || files.length === 0}
-                  className="flex items-center justify-center gap-2 px-4 py-2.5 border border-ew-border dark:border-gray-600 text-ew-body dark:text-gray-300 rounded-xl text-sm font-medium hover:bg-ew-bg dark:hover:bg-[#252535] transition-colors disabled:opacity-60"
+                  className="flex-1 flex items-center justify-center gap-2 py-2.5 bg-[#8403C5] text-white rounded-xl text-sm font-semibold hover:bg-[#6d02a3] transition-colors disabled:opacity-60"
                 >
                   {busy ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
-                  Generate PDF only
+                  {busy ? 'Processing...' : 'Generate PDF'}
                 </button>
               </div>
-              <div className="flex justify-between items-center mt-2">
+              <div className="flex justify-start items-center mt-2">
                 <button onClick={onClose} disabled={busy} className="text-xs text-ew-muted hover:text-navy transition-colors disabled:opacity-50">Cancel</button>
-                <p className="text-[11px] text-ew-muted">Recipients: Chris, Ramesh, Elena</p>
               </div>
             </div>
           </div>
