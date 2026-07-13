@@ -17,11 +17,15 @@
     },
     "fileName": {
       "type": "string",
-      "description": "Original uploaded file name"
+      "description": "Original uploaded file name(s), comma-separated if multiple"
     },
     "fileUrl": {
       "type": "string",
-      "description": "Stored file URL"
+      "description": "Stored file URL (first file if multiple)"
+    },
+    "subjectLines": {
+      "type": "string",
+      "description": "JSON string of manually entered subject lines array"
     },
     "aiSummary": {
       "type": "string",

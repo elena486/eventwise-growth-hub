@@ -27,8 +27,9 @@ export default function UploadHistory() {
   const handleDownloadPdf = (record) => {
     try {
       const summary = JSON.parse(record.aiSummary || '{}');
+      const subjectLines = JSON.parse(record.subjectLines || '[]');
       const weeksAgo = weeksAgoFromWeekOf(record.weekOf);
-      const doc = generateAiReportPdf(summary, record.georgesNotes || '', weeksAgo);
+      const doc = generateAiReportPdf(summary, subjectLines, record.georgesNotes || '', weeksAgo);
       const friday = format(parseISO(record.weekOf), 'yyyy-MM-dd');
       doc.save(`Outreach_Weekly_Report_w-e_${friday}.pdf`);
     } catch (e) { /* bubble */ }
@@ -155,31 +156,31 @@ export default function UploadHistory() {
                     </div>
                   )}
 
-                  {/* Top performing */}
-                  {s.top_performing && s.top_performing.length > 0 && (
-                    <div>
-                      <p className="text-xs font-bold text-navy dark:text-gray-200 uppercase tracking-wide mb-2">Best Performing</p>
-                      {s.top_performing.slice(0, 3).map((c, i) => (
-                        <div key={i} className="border-l-2 border-[#1D9E75] pl-3 mb-2">
-                          <p className="text-sm font-medium text-navy dark:text-white">{c.subject_line}</p>
-                          <p className="text-xs text-ew-muted">{c.campaign} · {c.why}</p>
+                  {/* Subject lines */}
+                  {(() => {
+                    const sls = JSON.parse(viewing.subjectLines || '[]').filter(x => x.subject_line && x.subject_line.trim());
+                    if (sls.length === 0) return null;
+                    const sorted = [...sls].sort((a, b) => (parseFloat(b.open_rate) || 0) - (parseFloat(a.open_rate) || 0));
+                    return (
+                      <div>
+                        <p className="text-xs font-bold text-navy dark:text-gray-200 uppercase tracking-wide mb-2">Subject Lines — This Week's Results</p>
+                        <div className="space-y-1.5">
+                          {sorted.map((sl, i) => (
+                            <div key={i} className="flex items-center justify-between text-xs border-b border-ew-border dark:border-gray-700 pb-1.5">
+                              <div className="flex-1 min-w-0">
+                                <p className="font-medium text-navy dark:text-white truncate">{sl.subject_line}</p>
+                                {sl.variant && <p className="text-ew-muted text-[11px]">{sl.variant}</p>}
+                              </div>
+                              <div className="flex items-center gap-3 ml-2 shrink-0">
+                                <span className="text-ew-muted">Open: <span className="font-medium text-navy dark:text-white">{sl.open_rate || '—'}%</span></span>
+                                <span className="text-ew-muted">Reply: <span className="font-medium text-navy dark:text-white">{sl.reply_rate || '—'}%</span></span>
+                              </div>
+                            </div>
+                          ))}
                         </div>
-                      ))}
-                    </div>
-                  )}
-
-                  {/* Underperforming */}
-                  {s.underperforming && s.underperforming.length > 0 && (
-                    <div>
-                      <p className="text-xs font-bold text-navy dark:text-gray-200 uppercase tracking-wide mb-2">Needs Attention</p>
-                      {s.underperforming.slice(0, 3).map((c, i) => (
-                        <div key={i} className="border-l-2 border-[#DC2626] pl-3 mb-2">
-                          <p className="text-sm font-medium text-navy dark:text-white">{c.subject_line}</p>
-                          <p className="text-xs text-ew-muted">{c.campaign} · {c.issue}</p>
-                        </div>
-                      ))}
-                    </div>
-                  )}
+                      </div>
+                    );
+                  })()}
 
                   {/* George's notes */}
                   {viewing.georgesNotes && (

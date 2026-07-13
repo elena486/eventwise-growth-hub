@@ -1,14 +1,26 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.38';
 
-const SYSTEM_PROMPT = `You are an outreach analytics assistant for Eventwise, a B2B SaaS company. Eventwise's sales rep George runs cold email sequences via Apollo targeting event organisers and agencies in the UK.
+const SYSTEM_PROMPT = `You are an outreach analytics assistant for Eventwise, a B2B SaaS company. George runs cold email sequences via Apollo targeting event organisers and agencies in the UK.
 
-You will be given Apollo sequence analytics data (as a CSV, spreadsheet, PDF or screenshot). Extract the key metrics and produce a clean plain-English weekly summary.
+You will be given:
+1. Apollo sequence analytics data (CSV or screenshot)
+2. A manually entered table of subject lines tested this week with open and reply rates
+3. Optional commentary from George
 
-Return ONLY a JSON object with exactly these fields, no preamble or markdown:
+Extract key metrics and produce a factual weekly summary.
+
+RULES:
+- Never give instructions or recommendations. State observations and facts only.
+- Do not use phrases like 'George should', 'we recommend', 'consider', 'prioritise'
+- If a metric is not available, return null
+- Use exact campaign names from the data — no truncation or placeholder text
+- Keep ai_observations to 2-3 factual sentences only
+
+Return ONLY a JSON object, no preamble or markdown:
 {
   "headline_numbers": {
     "emails_sent": number or null,
-    "avg_open_rate": string e.g. "52.3%" or null,
+    "avg_open_rate": string or null,
     "avg_click_rate": string or null,
     "avg_reply_rate": string or null,
     "meetings_booked": number or null
@@ -16,31 +28,37 @@ Return ONLY a JSON object with exactly these fields, no preamble or markdown:
   "top_performing": [
     {
       "subject_line": string,
-      "campaign": string,
-      "open_rate": string,
-      "click_rate": string,
-      "reply_rate": string,
-      "why": string (one sentence plain English)
+      "open_rate": string or null,
+      "reply_rate": string or null,
+      "variant": string or null,
+      "observation": string (one factual sentence)
     }
   ],
   "underperforming": [
     {
       "subject_line": string,
-      "campaign": string,
-      "issue": string (one sentence plain English)
+      "open_rate": string or null,
+      "reply_rate": string or null,
+      "variant": string or null,
+      "observation": string (one factual sentence)
     }
   ],
   "campaign_snapshot": [
     {
       "name": string,
-      "status": string,
-      "emails_sent": number,
-      "open_rate": string
+      "emails_sent": number or null,
+      "open_rate": string or null,
+      "reply_rate": string or null,
+      "delivery_rate": string or null
     }
   ],
-  "ai_observations": string (2-3 sentences plain English — patterns, what is working, what to change next week),
+  "ai_observations": string,
   "data_quality_note": string or null
-}`;
+}
+
+Top performing = highest open rate subject lines (up to 3).
+Underperforming = lowest open rate or 0% reply rate subject lines (up to 3).
+If no subject lines were entered manually, set top_performing and underperforming to empty arrays.`;
 
 function bytesToBase64(bytes) {
   let binary = '';
@@ -58,87 +76,81 @@ Deno.serve(async (req) => {
     const user = await base44.auth.me();
     if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
 
-    const { fileUrl, fileName } = await req.json();
+    const { files, subjectLines, commentary } = await req.json();
 
-    if (!fileUrl || !fileName) {
-      return Response.json({ error: 'fileUrl and fileName are required' }, { status: 400 });
+    if (!files || !Array.isArray(files) || files.length === 0) {
+      return Response.json({ error: 'At least one file is required' }, { status: 400 });
     }
 
-    // 1. Fetch the uploaded file
-    const fileRes = await fetch(fileUrl);
-    if (!fileRes.ok) {
-      return Response.json({ error: `Failed to fetch file: ${fileRes.status}` }, { status: 500 });
-    }
-    const fileBuffer = await fileRes.arrayBuffer();
-    const bytes = new Uint8Array(fileBuffer);
+    const contentBlocks = [];
 
-    // 2. Determine file type and build message content
-    const ext = (fileName || '').split('.').pop().toLowerCase();
-    let userContent;
+    // Process each uploaded file
+    for (const f of files) {
+      const fileRes = await fetch(f.url);
+      if (!fileRes.ok) continue;
+      const fileBuffer = await fileRes.arrayBuffer();
+      const bytes = new Uint8Array(fileBuffer);
+      const ext = (f.name || '').split('.').pop().toLowerCase();
 
-    if (ext === 'png' || ext === 'jpg' || ext === 'jpeg') {
-      // Image screenshot — base64 encode and send as image
-      const base64Data = bytesToBase64(bytes);
-      const mediaType = ext === 'png' ? 'image/png' : 'image/jpeg';
-      userContent = [
-        {
+      if (ext === 'png' || ext === 'jpg' || ext === 'jpeg') {
+        const base64Data = bytesToBase64(bytes);
+        const mediaType = ext === 'png' ? 'image/png' : 'image/jpeg';
+        contentBlocks.push({
           type: 'image',
           source: { type: 'base64', media_type: mediaType, data: base64Data }
-        },
-        {
-          type: 'text',
-          text: 'Analyze the Apollo analytics data shown in this image and return the JSON summary.'
-        }
-      ];
-    } else if (ext === 'pdf') {
-      // PDF — base64 encode and send as document
-      const base64Data = bytesToBase64(bytes);
-      userContent = [
-        {
+        });
+      } else if (ext === 'pdf') {
+        const base64Data = bytesToBase64(bytes);
+        contentBlocks.push({
           type: 'document',
           source: { type: 'base64', media_type: 'application/pdf', data: base64Data }
-        },
-        {
-          type: 'text',
-          text: 'Analyze the Apollo analytics data in this PDF and return the JSON summary.'
-        }
-      ];
-    } else if (ext === 'csv') {
-      // CSV — extract text and send as plain text
-      const textContent = new TextDecoder().decode(bytes);
-      userContent = 'Here is the Apollo analytics data:\n\n' + textContent;
-    } else if (ext === 'xlsx') {
-      // XLSX — parse with SheetJS and convert to CSV text
-      const XLSX = await import('npm:xlsx@0.18.5');
-      const workbook = XLSX.read(bytes, { type: 'array' });
-      const sheetsText = workbook.SheetNames.map(name => {
-        const sheet = workbook.Sheets[name];
-        const csv = XLSX.utils.sheet_to_csv(sheet);
-        return `=== Sheet: ${name} ===\n${csv}`;
-      }).join('\n\n');
-      userContent = 'Here is the Apollo analytics data:\n\n' + sheetsText;
-    } else {
-      // Fallback — decode as text
-      const textContent = new TextDecoder().decode(bytes);
-      userContent = 'Here is the Apollo analytics data:\n\n' + textContent;
+        });
+      } else if (ext === 'csv') {
+        const textContent = new TextDecoder().decode(bytes);
+        contentBlocks.push({ type: 'text', text: `CSV data from ${f.name}:\n${textContent}` });
+      } else if (ext === 'xlsx') {
+        const XLSX = await import('npm:xlsx@0.18.5');
+        const workbook = XLSX.read(bytes, { type: 'array' });
+        const sheetsText = workbook.SheetNames.map(name => {
+          const sheet = workbook.Sheets[name];
+          return `=== Sheet: ${name} ===\n${XLSX.utils.sheet_to_csv(sheet)}`;
+        }).join('\n\n');
+        contentBlocks.push({ type: 'text', text: `Spreadsheet data from ${f.name}:\n${sheetsText}` });
+      } else {
+        const textContent = new TextDecoder().decode(bytes);
+        contentBlocks.push({ type: 'text', text: `Data from ${f.name}:\n${textContent}` });
+      }
     }
 
-    // 3. Build Anthropic API request
-    const requestBody = {
-      model: 'claude-sonnet-4-6',
-      max_tokens: 4096,
-      system: SYSTEM_PROMPT,
-      messages: [{
-        role: 'user',
-        content: userContent
-      }]
-    };
+    // Add manually entered subject lines as structured text
+    const validSubjectLines = (subjectLines || []).filter(s => s.subject_line && s.subject_line.trim());
+    if (validSubjectLines.length > 0) {
+      const slText = validSubjectLines.map((s, i) =>
+        `${i + 1}. "${s.subject_line}" — Open: ${s.open_rate || 'N/A'}%, Reply: ${s.reply_rate || 'N/A'}%, Variant/Note: ${s.variant || 'N/A'}`
+      ).join('\n');
+      contentBlocks.push({ type: 'text', text: `Subject lines tested this week (manually entered):\n${slText}` });
+    }
 
-    // 4. Call Anthropic API
+    // Add George's commentary
+    if (commentary && commentary.trim()) {
+      contentBlocks.push({ type: 'text', text: `George's commentary: ${commentary.trim()}` });
+    }
+
+    // Add final instruction
+    contentBlocks.push({ type: 'text', text: 'Analyze all the data above and return the JSON summary as specified.' });
+
+    // Call Anthropic API
     const apiKey = Deno.env.get('ANTHROPIC_API_KEY');
     if (!apiKey) {
       return Response.json({ error: 'ANTHROPIC_API_KEY secret is not configured' }, { status: 500 });
     }
+
+    const requestBody = {
+      model: 'claude-sonnet-4-6',
+      max_tokens: 4096,
+      system: SYSTEM_PROMPT,
+      messages: [{ role: 'user', content: contentBlocks }]
+    };
 
     const apiRes = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
@@ -165,7 +177,7 @@ Deno.serve(async (req) => {
       return Response.json({ error: 'Empty response from Claude' }, { status: 500 });
     }
 
-    // 5. Parse JSON from response (handle markdown code blocks)
+    // Parse JSON from response (handle markdown code blocks)
     let summary;
     try {
       const codeBlockMatch = responseText.match(/```(?:json)?\s*([\s\S]*?)```/);
