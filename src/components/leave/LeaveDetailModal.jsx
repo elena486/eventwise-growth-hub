@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { base44 } from '@/api/base44Client';
-import { X, Pencil, Trash2 } from 'lucide-react';
+import { X, Pencil, Trash2, Paperclip, Download } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 
 const ADMINS = ['Elena', 'Chris'];
@@ -134,6 +134,17 @@ export default function LeaveDetailModal({ entry, currentUserName, onClose, onUp
                 <div>
                   <p className={lbl}>Notes</p>
                   <p className="text-sm text-[#5777AB]">{entry.notes}</p>
+                </div>
+              )}
+              {entry.type === 'Sick' && entry.sickNoteFileUrl && (isAdmin || isOwn) && (
+                <div>
+                  <p className={lbl}>Sick note</p>
+                  <a href={entry.sickNoteFileUrl} target="_blank" rel="noreferrer" download={entry.sickNoteFileName || 'sick-note'}
+                    className="inline-flex items-center gap-2 px-3 py-2 bg-[#F3E8FF] border border-[#D8D8EE] rounded-lg text-xs font-medium text-[#8403C5] hover:bg-[#E9D5FF] transition-colors">
+                    <Paperclip className="w-3.5 h-3.5" />
+                    <span className="truncate max-w-[200px]">{entry.sickNoteFileName || 'Sick note'}</span>
+                    <Download className="w-3 h-3" />
+                  </a>
                 </div>
               )}
               {isAdmin && (

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { base44 } from '@/api/base44Client';
-import { X } from 'lucide-react';
+import { X, Paperclip } from 'lucide-react';
 
 const REQUIRES_APPROVAL = ['George', 'Martinique'];
 const ADMINS = ['Elena', 'Chris'];
@@ -24,6 +24,9 @@ export default function LeaveLogForm({ currentUserName, onClose, onSaved, inline
   const [saving, setSaving] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [pendingEntry, setPendingEntry] = useState(null); // used for admin quick-approve prompt
+  const [sickNoteFile, setSickNoteFile] = useState(null);
+  const [uploading, setUploading] = useState(false);
+  const [dragOver, setDragOver] = useState(false);
 
   const days = calcWorkingDays(form.startDate, form.endDate);
   const targetPerson = form.personName || currentUserName;
@@ -31,8 +34,23 @@ export default function LeaveLogForm({ currentUserName, onClose, onSaved, inline
   const isValid = form.startDate && form.endDate && form.type && form.endDate >= form.startDate && form.personName;
 
   const handleSubmit = async () => {
-    if (!isValid || saving) return;
+    if (!isValid || saving || uploading) return;
     setSaving(true);
+    let sickNoteFileUrl;
+    let sickNoteFileName;
+    if (form.type === 'Sick' && sickNoteFile) {
+      setUploading(true);
+      try {
+        const res = await base44.integrations.Core.UploadFile({ file: sickNoteFile });
+        sickNoteFileUrl = res.file_url;
+        sickNoteFileName = sickNoteFile.name;
+      } catch {
+        setUploading(false);
+        setSaving(false);
+        return;
+      }
+      setUploading(false);
+    }
     const entry = await base44.entities.LeaveEntry.create({
       personName: targetPerson,
       startDate: form.startDate,
@@ -41,7 +59,9 @@ export default function LeaveLogForm({ currentUserName, onClose, onSaved, inline
       notes: form.notes.trim() || undefined,
       entryMethod: needsApproval ? 'Requires Approval' : 'Self-Logged',
       status: needsApproval ? 'Requested' : 'Confirmed',
+      ...(sickNoteFileUrl ? { sickNoteFileUrl, sickNoteFileName } : {}),
     });
+    setSickNoteFile(null);
     setSaving(false);
     // Admin assigning to George/Martinique → show quick-approve prompt (never for self-submissions)
     if (isAdmin && needsApproval && targetPerson !== currentUserName) {
@@ -72,6 +92,7 @@ export default function LeaveLogForm({ currentUserName, onClose, onSaved, inline
     setSubmitted(false);
     setPendingEntry(null);
     setForm({ personName: currentUserName, startDate: '', endDate: '', type: '', notes: '' });
+    setSickNoteFile(null);
   };
 
   // ── Quick-approve prompt (admin only, after submitting for George/Martinique) ──
@@ -162,6 +183,34 @@ export default function LeaveLogForm({ currentUserName, onClose, onSaved, inline
             <label className={label}>Notes <span className="font-normal normal-case text-[#9CA3AF]">(optional)</span></label>
             <textarea className={ic+' h-20 resize-none'} value={form.notes} onChange={e => setForm(f=>({...f,notes:e.target.value}))} placeholder="Any additional context…" />
           </div>
+          {form.type === 'Sick' && (
+            <div>
+              <label className={label}>Sick note / supporting document <span className="font-normal normal-case text-[#9CA3AF]">(optional)</span></label>
+              <p className="text-[10px] text-[#9CA3AF] mb-1.5 -mt-0.5">Upload a sick note or any relevant documentation</p>
+              {!sickNoteFile ? (
+                <label
+                  onDragOver={e => { e.preventDefault(); setDragOver(true); }}
+                  onDragLeave={() => setDragOver(false)}
+                  onDrop={e => { e.preventDefault(); setDragOver(false); const f = e.dataTransfer.files?.[0]; if (f) setSickNoteFile(f); }}
+                  className={`block cursor-pointer border-2 border-dashed rounded-lg py-4 px-3 text-center transition-colors ${dragOver ? 'border-[#8403C5] bg-[#F3E8FF]' : 'border-[#EBEBF5] hover:border-[#8403C5] hover:bg-[#F6F6FB]'}`}
+                >
+                  <input type="file" accept=".pdf,.png,.jpg,.jpeg,.docx" className="hidden"
+                    onChange={e => { const f = e.target.files?.[0]; if (f) setSickNoteFile(f); e.target.value = ''; }} />
+                  <Paperclip className="w-5 h-5 mx-auto text-[#9CA3AF] mb-1" />
+                  <p className="text-xs font-medium text-[#5777AB]">Drag & drop or click to browse</p>
+                  <p className="text-[10px] text-[#9CA3AF] mt-0.5">PDF, PNG, JPG or DOCX</p>
+                </label>
+              ) : (
+                <div className="flex items-center gap-2 px-3 py-2 bg-[#F3E8FF] border border-[#D8D8EE] rounded-lg">
+                  <Paperclip className="w-3.5 h-3.5 text-[#8403C5] shrink-0" />
+                  <span className="text-xs font-medium text-[#242450] truncate flex-1">{sickNoteFile.name}</span>
+                  <button type="button" onClick={() => setSickNoteFile(null)} className="text-[#9CA3AF] hover:text-[#DC2626] shrink-0">
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
           {!isAdmin && needsApproval && (
             <div className="flex items-start gap-2 px-3 py-2.5 bg-[#FFFBEB] border border-[#FDE68A] rounded-lg">
               <span className="text-base mt-0.5">ℹ️</span>
@@ -171,9 +220,9 @@ export default function LeaveLogForm({ currentUserName, onClose, onSaved, inline
         </div>
         <div className="flex gap-3 justify-end mt-6">
           <button onClick={onClose} className="px-4 py-2 text-sm font-medium text-[#5777AB] hover:bg-[#F6F6FB] rounded-lg">Cancel</button>
-          <button onClick={handleSubmit} disabled={!isValid || saving}
+          <button onClick={handleSubmit} disabled={!isValid || saving || uploading}
             className="px-5 py-2 text-sm font-semibold bg-[#8403C5] text-white rounded-lg hover:bg-[#6B02A0] disabled:bg-[#D8D8EE] disabled:text-[#9CA3AF] transition-colors">
-            {saving ? 'Saving…' : (needsApproval && !isAdmin) ? 'Submit Request' : 'Log Time Off'}
+            {uploading ? 'Uploading…' : saving ? 'Saving…' : (needsApproval && !isAdmin) ? 'Submit Request' : 'Log Time Off'}
           </button>
         </div>
       </div>

@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
 import { useAuth } from '@/lib/AuthContext';
 import { format, parseISO } from 'date-fns';
-import { Settings, ChevronDown, ChevronRight, X } from 'lucide-react';
+import { Settings, ChevronDown, ChevronRight, X, Paperclip } from 'lucide-react';
 
 const DEFAULT_ENTITLEMENT = 25;
 const ADMINS = ['Elena', 'Chris'];
@@ -236,7 +236,9 @@ export default function LeaveSummarySection() {
                     <tbody>
                       {stats.entries.length === 0 ? (
                         <tr><td colSpan={5} className="px-4 py-6 text-center text-xs text-[#9CA3AF]">No entries for {year}</td></tr>
-                      ) : stats.entries.map(e => (
+                      ) : stats.entries.map(e => {
+                        const canSeeNote = (isAdmin || e.personName === currentUserName) && e.type === 'Sick' && !!e.sickNoteFileUrl;
+                        return (
                         <tr key={e.id} className="border-b border-[#F2F2F4] last:border-0">
                           <td className="px-4 py-2 text-xs text-[#242450]">{fmtDate(e.startDate)}</td>
                           <td className="px-4 py-2 text-xs text-[#5777AB]">{e.type}</td>
@@ -244,9 +246,20 @@ export default function LeaveSummarySection() {
                           <td className="px-4 py-2">
                             <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${STATUS_STYLES[e.status] || ''}`}>{e.status}</span>
                           </td>
-                          <td className="px-4 py-2 text-xs text-[#5777AB] max-w-[150px] truncate">{e.notes || '—'}</td>
+                          <td className="px-4 py-2 text-xs text-[#5777AB] max-w-[150px]">
+                            <div className="flex items-center gap-1.5">
+                              <span className="truncate">{e.notes || '—'}</span>
+                              {canSeeNote && (
+                                <a href={e.sickNoteFileUrl} target="_blank" rel="noreferrer" download={e.sickNoteFileName || 'sick-note'}
+                                  className="text-[#8403C5] hover:text-[#6B02A0] shrink-0" title={e.sickNoteFileName || 'Download sick note'}>
+                                  <Paperclip className="w-3 h-3" />
+                                </a>
+                              )}
+                            </div>
+                          </td>
                         </tr>
-                      ))}
+                        );
+                      })}
                     </tbody>
                   </table>
                 </div>

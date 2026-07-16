@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
-import { Check, X } from 'lucide-react';
+import { Check, X, Paperclip } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 import LeaveRowActions from './LeaveRowActions';
 import LeaveDeleteConfirm from './LeaveDeleteConfirm';
@@ -148,6 +148,12 @@ export default function ApprovalQueue({ currentUserName, onApproved }) {
                     <td className="px-4 py-3 text-sm font-semibold text-[#242450]">{days}</td>
                     <td className="px-4 py-3 text-xs text-[#5777AB] max-w-[180px]">
                       <span className="line-clamp-2">{entry.notes || '—'}</span>
+                      {entry.type === 'Sick' && entry.sickNoteFileUrl && (
+                        <a href={entry.sickNoteFileUrl} target="_blank" rel="noreferrer" download={entry.sickNoteFileName || 'sick-note'}
+                          className="inline-flex items-center gap-1 mt-1 text-[#8403C5] font-semibold hover:underline">
+                          <Paperclip className="w-3 h-3" /> Sick note attached · Download
+                        </a>
+                      )}
                     </td>
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-1.5">

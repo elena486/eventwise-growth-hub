@@ -46,6 +46,14 @@
     },
     "notes": {
       "type": "string"
+    },
+    "sickNoteFileUrl": {
+      "type": "string",
+      "description": "Optional uploaded sick note / supporting document URL"
+    },
+    "sickNoteFileName": {
+      "type": "string",
+      "description": "Original filename of the uploaded sick note"
     }
   },
   "required": [
