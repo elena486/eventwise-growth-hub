@@ -11,6 +11,7 @@ import StatsRow from '@/components/pipeline/StatsRow';
 import LeadTable from '@/components/pipeline/LeadTable';
 import LeadDetailPanel from '@/components/pipeline/LeadDetailPanel';
 import ClosedWonModal from '@/components/pipeline/ClosedWonModal';
+import MovePipelineModal from '@/components/pipeline/MovePipelineModal';
 
 const OWNER_FILTERS = ['All Leads', "Chris's Leads", "Ramesh's Leads", "George's Leads", 'Lost Leads'];
 const OWNER_MAP = {
@@ -54,6 +55,8 @@ export default function Pipeline({ onProposalHandoff, onViewDeals, focusLeadId, 
   const [leadAddedToast, setLeadAddedToast] = useState(false);
   const [showConverted, setShowConverted] = useState(false);
   const [showMonthPicker, setShowMonthPicker] = useState(false);
+  const [activePipeline, setActivePipeline] = useState('warm');
+  const [moveTarget, setMoveTarget] = useState(null);
   const [statsCollapsed, setStatsCollapsed] = useState(() => {
     try { return localStorage.getItem(STATS_COLLAPSED_KEY) === 'true'; } catch { return false; }
   });
@@ -187,6 +190,19 @@ export default function Pipeline({ onProposalHandoff, onViewDeals, focusLeadId, 
     setSelectedLead(updated);
   };
 
+  const requestMovePipeline = (lead) => {
+    const current = lead.pipeline || 'warm';
+    setMoveTarget({ lead, targetPipeline: current === 'warm' ? 'cold' : 'warm' });
+  };
+
+  const confirmMovePipeline = async () => {
+    if (!moveTarget) return;
+    const { lead, targetPipeline } = moveTarget;
+    await base44.entities.Lead.update(lead.id, { pipeline: targetPipeline });
+    setMoveTarget(null);
+    refresh();
+  };
+
   const handleProposal = (lead) => {
     onProposalHandoff({
       companyName: lead.companyName,
@@ -245,9 +261,10 @@ export default function Pipeline({ onProposalHandoff, onViewDeals, focusLeadId, 
   };
 
   // Build display leads
-  const activeLeads = leads.filter(l => !l.converted && l.stage !== 'Closed Lost');
-  const lostLeads = leads.filter(l => l.stage === 'Closed Lost');
-  const convertedLeads = leads.filter(l => l.converted);
+  const pipelineLeads = leads.filter(l => (l.pipeline || 'warm') === activePipeline);
+  const activeLeads = pipelineLeads.filter(l => !l.converted && l.stage !== 'Closed Lost');
+  const lostLeads = pipelineLeads.filter(l => l.stage === 'Closed Lost');
+  const convertedLeads = pipelineLeads.filter(l => l.converted);
 
   let baseLeads = isLostView ? lostLeads : activeLeads;
 
@@ -279,11 +296,35 @@ export default function Pipeline({ onProposalHandoff, onViewDeals, focusLeadId, 
     <div className="flex flex-1 overflow-hidden">
       {/* Main pipeline area */}
       <div className={`flex flex-col overflow-y-auto transition-all duration-300 ${selectedLead ? 'w-[40%]' : 'w-full'} bg-ew-bg p-8`}>
+        {/* Pipeline tab switcher */}
+        <div className="flex items-center gap-2 mb-4">
+          <button
+            onClick={() => { setActivePipeline('warm'); setStageFilter(null); }}
+            className={`flex items-center gap-1.5 px-4 py-2 text-sm font-semibold rounded-xl transition-colors border ${
+              activePipeline === 'warm'
+                ? 'bg-[#E8A020] text-white border-[#E8A020]'
+                : 'bg-white border-ew-border text-ew-body hover:bg-ew-bg'
+            }`}
+          >
+            🔥 Warm Pipeline
+          </button>
+          <button
+            onClick={() => { setActivePipeline('cold'); setStageFilter(null); }}
+            className={`flex items-center gap-1.5 px-4 py-2 text-sm font-semibold rounded-xl transition-colors border ${
+              activePipeline === 'cold'
+                ? 'bg-[#5777AB] text-white border-[#5777AB]'
+                : 'bg-white border-ew-border text-ew-body hover:bg-ew-bg'
+            }`}
+          >
+            ❄️ Cold Pipeline
+          </button>
+        </div>
+
         {/* Header — always visible */}
         <div className="flex items-start justify-between mb-5">
           <div>
-            <h1 className="text-2xl font-bold text-navy">{isLostView ? 'Lost Leads' : 'Warm Leads'}</h1>
-            <p className="text-ew-muted text-sm mt-0.5">{isLostView ? 'All closed lost leads' : 'Your active pipeline — updated as you go'}</p>
+            <h1 className="text-2xl font-bold text-navy">{isLostView ? 'Lost Leads' : (activePipeline === 'cold' ? 'Cold Leads' : 'Warm Leads')}</h1>
+            <p className="text-ew-muted text-sm mt-0.5">{isLostView ? 'All closed lost leads' : (activePipeline === 'cold' ? 'Your cold pipeline — slower / longer-term prospects' : 'Your active pipeline — updated as you go')}</p>
           </div>
           <div className="flex items-center gap-2">
             <button onClick={handleExportCSV}
@@ -292,7 +333,7 @@ export default function Pipeline({ onProposalHandoff, onViewDeals, focusLeadId, 
             </button>
             {!isLostView && (
               <Button onClick={handleAddLead} className="h-9 bg-navy hover:bg-navy/90 text-white font-semibold text-sm">
-                <Plus className="w-4 h-4 mr-1.5" />Add Lead
+                <Plus className="w-4 h-4 mr-1.5" />New {activePipeline === 'cold' ? 'Cold' : 'Warm'} Lead
               </Button>
             )}
           </div>
@@ -402,12 +443,12 @@ export default function Pipeline({ onProposalHandoff, onViewDeals, focusLeadId, 
           </div>
         ) : displayLeads.length === 0 ? (
           <div className="bg-white border border-ew-border rounded-xl flex flex-col items-center justify-center py-20">
-            <span className="text-3xl mb-3">{isLostView ? '❌' : '🎯'}</span>
-            <h3 className="text-base font-semibold text-navy mb-1">{isLostView ? 'No lost leads' : 'No warm leads yet'}</h3>
-            <p className="text-ew-muted text-sm">{isLostView ? 'No leads marked as Closed Lost.' : 'Add your first lead to start tracking your pipeline.'}</p>
+            <span className="text-3xl mb-3">{isLostView ? '❌' : (activePipeline === 'cold' ? '❄️' : '🎯')}</span>
+            <h3 className="text-base font-semibold text-navy mb-1">{isLostView ? 'No lost leads' : (activePipeline === 'cold' ? 'No cold leads yet' : 'No warm leads yet')}</h3>
+            <p className="text-ew-muted text-sm">{isLostView ? 'No leads marked as Closed Lost.' : (activePipeline === 'cold' ? 'Add your first cold lead to start tracking longer-term prospects.' : 'Add your first lead to start tracking your pipeline.')}</p>
             {!isLostView && (
               <Button onClick={handleAddLead} className="h-9 bg-navy hover:bg-navy/90 text-white font-semibold text-sm mt-5">
-                <Plus className="w-4 h-4 mr-1.5" />Add your first lead
+                <Plus className="w-4 h-4 mr-1.5" />Add your first {activePipeline === 'cold' ? 'cold' : 'warm'} lead
               </Button>
             )}
           </div>
@@ -419,6 +460,7 @@ export default function Pipeline({ onProposalHandoff, onViewDeals, focusLeadId, 
             onProposal={handleProposal}
             onUpdateField={handleUpdateField}
             onMarkLost={handleMarkLost}
+            onMovePipeline={requestMovePipeline}
             newLeadId={newLeadId}
             onRowClick={handleRowClick}
             selectedLeadId={selectedLead?.id}
@@ -485,6 +527,7 @@ export default function Pipeline({ onProposalHandoff, onViewDeals, focusLeadId, 
             onUpdate={handleLeadUpdate}
             onDelete={handleDelete}
             onClosedWon={handleClosedWon}
+            onMovePipeline={requestMovePipeline}
           />
         </div>
       )}
@@ -493,7 +536,7 @@ export default function Pipeline({ onProposalHandoff, onViewDeals, focusLeadId, 
       {showNewPanel && (
         <div className="w-[60%] border-l border-ew-border overflow-hidden flex flex-col">
           <LeadDetailPanel
-            lead={{ companyName: '', stage: 'New Lead' }}
+            lead={{ companyName: '', stage: 'New Lead', pipeline: activePipeline }}
             isNew
             onClose={() => setShowNewPanel(false)}
             onSaved={handleNewLeadSaved}
@@ -510,6 +553,16 @@ export default function Pipeline({ onProposalHandoff, onViewDeals, focusLeadId, 
           lead={closedWonLead}
           onClose={() => setClosedWonLead(null)}
           onConverted={handleHandoverConverted}
+        />
+      )}
+
+      {/* Move Pipeline Modal */}
+      {moveTarget && (
+        <MovePipelineModal
+          lead={moveTarget.lead}
+          targetPipeline={moveTarget.targetPipeline}
+          onConfirm={confirmMovePipeline}
+          onCancel={() => setMoveTarget(null)}
         />
       )}
     </div>

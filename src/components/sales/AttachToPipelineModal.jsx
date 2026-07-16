@@ -115,6 +115,9 @@ export default function AttachToPipelineModal({ record, onClose, onAttached }) {
                     {selected.stage}
                   </span>
                 )}
+                <span className={`inline-block mt-1.5 text-[10px] font-semibold px-1.5 py-0.5 rounded ${(selected.pipeline || 'warm') === 'cold' ? 'bg-[#EEF2F8] text-[#5777AB]' : 'bg-[#FFF7ED] text-[#E8A020]'}`}>
+                  {(selected.pipeline || 'warm') === 'cold' ? '❄️ Cold' : '🔥 Warm'}
+                </span>
               </div>
               <div className="flex gap-2 justify-end">
                 <button
@@ -186,6 +189,9 @@ export default function AttachToPipelineModal({ record, onClose, onAttached }) {
                                   {lead.stage && (
                                     <span className="text-[10px] font-semibold bg-[#EBEBF5] text-[#242450] px-1.5 py-0.5 rounded">{lead.stage}</span>
                                   )}
+                                  <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded ${(lead.pipeline || 'warm') === 'cold' ? 'bg-[#EEF2F8] text-[#5777AB]' : 'bg-[#FFF7ED] text-[#E8A020]'}`}>
+                                    {(lead.pipeline || 'warm') === 'cold' ? '❄️ Cold' : '🔥 Warm'}
+                                  </span>
                                   {attachedLeadIds.has(lead.id) && (
                                     <span className="text-[10px] font-semibold bg-[#FFFBEB] text-[#A16207] px-1.5 py-0.5 rounded">Form attached</span>
                                   )}

@@ -5,7 +5,7 @@ import PlanBadge from './PlanBadge';
 import InlineCell from '@/components/shared/InlineCell';
 import ColumnSelector from '@/components/shared/ColumnSelector';
 import { useColumnVisibility } from '@/hooks/useColumnVisibility';
-import { ChevronUp, ChevronDown, ChevronsUpDown, FileText, Trash2, Check, X, Pencil, Settings2, RotateCcw, AlertTriangle, Undo2, Clock } from 'lucide-react';
+import { ChevronUp, ChevronDown, ChevronsUpDown, FileText, Trash2, Check, X, Pencil, Settings2, RotateCcw, AlertTriangle, Undo2, Clock, ArrowRightLeft } from 'lucide-react';
 
 const STAGE_ORDER = ['New Lead', 'Contacted', 'Discovery Call', 'Demo Booked', 'Proposal Sent', 'Negotiation', 'Closed Won', 'Closed Lost', 'On Hold'];
 const PLANS = ['Starter', 'Growth', 'Scale', 'Professional', 'Custom'];
@@ -214,7 +214,7 @@ function UndoToast({ message, onUndo, onDismiss }) {
   );
 }
 
-export default function LeadTable({ leads, onDelete, onProposal, onUpdateField, onMarkLost, newLeadId, showOwnerSections, onRowClick, selectedLeadId, isLostView }) {
+export default function LeadTable({ leads, onDelete, onProposal, onUpdateField, onMarkLost, onMovePipeline, newLeadId, showOwnerSections, onRowClick, selectedLeadId, isLostView }) {
   const [sortCol, setSortCol] = useState('stage');
   const [sortDir, setSortDir] = useState('asc');
   const [deletingId, setDeletingId] = useState(null);
@@ -286,7 +286,7 @@ export default function LeadTable({ leads, onDelete, onProposal, onUpdateField, 
       <tr
         key={lead.id}
         onClick={() => onRowClick && onRowClick(lead)}
-        className={`border-b border-ew-border last:border-0 hover:bg-navy/[0.02] transition-colors cursor-pointer ${isSelected ? 'bg-[#F3E8FF] border-l-2 border-l-[#8403C5]' : ''} ${isNew ? 'bg-blue-50/40' : i % 2 === 1 ? 'bg-[#FAFBFE]' : 'bg-white'}`}
+        className={`border-b border-ew-border last:border-0 hover:bg-navy/[0.02] transition-colors cursor-pointer ${isSelected ? 'bg-[#F3E8FF] border-l-2 border-l-[#8403C5]' : ''} ${isNew ? 'bg-blue-50/40' : (lead.pipeline || 'warm') === 'cold' ? 'bg-[#EEF2F8]' : i % 2 === 1 ? 'bg-[#FAFBFE]' : 'bg-white'}`}
       >
         {show('company') && (
           <td className="px-4 py-3 min-w-[160px]" onClick={e => e.stopPropagation()}>
@@ -376,6 +376,15 @@ export default function LeadTable({ leads, onDelete, onProposal, onUpdateField, 
               <button onClick={() => onProposal(lead)}
                 className="flex items-center gap-1 px-2.5 py-1.5 text-xs font-semibold text-navy bg-navy-tint hover:bg-navy hover:text-white rounded-lg transition-colors whitespace-nowrap">
                 <FileText className="w-3 h-3" /> Proposal
+              </button>
+            )}
+            {!isLostView && onMovePipeline && (
+              <button
+                onClick={e => { e.stopPropagation(); onMovePipeline(lead); }}
+                title={`Move to ${(lead.pipeline || 'warm') === 'warm' ? 'Cold' : 'Warm'} Pipeline`}
+                className="flex items-center gap-1 px-2 py-1.5 text-xs font-semibold text-[#5777AB] bg-[#EEF2F8] hover:bg-[#5777AB] hover:text-white rounded-lg transition-colors whitespace-nowrap"
+              >
+                <ArrowRightLeft className="w-3 h-3" /> {(lead.pipeline || 'warm') === 'warm' ? 'To Cold' : 'To Warm'}
               </button>
             )}
             {deletingId === lead.id ? (

@@ -527,7 +527,7 @@ function showToast(msg, color = 'bg-emerald-600') {
   setTimeout(() => el.remove(), 2500);
 }
 
-export default function LeadDetailPanel({ lead, onClose, onUpdate, onDelete, onClosedWon, isNew = false, onSaved }) {
+export default function LeadDetailPanel({ lead, onClose, onUpdate, onDelete, onClosedWon, onMovePipeline, isNew = false, onSaved }) {
   const [data, setData] = useState(lead);
   const [activeTab, setActiveTab] = useState('contacts');
   const [currentUserFirst, setCurrentUserFirst] = useState('');
@@ -701,6 +701,11 @@ export default function LeadDetailPanel({ lead, onClose, onUpdate, onDelete, onC
         </div>
         <div className="flex items-center gap-3 mb-3 flex-wrap">
           <StageBadge stage={data.stage} />
+          {!isNew && (
+            <span className={`text-xs font-semibold px-2.5 py-0.5 rounded-full ${(data.pipeline || 'warm') === 'cold' ? 'bg-[#EEF2F8] text-[#5777AB]' : 'bg-[#FFF7ED] text-[#E8A020]'}`}>
+              {(data.pipeline || 'warm') === 'cold' ? '❄️ Cold' : '🔥 Warm'}
+            </span>
+          )}
           {data.converted && <span className="text-xs text-green-700 font-semibold bg-green-50 px-2.5 py-0.5 rounded-full">✓ Converted {data.convertedDate ? fmtDate(data.convertedDate) : ''}</span>}
           {!data.converted && data.stage !== 'Closed Won' && (
             <button onClick={() => onClosedWon({ ...data, stage: 'Closed Won' })} className="px-3 py-1 text-xs font-semibold bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors">🎉 Closed Won</button>
@@ -1037,6 +1042,14 @@ export default function LeadDetailPanel({ lead, onClose, onUpdate, onDelete, onC
             </div>
             <div className="border-t border-ew-border pt-4 mt-4 flex items-center gap-4">
               <button onClick={() => setLostPrompt(true)} className="text-sm text-ew-muted hover:text-gray-700 underline transition-colors">Mark as Lost</button>
+              {!isNew && onMovePipeline && (
+                <button
+                  onClick={() => onMovePipeline(data)}
+                  className="text-sm text-[#5777AB] hover:text-[#8403C5] underline transition-colors"
+                >
+                  Move to {(data.pipeline || 'warm') === 'warm' ? 'Cold' : 'Warm'} Pipeline
+                </button>
+              )}
               <button onClick={() => setDeleteConfirm(true)} className="text-sm text-red-500 hover:text-red-700 underline transition-colors">Delete this lead</button>
             </div>
             {lostPrompt && (

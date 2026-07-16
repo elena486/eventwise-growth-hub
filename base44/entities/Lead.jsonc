@@ -6,6 +6,15 @@
       "type": "string",
       "description": "Company name"
     },
+    "pipeline": {
+      "type": "string",
+      "enum": [
+        "warm",
+        "cold"
+      ],
+      "default": "warm",
+      "description": "Which pipeline this lead belongs to \u2014 warm or cold. A lead exists in one pipeline only."
+    },
     "contactName": {
       "type": "string",
       "description": "Contact name (legacy / primary contact display name)"
