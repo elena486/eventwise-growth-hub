@@ -59,9 +59,14 @@ export default function SprintSubmitModal({ onClose, onSaved }) {
 
     base44.entities.SprintSubmission.filter({ memberName: member.name, weekStart }).then(results => {
       if (results.length > 0) {
-        setExistingId(results[0].id);
-        setExistingData(results[0]);
+        const existing = results[0];
+        setExistingId(existing.id);
+        setExistingData(existing);
         setShowDuplicateWarning(true);
+        try { setAnswers(JSON.parse(existing.answers || '{}')); } catch {}
+        setSelfRating(existing.selfRating || '');
+        setSelfRatingReason(existing.selfRatingReason || '');
+        setNotes(existing.notes || '');
       }
     });
 
@@ -84,15 +89,6 @@ export default function SprintSubmitModal({ onClose, onSaved }) {
     setSelfRatingReason(existingData.selfRatingReason || '');
     setNotes(existingData.notes || '');
     setShowDuplicateWarning(false);
-  };
-
-  const handleCancelDuplicate = () => {
-    setShowDuplicateWarning(false);
-    if (prevWeekRef.current === selectedWeek) {
-      onClose();
-      return;
-    }
-    setSelectedWeek(prevWeekRef.current);
   };
 
   const handleChange = (qid, value) => {
@@ -258,6 +254,22 @@ export default function SprintSubmitModal({ onClose, onSaved }) {
             </div>
           </div>
 
+          {member && showDuplicateWarning && (
+            <div className="mt-3 mb-5 p-4 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-xl">
+              <div className="flex items-start gap-2.5">
+                <AlertTriangle className="w-5 h-5 text-amber-500 shrink-0 mt-0.5" />
+                <div>
+                  <p className="text-sm text-amber-800 dark:text-amber-300 font-medium">
+                    You've already submitted an update for this week.
+                  </p>
+                  <button onClick={handleEditExisting} className="mt-1.5 flex items-center gap-1 text-sm font-semibold text-[#8403C5] hover:underline">
+                    Edit your existing submission →
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* Member selector */}
           <div className="mb-5">
             <label className="block text-sm font-semibold text-gray-800 dark:text-gray-200 mb-1.5">Team Member</label>
@@ -272,28 +284,7 @@ export default function SprintSubmitModal({ onClose, onSaved }) {
             </div>
           </div>
 
-          {member && showDuplicateWarning && (
-            <div className="mb-5 p-4 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-xl">
-              <div className="flex items-start gap-2.5 mb-3">
-                <AlertTriangle className="w-5 h-5 text-amber-500 shrink-0 mt-0.5" />
-                <p className="text-sm text-amber-800 dark:text-amber-300 font-medium">
-                  You've already submitted an update for this week. Would you like to edit your existing submission instead?
-                </p>
-              </div>
-              <div className="flex gap-2">
-                <button onClick={handleEditExisting}
-                  className="flex-1 px-4 py-2.5 bg-[#8403C5] text-white rounded-xl text-sm font-semibold hover:bg-[#6d02a3] transition-colors">
-                  Edit existing submission
-                </button>
-                <button onClick={handleCancelDuplicate}
-                  className="px-4 py-2.5 border border-gray-200 dark:border-gray-600 text-gray-600 dark:text-gray-300 rounded-xl text-sm font-medium hover:bg-gray-50 dark:hover:bg-[#252535] transition-colors">
-                  Cancel
-                </button>
-              </div>
-            </div>
-          )}
-
-          {member && !showDuplicateWarning && (
+          {member && (
             <>
               {/* ── Self-assessment — required, shown first ── */}
               <div className="mb-5 p-4 bg-gray-50 dark:bg-[#252535] rounded-xl border border-gray-200 dark:border-gray-600">
@@ -328,7 +319,7 @@ export default function SprintSubmitModal({ onClose, onSaved }) {
               </div>
 
               {/* Duplicate last entry button */}
-              {lastSubmission && (
+              {lastSubmission && !showDuplicateWarning && (
                 <button onClick={handleDuplicate}
                   className="flex items-center gap-1.5 text-xs text-gray-500 border border-gray-200 dark:border-gray-600 rounded-lg px-3 py-1.5 hover:bg-gray-50 dark:hover:bg-[#252535] mb-4 transition-colors">
                   <Copy className="w-3.5 h-3.5" /> Duplicate last entry ({format(new Date(lastSubmission.weekStart), 'd MMM')})
@@ -356,15 +347,15 @@ export default function SprintSubmitModal({ onClose, onSaved }) {
           )}
 
           {/* Actions */}
-          {member && !showDuplicateWarning && (
+          {member && (
             <div className="flex gap-2 mt-2">
-              <button onClick={handleSaveDraft}
-                className={`px-4 py-2.5 rounded-xl text-sm font-medium border transition-colors ${draftSaved ? 'border-green-500 text-green-600' : 'border-gray-200 dark:border-gray-600 text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-[#252535]'}`}>
+              <button onClick={handleSaveDraft} disabled={showDuplicateWarning}
+                className={`px-4 py-2.5 rounded-xl text-sm font-medium border transition-colors disabled:opacity-50 ${draftSaved ? 'border-green-500 text-green-600' : 'border-gray-200 dark:border-gray-600 text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-[#252535]'}`}>
                 {draftSaved ? <span className="flex items-center gap-1"><Check className="w-3.5 h-3.5" /> Draft saved</span> : 'Save draft'}
               </button>
               <button onClick={handleSubmit} disabled={saving || !canSubmit}
                 className="flex-1 py-2.5 rounded-xl text-sm font-bold text-white transition-colors flex items-center justify-center gap-2 disabled:opacity-50 bg-[#8403C5] hover:bg-[#6d02a3]">
-                {saving ? 'Saving…' : (existingId ? 'Update Submission' : 'Submit Update')}
+                {saving ? 'Saving…' : (showDuplicateWarning ? 'Submit Update' : (existingId ? 'Update Submission' : 'Submit Update'))}
               </button>
             </div>
           )}
