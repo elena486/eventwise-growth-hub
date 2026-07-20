@@ -1,7 +1,7 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
 import { MEMBERS, currentWeekStart, getWeekNumber, subWeeks } from '@/lib/sprintConfig';
-import { X, Copy, Check, ChevronRight, AlertTriangle } from 'lucide-react';
+import { X, Copy, Check, ChevronRight } from 'lucide-react';
 import { format, addDays } from 'date-fns';
 import { logActivity } from '@/lib/logActivity';
 
@@ -20,17 +20,13 @@ function weekRangeLabel(monStr) {
 export default function SprintSubmitModal({ onClose, onSaved }) {
   const thisWeek = currentWeekStart();
   const [selectedWeek, setSelectedWeek] = useState(thisWeek);
-  const prevWeekRef = useRef(thisWeek);
   const [selectedMemberId, setSelectedMemberId] = useState('');
+  const [memberSubmissions, setMemberSubmissions] = useState([]);
   const [answers, setAnswers] = useState({});
   const [selfRating, setSelfRating] = useState('');
   const [selfRatingReason, setSelfRatingReason] = useState('');
   const [saving, setSaving] = useState(false);
   const [submitted, setSubmitted] = useState(false);
-  const [existingId, setExistingId] = useState(null);
-  const [existingData, setExistingData] = useState(null);
-  const [showDuplicateWarning, setShowDuplicateWarning] = useState(false);
-  const [lastSubmission, setLastSubmission] = useState(null);
   const [draftSaved, setDraftSaved] = useState(false);
   const [notes, setNotes] = useState('');
 
@@ -39,57 +35,52 @@ export default function SprintSubmitModal({ onClose, onSaved }) {
   const year = new Date(weekStart).getFullYear();
   const member = MEMBERS.find(m => m.id === selectedMemberId);
 
-  const weekOptions = [
+  const allWeekOptions = [
     { value: thisWeek, label: 'This week', sub: weekRangeLabel(thisWeek) },
     { value: subWeeks(thisWeek, 1), label: 'Last week', sub: weekRangeLabel(subWeeks(thisWeek, 1)) },
     { value: subWeeks(thisWeek, 2), label: '2 weeks ago', sub: weekRangeLabel(subWeeks(thisWeek, 2)) },
     { value: subWeeks(thisWeek, 3), label: '3 weeks ago', sub: weekRangeLabel(subWeeks(thisWeek, 3)) },
   ];
 
+  const submittedWeeks = new Set(memberSubmissions.map(s => s.weekStart));
+  const availableWeeks = member ? allWeekOptions.filter(o => !submittedWeeks.has(o.value)) : allWeekOptions;
+  const allSubmitted = member && memberSubmissions.length > 0 && availableWeeks.length === 0;
+
+  const lastSubmission = memberSubmissions
+    .filter(s => s.weekStart < weekStart)
+    .sort((a, b) => b.weekStart.localeCompare(a.weekStart))[0] || null;
+
+  // Fetch the selected member's submissions and auto-move off any already-submitted week
+  useEffect(() => {
+    if (!member) { setMemberSubmissions([]); return; }
+    base44.entities.SprintSubmission.filter({ memberName: member.name }).then(all => {
+      setMemberSubmissions(all);
+      const submitted = new Set(all.map(s => s.weekStart));
+      if (submitted.has(selectedWeek)) {
+        const firstAvail = allWeekOptions.find(o => !submitted.has(o.value));
+        if (firstAvail) setSelectedWeek(firstAvail.value);
+      }
+    });
+  }, [selectedMemberId]);
+
+  // Reset the form + restore any saved draft when member or week changes
   useEffect(() => {
     if (!member) return;
     setAnswers({});
-    setExistingId(null);
-    setExistingData(null);
-    setShowDuplicateWarning(false);
-    setSubmitted(false);
     setSelfRating('');
     setSelfRatingReason('');
     setNotes('');
-
-    base44.entities.SprintSubmission.filter({ memberName: member.name, weekStart }).then(results => {
-      if (results.length > 0) {
-        const existing = results[0];
-        setExistingId(existing.id);
-        setExistingData(existing);
-        setShowDuplicateWarning(true);
-        try { setAnswers(JSON.parse(existing.answers || '{}')); } catch {}
-        setSelfRating(existing.selfRating || '');
-        setSelfRatingReason(existing.selfRatingReason || '');
-        setNotes(existing.notes || '');
-      }
-    });
-
-    base44.entities.SprintSubmission.filter({ memberName: member.name }).then(all => {
-      const sorted = all.filter(s => s.weekStart < weekStart).sort((a, b) => b.weekStart.localeCompare(a.weekStart));
-      setLastSubmission(sorted[0] || null);
-    });
+    const draft = localStorage.getItem(`sprint_draft_${member.id}_${weekStart}`);
+    if (draft) {
+      try {
+        const parsed = JSON.parse(draft);
+        setAnswers(parsed.answers || {});
+        setSelfRating(parsed.selfRating || '');
+        setSelfRatingReason(parsed.selfRatingReason || '');
+        setNotes(parsed.notes || '');
+      } catch {}
+    }
   }, [selectedMemberId, selectedWeek]);
-
-  const handleWeekChange = (newWeek) => {
-    if (newWeek === selectedWeek) return;
-    prevWeekRef.current = selectedWeek;
-    setSelectedWeek(newWeek);
-  };
-
-  const handleEditExisting = () => {
-    if (!existingData) return;
-    try { setAnswers(JSON.parse(existingData.answers || '{}')); } catch {}
-    setSelfRating(existingData.selfRating || '');
-    setSelfRatingReason(existingData.selfRatingReason || '');
-    setNotes(existingData.notes || '');
-    setShowDuplicateWarning(false);
-  };
 
   const handleChange = (qid, value) => {
     setAnswers(prev => ({ ...prev, [qid]: value }));
@@ -97,7 +88,7 @@ export default function SprintSubmitModal({ onClose, onSaved }) {
   };
 
   const needsReason = selfRating === 'at_risk' || selfRating === 'off_track';
-  const canSubmit = member && selfRating && (!needsReason || selfRatingReason.trim()) && !showDuplicateWarning;
+  const canSubmit = member && availableWeeks.length > 0 && selfRating && (!needsReason || selfRatingReason.trim());
 
   const handleSubmit = async () => {
     if (!canSubmit) return;
@@ -112,9 +103,8 @@ export default function SprintSubmitModal({ onClose, onSaved }) {
       selfRatingReason: needsReason ? selfRatingReason.trim() : '',
       notes: notes.trim(),
     };
-    if (existingId) await base44.entities.SprintSubmission.update(existingId, payload);
-    else await base44.entities.SprintSubmission.create(payload);
-    logActivity({ teamMember: member.name, actionType: existingId ? 'Edited a sprint update' : 'Submitted a sprint update', section: 'Sprints', recordName: `Week of ${format(new Date(weekStart), 'd MMM')}` });
+    await base44.entities.SprintSubmission.create(payload);
+    logActivity({ teamMember: member.name, actionType: 'Submitted a sprint update', section: 'Sprints', recordName: `Week of ${format(new Date(weekStart), 'd MMM')}` });
     setSaving(false);
     setSubmitted(true);
   };
@@ -133,20 +123,6 @@ export default function SprintSubmitModal({ onClose, onSaved }) {
 
   const sections = member ? [...new Set(member.questions.map(q => q.section).filter(Boolean))] : [];
   const hasSections = sections.length > 0;
-
-  useEffect(() => {
-    if (!member) return;
-    const draft = localStorage.getItem(`sprint_draft_${member.id}_${weekStart}`);
-    if (draft && !existingId) {
-      try {
-        const parsed = JSON.parse(draft);
-        setAnswers(parsed.answers || {});
-        setSelfRating(parsed.selfRating || '');
-        setSelfRatingReason(parsed.selfRatingReason || '');
-        setNotes(parsed.notes || '');
-      } catch {}
-    }
-  }, [selectedMemberId, selectedWeek, existingId]);
 
   const renderQuestion = (q) => {
     const isKpi1 = q.id === member?.kpi1?.questionId;
@@ -235,40 +211,31 @@ export default function SprintSubmitModal({ onClose, onSaved }) {
           {/* ── Week selector — first field ── */}
           <div className="mt-4 mb-5">
             <label className="block text-sm font-semibold text-gray-800 dark:text-gray-200 mb-2">Which week is this update for?</label>
-            <div className="grid grid-cols-2 gap-2">
-              {weekOptions.map(opt => {
-                const active = selectedWeek === opt.value;
-                return (
-                  <button key={opt.value} type="button" onClick={() => handleWeekChange(opt.value)}
-                    className={`flex items-center gap-2 px-3 py-2.5 rounded-xl border-2 text-left transition-all ${active ? 'border-[#8403C5] bg-[#F3E8FF] dark:bg-[#2e1065]' : 'border-gray-200 dark:border-gray-600 hover:border-gray-300 dark:hover:border-gray-500'}`}>
-                    <span className={`w-4 h-4 rounded-full border-2 shrink-0 flex items-center justify-center ${active ? 'border-[#8403C5] bg-[#8403C5]' : 'border-gray-300 dark:border-gray-500'}`}>
-                      {active && <span className="w-1.5 h-1.5 rounded-full bg-white" />}
-                    </span>
-                    <span className="min-w-0">
-                      <span className={`block text-xs font-semibold ${active ? 'text-[#8403C5] dark:text-[#c084fc]' : 'text-gray-700 dark:text-gray-200'}`}>{opt.label}</span>
-                      <span className="block text-[10px] text-gray-400">{opt.sub}</span>
-                    </span>
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-
-          {member && showDuplicateWarning && (
-            <div className="mt-3 mb-5 p-4 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-xl">
-              <div className="flex items-start gap-2.5">
-                <AlertTriangle className="w-5 h-5 text-amber-500 shrink-0 mt-0.5" />
-                <div>
-                  <p className="text-sm text-amber-800 dark:text-amber-300 font-medium">
-                    You've already submitted an update for this week.
-                  </p>
-                  <button onClick={handleEditExisting} className="mt-1.5 flex items-center gap-1 text-sm font-semibold text-[#8403C5] hover:underline">
-                    Edit your existing submission →
-                  </button>
-                </div>
+            {availableWeeks.length > 0 ? (
+              <div className="grid grid-cols-2 gap-2">
+                {availableWeeks.map(opt => {
+                  const active = selectedWeek === opt.value;
+                  return (
+                    <button key={opt.value} type="button" onClick={() => setSelectedWeek(opt.value)}
+                      className={`flex items-center gap-2 px-3 py-2.5 rounded-xl border-2 text-left transition-all ${active ? 'border-[#8403C5] bg-[#F3E8FF] dark:bg-[#2e1065]' : 'border-gray-200 dark:border-gray-600 hover:border-gray-300 dark:hover:border-gray-500'}`}>
+                      <span className={`w-4 h-4 rounded-full border-2 shrink-0 flex items-center justify-center ${active ? 'border-[#8403C5] bg-[#8403C5]' : 'border-gray-300 dark:border-gray-500'}`}>
+                        {active && <span className="w-1.5 h-1.5 rounded-full bg-white" />}
+                      </span>
+                      <span className="min-w-0">
+                        <span className={`block text-xs font-semibold ${active ? 'text-[#8403C5] dark:text-[#c084fc]' : 'text-gray-700 dark:text-gray-200'}`}>{opt.label}</span>
+                        <span className="block text-[10px] text-gray-400">{opt.sub}</span>
+                      </span>
+                    </button>
+                  );
+                })}
               </div>
-            </div>
-          )}
+            ) : (
+              <div className="p-4 bg-gray-50 dark:bg-[#252535] border border-dashed border-gray-200 dark:border-gray-600 rounded-xl text-center">
+                <p className="text-sm text-gray-500 dark:text-gray-400 font-medium">All recent weeks have been submitted.</p>
+                <p className="text-xs text-gray-400 mt-1">View your submissions in your sprint detail page.</p>
+              </div>
+            )}
+          </div>
 
           {/* Member selector */}
           <div className="mb-5">
@@ -284,7 +251,7 @@ export default function SprintSubmitModal({ onClose, onSaved }) {
             </div>
           </div>
 
-          {member && (
+          {member && !allSubmitted && (
             <>
               {/* ── Self-assessment — required, shown first ── */}
               <div className="mb-5 p-4 bg-gray-50 dark:bg-[#252535] rounded-xl border border-gray-200 dark:border-gray-600">
@@ -319,7 +286,7 @@ export default function SprintSubmitModal({ onClose, onSaved }) {
               </div>
 
               {/* Duplicate last entry button */}
-              {lastSubmission && !showDuplicateWarning && (
+              {lastSubmission && (
                 <button onClick={handleDuplicate}
                   className="flex items-center gap-1.5 text-xs text-gray-500 border border-gray-200 dark:border-gray-600 rounded-lg px-3 py-1.5 hover:bg-gray-50 dark:hover:bg-[#252535] mb-4 transition-colors">
                   <Copy className="w-3.5 h-3.5" /> Duplicate last entry ({format(new Date(lastSubmission.weekStart), 'd MMM')})
@@ -347,22 +314,22 @@ export default function SprintSubmitModal({ onClose, onSaved }) {
           )}
 
           {/* Actions */}
-          {member && (
+          {member && !allSubmitted && (
             <div className="flex gap-2 mt-2">
-              <button onClick={handleSaveDraft} disabled={showDuplicateWarning}
-                className={`px-4 py-2.5 rounded-xl text-sm font-medium border transition-colors disabled:opacity-50 ${draftSaved ? 'border-green-500 text-green-600' : 'border-gray-200 dark:border-gray-600 text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-[#252535]'}`}>
+              <button onClick={handleSaveDraft}
+                className={`px-4 py-2.5 rounded-xl text-sm font-medium border transition-colors ${draftSaved ? 'border-green-500 text-green-600' : 'border-gray-200 dark:border-gray-600 text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-[#252535]'}`}>
                 {draftSaved ? <span className="flex items-center gap-1"><Check className="w-3.5 h-3.5" /> Draft saved</span> : 'Save draft'}
               </button>
               <button onClick={handleSubmit} disabled={saving || !canSubmit}
                 className="flex-1 py-2.5 rounded-xl text-sm font-bold text-white transition-colors flex items-center justify-center gap-2 disabled:opacity-50 bg-[#8403C5] hover:bg-[#6d02a3]">
-                {saving ? 'Saving…' : (showDuplicateWarning ? 'Submit Update' : (existingId ? 'Update Submission' : 'Submit Update'))}
+                {saving ? 'Saving…' : 'Submit Update'}
               </button>
             </div>
           )}
-          {member && !showDuplicateWarning && !selfRating && (
+          {member && !allSubmitted && !selfRating && (
             <p className="text-xs text-center text-gray-400 mt-2">Please rate your week before submitting</p>
           )}
-          {member && !showDuplicateWarning && needsReason && !selfRatingReason.trim() && (
+          {member && !allSubmitted && needsReason && !selfRatingReason.trim() && (
             <p className="text-xs text-center text-amber-600 mt-2">Please add a reason for your rating</p>
           )}
         </div>
