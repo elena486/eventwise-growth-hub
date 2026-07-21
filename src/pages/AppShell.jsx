@@ -31,7 +31,7 @@ import ClientFullPanel from '@/components/clients/ClientFullPanel';
 import { useDarkMode } from '@/hooks/useDarkMode';
 import useAutoRefresh from '@/hooks/useAutoRefresh';
 import AutoRefreshToast from '@/components/AutoRefreshToast';
-import { Moon, Sun, LogOut, ChevronDown, Settings, Search, HelpCircle, Clock } from 'lucide-react';
+import { Moon, Sun, LogOut, ChevronDown, Settings, Search, HelpCircle, Clock, RefreshCw } from 'lucide-react';
 import NotificationBell from '@/components/NotificationBell';
 import PostRefreshBanner from '@/components/PostRefreshBanner';
 import FirstVisitModal from '@/components/FirstVisitModal';
@@ -413,6 +413,13 @@ export default function AppShell() {
 
         {/* Right: user + utilities */}
         <div className="flex items-center gap-2 shrink-0 ml-4">
+          <button
+            onClick={() => window.location.reload()}
+            className="p-2 text-[#8B8FA8] hover:text-white rounded-lg hover:bg-white/5 transition-colors"
+            title="Refresh app"
+          >
+            <RefreshCw className="w-4 h-4" />
+          </button>
           <NavTimer onStopAndLog={() => setSearchParams({ tab: 'time-log' })} onLogTime={() => setLogTimeTrigger(n => n + 1)} />
           <NotificationBell
             currentUserName={user?.full_name?.split(' ')[0] || ''}
