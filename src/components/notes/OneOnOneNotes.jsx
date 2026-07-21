@@ -1,10 +1,11 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { base44 } from '@/api/base44Client';
 import { format } from 'date-fns';
-import { Plus, ChevronDown, ChevronRight, Loader2 } from 'lucide-react';
+import { Plus, ChevronDown, ChevronRight, Loader2, RefreshCw, AlertCircle } from 'lucide-react';
 import OneOnOneNoteModal from './OneOnOneNoteModal';
 import OneOnOneInsights from './OneOnOneInsights';
 import PendingActionItemCard from './PendingActionItemCard';
+import { processNoteWithAI, saveProcessedNote } from '@/lib/oneOnOneAI';
 
 const DEFAULT_PEOPLE = ['George', 'Martinique', 'Sreeja'];
 
@@ -67,11 +68,31 @@ function SummaryList({ title, icon, items, tone }) {
 
 function MeetingEntry({ note, pendingItems, onPendingUpdated }) {
   const [open, setOpen] = useState(false);
+  const [reprocessing, setReprocessing] = useState(false);
+  const [reprocessError, setReprocessError] = useState('');
   const summary = parseSummary(note);
   const themes = parseThemes(note);
   const notePending = pendingItems.filter(p => p.sourceMeetingId === note.id);
   const unreviewed = notePending.filter(p => p.status === 'Pending Review');
   const allReviewed = notePending.length > 0 && unreviewed.length === 0;
+
+  const canReprocess = note.rawNotes && note.rawNotes.trim() &&
+    (!summary || note.status === 'Draft' || note.status === 'Failed');
+
+  const handleReprocess = async () => {
+    setReprocessing(true);
+    setReprocessError('');
+    try {
+      const result = await processNoteWithAI(note.rawNotes, note.teamMember, note.id);
+      await saveProcessedNote(note.id, note.teamMember, note.meetingDate, result);
+      onPendingUpdated();
+    } catch (e) {
+      await base44.entities.OneOnOneMeetingNote.update(note.id, { status: 'Failed' });
+      setReprocessError(e.message || 'Processing failed');
+      onPendingUpdated();
+    }
+    setReprocessing(false);
+  };
 
   return (
     <div className="bg-white dark:bg-[#1E1E2E] border border-ew-border dark:border-gray-700 rounded-xl overflow-hidden">
@@ -84,11 +105,15 @@ function MeetingEntry({ note, pendingItems, onPendingUpdated }) {
           <p className="font-bold text-navy dark:text-white text-sm">{note.teamMember}</p>
           <p className="text-xs text-ew-muted">{format(new Date(note.meetingDate), 'd MMMM yyyy')}</p>
         </div>
-        {note.status === 'Draft' ? (
+        {note.status === 'Failed' ? (
+          <span className="text-xs text-red-500 italic flex items-center gap-1"><AlertCircle className="w-3 h-3" /> Processing failed</span>
+        ) : note.status === 'Draft' ? (
           <span className="text-xs text-ew-muted italic">Draft — not yet processed</span>
         ) : summary ? (
           <span className="text-xs text-ew-muted truncate max-w-[200px] hidden sm:block">{(summary.key_points || [])[0] || 'Processed'}</span>
-        ) : null}
+        ) : (
+          <span className="text-xs text-red-500 italic">No content</span>
+        )}
         {unreviewed.length > 0 && (
           <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-amber-50 text-[#A16207] dark:bg-[#451a03] dark:text-[#fbbf24] shrink-0">
             {unreviewed.length} pending
@@ -98,12 +123,28 @@ function MeetingEntry({ note, pendingItems, onPendingUpdated }) {
 
       {open && (
         <div className="px-5 pb-5 border-t border-ew-border dark:border-gray-700 pt-4">
-          {note.status === 'Draft' ? (
-            <div className="bg-ew-bg dark:bg-[#252535] rounded-xl p-4 text-center">
-              <p className="text-sm text-ew-muted dark:text-gray-400">This note is saved as a draft.</p>
-              <p className="text-xs text-ew-muted mt-1">Open and re-process to generate a structured summary.</p>
+          {canReprocess && (
+            <div className="mb-4">
+              <button
+                onClick={handleReprocess}
+                disabled={reprocessing}
+                className="flex items-center gap-2 px-4 py-2.5 bg-[#8403C5] text-white text-sm font-semibold rounded-lg hover:bg-[#7002A8] transition-colors disabled:opacity-50"
+              >
+                {reprocessing ? <><Loader2 className="w-4 h-4 animate-spin" /> Processing with AI…</> : <><RefreshCw className="w-4 h-4" /> Re-process with AI</>}
+              </button>
+              {reprocessError && (
+                <p className="text-xs text-red-500 mt-2 flex items-center gap-1"><AlertCircle className="w-3 h-3" /> {reprocessError}</p>
+              )}
             </div>
-          ) : summary ? (
+          )}
+
+          {note.status === 'Failed' && !reprocessing && (
+            <div className="mb-4 rounded-lg bg-red-50 dark:bg-[#450a0a] border border-red-200 dark:border-[#991b1b] px-4 py-2">
+              <p className="text-xs text-red-600 dark:text-[#f87171] flex items-center gap-1.5"><AlertCircle className="w-3.5 h-3.5" /> AI processing failed on the last attempt. Click "Re-process with AI" above to try again.</p>
+            </div>
+          )}
+
+          {summary ? (
             <>
               <div className="bg-ew-bg dark:bg-[#252535] rounded-xl p-4 mb-4">
                 <SummaryList title="Key Points" icon="📋" items={summary.key_points} />
@@ -136,9 +177,12 @@ function MeetingEntry({ note, pendingItems, onPendingUpdated }) {
                 </div>
               )}
             </>
-          ) : (
-            <p className="text-sm text-ew-muted">No structured summary available.</p>
-          )}
+          ) : note.status !== 'Failed' ? (
+            <div className="bg-ew-bg dark:bg-[#252535] rounded-xl p-4 text-center">
+              <p className="text-sm text-ew-muted dark:text-gray-400">This note is saved as a draft.</p>
+              <p className="text-xs text-ew-muted mt-1">Use "Re-process with AI" above to generate a structured summary.</p>
+            </div>
+          ) : null}
 
           <details className="mt-4">
             <summary className="text-xs text-ew-muted hover:text-navy dark:hover:text-white cursor-pointer">View raw notes</summary>

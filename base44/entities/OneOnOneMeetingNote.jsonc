@@ -31,10 +31,11 @@
       "type": "string",
       "enum": [
         "Draft",
-        "Processed"
+        "Processed",
+        "Failed"
       ],
       "default": "Draft",
-      "description": "Whether the note has been processed by AI"
+      "description": "Whether the note has been processed by AI \u2014 Failed means the last AI attempt returned no content"
     }
   },
   "required": [
