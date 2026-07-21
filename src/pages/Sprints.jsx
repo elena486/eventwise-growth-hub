@@ -3,9 +3,9 @@ import { base44 } from '@/api/base44Client';
 import { MEMBERS, ragColor, RAG_STYLES, formatKpiValue, currentWeekStart, subWeeks } from '@/lib/sprintConfig';
 import SprintSubmitModal from '@/components/sprints/SprintSubmitModal';
 import SprintMemberDetail from '@/components/sprints/SprintMemberDetail';
+import NotesSection from '@/components/notes/NotesSection';
 import { Users, CheckCircle2, XCircle, Clock, Download, BarChart2, LayoutDashboard, Lock, Send, ChevronDown } from 'lucide-react';
 import SprintAnalytics from '@/components/sprints/SprintAnalytics';
-import SprintNotes from '@/components/sprints/SprintNotes';
 import { format } from 'date-fns';
 
 const FILTER_PRESETS = [
@@ -339,7 +339,7 @@ export default function Sprints() {
   }, []);
 
   if (sprintNotesView) {
-    return <SprintNotes onBack={() => setSprintNotesView(false)} />;
+    return <NotesSection onBack={() => setSprintNotesView(false)} />;
   }
 
   if (selectedMember) {
@@ -405,7 +405,7 @@ export default function Sprints() {
             </button>
           </div>
           <button onClick={() => setSprintNotesView(true)} className="flex items-center gap-1.5 text-xs text-[#5777AB] hover:text-[#242450] border border-[#EBEBF5] dark:border-[#242450] rounded-lg px-3 py-1.5 transition-colors">
-            <Lock className="w-3.5 h-3.5" /> Sprint Notes
+            <Lock className="w-3.5 h-3.5" /> Notes
           </button>
           <button onClick={exportCSV} className="flex items-center gap-1.5 text-xs text-[#5777AB] hover:text-[#242450] border border-[#EBEBF5] dark:border-[#242450] rounded-lg px-3 py-1.5 transition-colors">
             <Download className="w-3.5 h-3.5" /> Export CSV

@@ -1,0 +1,44 @@
+{
+  "name": "OneOnOneMeetingNote",
+  "type": "object",
+  "properties": {
+    "meetingDate": {
+      "type": "string",
+      "format": "date",
+      "description": "Date of the 1:1 meeting"
+    },
+    "teamMember": {
+      "type": "string",
+      "description": "Name of the team member this 1:1 was with"
+    },
+    "rawNotes": {
+      "type": "string",
+      "description": "Elena's free-form notes input"
+    },
+    "aiSummary": {
+      "type": "string",
+      "description": "JSON stringified structured summary { key_points, decisions_made, concerns_flagged, positive_highlights }"
+    },
+    "aiActionItems": {
+      "type": "string",
+      "description": "JSON stringified array of AI extracted action items"
+    },
+    "themes": {
+      "type": "string",
+      "description": "JSON stringified array of recurring theme strings"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "Draft",
+        "Processed"
+      ],
+      "default": "Draft",
+      "description": "Whether the note has been processed by AI"
+    }
+  },
+  "required": [
+    "meetingDate",
+    "teamMember"
+  ]
+}

@@ -1,0 +1,80 @@
+{
+  "name": "PendingTaskFromNote",
+  "type": "object",
+  "properties": {
+    "sourceMeetingId": {
+      "type": "string",
+      "description": "ID of the linked OneOnOneMeetingNote"
+    },
+    "teamMember": {
+      "type": "string",
+      "description": "Person the meeting was about (denormalised for display)"
+    },
+    "meetingDate": {
+      "type": "string",
+      "format": "date",
+      "description": "Date of the source meeting (denormalised)"
+    },
+    "taskTitle": {
+      "type": "string"
+    },
+    "assignedTo": {
+      "type": "string",
+      "description": "Name of the person responsible"
+    },
+    "category": {
+      "type": "string",
+      "enum": [
+        "Marketing",
+        "Sales",
+        "Operations",
+        "Customer Success",
+        "Tech/Product",
+        "Admin",
+        "Design",
+        "Content",
+        "Finance",
+        "Strategy & Planning",
+        "Other"
+      ]
+    },
+    "priority": {
+      "type": "string",
+      "enum": [
+        "Low",
+        "Medium",
+        "High",
+        "Urgent"
+      ]
+    },
+    "notes": {
+      "type": "string",
+      "description": "Context from the meeting"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "Pending Review",
+        "Approved",
+        "Rejected",
+        "Added to Board"
+      ],
+      "default": "Pending Review"
+    },
+    "reviewedBy": {
+      "type": "string"
+    },
+    "reviewedAt": {
+      "type": "string",
+      "description": "ISO timestamp of review"
+    },
+    "createdRequestId": {
+      "type": "string",
+      "description": "ID of the Request created when added to the board"
+    }
+  },
+  "required": [
+    "sourceMeetingId",
+    "taskTitle"
+  ]
+}
