@@ -10,6 +10,7 @@ import AppShell from './pages/AppShell';
 import HQDashboard from './pages/HQDashboard';
 import { LOGO_BLACK } from '@/lib/proposalData';
 import { ToastProvider } from '@/components/shared/Toast';
+import GlobalRefreshButton from '@/components/GlobalRefreshButton';
 // Add page imports here
 
 const AuthenticatedApp = () => {
@@ -38,11 +39,14 @@ const AuthenticatedApp = () => {
 
   // Render the main app
   return (
-    <Routes>
-      <Route path="/" element={<Navigate to="/AppShell" replace />} />
-      <Route path="/AppShell" element={<AppShell />} />
-      <Route path="*" element={<PageNotFound />} />
-    </Routes>
+    <>
+      <GlobalRefreshButton />
+      <Routes>
+        <Route path="/" element={<Navigate to="/AppShell" replace />} />
+        <Route path="/AppShell" element={<AppShell />} />
+        <Route path="*" element={<PageNotFound />} />
+      </Routes>
+    </>
   );
 };
 
