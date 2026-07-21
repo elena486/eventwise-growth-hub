@@ -249,6 +249,10 @@
       "type": "string",
       "description": "Notes about the lead"
     },
+    "slack_activity_log": {
+      "type": "string",
+      "description": "Appended log of pipeline updates posted in #pipeline-updates \u2014 newest entry at top"
+    },
     "converted": {
       "type": "boolean",
       "description": "True if lead has been converted to a client"

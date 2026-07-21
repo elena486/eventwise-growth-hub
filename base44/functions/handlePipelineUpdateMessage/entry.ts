@@ -20,6 +20,36 @@ async function postReply(base44, channel, threadTs, text) {
   });
 }
 
+// Resolve a Slack user ID to a display name for the activity log
+async function getSlackUserName(base44, userId) {
+  if (!userId) return 'Unknown';
+  try {
+    const { accessToken } = await base44.asServiceRole.connectors.getConnection('slackbot');
+    const res = await fetch(`https://slack.com/api/users.info?user=${userId}`, {
+      headers: { 'Authorization': `Bearer ${accessToken}` },
+    });
+    const data = await res.json();
+    if (data.ok && data.user) {
+      return data.user.profile?.display_name || data.user.profile?.real_name || data.user.name || 'Unknown';
+    }
+  } catch {}
+  return 'Unknown';
+}
+
+// Format a Slack message timestamp (Unix seconds, e.g. "1626880000.000200") into a readable date/time
+function formatSlackTimestamp(ts) {
+  try {
+    const d = new Date(parseFloat(ts) * 1000);
+    return d.toLocaleString('en-GB', {
+      day: '2-digit', month: 'short', year: 'numeric',
+      hour: '2-digit', minute: '2-digit', hour12: false,
+      timeZone: 'Africa/Johannesburg',
+    });
+  } catch {
+    return new Date().toISOString();
+  }
+}
+
 Deno.serve(async (req) => {
   try {
     const base44 = createClientFromRequest(req);
@@ -107,9 +137,11 @@ Message:
     if (normalizedStage) update.stage = normalizedStage;
     if (followUpDate) update.followUpReminder = followUpDate;
     if (notes) {
-      const ts = new Date().toISOString().split('T')[0];
-      const prev = lead.notes ? `${lead.notes}\n\n` : '';
-      update.notes = `${prev}[${ts} — via #pipeline-updates]\n${notes}`;
+      const dateStr = formatSlackTimestamp(threadTs);
+      const posterName = await getSlackUserName(base44, event.user);
+      const newEntry = `[${dateStr}] — ${posterName}: ${notes}`;
+      const existing = lead.slack_activity_log || '';
+      update.slack_activity_log = existing ? `${newEntry}\n${existing}` : newEntry;
     }
 
     if (Object.keys(update).length > 0) {
@@ -120,7 +152,7 @@ Message:
     const confirmLines = [`✅ Updated *${lead.companyName || leadName}*`];
     if (normalizedStage) confirmLines.push(`• stage: ${normalizedStage}`);
     if (followUpDate) confirmLines.push(`• follow-up: ${followUpDate}`);
-    if (notes) confirmLines.push(`• notes: ${notes}`);
+    if (notes) confirmLines.push(`• slack log: ${notes}`);
     if (Object.keys(update).length === 0) confirmLines.push(`_(no fields to update — all extracted fields were empty)_`);
 
     await postReply(base44, channel, threadTs, confirmLines.join('\n'));
