@@ -47,12 +47,12 @@ Deno.serve(async (req) => {
 
     // Entity automation payload: { data: <new ContentItem> }
     const item = body.data || {};
-    const { platform, topicAngle, publishedUrl } = item;
+    const { platform, publishedUrl } = item;
 
     const channelId = await findMarketingChannel(accessToken);
     if (!channelId) return Response.json({ ok: false, error: 'Marketing channel not found' }, { status: 404 });
 
-    const text = `🚀 New post is live: ${platform || '—'} — ${topicAngle || '—'}. Go like, comment, and share within the first hour: ${publishedUrl || ''}`.trim();
+    const text = `🚀 New post is live: ${platform || '—'}. Go like, comment, and share within the first hour: ${publishedUrl || ''}`.trim();
 
     const res = await fetch('https://slack.com/api/chat.postMessage', {
       method: 'POST',
