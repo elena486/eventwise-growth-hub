@@ -29,6 +29,7 @@ export default function SprintSubmitModal({ onClose, onSaved }) {
   const [submitted, setSubmitted] = useState(false);
   const [draftSaved, setDraftSaved] = useState(false);
   const [notes, setNotes] = useState('');
+  const [loadingWeeks, setLoadingWeeks] = useState(false);
 
   const weekStart = selectedWeek;
   const weekNum = getWeekNumber(weekStart);
@@ -50,11 +51,15 @@ export default function SprintSubmitModal({ onClose, onSaved }) {
     .filter(s => s.weekStart < weekStart)
     .sort((a, b) => b.weekStart.localeCompare(a.weekStart))[0] || null;
 
-  // Fetch the selected member's submissions and auto-move off any already-submitted week
+  // Fetch the selected member's submissions and auto-move off any already-submitted week.
+  // Runs BEFORE the dropdown renders: we gate the week selector on `loadingWeeks` so
+  // already-submitted weeks are removed from the list before any option is painted.
   useEffect(() => {
-    if (!member) { setMemberSubmissions([]); return; }
+    if (!member) { setMemberSubmissions([]); setLoadingWeeks(false); return; }
+    setLoadingWeeks(true);
     base44.entities.SprintSubmission.filter({ memberName: member.name }).then(all => {
       setMemberSubmissions(all);
+      setLoadingWeeks(false);
       const submitted = new Set(all.map(s => s.weekStart));
       if (submitted.has(selectedWeek)) {
         const firstAvail = allWeekOptions.find(o => !submitted.has(o.value));
@@ -211,7 +216,12 @@ export default function SprintSubmitModal({ onClose, onSaved }) {
           {/* ── Week selector — first field ── */}
           <div className="mt-4 mb-5">
             <label className="block text-sm font-semibold text-gray-800 dark:text-gray-200 mb-2">Which week is this update for?</label>
-            {availableWeeks.length > 0 ? (
+            {loadingWeeks ? (
+              <div className="p-4 flex items-center justify-center gap-2 text-sm text-gray-400 bg-gray-50 dark:bg-[#252535] rounded-xl">
+                <div className="w-4 h-4 border-2 border-gray-200 border-t-[#8403C5] rounded-full animate-spin" />
+                Loading weeks…
+              </div>
+            ) : availableWeeks.length > 0 ? (
               <div className="grid grid-cols-2 gap-2">
                 {availableWeeks.map(opt => {
                   const active = selectedWeek === opt.value;
