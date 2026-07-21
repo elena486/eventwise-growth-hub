@@ -1,11 +1,11 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { base44 } from '@/api/base44Client';
 import { format } from 'date-fns';
-import { Plus, ChevronDown, ChevronRight, Loader2, RefreshCw, AlertCircle } from 'lucide-react';
+import { Plus, ChevronDown, ChevronRight, Loader2, RefreshCw, AlertCircle, MoreVertical, Pencil, Trash2 } from 'lucide-react';
 import OneOnOneNoteModal from './OneOnOneNoteModal';
 import OneOnOneInsights from './OneOnOneInsights';
 import PendingActionItemCard from './PendingActionItemCard';
-import { processNoteWithAI, saveProcessedNote } from '@/lib/oneOnOneAI';
+import { processNoteWithAI } from '@/lib/oneOnOneAI';
 
 const DEFAULT_PEOPLE = ['George', 'Martinique', 'Sreeja'];
 
@@ -66,10 +66,15 @@ function SummaryList({ title, icon, items, tone }) {
   );
 }
 
-function MeetingEntry({ note, pendingItems, onPendingUpdated }) {
+function MeetingEntry({ note, pendingItems, onPendingUpdated, onEdit, onDelete }) {
   const [open, setOpen] = useState(false);
   const [reprocessing, setReprocessing] = useState(false);
   const [reprocessError, setReprocessError] = useState('');
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [deleteConfirm, setDeleteConfirm] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const menuRef = useRef(null);
+
   const summary = parseSummary(note);
   const themes = parseThemes(note);
   const notePending = pendingItems.filter(p => p.sourceMeetingId === note.id);
@@ -79,12 +84,19 @@ function MeetingEntry({ note, pendingItems, onPendingUpdated }) {
   const canReprocess = note.rawNotes && note.rawNotes.trim() &&
     (!summary || note.status === 'Draft' || note.status === 'Failed');
 
+  // Close overflow menu on outside click
+  useEffect(() => {
+    if (!menuOpen) return;
+    const handler = (e) => { if (menuRef.current && !menuRef.current.contains(e.target)) setMenuOpen(false); };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [menuOpen]);
+
   const handleReprocess = async () => {
     setReprocessing(true);
     setReprocessError('');
     try {
-      const result = await processNoteWithAI(note.rawNotes, note.teamMember, note.id);
-      await saveProcessedNote(note.id, note.teamMember, note.meetingDate, result);
+      await processNoteWithAI(note.id, note.rawNotes, note.teamMember, note.meetingDate);
       onPendingUpdated();
     } catch (e) {
       await base44.entities.OneOnOneMeetingNote.update(note.id, { status: 'Failed' });
@@ -94,21 +106,37 @@ function MeetingEntry({ note, pendingItems, onPendingUpdated }) {
     setReprocessing(false);
   };
 
+  const handleDelete = async () => {
+    setDeleting(true);
+    try {
+      // Delete unreviewed pending tasks only — approved/board tasks stay
+      await base44.entities.PendingTaskFromNote.deleteMany({ sourceMeetingId: note.id, status: 'Pending Review' });
+      await base44.entities.OneOnOneMeetingNote.delete(note.id);
+      onDelete();
+    } catch (e) {
+      setDeleting(false);
+      setDeleteConfirm(false);
+    }
+  };
+
   return (
     <div className="bg-white dark:bg-[#1E1E2E] border border-ew-border dark:border-gray-700 rounded-xl overflow-hidden">
-      <button onClick={() => setOpen(v => !v)} className="w-full flex items-center gap-3 px-5 py-4 hover:bg-ew-bg dark:hover:bg-[#252535] transition-colors text-left">
-        {open ? <ChevronDown className="w-4 h-4 text-ew-muted shrink-0" /> : <ChevronRight className="w-4 h-4 text-ew-muted shrink-0" />}
-        <div className="w-8 h-8 rounded-full bg-[#8403C5]/15 text-[#8403C5] dark:text-[#c084fc] text-[10px] font-bold flex items-center justify-center shrink-0">
-          {avatar(note.teamMember)}
-        </div>
-        <div className="min-w-0 flex-1">
-          <p className="font-bold text-navy dark:text-white text-sm">{note.teamMember}</p>
-          <p className="text-xs text-ew-muted">{format(new Date(note.meetingDate), 'd MMMM yyyy')}</p>
-        </div>
+      <div className="flex items-center gap-3 px-5 py-4 hover:bg-ew-bg dark:hover:bg-[#252535] transition-colors">
+        <button onClick={() => setOpen(v => !v)} className="flex items-center gap-3 flex-1 min-w-0 text-left">
+          {open ? <ChevronDown className="w-4 h-4 text-ew-muted shrink-0" /> : <ChevronRight className="w-4 h-4 text-ew-muted shrink-0" />}
+          <div className="w-8 h-8 rounded-full bg-[#8403C5]/15 text-[#8403C5] dark:text-[#c084fc] text-[10px] font-bold flex items-center justify-center shrink-0">
+            {avatar(note.teamMember)}
+          </div>
+          <div className="min-w-0 flex-1">
+            <p className="font-bold text-navy dark:text-white text-sm">{note.teamMember}</p>
+            <p className="text-xs text-ew-muted">{format(new Date(note.meetingDate), 'd MMMM yyyy')}</p>
+          </div>
+        </button>
+
         {note.status === 'Failed' ? (
           <span className="text-xs text-red-500 italic flex items-center gap-1"><AlertCircle className="w-3 h-3" /> Processing failed</span>
         ) : note.status === 'Draft' ? (
-          <span className="text-xs text-ew-muted italic">Draft — not yet processed</span>
+          <span className="text-xs text-ew-muted italic">Draft</span>
         ) : summary ? (
           <span className="text-xs text-ew-muted truncate max-w-[200px] hidden sm:block">{(summary.key_points || [])[0] || 'Processed'}</span>
         ) : (
@@ -119,7 +147,34 @@ function MeetingEntry({ note, pendingItems, onPendingUpdated }) {
             {unreviewed.length} pending
           </span>
         )}
-      </button>
+
+        {/* Overflow menu */}
+        <div className="relative shrink-0" ref={menuRef}>
+          <button
+            onClick={(e) => { e.stopPropagation(); setMenuOpen(v => !v); }}
+            className="p-1.5 rounded-lg text-ew-muted hover:text-navy dark:hover:text-white hover:bg-ew-bg dark:hover:bg-[#252535] transition-colors"
+            title="More options"
+          >
+            <MoreVertical className="w-4 h-4" />
+          </button>
+          {menuOpen && (
+            <div className="absolute right-0 top-full mt-1 w-44 bg-white dark:bg-[#1E1E2E] border border-ew-border dark:border-gray-700 rounded-lg shadow-lg z-30 py-1 overflow-hidden">
+              <button
+                onClick={(e) => { e.stopPropagation(); setMenuOpen(false); onEdit(note); }}
+                className="w-full flex items-center gap-2 px-3 py-2 text-sm text-ew-body dark:text-gray-200 hover:bg-ew-bg dark:hover:bg-[#252535] transition-colors"
+              >
+                <Pencil className="w-3.5 h-3.5" /> Edit note
+              </button>
+              <button
+                onClick={(e) => { e.stopPropagation(); setMenuOpen(false); setDeleteConfirm(true); }}
+                className="w-full flex items-center gap-2 px-3 py-2 text-sm text-red-600 dark:text-[#f87171] hover:bg-red-50 dark:hover:bg-[#450a0a] transition-colors"
+              >
+                <Trash2 className="w-3.5 h-3.5" /> Delete note
+              </button>
+            </div>
+          )}
+        </div>
+      </div>
 
       {open && (
         <div className="px-5 pb-5 border-t border-ew-border dark:border-gray-700 pt-4">
@@ -190,6 +245,38 @@ function MeetingEntry({ note, pendingItems, onPendingUpdated }) {
           </details>
         </div>
       )}
+
+      {deleteConfirm && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-[60] p-4" onClick={() => !deleting && setDeleteConfirm(false)}>
+          <div className="bg-white dark:bg-[#1E1E2E] rounded-xl shadow-2xl w-full max-w-sm p-6" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center gap-2 mb-3">
+              <Trash2 className="w-5 h-5 text-red-500" />
+              <h3 className="text-base font-bold text-navy dark:text-white">Delete this meeting note?</h3>
+            </div>
+            <p className="text-sm text-ew-body dark:text-gray-300 mb-5">
+              The AI summary and any pending action items will also be deleted.
+              Tasks already approved and added to the board will remain.
+              This cannot be undone.
+            </p>
+            <div className="flex justify-end gap-3">
+              <button
+                onClick={() => setDeleteConfirm(false)}
+                disabled={deleting}
+                className="px-4 py-2 text-sm font-medium text-ew-body hover:bg-ew-bg dark:hover:bg-[#252535] rounded-lg transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleDelete}
+                disabled={deleting}
+                className="px-4 py-2 text-sm font-semibold bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors disabled:opacity-50 flex items-center gap-2"
+              >
+                {deleting ? <><Loader2 className="w-3.5 h-3.5 animate-spin" /> Deleting…</> : 'Delete'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -200,6 +287,7 @@ export default function OneOnOneNotes() {
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState('all');
   const [showModal, setShowModal] = useState(false);
+  const [editingNote, setEditingNote] = useState(null);
 
   const load = useCallback(async () => {
     try {
@@ -242,7 +330,7 @@ export default function OneOnOneNotes() {
       <div className="flex items-center justify-between mb-5">
         <p className="text-sm text-ew-muted dark:text-gray-400">{notes.length} meeting{notes.length === 1 ? '' : 's'} logged</p>
         <button
-          onClick={() => setShowModal(true)}
+          onClick={() => { setEditingNote(null); setShowModal(true); }}
           className="flex items-center gap-1.5 px-4 py-2 bg-[#8403C5] text-white text-sm font-semibold rounded-lg hover:bg-[#7002A8] transition-colors"
         >
           <Plus className="w-4 h-4" /> New 1:1 Note
@@ -289,20 +377,31 @@ export default function OneOnOneNotes() {
         <div className="bg-white dark:bg-[#1E1E2E] border border-dashed border-ew-border dark:border-gray-700 rounded-xl flex flex-col items-center justify-center py-16">
           <p className="font-semibold text-navy dark:text-white mb-1">No 1:1 notes yet</p>
           <p className="text-sm text-ew-muted mb-4">Start by logging your first meeting.</p>
-          <button onClick={() => setShowModal(true)} className="flex items-center gap-1.5 px-4 py-2 bg-[#8403C5] text-white text-sm font-semibold rounded-lg hover:bg-[#7002A8] transition-colors">
+          <button onClick={() => { setEditingNote(null); setShowModal(true); }} className="flex items-center gap-1.5 px-4 py-2 bg-[#8403C5] text-white text-sm font-semibold rounded-lg hover:bg-[#7002A8] transition-colors">
             <Plus className="w-4 h-4" /> New 1:1 Note
           </button>
         </div>
       ) : (
         <div className="space-y-3">
           {filteredNotes.map(note => (
-            <MeetingEntry key={note.id} note={note} pendingItems={pending} onPendingUpdated={load} />
+            <MeetingEntry
+              key={note.id}
+              note={note}
+              pendingItems={pending}
+              onPendingUpdated={load}
+              onEdit={(n) => { setEditingNote(n); setShowModal(true); }}
+              onDelete={load}
+            />
           ))}
         </div>
       )}
 
       {showModal && (
-        <OneOnOneNoteModal onClose={() => setShowModal(false)} onSaved={() => { setShowModal(false); load(); }} />
+        <OneOnOneNoteModal
+          editNote={editingNote}
+          onClose={() => { setShowModal(false); setEditingNote(null); }}
+          onSaved={() => { setShowModal(false); setEditingNote(null); load(); }}
+        />
       )}
     </div>
   );

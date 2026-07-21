@@ -2,15 +2,15 @@ import React, { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
 import { format } from 'date-fns';
 import { X, Loader2, Sparkles } from 'lucide-react';
-import { processNoteWithAI, saveProcessedNote } from '@/lib/oneOnOneAI';
+import { processNoteWithAI } from '@/lib/oneOnOneAI';
 
 const DEFAULT_TEAM = ['Chris', 'Elena', 'George', 'Martinique', 'Sreeja', 'Ramesh', 'Eleanor'];
 
-export default function OneOnOneNoteModal({ onClose, onSaved }) {
+export default function OneOnOneNoteModal({ onClose, onSaved, editNote }) {
   const [teamMembers, setTeamMembers] = useState(DEFAULT_TEAM);
-  const [teamMember, setTeamMember] = useState('');
-  const [meetingDate, setMeetingDate] = useState(format(new Date(), 'yyyy-MM-dd'));
-  const [rawNotes, setRawNotes] = useState('');
+  const [teamMember, setTeamMember] = useState(editNote?.teamMember || '');
+  const [meetingDate, setMeetingDate] = useState(editNote?.meetingDate || format(new Date(), 'yyyy-MM-dd'));
+  const [rawNotes, setRawNotes] = useState(editNote?.rawNotes || '');
   const [saving, setSaving] = useState(false);
   const [processing, setProcessing] = useState(false);
   const [error, setError] = useState('');
@@ -32,24 +32,35 @@ export default function OneOnOneNoteModal({ onClose, onSaved }) {
     if (process) { setProcessing(true); } else { setSaving(true); }
     setError('');
     try {
-      // Create the note as a Draft first
-      const note = await base44.entities.OneOnOneMeetingNote.create({
-        meetingDate, teamMember, rawNotes: rawNotes.trim(), status: 'Draft',
-      });
-
+      // --- Save Draft (no AI) ---
       if (!process) {
+        if (editNote) {
+          await base44.entities.OneOnOneMeetingNote.update(editNote.id, {
+            meetingDate, teamMember, rawNotes: rawNotes.trim(),
+          });
+        } else {
+          await base44.entities.OneOnOneMeetingNote.create({
+            meetingDate, teamMember, rawNotes: rawNotes.trim(), status: 'Draft',
+          });
+        }
         setSaving(false);
         onSaved();
         return;
       }
 
-      // Run AI processing — only set "Processed" after valid content is received & saved
+      // --- Save & Process with AI ---
+      let noteId = editNote?.id;
+      if (!editNote) {
+        const note = await base44.entities.OneOnOneMeetingNote.create({
+          meetingDate, teamMember, rawNotes: rawNotes.trim(), status: 'Draft',
+        });
+        noteId = note.id;
+      }
+
       try {
-        const result = await processNoteWithAI(rawNotes.trim(), teamMember, note.id);
-        await saveProcessedNote(note.id, teamMember, meetingDate, result);
+        await processNoteWithAI(noteId, rawNotes.trim(), teamMember, meetingDate);
       } catch (aiErr) {
-        // Mark as Failed so the record isn't left in a misleading "Processed" state
-        await base44.entities.OneOnOneMeetingNote.update(note.id, { status: 'Failed' });
+        await base44.entities.OneOnOneMeetingNote.update(noteId, { status: 'Failed' });
         throw aiErr;
       }
 
@@ -68,7 +79,7 @@ export default function OneOnOneNoteModal({ onClose, onSaved }) {
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
       <div className="bg-white dark:bg-[#1E1E2E] rounded-2xl w-full max-w-xl max-h-[90vh] overflow-y-auto shadow-2xl">
         <div className="flex items-center justify-between px-6 py-4 border-b border-ew-border dark:border-gray-700 sticky top-0 bg-white dark:bg-[#1E1E2E]">
-          <h2 className="text-lg font-bold text-navy dark:text-white">New 1:1 Note</h2>
+          <h2 className="text-lg font-bold text-navy dark:text-white">{editNote ? 'Edit 1:1 Note' : 'New 1:1 Note'}</h2>
           <button onClick={onClose} className="text-ew-muted hover:text-navy dark:hover:text-white transition-colors">
             <X className="w-5 h-5" />
           </button>
@@ -114,7 +125,7 @@ export default function OneOnOneNoteModal({ onClose, onSaved }) {
             disabled={saving || processing || !canSave}
             className="flex items-center gap-2 px-5 py-2.5 rounded-lg text-sm font-bold text-white bg-[#8403C5] hover:bg-[#7002A8] transition-colors disabled:opacity-50"
           >
-            {processing ? <><Loader2 className="w-4 h-4 animate-spin" /> Processing with AI…</> : <><Sparkles className="w-4 h-4" /> Save &amp; Process with AI</>}
+            {processing ? <><Loader2 className="w-4 h-4 animate-spin" /> Processing with AI…</> : <><Sparkles className="w-4 h-4" /> {editNote ? 'Save & Re-process with AI' : 'Save & Process with AI'}</>}
           </button>
         </div>
       </div>
