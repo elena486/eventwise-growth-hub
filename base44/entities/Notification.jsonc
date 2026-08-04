@@ -15,7 +15,8 @@
         "sprint_submitted",
         "sprint_overdue",
         "time_logged_cs",
-        "mention"
+        "mention",
+        "checklist_reminder"
       ],
       "description": "Notification type"
     },

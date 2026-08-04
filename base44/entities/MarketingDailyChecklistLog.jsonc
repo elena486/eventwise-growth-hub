@@ -1,0 +1,48 @@
+{
+  "name": "MarketingDailyChecklistLog",
+  "type": "object",
+  "properties": {
+    "date": {
+      "type": "string",
+      "format": "date",
+      "description": "The calendar day this record represents (YYYY-MM-DD). One record per day."
+    },
+    "createdBy": {
+      "type": "string",
+      "description": "Team member who logged this (Elena)"
+    },
+    "commentsCount": {
+      "type": "number",
+      "default": 0,
+      "description": "LinkedIn comments on industry posts / leads that day (target 10)"
+    },
+    "commentsDone": {
+      "type": "boolean",
+      "default": false,
+      "description": "Auto-set true when commentsCount reaches 10"
+    },
+    "repliesDone": {
+      "type": "boolean",
+      "default": false,
+      "description": "Replied to all LinkedIn comments that day"
+    },
+    "dmsCount": {
+      "type": "number",
+      "default": 0,
+      "description": "LinkedIn DMs sent this week so far (target 10, weekly \u2014 carried forward across the week)"
+    },
+    "dmsDone": {
+      "type": "boolean",
+      "default": false,
+      "description": "Auto-set true when dmsCount reaches 10"
+    },
+    "blogPublished": {
+      "type": "boolean",
+      "default": false,
+      "description": "Whether this week's blog has been published (weekly, carried forward)"
+    }
+  },
+  "required": [
+    "date"
+  ]
+}

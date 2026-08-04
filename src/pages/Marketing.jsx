@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import MarketingReporting from '@/components/marketing/MarketingReporting';
 import ContentHubMain from '@/components/marketing/ContentHubMain';
 import DinnerRoadshow from '@/components/marketing/DinnerRoadshow';
+import DailyChecklist from '@/components/marketing/DailyChecklist';
 
 const TABS = [
   { id: 'reporting', label: 'Reporting' },
@@ -21,6 +22,9 @@ export default function Marketing({ focusContentId, onFocusConsumed }) {
 
   return (
     <div className="flex flex-col flex-1 overflow-hidden font-dm">
+      <div className="shrink-0 overflow-y-auto max-h-[58vh] bg-white">
+        <DailyChecklist />
+      </div>
       <div className="bg-white border-b border-gray-200 px-6 py-0 flex items-center gap-1 shrink-0">
         {TABS.map(t => (
           <button key={t.id} onClick={() => setTab(t.id)}

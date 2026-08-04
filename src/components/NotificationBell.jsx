@@ -12,6 +12,7 @@ const TYPE_CONFIG = {
   sprint_overdue:     { icon: Clock,     color: '#DC2626', bg: '#FEF2F2', label: 'Sprint overdue' },
   time_logged_cs:     { icon: Clock,        color: '#5777AB', bg: '#EEF2F8', label: 'Time logged' },
   mention:            { icon: AtSign,       color: '#8403C5', bg: '#F3E8FF', label: 'Mention' },
+  checklist_reminder: { icon: ListTodo,      color: '#8403C5', bg: '#F3E8FF', label: 'Checklist reminder' },
   leave_approved:     { icon: CalendarCheck,color: '#1D9E75', bg: '#E8F7F2', label: 'Leave approved' },
   leave_declined:     { icon: CalendarCheck,color: '#DC2626', bg: '#FEF2F2', label: 'Leave declined' },
   leave_requested:    { icon: CalendarCheck,color: '#A16207', bg: '#FFFBEB', label: 'Leave request' },
