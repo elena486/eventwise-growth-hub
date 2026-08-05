@@ -103,15 +103,15 @@ export default function Handbook({ onNavigate, focusWikiPage, onFocusConsumed })
       : await base44.entities.HandbookSection.filter({ sectionKey: STORAGE_KEY });
 
     if (results.length > 0) {
-      base44.entities.HandbookSection.update(results[0].id, payload);
+      await base44.entities.HandbookSection.update(results[0].id, payload);
     } else {
-      base44.entities.HandbookSection.create(payload);
+      await base44.entities.HandbookSection.create(payload);
     }
   }, []);
 
   const updateHb = useCallback((newHb) => {
     setHb(newHb);
-    persist(newHb);
+    return persist(newHb);
   }, [persist]);
 
   const toggleSection = (sectionId) => {
@@ -133,7 +133,7 @@ export default function Handbook({ onNavigate, focusWikiPage, onFocusConsumed })
   };
 
   const updatePage = (sectionId, updatedPage) => {
-    updateHb({
+    return updateHb({
       ...hb,
       sections: hb.sections.map(s =>
         s.id === sectionId

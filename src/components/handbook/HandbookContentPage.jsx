@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { Pencil, Check, X, Trash2 } from 'lucide-react';
+import { Pencil, Check, X, Trash2, Loader2, AlertCircle } from 'lucide-react';
 import { format } from 'date-fns';
 import { useAuth } from '@/lib/AuthContext';
 import WikiContentEditor from './WikiContentEditor';
 import FileEmbed from './FileEmbed';
+import { useWikiAutosave } from './useWikiAutosave';
 
 const ALLOWED_EDITORS = ['chris@eventwise.com', 'elena@eventwise.com', 'sreeja@eventwise.com', 'george@eventwise.com', 'ramesh@eventwise.com', 'martinique@eventwise.com', 'eleanor@eventwise.com'];
 
@@ -20,6 +21,18 @@ export default function HandbookContentPage({ section, page, onUpdate, onDelete,
   const [descDraft, setDescDraft] = useState('');
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [filesDraft, setFilesDraft] = useState('[]');
+
+  const autosave = useWikiAutosave({
+    getSnapshot: () => ({
+      richContent: draft,
+      files: filesDraft,
+      title: titleDraft,
+      description: descDraft,
+    }),
+    page,
+    onUpdate,
+    enabled: editing,
+  });
 
   const fmtDate = (d) => { try { return format(new Date(d), 'd MMM yyyy'); } catch { return d; } };
 
@@ -45,16 +58,13 @@ export default function HandbookContentPage({ section, page, onUpdate, onDelete,
 
   const cancelEdit = () => setEditing(false);
 
-  const saveEdit = () => {
-    onUpdate({
-      ...page,
-      richContent: draft,
-      files: filesDraft,
-      title: titleDraft,
-      description: descDraft,
-      updatedAt: new Date().toISOString().slice(0, 10),
-    });
-    setEditing(false);
+  const saveEdit = async () => {
+    try {
+      await autosave.flushSave();
+      setEditing(false);
+    } catch (e) {
+      // Error status set by hook — stay in edit mode so user can retry
+    }
   };
 
   // Convert old plain-text content to basic HTML for display
@@ -107,6 +117,25 @@ export default function HandbookContentPage({ section, page, onUpdate, onDelete,
             <div className="flex items-center gap-2 shrink-0">
               {page.updatedAt && !editing && (
                 <span className="text-[12px] text-[#9CA3AF] hidden sm:block">Updated {fmtDate(page.updatedAt)}</span>
+              )}
+              {editing && (
+                <div className="flex items-center gap-1.5 text-[11px] shrink-0">
+                  {autosave.status === 'saving' && (
+                    <span className="flex items-center gap-1 text-ew-muted">
+                      <Loader2 className="w-3 h-3 animate-spin" /> Saving…
+                    </span>
+                  )}
+                  {autosave.status === 'saved' && autosave.savedAt && (
+                    <span className="flex items-center gap-1 text-green-600">
+                      <Check className="w-3 h-3" /> Saved {format(autosave.savedAt, 'HH:mm')}
+                    </span>
+                  )}
+                  {autosave.status === 'error' && (
+                    <button onClick={() => autosave.flushSave()} className="flex items-center gap-1 text-red-600 hover:underline">
+                      <AlertCircle className="w-3 h-3" /> Save failed — retry
+                    </button>
+                  )}
+                </div>
               )}
               {canEdit && (editing ? (
                 <>
