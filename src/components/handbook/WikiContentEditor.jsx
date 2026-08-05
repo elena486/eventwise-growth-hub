@@ -49,7 +49,7 @@ export default function WikiContentEditor({ value, onChange }) {
       <div className="handbook-quill">
         <ReactQuill
           theme="snow"
-          value={value}
+          defaultValue={value}
           onChange={onChange}
           modules={QUILL_MODULES}
           formats={QUILL_FORMATS}
@@ -74,7 +74,7 @@ export default function WikiContentEditor({ value, onChange }) {
           : <div key={i} className="handbook-quill">
               <ReactQuill
                 theme="snow"
-                value={seg.html}
+                defaultValue={seg.html}
                 onChange={html => updateSegment(i, html)}
                 modules={QUILL_MODULES}
                 formats={QUILL_FORMATS}
