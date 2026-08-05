@@ -21,21 +21,49 @@ export default function Handbook({ onNavigate, focusWikiPage, onFocusConsumed })
 
   // Merge missing default sections into loaded data
   const mergeDefaults = useCallback((parsed) => {
-    const existingIds = new Set(parsed.sections.map(s => s.id));
-    const missingSections = DEFAULT_HANDBOOK.sections.filter(s => !existingIds.has(s.id));
-    if (missingSections.length === 0) return parsed;
+    let changed = false;
     const defaultOrder = DEFAULT_HANDBOOK.sections.map(s => s.id);
-    const merged = [...parsed.sections];
-    missingSections.forEach(missing => {
-      const defaultIdx = defaultOrder.indexOf(missing.id);
-      let insertAfterIdx = -1;
-      for (let i = defaultIdx - 1; i >= 0; i--) {
-        const pos = merged.findIndex(s => s.id === defaultOrder[i]);
-        if (pos !== -1) { insertAfterIdx = pos; break; }
-      }
-      merged.splice(insertAfterIdx + 1, 0, missing);
+
+    // 1. Backfill missing pages within existing sections
+    let sections = parsed.sections.map(section => {
+      const defaultSection = DEFAULT_HANDBOOK.sections.find(s => s.id === section.id);
+      if (!defaultSection) return section;
+      const existingPageIds = new Set((section.pages || []).map(p => p.id));
+      const missingPages = defaultSection.pages.filter(p => !existingPageIds.has(p.id));
+      if (missingPages.length === 0) return section;
+      changed = true;
+      const pageOrder = defaultSection.pages.map(p => p.id);
+      const mergedPages = [...(section.pages || [])];
+      missingPages.forEach(missingPage => {
+        const defaultIdx = pageOrder.indexOf(missingPage.id);
+        let insertAfterIdx = -1;
+        for (let i = defaultIdx - 1; i >= 0; i--) {
+          const pos = mergedPages.findIndex(p => p.id === pageOrder[i]);
+          if (pos !== -1) { insertAfterIdx = pos; break; }
+        }
+        mergedPages.splice(insertAfterIdx + 1, 0, missingPage);
+      });
+      return { ...section, pages: mergedPages };
     });
-    return { ...parsed, sections: merged };
+
+    // 2. Backfill missing sections entirely
+    const existingIds = new Set(sections.map(s => s.id));
+    const missingSections = DEFAULT_HANDBOOK.sections.filter(s => !existingIds.has(s.id));
+    if (missingSections.length > 0) {
+      changed = true;
+      missingSections.forEach(missing => {
+        const defaultIdx = defaultOrder.indexOf(missing.id);
+        let insertAfterIdx = -1;
+        for (let i = defaultIdx - 1; i >= 0; i--) {
+          const pos = sections.findIndex(s => s.id === defaultOrder[i]);
+          if (pos !== -1) { insertAfterIdx = pos; break; }
+        }
+        sections.splice(insertAfterIdx + 1, 0, missing);
+      });
+    }
+
+    if (!changed) return parsed;
+    return { ...parsed, sections };
   }, []);
 
   // Load from DB — data stored as uploaded file URL to avoid size limits
