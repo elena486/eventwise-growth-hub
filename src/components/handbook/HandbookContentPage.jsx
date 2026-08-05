@@ -3,6 +3,7 @@ import { Pencil, Check, X, Trash2 } from 'lucide-react';
 import { format } from 'date-fns';
 import { useAuth } from '@/lib/AuthContext';
 import WikiContentEditor from './WikiContentEditor';
+import FileEmbed from './FileEmbed';
 
 const ALLOWED_EDITORS = ['chris@eventwise.com', 'elena@eventwise.com', 'sreeja@eventwise.com', 'george@eventwise.com', 'ramesh@eventwise.com', 'martinique@eventwise.com', 'eleanor@eventwise.com'];
 
@@ -18,6 +19,7 @@ export default function HandbookContentPage({ section, page, onUpdate, onDelete,
   const [titleDraft, setTitleDraft] = useState('');
   const [descDraft, setDescDraft] = useState('');
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [filesDraft, setFilesDraft] = useState('[]');
 
   const fmtDate = (d) => { try { return format(new Date(d), 'd MMM yyyy'); } catch { return d; } };
 
@@ -25,6 +27,7 @@ export default function HandbookContentPage({ section, page, onUpdate, onDelete,
     setDraft(page.richContent || (isHtml(page.content) ? page.content : convertToHtml(page.content || '')));
     setTitleDraft(page.title || '');
     setDescDraft(page.description || '');
+    setFilesDraft(page.files || '[]');
     setEditing(true);
   };
 
@@ -46,6 +49,7 @@ export default function HandbookContentPage({ section, page, onUpdate, onDelete,
     onUpdate({
       ...page,
       richContent: draft,
+      files: filesDraft,
       title: titleDraft,
       description: descDraft,
       updatedAt: new Date().toISOString().slice(0, 10),
@@ -55,6 +59,12 @@ export default function HandbookContentPage({ section, page, onUpdate, onDelete,
 
   // Convert old plain-text content to basic HTML for display
   const displayHtml = page.richContent || (isHtml(page.content) ? page.content : convertToHtml(page.content || ''));
+
+  const pageFiles = (() => {
+    try { return typeof page.files === 'string' ? JSON.parse(page.files || '[]') : (page.files || []); }
+    catch { return []; }
+  })();
+  const hasFiles = pageFiles.length > 0;
 
   return (
     <div className="flex-1 overflow-y-auto bg-[#F7F8FC] p-8">
@@ -129,13 +139,26 @@ export default function HandbookContentPage({ section, page, onUpdate, onDelete,
         {/* Content area */}
         <div className="bg-white rounded-xl border border-ew-border shadow-sm overflow-hidden">
           {editing ? (
-            <WikiContentEditor value={draft} onChange={setDraft} />
+            <>
+              <WikiContentEditor value={draft} onChange={setDraft} />
+              <FileEmbed files={filesDraft} onChange={setFilesDraft} editing={true} />
+            </>
           ) : (
-            <div
-              className="p-6 handbook-content"
-              style={{ fontSize: 15, lineHeight: 1.7, color: '#374151' }}
-              dangerouslySetInnerHTML={{ __html: displayHtml || '<p style="color:#9CA3AF;font-style:italic;font-size:14px">No content yet — click Edit to add some.</p>' }}
-            />
+            <>
+              {displayHtml ? (
+                <div
+                  className="p-6 handbook-content"
+                  style={{ fontSize: 15, lineHeight: 1.7, color: '#374151' }}
+                  dangerouslySetInnerHTML={{ __html: displayHtml }}
+                />
+              ) : null}
+              <FileEmbed files={page.files || '[]'} editing={false} />
+              {!displayHtml && !hasFiles ? (
+                <div className="p-6">
+                  <p className="text-sm text-ew-muted italic">No content yet — click Edit to add some.</p>
+                </div>
+              ) : null}
+            </>
           )}
         </div>
       </div>
