@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { base44 } from '@/api/base44Client';
 import { addRecentlyViewed } from '@/utils/recentlyViewed';
 import { DEFAULT_HANDBOOK } from '@/lib/handbookData';
@@ -11,6 +11,8 @@ const STORAGE_KEY = 'handbook_v2';
 
 export default function Handbook({ onNavigate, focusWikiPage, onFocusConsumed }) {
   const [hb, setHb] = useState(null);
+  const hbRef = useRef(hb);
+  hbRef.current = hb;
   const [activeSectionId, setActiveSectionId] = useState('company');
   const [activePageId, setActivePageId] = useState('about');
   const [loaded, setLoaded] = useState(false);
@@ -133,9 +135,13 @@ export default function Handbook({ onNavigate, focusWikiPage, onFocusConsumed })
   };
 
   const updatePage = (sectionId, updatedPage) => {
+    // Use hbRef.current instead of hb from closure — the autosave hook's
+    // unmount cleanup can call this with a stale closure, which would
+    // overwrite newer state (e.g. section expansion from selectPage).
+    const currentHb = hbRef.current;
     return updateHb({
-      ...hb,
-      sections: hb.sections.map(s =>
+      ...currentHb,
+      sections: currentHb.sections.map(s =>
         s.id === sectionId
           ? { ...s, pages: s.pages.map(p => p.id === updatedPage.id ? updatedPage : p) }
           : s
