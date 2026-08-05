@@ -27,6 +27,12 @@ const DEFAULT_TOOLS = [
   { id: 13, tool: 'Notion',               what: 'Being cancelled — replaced by Eventwise HQ + Google Docs',    owner: 'Elena',        status: 'Cancelling', url: '' },
   { id: 14, tool: 'Typeform',             what: 'Replaced by Tally',                                            owner: 'Elena',        status: 'Cancelled',  url: '' },
   { id: 15, tool: 'Figma',               what: 'Cancelled — not in use',                                       owner: '—',            status: 'Cancelled',  url: '' },
+  { id: 16, tool: 'Storylane',            what: 'Interactive product demos and walkthroughs',                   owner: 'Elena',        status: 'Active',     url: 'https://storylane.io' },
+  { id: 17, tool: 'Clockify',             what: 'Time tracking',                                               owner: 'All',          status: 'Active',     url: 'https://clockify.me' },
+  { id: 18, tool: 'Zapier',               what: 'Automation and integrations between apps',                    owner: 'Elena',        status: 'Active',     url: 'https://zapier.com' },
+  { id: 19, tool: 'ChatGPT',              what: 'AI assistant',                                               owner: 'All',          status: 'Active',     url: 'https://chat.openai.com' },
+  { id: 20, tool: 'Docusign',             what: 'Contract e-signatures',                                        owner: 'Chris',        status: 'Active',     url: 'https://docusign.com' },
+  { id: 21, tool: 'Superhuman',           what: 'Email client',                                                owner: 'Chris',        status: 'Active',     url: 'https://superhuman.com' },
 ];
 
 const ic = 'w-full text-xs border border-ew-border rounded px-2 py-1.5 outline-none focus:border-[#8403C5] bg-white';
