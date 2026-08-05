@@ -5,10 +5,6 @@ import { DEFAULT_HANDBOOK } from '@/lib/handbookData';
 import HandbookSidebar from '@/components/handbook/HandbookSidebar';
 import HandbookContentPage from '@/components/handbook/HandbookContentPage';
 import HandbookLinkPage from '@/components/handbook/HandbookLinkPage';
-import AboutPage from '@/components/handbook/pages/AboutPage';
-import BrandPage from '@/components/handbook/pages/BrandPage';
-import TechStackPage from '@/components/handbook/pages/TechStackPage';
-import TeamPage from '@/components/handbook/pages/TeamPage';
 import ConsentResponsesPage from '@/components/handbook/pages/ConsentResponsesPage';
 
 const STORAGE_KEY = 'handbook_v2';
@@ -235,6 +231,17 @@ export default function Handbook({ onNavigate, focusWikiPage, onFocusConsumed })
     setActivePageId(newPage.id);
   };
 
+  const addSection = () => {
+    const newSection = {
+      id: `section-${Date.now()}`,
+      label: 'New Section',
+      expanded: true,
+      pages: [],
+    };
+    updateHb({ ...hb, sections: [...hb.sections, newSection] });
+    setActiveSectionId(newSection.id);
+  };
+
   const handleInternalNavigate = (tab) => {
     if (onNavigate) onNavigate(tab);
   };
@@ -282,6 +289,7 @@ export default function Handbook({ onNavigate, focusWikiPage, onFocusConsumed })
         onSelectPage={selectPage}
         onToggleSection={toggleSection}
         onAddPage={addPage}
+        onAddSection={addSection}
         onRenamePage={renamePage}
         onDeletePage={deletePage}
         onRenameSection={renameSection}
@@ -291,21 +299,14 @@ export default function Handbook({ onNavigate, focusWikiPage, onFocusConsumed })
 
       <div className="flex-1 overflow-hidden flex">
         {activePage ? (() => {
-          const sectionLabel = activeSection.label || '';
-          const isLinksSection = activeSection.id === 'links' || sectionLabel.toLowerCase().includes('link');
-          const isOpenSection = activeSection.id === 'product-qa' || isLinksSection;
           const props = {
             key: activePage.id,
             section: activeSection,
             page: activePage,
             onUpdate: (updated) => updatePage(activeSection.id, updated),
             onDelete: () => deletePage(activeSection.id, activePage.id),
-            allowEdit: isOpenSection,
+            allowEdit: true,
           };
-          if (activePage.id === 'about')      return <AboutPage {...props} />;
-          if (activePage.id === 'brand')      return <BrandPage {...props} />;
-          if (activePage.id === 'techstack')  return <TechStackPage {...props} />;
-          if (activePage.id === 'team-roles') return <TeamPage {...props} />;
           if (activePage.id === 'marketing-consent') return <ConsentResponsesPage {...props} />;
           if (activePage.type === 'link')     return <HandbookLinkPage {...props} onNavigate={handleInternalNavigate} />;
           return <HandbookContentPage {...props} />;
