@@ -9,6 +9,7 @@ import AboutPage from '@/components/handbook/pages/AboutPage';
 import BrandPage from '@/components/handbook/pages/BrandPage';
 import TechStackPage from '@/components/handbook/pages/TechStackPage';
 import TeamPage from '@/components/handbook/pages/TeamPage';
+import ConsentResponsesPage from '@/components/handbook/pages/ConsentResponsesPage';
 
 const STORAGE_KEY = 'handbook_v2';
 
@@ -277,6 +278,7 @@ export default function Handbook({ onNavigate, focusWikiPage, onFocusConsumed })
           if (activePage.id === 'brand')      return <BrandPage {...props} />;
           if (activePage.id === 'techstack')  return <TechStackPage {...props} />;
           if (activePage.id === 'team-roles') return <TeamPage {...props} />;
+          if (activePage.id === 'marketing-consent') return <ConsentResponsesPage {...props} />;
           if (activePage.type === 'link')     return <HandbookLinkPage {...props} onNavigate={handleInternalNavigate} />;
           return <HandbookContentPage {...props} />;
         })() : (

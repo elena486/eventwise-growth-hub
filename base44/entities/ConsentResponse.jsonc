@@ -1,0 +1,112 @@
+{
+  "name": "ConsentResponse",
+  "type": "object",
+  "properties": {
+    "employee_name": {
+      "type": "string",
+      "description": "Employee name \u2014 linked to a TeamMember record if a match exists, otherwise free text"
+    },
+    "date_submitted": {
+      "type": "string",
+      "format": "date"
+    },
+    "submission_time": {
+      "type": "string",
+      "description": "ISO datetime of submission \u2014 used for sorting"
+    },
+    "professional_headshots": {
+      "type": "string",
+      "enum": [
+        "Yes",
+        "No",
+        "Limited"
+      ]
+    },
+    "team_group_photos": {
+      "type": "string",
+      "enum": [
+        "Yes",
+        "No",
+        "Limited"
+      ]
+    },
+    "candid_behind_scenes_photos": {
+      "type": "string",
+      "enum": [
+        "Yes",
+        "No",
+        "Limited"
+      ]
+    },
+    "behind_scenes_video": {
+      "type": "string",
+      "enum": [
+        "Yes",
+        "No",
+        "Limited"
+      ]
+    },
+    "creative_fun_video": {
+      "type": "string",
+      "enum": [
+        "Yes-participate",
+        "No",
+        "Limited"
+      ]
+    },
+    "professional_interview_video": {
+      "type": "string",
+      "enum": [
+        "Yes-on-camera",
+        "No",
+        "Limited"
+      ]
+    },
+    "internal_company_use": {
+      "type": "string",
+      "enum": [
+        "Yes",
+        "No",
+        "Limited"
+      ]
+    },
+    "external_marketing": {
+      "type": "string",
+      "enum": [
+        "Yes",
+        "No",
+        "Limited"
+      ]
+    },
+    "time_limitations": {
+      "type": "string",
+      "enum": [
+        "No restrictions",
+        "Pre-approval required",
+        "Limited availability"
+      ]
+    },
+    "notice_period_required": {
+      "type": "string",
+      "enum": [
+        "Same day",
+        "24 hours",
+        "48 hours",
+        "1 week"
+      ]
+    },
+    "preferred_times": {
+      "type": "string"
+    },
+    "additional_comments": {
+      "type": "string"
+    },
+    "restrictions_notes": {
+      "type": "string",
+      "description": "Consolidated notes field per response \u2014 replaces Notion's repeated Restrictions/Notes 1-7 columns"
+    }
+  },
+  "required": [
+    "employee_name"
+  ]
+}

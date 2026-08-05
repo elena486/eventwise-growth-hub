@@ -206,6 +206,12 @@ export const DEFAULT_HANDBOOK = {
 </ul>`,
           updatedAt: '2026-04-23',
         },
+        {
+          id: 'marketing-consent', title: 'Employee Marketing Content Consent', type: 'content',
+          description: 'Consent records for using employee photos and video in marketing.',
+          content: '',
+          updatedAt: '2026-08-05',
+        },
       ],
     },
     {
