@@ -1,22 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { Pencil, Check, X, Trash2 } from 'lucide-react';
 import { format } from 'date-fns';
-import ReactQuill from 'react-quill';
 import { useAuth } from '@/lib/AuthContext';
+import WikiContentEditor from './WikiContentEditor';
 
 const ALLOWED_EDITORS = ['chris@eventwise.com', 'elena@eventwise.com', 'sreeja@eventwise.com', 'george@eventwise.com', 'ramesh@eventwise.com', 'martinique@eventwise.com', 'eleanor@eventwise.com'];
-
-const QUILL_MODULES = {
-  toolbar: [
-    [{ header: [1, 2, 3, false] }],
-    ['bold', 'italic', 'underline'],
-    [{ list: 'ordered' }, { list: 'bullet' }],
-    ['link'],
-    ['clean'],
-  ],
-};
-
-const QUILL_FORMATS = ['header', 'bold', 'italic', 'underline', 'list', 'bullet', 'link'];
 
 export default function HandbookContentPage({ section, page, onUpdate, onDelete, allowEdit }) {
   const { user } = useAuth();
@@ -141,17 +129,7 @@ export default function HandbookContentPage({ section, page, onUpdate, onDelete,
         {/* Content area */}
         <div className="bg-white rounded-xl border border-ew-border shadow-sm overflow-hidden">
           {editing ? (
-            <div className="handbook-quill">
-              <ReactQuill
-                theme="snow"
-                value={draft}
-                onChange={setDraft}
-                modules={QUILL_MODULES}
-                formats={QUILL_FORMATS}
-                placeholder="Write content here…"
-                style={{ minHeight: 320 }}
-              />
-            </div>
+            <WikiContentEditor value={draft} onChange={setDraft} />
           ) : (
             <div
               className="p-6 handbook-content"
