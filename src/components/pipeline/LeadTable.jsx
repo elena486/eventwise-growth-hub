@@ -23,6 +23,22 @@ function fmtMonth(val) {
 
 function fmt(n) { return '£' + Math.round(n || 0).toLocaleString('en-GB'); }
 
+function highlightText(text, query) {
+  if (!query || !text) return text;
+  const q = query.toLowerCase().trim();
+  if (!q) return text;
+  const str = String(text);
+  const idx = str.toLowerCase().indexOf(q);
+  if (idx === -1) return str;
+  return (
+    <>
+      {str.slice(0, idx)}
+      <mark className="bg-[#F3E8FF] text-[#8403C5] rounded px-0.5">{str.slice(idx, idx + q.length)}</mark>
+      {str.slice(idx + q.length)}
+    </>
+  );
+}
+
 function relativeDate(dateStr) {
   if (!dateStr) return '—';
   try {
@@ -214,7 +230,7 @@ function UndoToast({ message, onUndo, onDismiss }) {
   );
 }
 
-export default function LeadTable({ leads, onDelete, onProposal, onUpdateField, onMarkLost, onMovePipeline, newLeadId, showOwnerSections, onRowClick, selectedLeadId, isLostView }) {
+export default function LeadTable({ leads, onDelete, onProposal, onUpdateField, onMarkLost, onMovePipeline, newLeadId, showOwnerSections, onRowClick, selectedLeadId, isLostView, searchQuery }) {
   const [sortCol, setSortCol] = useState('stage');
   const [sortDir, setSortDir] = useState('asc');
   const [deletingId, setDeletingId] = useState(null);
@@ -290,7 +306,16 @@ export default function LeadTable({ leads, onDelete, onProposal, onUpdateField, 
       >
         {show('company') && (
           <td className="px-4 py-3 min-w-[160px]" onClick={e => e.stopPropagation()}>
-            <InlineCell value={lead.companyName} onSave={save(lead.id, 'companyName')} placeholder="Company name" autoEdit={isNew} className="font-semibold text-navy text-sm" />
+            <InlineCell
+              value={lead.companyName}
+              onSave={save(lead.id, 'companyName')}
+              placeholder="Company name"
+              autoEdit={isNew}
+              className="font-semibold text-navy text-sm"
+              displayEl={searchQuery && lead.companyName
+                ? <span className="font-semibold text-navy text-sm">{highlightText(lead.companyName, searchQuery)}</span>
+                : undefined}
+            />
             <ContactCell lead={lead} onSave={save(lead.id, 'contactName')} />
             {lead.nextAction && (
               <div className="flex items-start gap-1 mt-1">

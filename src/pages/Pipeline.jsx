@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { base44 } from '@/api/base44Client';
 import { addRecentlyViewed } from '@/utils/recentlyViewed';
-import { Plus, SlidersHorizontal, ChevronDown, BarChart2, Download } from 'lucide-react';
+import { Plus, SlidersHorizontal, ChevronDown, BarChart2, Download, Search, X } from 'lucide-react';
 import { downloadCSV, fmtCsvDate, fmtCsvMoney, safe, todayStr, getPrimaryContact } from '@/lib/csvExport';
 
 const STATS_COLLAPSED_KEY = 'pipeline_stats_collapsed_v1';
@@ -57,6 +57,7 @@ export default function Pipeline({ onProposalHandoff, onViewDeals, focusLeadId, 
   const [showMonthPicker, setShowMonthPicker] = useState(false);
   const [activePipeline, setActivePipeline] = useState('warm');
   const [moveTarget, setMoveTarget] = useState(null);
+  const [searchQuery, setSearchQuery] = useState('');
   const [statsCollapsed, setStatsCollapsed] = useState(() => {
     try { return localStorage.getItem(STATS_COLLAPSED_KEY) === 'true'; } catch { return false; }
   });
@@ -260,6 +261,27 @@ export default function Pipeline({ onProposalHandoff, onViewDeals, focusLeadId, 
     downloadCSV(displayLeads, cols, `Eventwise_Pipeline_${todayStr()}.csv`);
   };
 
+  // Search matching — checks across company name, contact info, email, notes, tags/labels
+  const searchMatches = (lead, query) => {
+    if (!query) return true;
+    const q = query.toLowerCase().trim();
+    if (!q) return true;
+    const fields = [
+      lead.companyName, lead.contactName, lead.firstName, lead.lastName,
+      lead.email, lead.phone, lead.jobTitle, lead.notes, lead.internalNotes,
+      lead.stage, lead.plan, lead.leadOwner, lead.industry, lead.heardAbout,
+      lead.nextAction, lead.lostReason, lead.linkedInUrl, lead.companyWebsite,
+      lead.competitorsEvaluating, lead.timelineToDecision, lead.objections,
+    ];
+    let contactsStr = '';
+    try {
+      contactsStr = JSON.parse(lead.contacts || '[]')
+        .map(c => [c.firstName, c.lastName, c.email, c.phone, c.jobTitle].filter(Boolean).join(' '))
+        .join(' ');
+    } catch {}
+    return [...fields, contactsStr].some(f => (f || '').toLowerCase().includes(q));
+  };
+
   // Build display leads
   const pipelineLeads = leads.filter(l => (l.pipeline || 'warm') === activePipeline);
   const activeLeads = pipelineLeads.filter(l => !l.converted && l.stage !== 'Closed Lost');
@@ -282,8 +304,10 @@ export default function Pipeline({ onProposalHandoff, onViewDeals, focusLeadId, 
   // Month filter
   if (monthFilter) baseLeads = baseLeads.filter(l => l.expectedCloseMonth === monthFilter);
 
-  // Stage filter
-  const displayLeads = stageFilter ? baseLeads.filter(l => l.stage === stageFilter) : baseLeads;
+  // Stage filter — bypassed when searching (search shows across all stages)
+  const displayLeads = searchQuery.trim()
+    ? pipelineLeads.filter(l => searchMatches(l, searchQuery))
+    : (stageFilter ? baseLeads.filter(l => l.stage === stageFilter) : baseLeads);
 
   // Stats leads (apply prob + month but not stage filter)
   const filteredStatsLeads = statsLeads
@@ -318,6 +342,26 @@ export default function Pipeline({ onProposalHandoff, onViewDeals, focusLeadId, 
           >
             ❄️ Cold Pipeline
           </button>
+        </div>
+
+        {/* Search bar */}
+        <div className="relative mb-4 max-w-md">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-ew-muted pointer-events-none" />
+          <input
+            type="text"
+            value={searchQuery}
+            onChange={e => setSearchQuery(e.target.value)}
+            placeholder="Search leads..."
+            className="w-full pl-9 pr-9 py-2 text-sm border border-ew-border rounded-lg bg-white focus:outline-none focus:border-[#8403C5] focus:ring-1 focus:ring-[#8403C5] transition-colors"
+          />
+          {searchQuery && (
+            <button
+              onClick={() => setSearchQuery('')}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-ew-muted hover:text-navy transition-colors"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          )}
         </div>
 
         {/* Header — always visible */}
@@ -428,13 +472,18 @@ export default function Pipeline({ onProposalHandoff, onViewDeals, focusLeadId, 
           </>
         )}
 
-        {/* Stage filter indicator */}
-        {stageFilter && (
+        {/* Search result count or stage filter indicator */}
+        {searchQuery.trim() ? (
+          <div className="mb-3 flex items-center gap-2">
+            <span className="text-sm text-ew-body"><strong>{displayLeads.length}</strong> lead{displayLeads.length !== 1 ? 's' : ''} found</span>
+            <button onClick={() => setSearchQuery('')} className="text-xs text-ew-muted hover:text-navy underline">Clear search</button>
+          </div>
+        ) : stageFilter ? (
           <div className="mb-3 flex items-center gap-2">
             <span className="text-sm text-ew-body">Filtered: <strong>{stageFilter}</strong></span>
             <button onClick={() => setStageFilter(null)} className="text-xs text-ew-muted hover:text-navy underline">Clear</button>
           </div>
-        )}
+        ) : null}
 
         {/* Table */}
         {loading ? (
@@ -455,7 +504,8 @@ export default function Pipeline({ onProposalHandoff, onViewDeals, focusLeadId, 
         ) : (
           <LeadTable
             leads={displayLeads}
-            showOwnerSections={ownerFilter === 'All Leads'}
+            showOwnerSections={searchQuery.trim() ? false : ownerFilter === 'All Leads'}
+            searchQuery={searchQuery}
             onDelete={handleDelete}
             onProposal={handleProposal}
             onUpdateField={handleUpdateField}
