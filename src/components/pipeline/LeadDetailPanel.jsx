@@ -911,7 +911,10 @@ export default function LeadDetailPanel({ lead, onClose, onUpdate, onDelete, onC
                 autoSave({ activityLog: JSON.stringify(entries), lastActivity });
               }}
             />
-            <SlackActivityLog value={data.slack_activity_log} />
+            <SlackActivityLog
+              value={data.slack_activity_log}
+              onUpdate={(newValue) => autoSave({ slack_activity_log: newValue })}
+            />
 
             <div>
               <SectionTitle>Demo</SectionTitle>
