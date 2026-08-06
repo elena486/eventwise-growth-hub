@@ -312,16 +312,15 @@ export default function Handbook({ onNavigate, focusWikiPage, onFocusConsumed })
       <div className="flex-1 overflow-hidden flex">
         {activePage ? (() => {
           const props = {
-            key: activePage.id,
             section: activeSection,
             page: activePage,
             onUpdate: (updated) => updatePage(activeSection.id, updated),
             onDelete: () => deletePage(activeSection.id, activePage.id),
             allowEdit: true,
           };
-          if (activePage.id === 'marketing-consent') return <ConsentResponsesPage {...props} />;
-          if (activePage.type === 'link')     return <HandbookLinkPage {...props} onNavigate={handleInternalNavigate} />;
-          return <HandbookContentPage {...props} />;
+          if (activePage.id === 'marketing-consent') return <ConsentResponsesPage key={activePage.id} {...props} />;
+          if (activePage.type === 'link')     return <HandbookLinkPage key={activePage.id} {...props} onNavigate={handleInternalNavigate} />;
+          return <HandbookContentPage key={activePage.id} {...props} />;
         })() : (
           <div className="flex-1 flex items-center justify-center bg-[#F7F8FC]">
             <p className="text-ew-muted text-sm">Select a page from the sidebar.</p>
