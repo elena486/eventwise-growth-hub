@@ -49,14 +49,19 @@ export default function SprintForm({ currentUser }) {
     if (!member) return {};
     const kpi1 = answers[member.kpi1.questionId];
     const kpi2 = answers[member.kpi2.questionId];
-    return { kpi1Value: kpi1 != null ? Number(kpi1) : undefined, kpi2Value: kpi2 != null ? Number(kpi2) : undefined };
+    const result = { kpi1Value: kpi1 != null ? Number(kpi1) : undefined, kpi2Value: kpi2 != null ? Number(kpi2) : undefined };
+    if (member.kpi3) {
+      const kpi3 = answers[member.kpi3.questionId];
+      result.kpi3Value = kpi3 != null ? Number(kpi3) : undefined;
+    }
+    return result;
   };
 
   const handleSubmit = async () => {
     if (!member) return;
     setSaving(true);
-    const { kpi1Value, kpi2Value } = getKpiValues();
-    const payload = { memberName: member.name, weekStart, answers: JSON.stringify(answers), kpi1Value, kpi2Value };
+    const kpiValues = getKpiValues();
+    const payload = { memberName: member.name, weekStart, answers: JSON.stringify(answers), ...kpiValues };
     if (existingId) await base44.entities.SprintSubmission.update(existingId, payload);
     else await base44.entities.SprintSubmission.create(payload);
     setSaving(false);

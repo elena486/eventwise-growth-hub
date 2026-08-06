@@ -19,6 +19,10 @@
     "kpi2Value": {
       "type": "number"
     },
+    "kpi3Value": {
+      "type": "number",
+      "description": "Optional third KPI value (used by members with a kpi3 config, e.g. Ramesh)"
+    },
     "selfRating": {
       "type": "string",
       "enum": [

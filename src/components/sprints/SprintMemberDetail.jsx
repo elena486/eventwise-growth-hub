@@ -125,6 +125,7 @@ export default function SprintMemberDetail({ member, history, allHistory, onBack
     week: s.weekStart ? format(new Date(s.weekStart), 'd MMM') : s.weekStart,
     [member.kpi1.label]: s.kpi1Value ?? null,
     [member.kpi2.label]: s.kpi2Value ?? null,
+    ...(member.kpi3 ? { [member.kpi3.label]: s.kpi3Value ?? null } : {}),
   }));
 
   const kpi1Vals = last8.map(s => s.kpi1Value ?? null);
@@ -139,6 +140,7 @@ export default function SprintMemberDetail({ member, history, allHistory, onBack
   // Per-metric status for latest
   const rag1 = latest?.kpi1Value != null ? ragColor(latest.kpi1Value, member.kpi1.target) : null;
   const rag2 = latest?.kpi2Value != null ? ragColor(latest.kpi2Value, member.kpi2.target) : null;
+  const rag3 = latest?.kpi3Value != null && member.kpi3 ? ragColor(latest.kpi3Value, member.kpi3.target) : null;
 
   // Self-assessment for latest
   const selfRatingCfg = latest?.selfRating ? SELF_RATING_CONFIG[latest.selfRating] : null;
@@ -146,7 +148,8 @@ export default function SprintMemberDetail({ member, history, allHistory, onBack
   // Contradiction flag: self-assessed on_track but metric(s) missed
   const kpi1Missed = latest?.kpi1Value != null && rag1 && rag1 !== 'green';
   const kpi2Missed = latest?.kpi2Value != null && rag2 && rag2 !== 'green';
-  const missedCount = [kpi1Missed, kpi2Missed].filter(Boolean).length;
+  const kpi3Missed = latest?.kpi3Value != null && rag3 && rag3 !== 'green';
+  const missedCount = [kpi1Missed, kpi2Missed, kpi3Missed].filter(Boolean).length;
   const showContradiction = latest?.selfRating === 'on_track' && missedCount > 0;
 
   // Qualitative history
@@ -174,7 +177,8 @@ export default function SprintMemberDetail({ member, history, allHistory, onBack
         const val = answers[qid];
         return q && val ? `${q.label}: ${val}` : null;
       }).filter(Boolean).join('; ');
-      return `Week ${s.weekStart}: ${member.kpi1.label}=${s.kpi1Value ?? '—'} (target ${member.kpi1.target}), ${member.kpi2.label}=${s.kpi2Value ?? '—'} (target ${member.kpi2.target}). ${quals}`;
+      const kpi3Part = member.kpi3 ? `, ${member.kpi3.label}=${s.kpi3Value ?? '—'} (target ${member.kpi3.target})` : '';
+      return `Week ${s.weekStart}: ${member.kpi1.label}=${s.kpi1Value ?? '—'} (target ${member.kpi1.target}), ${member.kpi2.label}=${s.kpi2Value ?? '—'} (target ${member.kpi2.target})${kpi3Part}. ${quals}`;
     }).join('\n');
 
     const prompt = `You are analysing the sprint performance for ${member.name} (${member.role}) at Eventwise.
@@ -257,7 +261,7 @@ Be specific and actionable. Reference actual numbers and targets. Use a direct, 
         </div>
 
         {/* SECTION 1 — Performance overview */}
-        <div className="grid grid-cols-4 gap-3 mb-6">
+        <div className={`grid gap-3 mb-6 ${member.kpi3 ? 'grid-cols-2 lg:grid-cols-5' : 'grid-cols-4'}`}>
           {/* KPI 1 */}
           <div className={`bg-white dark:bg-[#1E1E2E] rounded-xl p-4 border ${rag1 ? RAG_STYLES[rag1].border : 'border-gray-200 dark:border-gray-700'}`}>
             <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-wide mb-1">{member.kpi1.label}</p>
@@ -276,6 +280,17 @@ Be specific and actionable. Reference actual numbers and targets. Use a direct, 
               <MetricStatus value={latest?.kpi2Value} target={member.kpi2.target} />
             </div>
           </div>
+          {/* KPI 3 */}
+          {member.kpi3 && (
+            <div className={`bg-white dark:bg-[#1E1E2E] rounded-xl p-4 border ${rag3 ? RAG_STYLES[rag3].border : 'border-gray-200 dark:border-gray-700'}`}>
+              <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-wide mb-1">{member.kpi3.label}</p>
+              <p className="text-2xl font-bold text-gray-900 dark:text-white">{latest ? formatKpiValue(latest.kpi3Value, member.kpi3) : '—'}</p>
+              <p className="text-xs text-gray-400 mt-0.5">Target: {formatKpiValue(member.kpi3.target, member.kpi3)}</p>
+              <div className="mt-2">
+                <MetricStatus value={latest?.kpi3Value} target={member.kpi3.target} />
+              </div>
+            </div>
+          )}
           {/* Trend */}
           <div className={`${trendCfg.bg} rounded-xl p-4 border border-gray-100 dark:border-gray-700`}>
             <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-wide mb-1">Trend</p>
@@ -296,9 +311,12 @@ Be specific and actionable. Reference actual numbers and targets. Use a direct, 
         </div>
 
         {/* SECTION 2 — Trend charts */}
-        <div className="grid grid-cols-2 gap-4 mb-6">
+        <div className={`grid gap-4 mb-6 ${member.kpi3 ? 'grid-cols-2 lg:grid-cols-3' : 'grid-cols-2'}`}>
           <KpiChart data={chartData} kpiKey={member.kpi1.label} target={member.kpi1.target} label={member.kpi1.label} />
           <KpiChart data={chartData} kpiKey={member.kpi2.label} target={member.kpi2.target} label={member.kpi2.label} />
+          {member.kpi3 && (
+            <KpiChart data={chartData} kpiKey={member.kpi3.label} target={member.kpi3.target} label={member.kpi3.label} />
+          )}
         </div>
 
         {/* SECTION 3 — All metrics history table */}
@@ -313,7 +331,10 @@ Be specific and actionable. Reference actual numbers and targets. Use a direct, 
                   <th className="text-left text-xs font-semibold text-gray-400 px-4 py-2.5">Week</th>
                   <th className="text-left text-xs font-semibold text-gray-400 px-4 py-2.5">{member.kpi1.label}</th>
                   <th className="text-left text-xs font-semibold text-gray-400 px-4 py-2.5">{member.kpi2.label}</th>
-                  {member.questions.filter(q => q.type === 'number' && q.id !== member.kpi1.questionId && q.id !== member.kpi2.questionId).map(q => (
+                  {member.kpi3 && (
+                    <th className="text-left text-xs font-semibold text-gray-400 px-4 py-2.5">{member.kpi3.label}</th>
+                  )}
+                  {member.questions.filter(q => q.type === 'number' && q.id !== member.kpi1.questionId && q.id !== member.kpi2.questionId && (!member.kpi3 || q.id !== member.kpi3.questionId)).map(q => (
                     <th key={q.id} className="text-left text-xs font-semibold text-gray-400 px-4 py-2.5">{q.label}</th>
                   ))}
                   <th className="text-left text-xs font-semibold text-gray-400 px-4 py-2.5">Self-rated</th>
@@ -333,7 +354,10 @@ Be specific and actionable. Reference actual numbers and targets. Use a direct, 
                       </td>
                       <td className="px-4 py-2.5 text-gray-600 dark:text-gray-300">{formatKpiValue(sub.kpi1Value, member.kpi1)}</td>
                       <td className="px-4 py-2.5 text-gray-600 dark:text-gray-300">{formatKpiValue(sub.kpi2Value, member.kpi2)}</td>
-                      {member.questions.filter(q => q.type === 'number' && q.id !== member.kpi1.questionId && q.id !== member.kpi2.questionId).map(q => (
+                      {member.kpi3 && (
+                        <td className="px-4 py-2.5 text-gray-600 dark:text-gray-300">{formatKpiValue(sub.kpi3Value, member.kpi3)}</td>
+                      )}
+                      {member.questions.filter(q => q.type === 'number' && q.id !== member.kpi1.questionId && q.id !== member.kpi2.questionId && (!member.kpi3 || q.id !== member.kpi3.questionId)).map(q => (
                         <td key={q.id} className="px-4 py-2.5 text-gray-600 dark:text-gray-300">{answers[q.id] ?? '—'}</td>
                       ))}
                       <td className="px-4 py-2.5">
