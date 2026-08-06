@@ -22,25 +22,45 @@ export default function Handbook({ onNavigate, focusWikiPage, onFocusConsumed })
     let changed = false;
     const defaultOrder = DEFAULT_HANDBOOK.sections.map(s => s.id);
 
-    // 1. Backfill missing pages within existing sections
+    // 1. Backfill missing pages + repair corrupted pages within existing sections
     let sections = parsed.sections.map(section => {
       const defaultSection = DEFAULT_HANDBOOK.sections.find(s => s.id === section.id);
       if (!defaultSection) return section;
-      const existingPageIds = new Set((section.pages || []).map(p => p.id));
-      const missingPages = defaultSection.pages.filter(p => !existingPageIds.has(p.id));
-      if (missingPages.length === 0) return section;
-      changed = true;
+      let sectionChanged = false;
+      const defaultPages = new Map(defaultSection.pages.map(p => [p.id, p]));
       const pageOrder = defaultSection.pages.map(p => p.id);
-      const mergedPages = [...(section.pages || [])];
-      missingPages.forEach(missingPage => {
-        const defaultIdx = pageOrder.indexOf(missingPage.id);
-        let insertAfterIdx = -1;
-        for (let i = defaultIdx - 1; i >= 0; i--) {
-          const pos = mergedPages.findIndex(p => p.id === pageOrder[i]);
-          if (pos !== -1) { insertAfterIdx = pos; break; }
+
+      // Repair corrupted pages (empty title or empty content) using defaults
+      let mergedPages = (section.pages || []).map(page => {
+        const def = defaultPages.get(page.id);
+        if (!def) return page;
+        const needsTitle = !page.title || !page.title.trim();
+        const needsContent = def.content && (!page.content || !page.content.trim()) && !page.richContent;
+        if (needsTitle || needsContent) {
+          sectionChanged = true;
+          return { ...def, ...page, title: needsTitle ? def.title : page.title, content: needsContent ? def.content : page.content };
         }
-        mergedPages.splice(insertAfterIdx + 1, 0, missingPage);
+        return page;
       });
+
+      // Backfill missing pages
+      const existingPageIds = new Set(mergedPages.map(p => p.id));
+      const missingPages = defaultSection.pages.filter(p => !existingPageIds.has(p.id));
+      if (missingPages.length > 0) {
+        sectionChanged = true;
+        missingPages.forEach(missingPage => {
+          const defaultIdx = pageOrder.indexOf(missingPage.id);
+          let insertAfterIdx = -1;
+          for (let i = defaultIdx - 1; i >= 0; i--) {
+            const pos = mergedPages.findIndex(p => p.id === pageOrder[i]);
+            if (pos !== -1) { insertAfterIdx = pos; break; }
+          }
+          mergedPages.splice(insertAfterIdx + 1, 0, missingPage);
+        });
+      }
+
+      if (!sectionChanged) return section;
+      changed = true;
       return { ...section, pages: mergedPages };
     });
 
