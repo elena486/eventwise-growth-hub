@@ -9,6 +9,7 @@ import {
 import MultiFileUpload from '@/components/shared/MultiFileUpload';
 import StageBadge from './Stagebadge';
 import PreDemoFormTab from './PreDemoFormTab';
+import SlackActivityLog from './SlackActivityLog';
 import { logActivity } from '@/lib/logActivity';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -910,6 +911,8 @@ export default function LeadDetailPanel({ lead, onClose, onUpdate, onDelete, onC
                 autoSave({ activityLog: JSON.stringify(entries), lastActivity });
               }}
             />
+            <SlackActivityLog value={data.slack_activity_log} />
+
             <div>
               <SectionTitle>Demo</SectionTitle>
               <div className="grid grid-cols-2 gap-3">
