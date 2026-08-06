@@ -24,10 +24,12 @@ export function useWikiAutosave({ getSnapshot, page, onUpdate, enabled }) {
   const snapshotRef = useRef({ snapshot: {}, snapshotStr: '{}' });
   const onUpdateRef = useRef(onUpdate);
   const pageRef = useRef(page);
+  const wasEditingRef = useRef(false);
 
   // Keep refs current without triggering re-renders
   onUpdateRef.current = onUpdate;
   pageRef.current = page;
+  if (enabled) wasEditingRef.current = true;
 
   // Compute current snapshot on every render
   const snapshot = getSnapshot();
@@ -103,6 +105,7 @@ export function useWikiAutosave({ getSnapshot, page, onUpdate, enabled }) {
   useEffect(() => {
     return () => {
       if (timerRef.current) clearTimeout(timerRef.current);
+      if (!wasEditingRef.current) return;
       const { snapshot: snap, snapshotStr: snapStr } = snapshotRef.current;
       if (snapStr !== lastSavedRef.current) {
         onUpdateRef.current({
