@@ -86,8 +86,14 @@ export default function Handbook({ onNavigate, focusWikiPage, onFocusConsumed })
             setLoaded(true);
             return;
           }
-        } catch {}
+        } catch (e) {
+          console.error('Handbook load error:', e);
+        }
       }
+      setHb(DEFAULT_HANDBOOK);
+      setLoaded(true);
+    }).catch(err => {
+      console.error('Handbook fetch failed:', err);
       setHb(DEFAULT_HANDBOOK);
       setLoaded(true);
     });
@@ -278,8 +284,8 @@ export default function Handbook({ onNavigate, focusWikiPage, onFocusConsumed })
 
   if (!loaded || !hb) {
     return (
-      <div className="flex-1 flex items-center justify-center bg-[#F7F8FC]">
-        <div className="w-6 h-6 border-2 border-navy/20 border-t-navy rounded-full animate-spin" />
+      <div className="flex-1 flex items-center justify-center bg-[#F7F8FC] dark:bg-[#0E0E1F]">
+        <div className="w-7 h-7 border-2 border-[#8403C5]/20 border-t-[#8403C5] rounded-full animate-spin" />
       </div>
     );
   }
