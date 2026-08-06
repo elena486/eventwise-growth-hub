@@ -6,6 +6,7 @@ import HandbookSidebar from '@/components/handbook/HandbookSidebar';
 import HandbookContentPage from '@/components/handbook/HandbookContentPage';
 import HandbookLinkPage from '@/components/handbook/HandbookLinkPage';
 import ConsentResponsesPage from '@/components/handbook/pages/ConsentResponsesPage';
+import TechStackPage from '@/components/handbook/pages/TechStackPage';
 
 const STORAGE_KEY = 'handbook_v2';
 
@@ -339,6 +340,7 @@ export default function Handbook({ onNavigate, focusWikiPage, onFocusConsumed })
             allowEdit: true,
           };
           if (activePage.id === 'marketing-consent') return <ConsentResponsesPage key={activePage.id} {...props} />;
+          if (activePage.id === 'techstack') return <TechStackPage key={activePage.id} {...props} />;
           if (activePage.type === 'link')     return <HandbookLinkPage key={activePage.id} {...props} onNavigate={handleInternalNavigate} />;
           return <HandbookContentPage key={activePage.id} {...props} />;
         })() : (
