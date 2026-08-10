@@ -8,6 +8,8 @@ import WorkingDaysSection from './WorkingDaysSection';
 import LeaveRowActions from './LeaveRowActions';
 import LeaveDeleteConfirm from './LeaveDeleteConfirm';
 import LeaveSummarySection from './LeaveSummary';
+import OverlapWarningBanner from './OverlapWarningBanner';
+import { computeLeaveOverlaps } from './leaveOverlaps';
 import { useAuth } from '@/lib/AuthContext';
 
 const TYPE_STYLES = {
@@ -127,6 +129,9 @@ export default function WhosOutView({ refresh, showAllStatuses = false, showWork
   // Calendar only shows confirmed/approved
   const calendarEntries = useMemo(() => filtered.filter(e => e.status === 'Confirmed' || e.status === 'Approved'), [filtered]);
 
+  // Overlapping approved leave within the visible range (informational only)
+  const overlaps = useMemo(() => computeLeaveOverlaps(calendarEntries), [calendarEntries]);
+
   const allPeople = useMemo(() => [...new Set(entries.map(e => e.personName).filter(Boolean))].sort(), [entries]);
   const hasNotes = filtered.some(e => e.notes);
 
@@ -177,6 +182,9 @@ export default function WhosOutView({ refresh, showAllStatuses = false, showWork
           </button>
         </div>
       </div>
+
+      {/* Overlapping leave warning */}
+      <OverlapWarningBanner overlaps={overlaps} />
 
       {/* Calendar view */}
       {viewMode === 'calendar' && (

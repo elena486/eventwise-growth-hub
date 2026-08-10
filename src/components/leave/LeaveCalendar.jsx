@@ -82,13 +82,22 @@ function MonthGrid({ entries, currentMonth, onEntryClick }) {
             const today = isToday(day);
             const dayStr = format(day, 'yyyy-MM-dd');
             const dayEntries = entries.filter(e => entrySpansDay(e, day));
+            const overlapCount = dayEntries.length;
+            const isOverlap = overlapCount >= 2;
             return (
               <div
                 key={di}
-                className={`min-h-[80px] px-1.5 py-1.5 border-r border-[#EBEBF5] last:border-0 ${!inMonth ? 'bg-[#FAFAFA]' : ''}`}
+                className={`min-h-[80px] px-1.5 py-1.5 border-r border-[#EBEBF5] last:border-0 relative ${!inMonth ? 'bg-[#FAFAFA]' : ''} ${isOverlap ? 'bg-[#FFFBEB]' : ''}`}
               >
-                <div className={`text-[11px] font-semibold mb-1 w-5 h-5 flex items-center justify-center rounded-full ${today ? 'bg-[#8403C5] text-white' : inMonth ? 'text-[#242450]' : 'text-[#D1D5DB]'}`}>
-                  {format(day, 'd')}
+                <div className="flex items-center justify-between mb-1">
+                  <div className={`text-[11px] font-semibold w-5 h-5 flex items-center justify-center rounded-full ${today ? 'bg-[#8403C5] text-white' : inMonth ? 'text-[#242450]' : 'text-[#D1D5DB]'}`}>
+                    {format(day, 'd')}
+                  </div>
+                  {isOverlap && (
+                    <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full ${overlapCount >= 3 ? 'bg-[#DC2626] text-white' : 'bg-[#E8A020] text-white'}`} title={`${overlapCount} people on leave`}>
+                      {overlapCount}
+                    </span>
+                  )}
                 </div>
                 <div className="space-y-0.5">
                   {dayEntries.slice(0, 3).map(e => (
@@ -117,9 +126,11 @@ function WeekGrid({ entries, weekStart, onEntryClick }) {
         {days.map((day, i) => {
           const dayEntries = entries.filter(e => entrySpansDay(e, day));
           const today = isToday(day);
+          const overlapCount = dayEntries.length;
+          const isOverlap = overlapCount >= 2;
           return (
-            <div key={i} className="border-r border-[#EBEBF5] last:border-0">
-              <div className={`px-3 py-2 text-center bg-[#F6F6FB] border-b border-[#EBEBF5]`}>
+            <div key={i} className={`border-r border-[#EBEBF5] last:border-0 ${isOverlap ? 'bg-[#FFFBEB]' : ''}`}>
+              <div className={`px-3 py-2 text-center bg-[#F6F6FB] border-b border-[#EBEBF5] relative`}>
                 <div className={`text-[11px] font-semibold uppercase tracking-[0.06em] ${today ? 'text-[#8403C5]' : 'text-[#5777AB]'}`}>
                   {format(day, 'EEE')}
                 </div>
@@ -127,7 +138,14 @@ function WeekGrid({ entries, weekStart, onEntryClick }) {
                   {format(day, 'd')}
                 </div>
                 {dayEntries.length > 0 && (
-                  <div className="text-[10px] text-[#9CA3AF] mt-0.5">{dayEntries.length} out</div>
+                  <div className={`text-[10px] mt-0.5 ${isOverlap ? 'font-bold' : 'text-[#9CA3AF]'} ${isOverlap ? (overlapCount >= 3 ? 'text-[#DC2626]' : 'text-[#A16207]') : 'text-[#9CA3AF]'}`}>
+                    {dayEntries.length} out
+                  </div>
+                )}
+                {isOverlap && (
+                  <span className={`absolute top-1.5 right-1.5 text-[9px] font-bold px-1.5 py-0.5 rounded-full ${overlapCount >= 3 ? 'bg-[#DC2626] text-white' : 'bg-[#E8A020] text-white'}`} title={`${overlapCount} people on leave`}>
+                    {overlapCount}
+                  </span>
                 )}
               </div>
               <div className="p-2 min-h-[120px] space-y-1">
