@@ -20,6 +20,7 @@ import MQLTracker from './MQLTracker';
 import OutreachAnalytics from './OutreachAnalytics';
 import DemoFormResponses from './DemoFormResponses';
 import Competitors from './Competitors';
+import DecisionLog from './DecisionLog';
 import TimeCapacity from './TimeCapacity';
 import LinkSpace from './LinkSpace';
 import ChangelogAdmin from './ChangelogAdmin';
@@ -69,6 +70,7 @@ const GROUPS = [
     { id: 'sprints', label: 'Sprints' },
     { id: 'leave', label: 'Time Off & Availability' },
     { id: 'competitors', label: 'Competitors' },
+    { id: 'decision-log', label: 'Decision Log' },
   ]},
   { id: 'time', label: 'Time & Capacity', tabs: [
     { id: 'time-log', label: 'Today' },
@@ -563,6 +565,7 @@ export default function AppShell() {
         {tab === 'sprints' && <Sprints />}
         {tab === 'leave' && <Leave />}
         {tab === 'competitors' && <Competitors focusCompetitorId={searchFocus?.focusType === 'competitor' ? searchFocus.focusId : null} onFocusConsumed={() => setSearchFocus(null)} />}
+        {tab === 'decision-log' && <DecisionLog />}
         {tab === 'time-log' && <TimeCapacity subTab="log" onSubTabChange={(id) => setSearchParams({ tab: id })} />}
         {tab === 'time-timesheet' && <TimeCapacity subTab="timesheet" onSubTabChange={(id) => setSearchParams({ tab: id })} />}
         {tab === 'time-overview' && <TimeCapacity subTab="overview" onSubTabChange={(id) => setSearchParams({ tab: id })} />}

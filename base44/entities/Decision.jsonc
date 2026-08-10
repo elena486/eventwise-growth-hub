@@ -1,0 +1,75 @@
+{
+  "name": "Decision",
+  "type": "object",
+  "properties": {
+    "decision_title": {
+      "type": "string",
+      "description": "Short title of the decision"
+    },
+    "date_decided": {
+      "type": "string",
+      "format": "date",
+      "description": "Date the decision was made"
+    },
+    "decision_description": {
+      "type": "string",
+      "description": "What was decided"
+    },
+    "context_background": {
+      "type": "string",
+      "description": "Why this came up / the problem it solved"
+    },
+    "alternatives_considered": {
+      "type": "string",
+      "description": "What else was on the table, if anything"
+    },
+    "decision_makers": {
+      "type": "string",
+      "description": "Who made the decision (comma-separated names from the team list)"
+    },
+    "related_area": {
+      "type": "string",
+      "enum": [
+        "Sprints",
+        "To-Do Board",
+        "Time Off",
+        "Pipeline",
+        "Tech Stack",
+        "Wiki",
+        "Marketing",
+        "HR",
+        "Other"
+      ],
+      "description": "Which area of the Hub this decision affects"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "Active",
+        "Superseded",
+        "Under Review"
+      ],
+      "default": "Active",
+      "description": "Whether the decision is still in effect"
+    },
+    "review_date": {
+      "type": "string",
+      "format": "date",
+      "description": "Optional date to revisit this decision"
+    },
+    "visibility": {
+      "type": "string",
+      "enum": [
+        "Team-visible",
+        "Elena & Chris only"
+      ],
+      "default": "Elena & Chris only",
+      "description": "Who can see this decision. Defaults to Elena & Chris only for HR-tagged entries."
+    }
+  },
+  "required": [
+    "decision_title",
+    "date_decided",
+    "related_area"
+  ]
+}
