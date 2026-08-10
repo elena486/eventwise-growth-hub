@@ -114,7 +114,7 @@ export default function DecisionLog() {
   }
 
   return (
-    <div className="flex flex-col h-full overflow-hidden">
+    <div className="flex flex-col w-full h-full overflow-hidden">
       {/* Header */}
       <div className="px-8 pt-6 pb-4 shrink-0 border-b border-[#EBEBF5] bg-white">
         <div className="flex items-center justify-between mb-4">
@@ -165,7 +165,7 @@ export default function DecisionLog() {
             <p className="text-sm font-medium text-[#5777AB]">No decisions match your filters</p>
           </div>
         ) : (
-          <div className="max-w-4xl mx-auto space-y-2.5">
+          <div className="space-y-2.5">
             {filtered.map(d => {
               const open = !!expanded[d.id];
               return (
