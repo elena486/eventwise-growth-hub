@@ -69,6 +69,14 @@
       "type": "string",
       "description": "Original asset file name"
     },
+    "screenshotUrl": {
+      "type": "string",
+      "description": "Uploaded LinkedIn analytics screenshot \u2014 source-of-truth image for AI-extracted performance numbers"
+    },
+    "screenshotFileName": {
+      "type": "string",
+      "description": "Original filename of the uploaded analytics screenshot"
+    },
     "impressions": {
       "type": "number",
       "description": "Total impressions"

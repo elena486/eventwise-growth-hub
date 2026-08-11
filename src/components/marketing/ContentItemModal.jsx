@@ -1,6 +1,7 @@
 import React, { useState, useRef } from 'react';
 import { X, Upload, FileText, Download, BarChart2 } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
+import PerformanceScreenshotExtract from './PerformanceScreenshotExtract';
 
 const STATUSES = ['Ideas', 'In Progress', 'Ready to Publish', 'Scheduled', 'Published', 'Cancelled'];
 const FORMATS = ['Written', 'Video', 'Carousel', 'Poll', 'Single Image', 'Repost'];
@@ -30,6 +31,8 @@ export default function ContentItemModal({ item, onSave, onClose }) {
     profileVisits: item?.profileVisits ?? '',
     reach: item?.reach ?? '',
     topicAngle: item?.topicAngle || '',
+    screenshotUrl: item?.screenshotUrl || '',
+    screenshotFileName: item?.screenshotFileName || '',
   });
   const [uploadingFile, setUploadingFile] = useState(false);
   const [perfPrompt, setPerfPrompt] = useState(false);
@@ -138,6 +141,11 @@ export default function ContentItemModal({ item, onSave, onClose }) {
               <label className="text-xs font-semibold text-ew-muted uppercase tracking-wide block mb-1">Topic / Angle</label>
               <input className="w-full border border-ew-border rounded-lg px-3 py-2 text-sm text-navy focus:outline-none" value={form.topicAngle} onChange={e => set('topicAngle', e.target.value)} placeholder="e.g. Festival finance crisis" />
             </div>
+            <PerformanceScreenshotExtract
+              form={form}
+              set={set}
+              setScreenshot={(url, name) => { set('screenshotUrl', url); set('screenshotFileName', name); }}
+            />
             <div className="grid grid-cols-2 gap-3">
               {[
                 { key: 'impressions', label: 'Impressions' },
