@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { base44 } from '@/api/base44Client';
-import { ArrowLeft, Globe, BarChart2, Building2, Mail, Upload, X, Sparkles, Loader2, CheckCircle2 } from 'lucide-react';
+import { ArrowLeft, Globe, BarChart2, Building2, Mail, Upload, X, Sparkles, Loader2, CheckCircle2, FileText } from 'lucide-react';
 
 const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
 const TRAFFIC_SOURCES = ['Organic Search','Direct','Referral','Social','Email','Paid Search','Other'];
@@ -136,20 +136,41 @@ function Field({ label, children, aiGenerated, missing }) {
 }
 
 // ─── Main Component ───────────────────────────────────────────────────────────
-export default function ReportForm({ report, onBack }) {
+export default function ReportForm({ report, onBack, prefill, importMeta }) {
   const now = new Date();
-  const [month,  setMonth]  = useState(report?.month  || MONTHS[now.getMonth()]);
-  const [year,   setYear]   = useState(report?.year   || now.getFullYear());
-  const [status, setStatus] = useState(report?.status || 'Draft');
+  const [month,  setMonth]  = useState(report?.month  || (prefill?.month && MONTHS.includes(prefill.month) ? prefill.month : MONTHS[now.getMonth()]));
+  const [year,   setYear]   = useState(report?.year   || (prefill?.year ? prefill.year : now.getFullYear()));
+  const [status, setStatus] = useState(report?.status || (importMeta ? 'Ready' : 'Draft'));
   const [activeTab, setActiveTab] = useState('website');
   const [saving,    setSaving]    = useState(false);
 
   const parseSection = (key) => { try { return JSON.parse(report?.[key] || '{}'); } catch { return {}; } };
 
-  const [website,    setWebsite]    = useState(parseSection('websiteData'));
-  const [chrisLI,    setChrisLI]    = useState(parseSection('chrisLinkedInData'));
-  const [company,    setCompany]    = useState(parseSection('companyPageData'));
-  const [newsletter, setNewsletter] = useState(parseSection('newsletterData'));
+  const [website,    setWebsite]    = useState(() => {
+    const base = parseSection('websiteData');
+    if (prefill?.websiteSessions) base.sessions = prefill.websiteSessions;
+    return base;
+  });
+  const [chrisLI,    setChrisLI]    = useState(() => {
+    const base = parseSection('chrisLinkedInData');
+    if (prefill?.chrisLIImpressions) base.totalImpressions = prefill.chrisLIImpressions;
+    return base;
+  });
+  const [company,    setCompany]    = useState(() => {
+    const base = parseSection('companyPageData');
+    if (prefill?.companyImpressions) base.totalImpressions = prefill.companyImpressions;
+    return base;
+  });
+  const [newsletter, setNewsletter] = useState(() => {
+    const base = parseSection('newsletterData');
+    if (prefill?.newsletterOpenRate) base.openRate = prefill.newsletterOpenRate;
+    return base;
+  });
+  const [notes, setNotes] = useState(report?.notes || prefill?.narrative || '');
+  const [additionalMetrics, setAdditionalMetrics] = useState(() => {
+    if (prefill?.additionalMetrics?.length) return prefill.additionalMetrics;
+    try { return JSON.parse(report?.additionalMetrics || '[]'); } catch { return []; }
+  });
   const [prevReport, setPrevReport] = useState(null);
 
   // AI screenshot state
@@ -157,8 +178,24 @@ export default function ReportForm({ report, onBack }) {
   const [extracting,  setExtracting]  = useState(false);
   const [extractMsg,  setExtractMsg]  = useState('');
   const [extractStep, setExtractStep] = useState(0); // 0-4
-  const [aiFields,    setAiFields]    = useState(new Set()); // keys that were AI-populated
-  const [aiMissing,   setAiMissing]   = useState(new Set()); // keys that AI couldn't find
+  const [aiFields,    setAiFields]    = useState(() => {
+    const s = new Set();
+    if (prefill?.websiteSessions) s.add('w_sessions');
+    if (prefill?.chrisLIImpressions) s.add('li_totalImpressions');
+    if (prefill?.companyImpressions) s.add('cp_totalImpressions');
+    if (prefill?.newsletterOpenRate) s.add('nl_openRate');
+    return s;
+  }); // keys that were AI-populated
+  const [aiMissing,   setAiMissing]   = useState(() => {
+    const s = new Set();
+    if (prefill) {
+      if (!prefill.websiteSessions) s.add('w_sessions');
+      if (!prefill.chrisLIImpressions) s.add('li_totalImpressions');
+      if (!prefill.companyImpressions) s.add('cp_totalImpressions');
+      if (!prefill.newsletterOpenRate) s.add('nl_openRate');
+    }
+    return s;
+  }); // keys that AI couldn't find
 
   const isDraft = status === 'Draft';
   const hasScreenshots = Object.values(screenshots).some(v => Array.isArray(v) && v.length > 0);
@@ -333,7 +370,14 @@ export default function ReportForm({ report, onBack }) {
       chrisLinkedInData: JSON.stringify(chrisLI),
       companyPageData:   JSON.stringify(company),
       newsletterData:    JSON.stringify(newsletter),
+      notes,
+      additionalMetrics: JSON.stringify(additionalMetrics.filter(m => (m.label || '').trim() || (m.value || '').trim())),
     };
+    if (importMeta) {
+      payload.sourceFileUrl = importMeta.sourceFileUrl;
+      payload.sourceFileName = importMeta.sourceFileName;
+      payload.imported = true;
+    }
     if (report?.id) await base44.entities.MarketingReport.update(report.id, payload);
     else await base44.entities.MarketingReport.create(payload);
     setStatus(s);
@@ -360,7 +404,7 @@ export default function ReportForm({ report, onBack }) {
           <span className={`text-xs font-semibold px-2.5 py-1 rounded-full border ${status === 'Ready' ? 'bg-blue-50 text-blue-700 border-blue-200' : status === 'Sent' ? 'bg-green-50 text-green-700 border-green-200' : 'bg-yellow-50 text-yellow-700 border-yellow-200'}`}>{status}</span>
         </div>
         <div className="flex gap-2">
-          <button onClick={() => save()} disabled={saving} className="flex items-center gap-1.5 px-4 py-2 border border-gray-200 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors bg-white">
+          <button onClick={() => save('Draft')} disabled={saving} className="flex items-center gap-1.5 px-4 py-2 border border-gray-200 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors bg-white">
             💾 Save Draft
           </button>
           <button onClick={() => save('Ready')} disabled={saving} className="px-4 py-2 bg-[#8403C5] text-white rounded-lg text-sm font-semibold hover:bg-[#6d02a3] transition-colors">
@@ -384,6 +428,43 @@ export default function ReportForm({ report, onBack }) {
           </select>
         </div>
       </div>
+
+      {/* ════════════════════════════════════════════════════════
+          IMPORTED REPORT PANEL — shown for uploaded-report imports
+      ════════════════════════════════════════════════════════ */}
+      {importMeta && (
+        <div className="bg-white dark:bg-[#1E1E2E] rounded-xl p-5 border border-[#8403C5]/30 mb-4">
+          <div className="flex items-center gap-2 mb-4">
+            <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-purple-50 text-[#8403C5]">Imported</span>
+            <span className="text-sm font-semibold text-[#242450] dark:text-white">Extracted from uploaded report — review before saving</span>
+          </div>
+          {importMeta.sourceFileUrl && (
+            <a href={importMeta.sourceFileUrl} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1.5 text-sm text-[#8403C5] hover:underline mb-4">
+              <FileText className="w-4 h-4" /> {importMeta.sourceFileName || 'Source document'}
+            </a>
+          )}
+          <div className="mb-4">
+            <label className="block text-xs text-gray-500 mb-1">Executive Summary / Narrative</label>
+            <textarea rows={3} className={inputCls} value={notes} onChange={e => setNotes(e.target.value)} placeholder="Extracted narrative from the report..." />
+          </div>
+          <div>
+            <label className="block text-xs text-gray-500 mb-1.5">Additional metrics found (not mapped to standard fields)</label>
+            {additionalMetrics.length === 0 ? (
+              <p className="text-xs text-gray-400 italic">None detected in the document.</p>
+            ) : (
+              <div className="space-y-2">
+                {additionalMetrics.map((m, i) => (
+                  <div key={i} className="flex gap-2">
+                    <input className={`${inputCls} flex-1`} placeholder="Label (e.g. New Users)" value={m.label || ''} onChange={e => setAdditionalMetrics(prev => prev.map((x, idx) => idx === i ? { ...x, label: e.target.value } : x))} />
+                    <input className={`${inputCls} w-36`} placeholder="Value" value={m.value || ''} onChange={e => setAdditionalMetrics(prev => prev.map((x, idx) => idx === i ? { ...x, value: e.target.value } : x))} />
+                    <button onClick={() => setAdditionalMetrics(prev => prev.filter((_, idx) => idx !== i))} className="text-gray-400 hover:text-red-500 px-2 shrink-0"><X className="w-4 h-4" /></button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* ════════════════════════════════════════════════════════
           AI IMPORT SECTION — only in Draft mode

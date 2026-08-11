@@ -34,6 +34,26 @@
     "newsletterData": {
       "type": "string",
       "description": "JSON stringified newsletter metrics"
+    },
+    "notes": {
+      "type": "string",
+      "description": "Top-level narrative / executive summary extracted from an imported report"
+    },
+    "additionalMetrics": {
+      "type": "string",
+      "description": "JSON array of {label, value} for numbers found in an imported report that don't map to the standard fields"
+    },
+    "sourceFileUrl": {
+      "type": "string",
+      "description": "URL of the original uploaded report document (PDF/DOCX/image) for imported reports"
+    },
+    "sourceFileName": {
+      "type": "string",
+      "description": "Original filename of the uploaded source report"
+    },
+    "imported": {
+      "type": "boolean",
+      "description": "True if this report was created by uploading an external document and extracting via AI"
     }
   },
   "required": [

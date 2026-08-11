@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
-import { Plus, Pencil, Eye, Trash2, Globe, BarChart2, Building2, Mail, TrendingUp, Download, Send } from 'lucide-react';
+import { Plus, Pencil, Eye, Trash2, Globe, BarChart2, Building2, Mail, TrendingUp, Download, Send, FileText } from 'lucide-react';
 import ReportForm from './ReportForm';
 import ReportView from './ReportView';
+import UploadReportModal from './UploadReportModal';
 import ConfirmDialog from '@/components/shared/ConfirmDialog';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { generateReportPDF } from './reportPdfUtils';
@@ -78,6 +79,9 @@ export default function MarketingReporting() {
   const [viewReport, setViewReport] = useState(null);
   const [confirmId, setConfirmId] = useState(null);
   const [subTab, setSubTab] = useState('dashboard');
+  const [showUpload, setShowUpload] = useState(false);
+  const [prefillData, setPrefillData] = useState(null);
+  const [importMetaData, setImportMetaData] = useState(null);
 
   const load = () => base44.entities.MarketingReport.list('-year', 100).then(r => {
     // Sort by year desc, then month desc
@@ -114,7 +118,7 @@ export default function MarketingReporting() {
     load();
   };
 
-  if (view === 'form') return <ReportForm report={editReport} onBack={() => { setView('dashboard'); setEditReport(null); load(); }} />;
+  if (view === 'form') return <ReportForm report={editReport} prefill={prefillData} importMeta={importMetaData} onBack={() => { setView('dashboard'); setEditReport(null); setPrefillData(null); setImportMetaData(null); load(); }} />;
   if (view === 'view') {
     const viewIdx = reports.findIndex(r => r.id === viewReport?.id);
     const prevForView = viewIdx >= 0 ? reports[viewIdx + 1] : null;
@@ -148,10 +152,16 @@ export default function MarketingReporting() {
                 <h1 className="text-xl font-bold text-gray-900">Monthly Reports</h1>
                 <p className="text-sm text-gray-500">Latest: {latest ? `${latest.month} ${latest.year}` : '—'}</p>
               </div>
-              <button onClick={() => { setEditReport(null); setView('form'); }}
-                className="flex items-center gap-2 px-4 py-2 bg-[#8403C5] text-white rounded-lg text-sm font-semibold hover:bg-[#6d02a3] transition-colors">
-                <Plus className="w-4 h-4" /> New Report
-              </button>
+              <div className="flex gap-2">
+                <button onClick={() => { setEditReport(null); setView('form'); }}
+                  className="flex items-center gap-2 px-4 py-2 bg-[#8403C5] text-white rounded-lg text-sm font-semibold hover:bg-[#6d02a3] transition-colors">
+                  <Plus className="w-4 h-4" /> New Report
+                </button>
+                <button onClick={() => setShowUpload(true)}
+                  className="flex items-center gap-2 px-4 py-2 border border-gray-200 bg-white text-gray-700 rounded-lg text-sm font-semibold hover:bg-gray-50 transition-colors">
+                  <FileText className="w-4 h-4" /> Upload existing report
+                </button>
+              </div>
             </div>
 
             {/* Stat cards */}
@@ -175,7 +185,10 @@ export default function MarketingReporting() {
                 <tbody>
                   {reports.map(r => (
                     <tr key={r.id} className="border-b border-gray-50 last:border-0 hover:bg-gray-50">
-                      <td className="px-5 py-3 font-semibold text-gray-900">{r.month} {r.year}</td>
+                      <td className="px-5 py-3 font-semibold text-gray-900">
+                        {r.month} {r.year}
+                        {r.imported && <span className="ml-2 text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-purple-50 text-[#8403C5] align-middle">Imported</span>}
+                      </td>
                       <td className="px-5 py-3">
                         <span className={`text-xs font-semibold px-2.5 py-1 rounded-full border ${STATUS_STYLES[r.status] || STATUS_STYLES.Draft}`}>{r.status || 'Draft'}</span>
                       </td>
@@ -235,6 +248,18 @@ export default function MarketingReporting() {
         )}
       </div>
 
+      {showUpload && (
+        <UploadReportModal
+          onClose={() => setShowUpload(false)}
+          onExtracted={(data) => {
+            setShowUpload(false);
+            setEditReport(null);
+            setPrefillData(data);
+            setImportMetaData({ sourceFileUrl: data.sourceFileUrl, sourceFileName: data.sourceFileName });
+            setView('form');
+          }}
+        />
+      )}
       {confirmId && <ConfirmDialog onConfirm={() => { handleDelete(confirmId); setConfirmId(null); }} onCancel={() => setConfirmId(null)} />}
     </div>
   );

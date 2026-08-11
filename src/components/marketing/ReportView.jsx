@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ArrowLeft, Send, Download, Globe, BarChart2, Building2, Mail, Pencil } from 'lucide-react';
+import { ArrowLeft, Send, Download, Globe, BarChart2, Building2, Mail, Pencil, FileText } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
 import { generateReportPDF } from './reportPdfUtils';
 
@@ -133,6 +133,7 @@ export default function ReportView({ report, prevReport, onBack, onEdit, onSent 
   const pnl = parse(prevReport, 'newsletterData');
 
   const hasNl = nl.openRate || nl.clickRate || nl.listSize || nl.unsubscribes || nl.sendDate || nl.subjectLine;
+  const extra = (() => { try { return JSON.parse(report?.additionalMetrics || '[]'); } catch { return []; } })();
 
   // Calculated metrics
   const gscCtr = w.gscImpressions && w.gscClicks
@@ -209,6 +210,17 @@ export default function ReportView({ report, prevReport, onBack, onEdit, onSent 
           </div>
         </div>
         <div className="h-px bg-gray-200 dark:bg-gray-700 mb-6" />
+
+        {(report.imported || report.sourceFileUrl) && (
+          <div className="flex flex-wrap items-center gap-3 mb-4">
+            {report.imported && <span className="text-xs font-semibold px-2.5 py-1 rounded-full border bg-purple-50 text-[#8403C5] border-purple-200">Imported</span>}
+            {report.sourceFileUrl && (
+              <a href={report.sourceFileUrl} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1.5 text-sm text-[#8403C5] hover:underline">
+                <FileText className="w-4 h-4" /> {report.sourceFileName || 'Source document'}
+              </a>
+            )}
+          </div>
+        )}
 
         <div className="space-y-6">
 
@@ -385,6 +397,25 @@ export default function ReportView({ report, prevReport, onBack, onEdit, onSent 
               <p className="text-[13px] text-gray-400 italic py-3">Data not available for this period — check integration connection</p>
             )}
           </SectionCard>
+
+          {/* ═══════════════════════════════════════════════════
+              IMPORTED NOTES & ADDITIONAL METRICS
+          ═══════════════════════════════════════════════════ */}
+          {(report.notes || extra.length > 0) && (
+            <SectionCard icon="📎" title="Imported Notes & Additional Metrics">
+              {report.notes && <Narrative text={report.notes} />}
+              {extra.length > 0 && (
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                  {extra.map((m, i) => (
+                    <div key={i} className="bg-[#F9FAFB] rounded-xl p-3">
+                      <p className="text-[11px] text-[#9CA3AF] font-medium uppercase tracking-wide">{m.label || '—'}</p>
+                      <p className="text-[18px] font-bold text-[#242450]">{m.value || '—'}</p>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </SectionCard>
+          )}
 
         </div>
       </div>
