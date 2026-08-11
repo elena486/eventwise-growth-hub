@@ -2,6 +2,7 @@ import React, { useState, useMemo } from 'react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line, Legend } from 'recharts';
 import { Download, TrendingUp, LayoutGrid } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
+import { standardiseTopic } from './topicAngles';
 
 const DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 const TIME_BUCKETS = [
@@ -125,7 +126,7 @@ export default function ContentAnalytics({ items, onBack, onOpenItem }) {
   // ── TOPIC/ANGLE ───────────────────────────────────────────────────────────
   const topicMap = {};
   published.forEach(i => {
-    const t = (i.topicAngle || '').trim() || '(No topic)';
+    const t = standardiseTopic(i.topicAngle);
     if (!topicMap[t]) topicMap[t] = [];
     topicMap[t].push(i);
   });

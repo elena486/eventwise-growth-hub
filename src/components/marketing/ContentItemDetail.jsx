@@ -2,6 +2,7 @@ import React, { useState, useRef } from 'react';
 import { ArrowLeft, Trash2, Upload, X, BarChart2 } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
 import PerformanceScreenshotExtract from './PerformanceScreenshotExtract';
+import TopicAngleField from './TopicAngleField';
 
 const STATUSES = ['Ideas', 'In Progress', 'Ready to Publish', 'Scheduled', 'Published', 'Cancelled'];
 const FORMATS = ['Written', 'Video', 'Carousel', 'Poll', 'Single Image', 'Repost'];
@@ -27,10 +28,7 @@ function PerformanceSection({ form, f }) {
         setScreenshot={(url, name) => { f('screenshotUrl', url); f('screenshotFileName', name); }}
       />
       <div className="grid grid-cols-2 gap-3">
-        <div>
-          <label className="block text-xs text-gray-500 mb-1">Topic / Angle</label>
-          <input className={inputCls} value={form.topicAngle || ''} onChange={e => f('topicAngle', e.target.value)} placeholder="e.g. Festival finance crisis" />
-        </div>
+        <TopicAngleField value={form.topicAngle || ''} onChange={v => f('topicAngle', v)} bodyText={form.notes} inputClassName={inputCls} />
         <div>
           <label className="block text-xs text-gray-500 mb-1">Impressions</label>
           <input type="number" className={inputCls} value={form.impressions ?? ''} onChange={e => f('impressions', numVal(e.target.value))} placeholder="0" />

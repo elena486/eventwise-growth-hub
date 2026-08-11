@@ -2,6 +2,7 @@ import React, { useState, useRef } from 'react';
 import { X, Upload, FileText, Download, BarChart2 } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
 import PerformanceScreenshotExtract from './PerformanceScreenshotExtract';
+import TopicAngleField from './TopicAngleField';
 
 const STATUSES = ['Ideas', 'In Progress', 'Ready to Publish', 'Scheduled', 'Published', 'Cancelled'];
 const FORMATS = ['Written', 'Video', 'Carousel', 'Poll', 'Single Image', 'Repost'];
@@ -137,10 +138,7 @@ export default function ContentItemModal({ item, onSave, onClose }) {
           {/* Structured performance */}
           <div className="border border-[#8403C5]/20 rounded-xl p-4 bg-[#FAFBFE] space-y-3">
             <p className="text-xs font-bold text-[#8403C5] uppercase tracking-wide flex items-center gap-1.5"><BarChart2 className="w-3.5 h-3.5" /> Performance Data</p>
-            <div>
-              <label className="text-xs font-semibold text-ew-muted uppercase tracking-wide block mb-1">Topic / Angle</label>
-              <input className="w-full border border-ew-border rounded-lg px-3 py-2 text-sm text-navy focus:outline-none" value={form.topicAngle} onChange={e => set('topicAngle', e.target.value)} placeholder="e.g. Festival finance crisis" />
-            </div>
+            <TopicAngleField value={form.topicAngle} onChange={v => set('topicAngle', v)} bodyText={form.notes} inputClassName="w-full border border-ew-border rounded-lg px-3 py-2 text-sm text-navy focus:outline-none" />
             <PerformanceScreenshotExtract
               form={form}
               set={set}
