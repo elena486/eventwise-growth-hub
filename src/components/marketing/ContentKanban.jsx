@@ -22,7 +22,22 @@ const FORMAT_COLORS = {
   'Carousel': 'bg-orange-50 text-orange-600',
   'Poll': 'bg-green-50 text-green-600',
 };
-const QUICK_FILTERS = ['All', 'Published', 'Upcoming', 'This Week'];
+const QUICK_FILTERS = ['All', 'Published', 'Upcoming', 'This Week', 'Missing Metrics'];
+
+// Core fields that should always be fillable from a standard LinkedIn post view
+const CORE_METRIC_FIELDS = ['impressions', 'reactions', 'comments', 'reposts'];
+
+// Returns 'missing' (all 4 empty), 'partial' (some filled), 'complete' (all 4 filled), or null (not published)
+function metricState(item) {
+  if (item.status !== 'Published') return null;
+  const count = CORE_METRIC_FIELDS.filter(f => {
+    const v = item[f];
+    return v != null && v !== '' && !isNaN(Number(v));
+  }).length;
+  if (count === 0) return 'missing';
+  if (count === CORE_METRIC_FIELDS.length) return 'complete';
+  return 'partial';
+}
 
 function getThisWeek() {
   const now = new Date();
@@ -50,6 +65,10 @@ export default function ContentKanban({ calendarView = false, onSetCalendarView,
 
   const filteredItems = items.filter(item => {
     if (filter === 'Published') return item.status === 'Published';
+    if (filter === 'Missing Metrics') {
+      const s = metricState(item);
+      return s === 'missing' || s === 'partial';
+    }
     if (filter === 'Upcoming') {
       if (item.status !== 'Scheduled') return false;
       return !item.publishDate || new Date(item.publishDate) >= new Date();
@@ -140,7 +159,20 @@ export default function ContentKanban({ calendarView = false, onSetCalendarView,
               <div key={status} className="w-56 flex flex-col">
                 <div className="flex items-center justify-between mb-2 px-1">
                   <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${STATUS_COLORS[status]}`}>{status}</span>
-                  <span className="text-xs text-gray-400">{grouped[status].length}</span>
+                  {status === 'Published' ? (
+                    <span className="text-xs text-gray-400">
+                      {grouped[status].length}
+                      {(() => {
+                        const gapCount = grouped[status].filter(i => {
+                          const s = metricState(i);
+                          return s === 'missing' || s === 'partial';
+                        }).length;
+                        return gapCount > 0 ? <span className="text-amber-600 font-medium"> · {gapCount} missing</span> : null;
+                      })()}
+                    </span>
+                  ) : (
+                    <span className="text-xs text-gray-400">{grouped[status].length}</span>
+                  )}
                 </div>
                 <Droppable droppableId={status}>
                   {(provided, snapshot) => (
@@ -175,9 +207,21 @@ export default function ContentKanban({ calendarView = false, onSetCalendarView,
                                   ))}
                                 </div>
                               )}
-                              <div className="flex items-center justify-between">
-                                {item.format && <span className={`text-[10px] px-1.5 py-0.5 rounded font-medium ${FORMAT_COLORS[item.format] || 'bg-gray-50 text-gray-500'}`}>{item.format}</span>}
-                                {item.publishDate && <span className="text-[10px] text-gray-400">{item.publishDate}</span>}
+                              <div className="flex items-center justify-between gap-1">
+                                <div className="flex items-center gap-1 min-w-0">
+                                  {item.format && <span className={`text-[10px] px-1.5 py-0.5 rounded font-medium ${FORMAT_COLORS[item.format] || 'bg-gray-50 text-gray-500'}`}>{item.format}</span>}
+                                  {item.status === 'Published' && metricState(item) === 'missing' && (
+                                    <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-red-50 text-red-600 flex items-center gap-0.5 shrink-0" title="No performance metrics logged">
+                                      <span className="leading-none">⚠</span> No metrics
+                                    </span>
+                                  )}
+                                  {item.status === 'Published' && metricState(item) === 'partial' && (
+                                    <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-amber-50 text-amber-600 flex items-center gap-0.5 shrink-0" title="Some performance metrics still missing">
+                                      <span className="leading-none">◐</span> Incomplete
+                                    </span>
+                                  )}
+                                </div>
+                                {item.publishDate && <span className="text-[10px] text-gray-400 shrink-0">{item.publishDate}</span>}
                               </div>
                             </div>
                           )}
