@@ -1,6 +1,7 @@
 import React, { useState, useRef } from 'react';
 import { ArrowLeft, Trash2, Upload, X, BarChart2 } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
+import PerformanceScreenshotExtract from './PerformanceScreenshotExtract';
 
 const STATUSES = ['Ideas', 'In Progress', 'Ready to Publish', 'Scheduled', 'Published', 'Cancelled'];
 const FORMATS = ['Written', 'Video', 'Carousel', 'Poll', 'Single Image', 'Repost'];
@@ -20,6 +21,11 @@ function PerformanceSection({ form, f }) {
   return (
     <div className="border border-[#8403C5]/20 rounded-xl p-4 bg-[#FAFBFE] space-y-3">
       <p className="text-xs font-bold text-[#8403C5] uppercase tracking-wide flex items-center gap-1.5"><BarChart2 className="w-3.5 h-3.5" /> Performance Data</p>
+      <PerformanceScreenshotExtract
+        form={form}
+        set={f}
+        setScreenshot={(url, name) => { f('screenshotUrl', url); f('screenshotFileName', name); }}
+      />
       <div className="grid grid-cols-2 gap-3">
         <div>
           <label className="block text-xs text-gray-500 mb-1">Topic / Angle</label>
