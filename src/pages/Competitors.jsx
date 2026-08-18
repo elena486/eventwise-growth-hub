@@ -33,6 +33,14 @@ const QUICK_FILTERS = [
   { label: 'Procurement', key: 'Procurement & Approvals' },
 ];
 
+const THREAT_FILTERS = [
+  { label: 'All', key: 'all' },
+  { label: 'High', key: 'High' },
+  { label: 'Medium', key: 'Medium' },
+  { label: 'Low', key: 'Low' },
+  { label: 'Monitor', key: 'Monitor' },
+];
+
 const THREAT_ORDER = { High: 0, Medium: 1, Low: 2, Monitor: 3 };
 
 const TABLE_COLS = [
@@ -56,6 +64,7 @@ export default function Competitors({ focusCompetitorId, onFocusConsumed }) {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [quickFilter, setQuickFilter] = useState('all');
+  const [threatFilter, setThreatFilter] = useState('all');
   const [view, setView] = useState('table'); // default table
   const [showModal, setShowModal] = useState(false);
   const [editCompetitor, setEditCompetitor] = useState(null);
@@ -154,7 +163,8 @@ export default function Competitors({ focusCompetitorId, onFocusConsumed }) {
     if (quickFilter === 'High') matchFilter = c.threatLevel === 'High';
     else if (quickFilter === 'accounting') matchFilter = c.category === 'Accounting Software' || c.category === 'Forecasting Tool';
     else if (quickFilter !== 'all') matchFilter = c.category === quickFilter || c.threatLevel === quickFilter;
-    return matchSearch && matchFilter;
+    const matchThreat = threatFilter === 'all' || c.threatLevel === threatFilter;
+    return matchSearch && matchFilter && matchThreat;
   });
 
   // Sort
@@ -246,6 +256,17 @@ export default function Competitors({ focusCompetitorId, onFocusConsumed }) {
         </div>
       </div>
 
+      {/* Threat level filter row */}
+      <div className="flex items-center gap-1.5 flex-wrap mb-4">
+        <span className="text-[11px] font-semibold text-ew-muted uppercase tracking-[0.1em] mr-1">Threat:</span>
+        {THREAT_FILTERS.map(f => (
+          <button key={f.key} onClick={() => setThreatFilter(f.key)}
+            className={`px-3 py-1.5 text-sm font-medium rounded-lg transition-colors border whitespace-nowrap ${threatFilter === f.key ? 'bg-navy text-white border-navy' : 'bg-white border-ew-border text-ew-body hover:bg-ew-bg'}`}>
+            {f.label}
+          </button>
+        ))}
+      </div>
+
       {selectedIds.length > 0 && (
         <div className="mb-4 flex items-center gap-3 text-sm text-ew-body bg-white border border-ew-border rounded-lg px-4 py-2.5">
           <GitCompareArrows className="w-4 h-4 text-[#8403C5]" />
@@ -306,7 +327,6 @@ export default function Competitors({ focusCompetitorId, onFocusConsumed }) {
             </thead>
             <tbody>
               {sorted.map((c, i) => {
-                const trust = c.customerSatisfaction?.match(/(\d+\.?\d*)\s+on\s+Trustpilot/i)?.[1];
                 const isSelected = selectedIds.includes(c.id);
                 const isExpanded = expandedRow === c.id;
 
@@ -356,7 +376,7 @@ export default function Competitors({ focusCompetitorId, onFocusConsumed }) {
                       </td>
                       {/* Trustpilot */}
                       <td className="px-4 py-3 text-xs font-semibold text-amber-600 whitespace-nowrap">
-                        {trust ? `★ ${trust}` : '—'}
+                        {c.trustpilot ? `★ ${c.trustpilot}` : '—'}
                       </td>
                       {/* Target Audience */}
                       <td className="px-4 py-3 text-ew-body text-xs max-w-[140px]">
