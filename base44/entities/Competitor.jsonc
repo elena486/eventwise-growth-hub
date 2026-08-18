@@ -63,6 +63,10 @@
     "customerSupport": {
       "type": "string"
     },
+    "trustpilot": {
+      "type": "string",
+      "description": "Trustpilot rating and review count, e.g. '3.2 / 6 reviews'. Null/empty where no Trustpilot listing exists."
+    },
     "notes": {
       "type": "string"
     },
