@@ -45,9 +45,21 @@ Deno.serve(async (req) => {
       return Response.json({ ok: true, match, channels: names });
     }
 
-    // Entity automation payload: { data: <new ContentItem> }
+    // Entity automation payload: { data: <ContentItem>, old_data: <prev ContentItem> (update only) }
     const item = body.data || {};
-    const { platform, publishedUrl } = item;
+    const { platform, publishedUrl, status } = item;
+    const prevStatus = body.old_data?.status;
+
+    // Only notify when the post transitions TO Published.
+    //  - Create: notify only if status is already 'Published'
+    //  - Update: notify only if it was NOT 'Published' before and is now 'Published'
+    //    (editing an already-published post does not re-notify)
+    if (status !== 'Published') {
+      return Response.json({ ok: true, skipped: true, reason: `status is '${status || '—'}', not 'Published'` });
+    }
+    if (prevStatus === 'Published') {
+      return Response.json({ ok: true, skipped: true, reason: 'already published — no transition' });
+    }
 
     const channelId = await findMarketingChannel(accessToken);
     if (!channelId) return Response.json({ ok: false, error: 'Marketing channel not found' }, { status: 404 });
