@@ -38,8 +38,7 @@
     },
     "last_active": {
       "type": "string",
-      "format": "date",
-      "description": "Last active date on the platform \u2014 leave blank if unknown"
+      "description": "Free-text last active indicator (e.g. '3 days ago', 'Invite pending') \u2014 leave blank if unknown"
     },
     "notes": {
       "type": "string",

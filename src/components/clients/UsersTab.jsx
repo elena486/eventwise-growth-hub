@@ -197,7 +197,7 @@ export default function UsersTab({ client }) {
             </div>
             <div>
               <label className={labelCls}>Last active</label>
-              <input type="date" className={ic} value={newRow.last_active} onChange={e => setNewRow(r => ({ ...r, last_active: e.target.value }))} />
+              <input type="text" className={ic} value={newRow.last_active} onChange={e => setNewRow(r => ({ ...r, last_active: e.target.value }))} placeholder="e.g. 3 days ago" />
             </div>
           </div>
           <div className="mt-3">
@@ -262,7 +262,7 @@ export default function UsersTab({ client }) {
                             {CATEGORY_SUGGESTIONS.map(c => <option key={c} value={c} />)}
                           </datalist>
                         </td>
-                        <td className="px-4 py-2"><input type="date" className={ic} value={editDraft.last_active || ''} onChange={e => setEditDraft(d => ({ ...d, last_active: e.target.value }))} /></td>
+                        <td className="px-4 py-2"><input type="text" className={ic} value={editDraft.last_active || ''} onChange={e => setEditDraft(d => ({ ...d, last_active: e.target.value }))} placeholder="e.g. 3 days ago" /></td>
                         <td className="px-4 py-2"><input className={ic} value={editDraft.notes || ''} onChange={e => setEditDraft(d => ({ ...d, notes: e.target.value }))} /></td>
                         <td className="px-3 py-2 whitespace-nowrap">
                           <div className="flex items-center gap-1">
@@ -286,7 +286,7 @@ export default function UsersTab({ client }) {
                           {u.ew_user && <span className={`text-[11px] font-semibold px-2 py-0.5 rounded-full ${EW_USER_STYLES[u.ew_user]}`}>{u.ew_user}</span>}
                         </td>
                         <td className="px-4 py-2.5 text-[#374151]">{u.ew_user_category || '—'}</td>
-                        <td className="px-4 py-2.5 text-[#374151] whitespace-nowrap">{fmtDate(u.last_active)}</td>
+                        <td className="px-4 py-2.5 text-[#374151] whitespace-nowrap">{u.last_active || '—'}</td>
                         <td className="px-4 py-2.5 text-[#6B7280] max-w-[200px] truncate" title={u.notes || ''}>{u.notes || '—'}</td>
                         <td className="px-3 py-2.5 whitespace-nowrap">
                           <div className="flex items-center gap-1 opacity-0 hover:opacity-100 group-hover:opacity-100" style={{ opacity: 1 }}>
