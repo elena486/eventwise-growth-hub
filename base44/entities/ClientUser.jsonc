@@ -1,0 +1,53 @@
+{
+  "name": "ClientUser",
+  "type": "object",
+  "properties": {
+    "clientId": {
+      "type": "string",
+      "description": "ID of the linked Client record"
+    },
+    "clientName": {
+      "type": "string",
+      "description": "Denormalised client name for display"
+    },
+    "full_name": {
+      "type": "string",
+      "description": "Full name of the user at the client"
+    },
+    "email_address": {
+      "type": "string",
+      "description": "Email address"
+    },
+    "job_title": {
+      "type": "string",
+      "description": "Job title (optional)"
+    },
+    "ew_user": {
+      "type": "string",
+      "enum": [
+        "Yes",
+        "No",
+        "Invite Pending"
+      ],
+      "default": "No",
+      "description": "Whether this person is an active Eventwise platform user"
+    },
+    "ew_user_category": {
+      "type": "string",
+      "description": "Platform user category \u2014 standard options are Director / Bookkeeper / Ticket Manager / Cost Manager, but custom values are allowed"
+    },
+    "last_active": {
+      "type": "string",
+      "format": "date",
+      "description": "Last active date on the platform \u2014 leave blank if unknown"
+    },
+    "notes": {
+      "type": "string",
+      "description": "Internal notes about this user"
+    }
+  },
+  "required": [
+    "full_name",
+    "clientId"
+  ]
+}

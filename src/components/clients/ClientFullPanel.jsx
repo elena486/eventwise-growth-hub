@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import ReactDOM from 'react-dom';
 import HealthScoreChip from '@/components/health/HealthScoreChip';
 import ContractDocuments from './ContractDocuments';
+import UsersTab from './UsersTab';
 import { base44 } from '@/api/base44Client';
 import { format, differenceInDays, isToday, isYesterday, isWithinInterval, startOfWeek, endOfWeek, startOfMonth, endOfMonth, subMonths, parseISO as parseDI } from 'date-fns';
 import {
@@ -70,6 +71,7 @@ const TABS = [
   { id: 'notes', label: 'Notes' },
   { id: 'bugs', label: 'Bugs' },
   { id: 'documents', label: 'Documents' },
+  { id: 'users', label: 'Users' },
 ];
 
 function fmtDate(d) {
@@ -715,6 +717,11 @@ export default function ClientFullPanel({ client: initialClient, onClose, onUpda
               client={client}
               onUpdated={(updated) => { setClient(updated); onUpdated(updated); }}
             />
+          )}
+
+          {/* USERS TAB */}
+          {activeTab === 'users' && (
+            <UsersTab client={client} />
           )}
         </div>
       </div>
