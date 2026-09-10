@@ -1,0 +1,40 @@
+{
+  "name": "Notify Martinique on new Client",
+  "description": "Sends an email to Martinique whenever a new Client record is created in Customer Success",
+  "trigger": {
+    "condition": null,
+    "config": {
+      "trigger_type": "entity",
+      "events": [
+        "create"
+      ],
+      "entity_name": "Client"
+    }
+  },
+  "definition": {
+    "document": {
+      "dsl": "1.0.0",
+      "name": "notify_new_client",
+      "version": "1.0",
+      "namespace": "base44"
+    },
+    "do": [
+      {
+        "send_notification": {
+          "call": "invoke_backend_function",
+          "with": {
+            "function_name": "notifyNewClient",
+            "args": {
+              "client_id": "${ .trigger.entity_id }"
+            }
+          },
+          "then": "end",
+          "x-base44": {
+            "title": "Send email notification",
+            "description": "Email Martinique about the new client"
+          }
+        }
+      }
+    ]
+  }
+}
