@@ -93,7 +93,85 @@
     },
     "handoffIncomplete": {
       "type": "boolean",
-      "description": "True if post-conversion handoff checklist is not complete"
+      "description": "Legacy field \u2014 always false now since handover data is captured at creation"
+    },
+    "handover_status": {
+      "type": "string",
+      "enum": [
+        "Completed",
+        "Not Started"
+      ],
+      "default": "Not Started",
+      "description": "Whether the CS handover has been completed. Set to Completed when a client is created via the Confirm Deal modal."
+    },
+    "handover_completed_date": {
+      "type": "string",
+      "format": "date",
+      "description": "Date the handover was completed (set automatically on deal confirmation)"
+    },
+    "business_goals": {
+      "type": "string",
+      "description": "Client's main business goals \u2014 captured at deal confirmation"
+    },
+    "accountant_status": {
+      "type": "string",
+      "enum": [
+        "Internal",
+        "External",
+        "Eventwise"
+      ],
+      "description": "The client's current accountant setup (separate from whether our accounting add-on is included)"
+    },
+    "key_pain_points": {
+      "type": "string",
+      "description": "Pain points identified during the sales process"
+    },
+    "red_flags": {
+      "type": "string",
+      "description": "Any concerns or risks flagged during sales"
+    },
+    "next_steps": {
+      "type": "string",
+      "description": "Immediate next steps after handover"
+    },
+    "handover_priority_tier": {
+      "type": "string",
+      "enum": [
+        "Tier 1",
+        "Tier 2",
+        "Tier 3",
+        "Tier 4"
+      ],
+      "description": "Priority tier assigned at handover"
+    },
+    "main_features_demoed": {
+      "type": "string",
+      "description": "Which features were shown in the demo"
+    },
+    "what_resonated": {
+      "type": "string",
+      "description": "What got the client excited during the sales process"
+    },
+    "features_promised": {
+      "type": "string",
+      "description": "Features promised or included in the contract"
+    },
+    "uses_xero": {
+      "type": "boolean",
+      "description": "Whether the client already uses Xero"
+    },
+    "current_budgeting_tool": {
+      "type": "string",
+      "description": "The client's current budgeting tool (if any)"
+    },
+    "tech_admin_contact_name": {
+      "type": "string",
+      "description": "Technical / admin contact at the client"
+    },
+    "expected_go_live_date": {
+      "type": "string",
+      "format": "date",
+      "description": "Expected go-live date"
     },
     "noReplyLog": {
       "type": "string",

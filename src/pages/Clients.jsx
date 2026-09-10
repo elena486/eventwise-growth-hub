@@ -333,11 +333,7 @@ export default function Clients({ onViewHealth, onViewOnboarding, onViewDetail, 
                     <InlineCell value={c.name} onSave={save(c.id, 'name')} placeholder="Company name" className="font-semibold text-navy text-sm" />
                     <InlineCell value={c.contactName} onSave={save(c.id, 'contactName')} placeholder="Contact name" className="text-xs text-ew-muted mt-0.5" />
                     <InlineCell value={c.contactEmail} onSave={save(c.id, 'contactEmail')} placeholder="Email" className="text-xs text-ew-muted mt-0.5" />
-                    {c.handoffIncomplete && (
-                      <span className="inline-flex items-center gap-1 mt-1 text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-amber-50 text-amber-700 border border-amber-200">
-                        ⚠ Handoff incomplete
-                      </span>
-                    )}
+
                   </td>
                   )}
 

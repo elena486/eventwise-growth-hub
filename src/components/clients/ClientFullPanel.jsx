@@ -3,6 +3,7 @@ import ReactDOM from 'react-dom';
 import HealthScoreChip from '@/components/health/HealthScoreChip';
 import ContractDocuments from './ContractDocuments';
 import UsersTab from './UsersTab';
+import HandoverTab from './HandoverTab';
 import { base44 } from '@/api/base44Client';
 import { format, differenceInDays, isToday, isYesterday, isWithinInterval, startOfWeek, endOfWeek, startOfMonth, endOfMonth, subMonths, parseISO as parseDI } from 'date-fns';
 import {
@@ -67,6 +68,7 @@ const TABS = [
   { id: 'overview', label: 'Overview' },
   { id: 'activity', label: 'Activity Log' },
   { id: 'onboarding', label: 'Onboarding' },
+  { id: 'handover', label: 'Handover' },
   { id: 'health', label: 'Health' },
   { id: 'notes', label: 'Notes' },
   { id: 'bugs', label: 'Bugs' },
@@ -565,12 +567,7 @@ export default function ClientFullPanel({ client: initialClient, onClose, onUpda
                   </button>
                 </div>
               )}
-              {client.handoffIncomplete && (
-                <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 mb-4">
-                  <p className="text-sm font-semibold text-amber-800 mb-1">📋 Handoff incomplete</p>
-                  <p className="text-sm text-amber-700">The sales-to-CS handover checklist has not been fully completed for this client.</p>
-                </div>
-              )}
+
               <div className="border-t border-[#F3F4F6] pt-4 mt-4">
                 {deleteConfirm ? (
                   <div className="bg-red-50 border border-red-200 rounded-xl p-4">
@@ -623,6 +620,11 @@ export default function ClientFullPanel({ client: initialClient, onClose, onUpda
                 </div>
               )}
             </>
+          )}
+
+          {/* HANDOVER TAB */}
+          {activeTab === 'handover' && (
+            <HandoverTab client={client} onSave={autoSave} />
           )}
 
           {/* HEALTH TAB */}
