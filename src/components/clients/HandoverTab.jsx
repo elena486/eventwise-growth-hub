@@ -82,6 +82,21 @@ export default function HandoverTab({ client, onSave }) {
         </div>
 
         <div className="col-span-2">
+          <label className={labelCls}>Objections raised & how addressed</label>
+          <textarea className={`${ic} min-h-[80px] resize-none`} value={client.objections_raised_addressed || ''} onChange={e => onSave('objections_raised_addressed', e.target.value)} placeholder="—" />
+        </div>
+
+        <div>
+          <label className={labelCls}>Conversion risk</label>
+          <select className={ic} value={client.conversion_risk || ''} onChange={e => onSave('conversion_risk', e.target.value)}>
+            <option value="">— Not set —</option>
+            <option>Low</option>
+            <option>Medium</option>
+            <option>High</option>
+          </select>
+        </div>
+
+        <div className="col-span-2">
           <label className={labelCls}>Next steps</label>
           <textarea className={`${ic} min-h-[80px] resize-none`} value={client.next_steps || ''} onChange={e => onSave('next_steps', e.target.value)} placeholder="—" />
         </div>
@@ -123,6 +138,11 @@ export default function HandoverTab({ client, onSave }) {
         <div>
           <label className={labelCls}>Technical / admin contact name</label>
           <input className={ic} value={client.tech_admin_contact_name || ''} onChange={e => onSave('tech_admin_contact_name', e.target.value)} placeholder="—" />
+        </div>
+
+        <div className="col-span-2">
+          <label className={labelCls}>What would make them convert</label>
+          <textarea className={`${ic} min-h-[80px] resize-none`} value={client.what_would_make_them_convert || ''} onChange={e => onSave('what_would_make_them_convert', e.target.value)} placeholder="—" />
         </div>
       </div>
     </div>

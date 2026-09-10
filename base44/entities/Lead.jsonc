@@ -213,6 +213,7 @@
         "Proposal Sent",
         "Negotiation",
         "Closed Won",
+        "Closed \u2014 Converted to Trial",
         "Closed Lost",
         "On Hold"
       ],

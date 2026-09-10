@@ -59,6 +59,15 @@
       "type": "string",
       "description": "Trial length (e.g. '7 days', '14 days', '30 days', 'Custom') \u2014 set when converting a pipeline lead via Trial Kickoff"
     },
+    "trialEndDate": {
+      "type": "string",
+      "format": "date",
+      "description": "Calculated trial end date (start + length), editable \u2014 set when converting a pipeline lead via Trial Kickoff"
+    },
+    "trial_monthly_value": {
+      "type": "number",
+      "description": "Projected monthly value in GBP if the trial converts to a paid deal \u2014 captured at Trial Kickoff"
+    },
     "renewalDate": {
       "type": "string",
       "format": "date"
@@ -151,6 +160,23 @@
     "what_resonated": {
       "type": "string",
       "description": "What got the client excited during the sales process"
+    },
+    "objections_raised_addressed": {
+      "type": "string",
+      "description": "Objections raised during the trial and how they were addressed (trial-specific handover field)"
+    },
+    "conversion_risk": {
+      "type": "string",
+      "enum": [
+        "Low",
+        "Medium",
+        "High"
+      ],
+      "description": "Owner's read on the likelihood of this trial client converting to a paid deal (trial-specific)"
+    },
+    "what_would_make_them_convert": {
+      "type": "string",
+      "description": "What would make this trial client convert to a paid deal \u2014 the single most useful field for CS during a trial"
     },
     "features_promised": {
       "type": "string",

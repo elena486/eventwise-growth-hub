@@ -15,7 +15,7 @@ import { logActivity } from '@/lib/logActivity';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
-const STAGES = ['New Lead', 'Contacted', 'Discovery Call', 'Demo Booked', 'Proposal Sent', 'Negotiation', 'Closed Won', 'Closed Lost', 'On Hold'];
+const STAGES = ['New Lead', 'Contacted', 'Discovery Call', 'Demo Booked', 'Proposal Sent', 'Negotiation', 'Closed Won', 'Closed — Converted to Trial', 'Closed Lost', 'On Hold'];
 const PLANS = ['Starter', 'Growth', 'Scale', 'Professional', 'Custom'];
 const LEAD_OWNERS = ['Chris', 'Ramesh', 'Elena', 'George', 'Martinique', 'Sreeja', 'Eleanor'];
 const CONTRACT_LENGTHS = ['Monthly rolling', '6 months', '12 months', '24 months'];
@@ -1204,10 +1204,10 @@ export default function LeadDetailPanel({ lead, onClose, onUpdate, onDelete, onC
           onClose={() => setTrialHandoffEntry(null)}
           onConverted={(clientId) => {
             setTrialHandoffEntry(null);
-            const updated = { ...data, converted: true, converted_to_client_id: clientId, stage: 'Closed Won', convertedDate: new Date().toISOString() };
+            const updated = { ...data, converted: true, converted_to_client_id: clientId, stage: 'Closed — Converted to Trial', convertedDate: new Date().toISOString() };
             setData(updated);
             onUpdate(updated);
-            showToast('✓ Moved to Customer Success');
+            showToast('✓ Trial started — moved to Customer Success');
           }}
         />
       )}
