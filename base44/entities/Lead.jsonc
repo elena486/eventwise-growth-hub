@@ -264,6 +264,10 @@
       "type": "string",
       "description": "Linked deal record ID after conversion"
     },
+    "converted_to_client_id": {
+      "type": "string",
+      "description": "ID of the Customer Success client record created when this lead was converted to a Trial via Trial Kickoff"
+    },
     "lostReason": {
       "type": "string"
     }

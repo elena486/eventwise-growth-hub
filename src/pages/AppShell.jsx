@@ -260,6 +260,18 @@ export default function AppShell() {
 
   const setTab = (t) => setSearchParams({ tab: t });
 
+  // Listen for focus-navigate events from within panels (cross-links between Pipeline ↔ Customer Success)
+  useEffect(() => {
+    const handler = (e) => {
+      if (e.detail?.focusType && e.detail?.focusId) {
+        setSearchFocus(e.detail);
+        setSearchParams({ tab: e.detail.tab });
+      }
+    };
+    window.addEventListener('ew-focus-navigate', handler);
+    return () => window.removeEventListener('ew-focus-navigate', handler);
+  }, [setSearchParams]);
+
   // Close avatar dropdown on outside click
   useEffect(() => {
     const handler = (e) => {

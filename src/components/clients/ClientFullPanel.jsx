@@ -555,6 +555,16 @@ export default function ClientFullPanel({ client: initialClient, onClose, onUpda
                   </a>
                 </div>
               )}
+              {client.converted_from_lead_id && (
+                <div className="mb-4">
+                  <button
+                    onClick={() => window.dispatchEvent(new CustomEvent('ew-focus-navigate', { detail: { tab: 'pipeline', focusType: 'lead', focusId: client.converted_from_lead_id } }))}
+                    className="flex items-center gap-1.5 text-sm text-[#8403C5] hover:underline font-medium"
+                  >
+                    <ExternalLink className="w-3.5 h-3.5" /> View original pipeline lead →
+                  </button>
+                </div>
+              )}
               {client.handoffIncomplete && (
                 <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 mb-4">
                   <p className="text-sm font-semibold text-amber-800 mb-1">📋 Handoff incomplete</p>
@@ -697,7 +707,7 @@ export default function ClientFullPanel({ client: initialClient, onClose, onUpda
 
           {/* ACTIVITY LOG TAB */}
           {activeTab === 'activity' && (
-            <ActivityLogTab clientId={client.id} />
+            <ActivityLogTab clientId={client.id} pipelineActivityLog={client.activityLog} />
           )}
 
           {/* BUGS TAB */}
@@ -801,7 +811,73 @@ function ActivityEntryRow({ e }) {
   );
 }
 
-function ActivityLogTab({ clientId }) {
+function PipelineHistorySection({ entries }) {
+  const [expanded, setExpanded] = useState(false);
+  const sorted = [...entries].sort((a, b) => new Date(b.createdAt || b.datetime || b.date || 0) - new Date(a.createdAt || a.datetime || a.date || 0));
+
+  const typeIcon = (t) => ({
+    Call: '📞', Email: '✉️', Demo: '🎥', Meeting: '🤝',
+    LinkedIn: '💼', Note: '📝', 'Time logged': '⏱', 'Trial Kickoff': '🚀',
+  }[t] || '📝');
+
+  const typeStyle = (t) => ({
+    Call: 'bg-blue-100 text-blue-700',
+    Email: 'bg-gray-100 text-gray-600',
+    Demo: 'bg-purple-100 text-purple-700',
+    Meeting: 'bg-green-100 text-green-700',
+    LinkedIn: 'bg-[#DBEAFE] text-[#1D4ED8]',
+    Note: 'bg-amber-100 text-amber-700',
+    'Time logged': 'bg-[#FFFBEB] text-[#A16207]',
+    'Trial Kickoff': 'bg-orange-100 text-orange-700',
+  }[t] || 'bg-gray-100 text-gray-600');
+
+  const fmtTime = (d) => {
+    if (!d) return '';
+    try {
+      const dt = new Date(d);
+      const now = new Date();
+      const isToday = dt.toDateString() === now.toDateString();
+      const time = format(dt, 'HH:mm');
+      if (isToday) return `Today at ${time}`;
+      const isThisYear = dt.getFullYear() === now.getFullYear();
+      return format(dt, isThisYear ? 'd MMM' : 'd MMM yyyy') + ` at ${time}`;
+    } catch { return String(d); }
+  };
+
+  return (
+    <div className="mb-4 border border-[#EBEBF5] rounded-xl bg-[#FAFBFE] overflow-hidden">
+      <button onClick={() => setExpanded(v => !v)} className="w-full flex items-center justify-between px-3.5 py-2.5 hover:bg-[#F3E8FF]/30 transition-colors">
+        <span className="text-[11px] font-bold text-[#9CA3AF] uppercase tracking-[0.1em]">📋 Pipeline history (before conversion) — {entries.length} {entries.length === 1 ? 'entry' : 'entries'}</span>
+        <ChevronDown className={`w-3.5 h-3.5 text-[#9CA3AF] transition-transform ${expanded ? 'rotate-180' : ''}`} />
+      </button>
+      {expanded && (
+        <div className="px-3.5 pb-3 space-y-1.5">
+          {sorted.map(entry => (
+            <div key={entry.id} className="flex gap-2.5 py-1.5 border-t border-[#F3F4F6] first:border-t-0">
+              <div className="text-base shrink-0">{typeIcon(entry.type)}</div>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-1.5 mb-0.5 flex-wrap">
+                  <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full ${typeStyle(entry.type)}`}>{entry.type}</span>
+                  {entry.addedBy && <span className="text-[10px] text-[#9CA3AF]">{entry.addedBy}</span>}
+                  <span className="text-[10px] text-[#9CA3AF]">· {fmtTime(entry.createdAt || entry.datetime || entry.date)}</span>
+                </div>
+                <p className="text-xs text-[#374151] whitespace-pre-wrap">{entry.summary || entry.description || ''}</p>
+                {entry.type === 'Trial Kickoff' && (entry.trialStartDate || entry.trialLength) && (
+                  <div className="flex items-center gap-1 mt-0.5 flex-wrap">
+                    {entry.trialStartDate && <span className="text-[9px] font-semibold px-1.5 py-0.5 rounded-full bg-orange-100 text-orange-700">Starts {fmtDate(entry.trialStartDate)}</span>}
+                    {entry.trialLength && <span className="text-[9px] font-semibold px-1.5 py-0.5 rounded-full bg-[#EBEBF5] text-[#5777AB]">{entry.trialLength}</span>}
+                  </div>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function ActivityLogTab({ clientId, pipelineActivityLog }) {
   const [entries, setEntries] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filtersOpen, setFiltersOpen] = useState(false);
@@ -914,11 +990,13 @@ function ActivityLogTab({ clientId }) {
   const filteredTotal = filtered.reduce((s, e) => s + (e.durationMinutes || 0), 0);
   const periodLabel = dateFilter === 'this_week' ? 'this week' : dateFilter === 'this_month' ? 'this month' : dateFilter === 'last_month' ? 'last month' : dateFilter === 'custom' ? 'selected period' : 'all time';
 
+  const pipelineHistory = pipelineActivityLog ? (() => { try { const e = JSON.parse(pipelineActivityLog); return Array.isArray(e) && e.length > 0 ? e : null; } catch { return null; } })() : null;
+
   if (loading) {
     return <div className="flex items-center justify-center h-32"><div className="w-5 h-5 border-2 border-[#8403C5]/20 border-t-[#8403C5] rounded-full animate-spin" /></div>;
   }
 
-  if (entries.length === 0) {
+  if (entries.length === 0 && !pipelineHistory) {
     return (
       <div className="text-center py-12 border border-dashed border-[#E5E7EB] rounded-xl">
         <p className="text-sm text-[#6B7280]">No time has been logged against this client yet.</p>
@@ -926,9 +1004,22 @@ function ActivityLogTab({ clientId }) {
       </div>
     );
   }
+  if (entries.length === 0) {
+    return (
+      <div>
+        <PipelineHistorySection entries={pipelineHistory} />
+        <div className="text-center py-12 border border-dashed border-[#E5E7EB] rounded-xl">
+          <p className="text-sm text-[#6B7280]">No time has been logged against this client yet.</p>
+          <p className="text-xs text-[#9CA3AF] mt-1">Log time in Time & Capacity and select this client to see entries here.</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div>
+      {pipelineHistory && <PipelineHistorySection entries={pipelineHistory} />}
+
       {/* Last activity indicator */}
       {lastActivityDaysAgo !== null && (
         <div className={`flex items-center gap-2 mb-3 px-3 py-2 rounded-lg text-xs font-medium ${lastActivityDaysAgo === 0 ? 'bg-[#E8F7F2] text-[#1D9E75]' : lastActivityDaysAgo <= 7 ? 'bg-[#FFFBEB] text-[#A16207]' : 'bg-[#FEF2F2] text-[#DC2626]'}`}>

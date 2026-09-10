@@ -10,6 +10,7 @@ import MultiFileUpload from '@/components/shared/MultiFileUpload';
 import StageBadge from './Stagebadge';
 import PreDemoFormTab from './PreDemoFormTab';
 import SlackActivityLog from './SlackActivityLog';
+import TrialHandoffModal from './TrialHandoffModal';
 import { logActivity } from '@/lib/logActivity';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -196,7 +197,7 @@ function groupEntriesByDate(entries) {
   return groups;
 }
 
-function ActivityLog({ entries, onSave, currentUser }) {
+function ActivityLog({ entries, onSave, currentUser, onTrialKickoff }) {
   const [adding, setAdding] = useState(false);
   const [newEntry, setNewEntry] = useState({ type: 'Note', datetime: nowDateTimeLocal(), summary: '', addedBy: currentUser || 'Chris', transcriptLink: '', transcriptFileUrl: '', transcriptFileName: '', trialStartDate: '', trialLength: '' });
   const [editingId, setEditingId] = useState(null);
@@ -217,7 +218,11 @@ function ActivityLog({ entries, onSave, currentUser }) {
   const addEntry = () => {
     if (!canSave()) return;
     const iso = newEntry.datetime ? new Date(newEntry.datetime).toISOString() : new Date().toISOString();
-    onSave([{ ...newEntry, id: Date.now(), createdAt: iso }, ...entries]);
+    const saved = { ...newEntry, id: Date.now(), createdAt: iso };
+    onSave([saved, ...entries]);
+    if (newEntry.type === 'Trial Kickoff' && onTrialKickoff) {
+      onTrialKickoff({ ...saved });
+    }
     setAdding(false);
   };
 
@@ -595,6 +600,7 @@ export default function LeadDetailPanel({ lead, onClose, onUpdate, onDelete, onC
   const [markDoneMode, setMarkDoneMode] = useState(false);
   const [newNextAction, setNewNextAction] = useState('');
   const [newNextActionDue, setNewNextActionDue] = useState('');
+  const [trialHandoffEntry, setTrialHandoffEntry] = useState(null);
   const saveTimer = useRef(null);
   const isDirty = useRef(false);
   const dataRef = useRef(data);
@@ -762,6 +768,14 @@ export default function LeadDetailPanel({ lead, onClose, onUpdate, onDelete, onC
             </span>
           )}
           {data.converted && <span className="text-xs text-green-700 font-semibold bg-green-50 px-2.5 py-0.5 rounded-full">✓ Converted {data.convertedDate ? fmtDate(data.convertedDate) : ''}</span>}
+          {data.converted_to_client_id && (
+            <button
+              onClick={() => window.dispatchEvent(new CustomEvent('ew-focus-navigate', { detail: { tab: 'clients', focusType: 'client', focusId: data.converted_to_client_id } }))}
+              className="text-xs font-semibold text-[#8403C5] bg-[#F3E8FF] hover:bg-[#E9D5FF] px-2.5 py-0.5 rounded-full transition-colors"
+            >
+              View in Customer Success →
+            </button>
+          )}
           {!data.converted && data.stage !== 'Closed Won' && (
             <button onClick={() => onClosedWon({ ...data, stage: 'Closed Won' })} className="px-3 py-1 text-xs font-semibold bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors">🎉 Closed Won</button>
           )}
@@ -959,6 +973,7 @@ export default function LeadDetailPanel({ lead, onClose, onUpdate, onDelete, onC
             <ActivityLog
               entries={logEntries}
               currentUser={currentUserFirst}
+              onTrialKickoff={(entry) => setTrialHandoffEntry(entry)}
               onSave={entries => {
                 const mostRecent = entries[0];
                 const lastActivity = mostRecent?.createdAt || new Date().toISOString();
@@ -1179,6 +1194,22 @@ export default function LeadDetailPanel({ lead, onClose, onUpdate, onDelete, onC
             </div>
           </div>
         </div>
+      )}
+
+      {trialHandoffEntry && (
+        <TrialHandoffModal
+          lead={data}
+          entry={trialHandoffEntry}
+          currentUser={currentUserFirst}
+          onClose={() => setTrialHandoffEntry(null)}
+          onConverted={(clientId) => {
+            setTrialHandoffEntry(null);
+            const updated = { ...data, converted: true, converted_to_client_id: clientId, stage: 'Closed Won', convertedDate: new Date().toISOString() };
+            setData(updated);
+            onUpdate(updated);
+            showToast('✓ Moved to Customer Success');
+          }}
+        />
       )}
 
       {/* Delete confirm */}
