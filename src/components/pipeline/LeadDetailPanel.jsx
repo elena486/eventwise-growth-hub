@@ -11,6 +11,7 @@ import StageBadge from './Stagebadge';
 import PreDemoFormTab from './PreDemoFormTab';
 import SlackActivityLog from './SlackActivityLog';
 import TrialHandoffModal from './TrialHandoffModal';
+import DraftEmailModal from './DraftEmailModal';
 import { logActivity } from '@/lib/logActivity';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -197,7 +198,7 @@ function groupEntriesByDate(entries) {
   return groups;
 }
 
-function ActivityLog({ entries, onSave, currentUser, onTrialKickoff }) {
+function ActivityLog({ entries, onSave, currentUser, onTrialKickoff, onDraftEmail }) {
   const [adding, setAdding] = useState(false);
   const [newEntry, setNewEntry] = useState({ type: 'Note', datetime: nowDateTimeLocal(), summary: '', addedBy: currentUser || 'Chris', transcriptLink: '', transcriptFileUrl: '', transcriptFileName: '', trialStartDate: '', trialLength: '' });
   const [editingId, setEditingId] = useState(null);
@@ -255,10 +256,16 @@ function ActivityLog({ entries, onSave, currentUser, onTrialKickoff }) {
       <div className="flex items-center justify-between mb-4">
         <SectionTitle>Activity Log</SectionTitle>
         {!adding && (
-          <button onClick={() => openForm('Note')}
-            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-white bg-[#8403C5] hover:bg-[#7002A8] rounded-lg transition-colors">
-            <Plus className="w-3.5 h-3.5" /> Log activity
-          </button>
+          <div className="flex items-center gap-2">
+            <button onClick={() => onDraftEmail?.()}
+              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-[#8403C5] border border-[#8403C5]/30 bg-[#F3E8FF] hover:bg-[#E9D5FF] rounded-lg transition-colors">
+              ✉️ Draft follow-up email
+            </button>
+            <button onClick={() => openForm('Note')}
+              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-white bg-[#8403C5] hover:bg-[#7002A8] rounded-lg transition-colors">
+              <Plus className="w-3.5 h-3.5" /> Log activity
+            </button>
+          </div>
         )}
       </div>
 
@@ -601,6 +608,7 @@ export default function LeadDetailPanel({ lead, onClose, onUpdate, onDelete, onC
   const [newNextAction, setNewNextAction] = useState('');
   const [newNextActionDue, setNewNextActionDue] = useState('');
   const [trialHandoffEntry, setTrialHandoffEntry] = useState(null);
+  const [showDraftEmail, setShowDraftEmail] = useState(false);
   const saveTimer = useRef(null);
   const isDirty = useRef(false);
   const dataRef = useRef(data);
@@ -974,6 +982,7 @@ export default function LeadDetailPanel({ lead, onClose, onUpdate, onDelete, onC
               entries={logEntries}
               currentUser={currentUserFirst}
               onTrialKickoff={(entry) => setTrialHandoffEntry(entry)}
+              onDraftEmail={() => setShowDraftEmail(true)}
               onSave={entries => {
                 const mostRecent = entries[0];
                 const lastActivity = mostRecent?.createdAt || new Date().toISOString();
@@ -1194,6 +1203,19 @@ export default function LeadDetailPanel({ lead, onClose, onUpdate, onDelete, onC
             </div>
           </div>
         </div>
+      )}
+
+      {showDraftEmail && (
+        <DraftEmailModal
+          lead={data}
+          entries={logEntries}
+          currentUser={currentUserFirst}
+          onClose={() => setShowDraftEmail(false)}
+          onLogSent={(newEntry) => {
+            const updatedEntries = [newEntry, ...logEntries];
+            autoSave({ activityLog: JSON.stringify(updatedEntries), lastActivity: newEntry.createdAt });
+          }}
+        />
       )}
 
       {trialHandoffEntry && (
