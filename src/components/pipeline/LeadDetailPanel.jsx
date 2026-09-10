@@ -609,6 +609,7 @@ export default function LeadDetailPanel({ lead, onClose, onUpdate, onDelete, onC
   const [newNextActionDue, setNewNextActionDue] = useState('');
   const [trialHandoffEntry, setTrialHandoffEntry] = useState(null);
   const [showDraftEmail, setShowDraftEmail] = useState(false);
+  const [trialConfirm, setTrialConfirm] = useState(false);
   const saveTimer = useRef(null);
   const isDirty = useRef(false);
   const dataRef = useRef(data);
@@ -661,6 +662,31 @@ export default function LeadDetailPanel({ lead, onClose, onUpdate, onDelete, onC
   const handleMarkLost = async () => {
     autoSave({ stage: 'Closed Lost', lostReason });
     setLostPrompt(false);
+  };
+
+  const triggerTrialKickoff = () => {
+    const now = new Date().toISOString();
+    const newEntry = {
+      id: Date.now(),
+      type: 'Trial Kickoff',
+      summary: 'Trial kickoff triggered from header',
+      createdAt: now,
+      addedBy: currentUserFirst || 'Chris',
+      trialStartDate: todayStr(),
+      trialLength: '',
+    };
+    const updatedEntries = [newEntry, ...logEntries];
+    autoSave({ activityLog: JSON.stringify(updatedEntries), lastActivity: now });
+    setTrialHandoffEntry(newEntry);
+  };
+
+  const handleMoveToTrial = () => {
+    const hasExistingTrial = logEntries.some(e => e.type === 'Trial Kickoff');
+    if (hasExistingTrial) {
+      setTrialConfirm(true);
+      return;
+    }
+    triggerTrialKickoff();
   };
 
   const handleDelete = async () => {
@@ -786,6 +812,9 @@ export default function LeadDetailPanel({ lead, onClose, onUpdate, onDelete, onC
           )}
           {!data.converted && data.stage !== 'Closed Won' && (
             <button onClick={() => onClosedWon({ ...data, stage: 'Closed Won' })} className="px-3 py-1 text-xs font-semibold bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors">🎉 Closed Won</button>
+          )}
+          {!data.converted && !['Closed Won', 'Closed Lost', 'Closed — Converted to Trial'].includes(data.stage) && (
+            <button onClick={handleMoveToTrial} className="px-3 py-1 text-xs font-semibold bg-orange-500 text-white rounded-lg hover:bg-orange-600 transition-colors">🚀 Move to Trial</button>
           )}
           {data.lastActivity && <span className="text-[11px] text-ew-muted ml-auto">Updated {fmtDateTime(data.lastActivity)}</span>}
         </div>
@@ -1232,6 +1261,19 @@ export default function LeadDetailPanel({ lead, onClose, onUpdate, onDelete, onC
             showToast('✓ Trial started — moved to Customer Success');
           }}
         />
+      )}
+
+      {trialConfirm && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-[200] p-4" onClick={() => setTrialConfirm(false)}>
+          <div className="bg-white rounded-xl shadow-2xl w-full max-w-sm p-6" onClick={e => e.stopPropagation()}>
+            <h3 className="text-base font-bold text-navy mb-2">Trial Kickoff already logged</h3>
+            <p className="text-sm text-ew-body mb-5">This lead already has a Trial Kickoff activity. Do you want to proceed and start a new trial anyway?</p>
+            <div className="flex justify-end gap-3">
+              <button onClick={() => setTrialConfirm(false)} className="px-4 py-2 text-sm font-medium text-ew-body hover:bg-ew-bg rounded-lg">Cancel</button>
+              <button onClick={() => { setTrialConfirm(false); triggerTrialKickoff(); }} className="px-4 py-2 text-sm font-semibold bg-orange-500 text-white rounded-lg hover:bg-orange-600">Proceed with trial</button>
+            </div>
+          </div>
+        </div>
       )}
 
       {/* Delete confirm */}
