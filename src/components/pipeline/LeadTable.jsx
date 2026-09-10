@@ -23,6 +23,13 @@ function fmtMonth(val) {
 
 function fmt(n) { return '£' + Math.round(n || 0).toLocaleString('en-GB'); }
 
+function getTrialKickoff(lead) {
+  try {
+    const entries = JSON.parse(lead.activityLog || '[]');
+    return Array.isArray(entries) ? entries.find(e => e.type === 'Trial Kickoff') : null;
+  } catch { return null; }
+}
+
 function highlightText(text, query) {
   if (!query || !text) return text;
   const q = query.toLowerCase().trim();
@@ -207,6 +214,7 @@ const ALL_COLUMNS = [
   { key: 'plan', label: 'Plan' },
   { key: 'deal', label: 'Deal value' },
   { key: 'stage', label: 'Stage' },
+  { key: 'trial', label: 'Trial' },
   { key: 'probability', label: 'Probability %' },
   { key: 'expectedClose', label: 'Expected close' },
   { key: 'nextAction', label: 'Next action' },
@@ -215,7 +223,7 @@ const ALL_COLUMNS = [
   { key: 'accounting', label: 'Accounting service' },
 ];
 
-const DEFAULT_VISIBLE = ['company', 'owner', 'plan', 'deal', 'stage', 'probability', 'nextAction', 'activity', 'notes'];
+const DEFAULT_VISIBLE = ['company', 'owner', 'plan', 'deal', 'stage', 'trial', 'probability', 'nextAction', 'activity', 'notes'];
 
 // Undo Toast
 function UndoToast({ message, onUndo, onDismiss }) {
@@ -353,6 +361,19 @@ export default function LeadTable({ leads, onDelete, onProposal, onUpdateField, 
               displayEl={lead.stage ? <StageBadge stage={lead.stage} /> : null} placeholder="Set stage" />
           </td>
         )}
+        {show('trial') && (
+          <td className="px-4 py-3 min-w-[120px]">
+            {(() => {
+              const tk = getTrialKickoff(lead);
+              if (!tk) return <span className="text-xs text-ew-muted italic">—</span>;
+              return (
+                <span className="inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full bg-orange-100 text-orange-700 whitespace-nowrap">
+                  🚀 Trial{tk.trialStartDate ? ` · ${format(new Date(tk.trialStartDate), 'd MMM')}` : ''}
+                </span>
+              );
+            })()}
+          </td>
+        )}
         {show('probability') && (
           <td className="px-4 py-3 min-w-[80px]" onClick={e => e.stopPropagation()}>
             <InlineCell value={lead.probability} onSave={save(lead.id, 'probability')} type="number" min={0} max={100}
@@ -456,6 +477,7 @@ export default function LeadTable({ leads, onDelete, onProposal, onUpdateField, 
               {show('plan') && <Th label="Plan" />}
               {show('deal') && <Th label="Deal value" col="deal" />}
               {show('stage') && <Th label="Stage" col="stage" />}
+              {show('trial') && <Th label="Trial" />}
               {show('probability') && <Th label="Prob %" col="probability" />}
               {show('expectedClose') && <Th label="Expected close" />}
               {show('nextAction') && <Th label="Next action" />}

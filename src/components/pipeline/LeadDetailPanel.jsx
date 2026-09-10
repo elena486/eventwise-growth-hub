@@ -22,9 +22,10 @@ const INDUSTRIES = ['Festival', 'Event Organiser', 'Event Agency', 'Corporate Ev
 const HEARD_ABOUT = ['LinkedIn', 'Referral', 'Inbound', 'Outbound', 'Event', 'EPS (Event Production Show)', 'EBL (Event Buyers Live)', 'AAA (Access All Areas)', 'Other'];
 const ACCOUNTING_SERVICE_OPTIONS = ['Not included', 'Included in plan', 'Included in accounting service fee', 'Separate fee'];
 const ONBOARDING_PLANS = ['Basic', 'Standard', 'Enterprise', 'Option 1'];
-const LOG_TYPES = ['Call', 'Email', 'Demo', 'Meeting', 'LinkedIn', 'Note', 'Time logged'];
+const LOG_TYPES = ['Call', 'Email', 'Demo', 'Meeting', 'LinkedIn', 'Note', 'Time logged', 'Trial Kickoff'];
 const LOG_MEMBERS = ['Chris', 'Ramesh', 'George', 'Elena', 'Martinique', 'Sreeja', 'Eleanor'];
 const TRANSCRIPT_TYPES = ['Call', 'Meeting', 'Demo'];
+const TRIAL_LENGTHS = ['7 days', '14 days', '30 days', 'Custom'];
 
 const LOG_TYPE_ICONS = {
   Call: '📞',
@@ -34,6 +35,7 @@ const LOG_TYPE_ICONS = {
   LinkedIn: '💼',
   Note: '📝',
   'Time logged': '⏱',
+  'Trial Kickoff': '🚀',
 };
 const PROPOSAL_STATUSES = ['Not sent', 'Sent', 'Accepted', 'Declined'];
 
@@ -45,6 +47,7 @@ const LOG_TYPE_STYLES = {
   LinkedIn: 'bg-[#DBEAFE] text-[#1D4ED8]',
   Note: 'bg-amber-100 text-amber-700',
   'Time logged': 'bg-[#FFFBEB] text-[#A16207]',
+  'Trial Kickoff': 'bg-orange-100 text-orange-700',
 };
 
 function fmtActivityDate(isoOrDate) {
@@ -195,14 +198,14 @@ function groupEntriesByDate(entries) {
 
 function ActivityLog({ entries, onSave, currentUser }) {
   const [adding, setAdding] = useState(false);
-  const [newEntry, setNewEntry] = useState({ type: 'Note', datetime: nowDateTimeLocal(), summary: '', addedBy: currentUser || 'Chris', transcriptLink: '', transcriptFileUrl: '', transcriptFileName: '' });
+  const [newEntry, setNewEntry] = useState({ type: 'Note', datetime: nowDateTimeLocal(), summary: '', addedBy: currentUser || 'Chris', transcriptLink: '', transcriptFileUrl: '', transcriptFileName: '', trialStartDate: '', trialLength: '' });
   const [editingId, setEditingId] = useState(null);
   const [editDraft, setEditDraft] = useState({});
   const [deleteConfirm, setDeleteConfirm] = useState(null);
   const [uploadingFile, setUploadingFile] = useState(false);
 
   const openForm = (defaultType = 'Note') => {
-    setNewEntry({ type: defaultType, datetime: nowDateTimeLocal(), summary: '', addedBy: currentUser || 'Chris', transcriptLink: '', transcriptFileUrl: '', transcriptFileName: '' });
+    setNewEntry({ type: defaultType, datetime: nowDateTimeLocal(), summary: '', addedBy: currentUser || 'Chris', transcriptLink: '', transcriptFileUrl: '', transcriptFileName: '', trialStartDate: defaultType === 'Trial Kickoff' ? todayStr() : '', trialLength: '' });
     setAdding(true);
   };
 
@@ -305,6 +308,32 @@ function ActivityLog({ entries, onSave, currentUser }) {
                 <textarea className={ic + ' h-16 resize-none'} value={newEntry.summary || ''} onChange={e => setNewEntry(n => ({ ...n, summary: e.target.value }))} />
               </div>
             </>
+          ) : newEntry.type === 'Trial Kickoff' ? (
+            <>
+              <div>
+                <label className="block text-[11px] font-medium text-ew-muted mb-1">Notes <span className="text-red-400">*</span></label>
+                <textarea
+                  className={ic + ' h-24 resize-none'}
+                  value={newEntry.summary}
+                  onChange={e => setNewEntry(n => ({ ...n, summary: e.target.value }))}
+                  placeholder="What was covered in the kickoff? Goals, access, setup details..."
+                  rows={4}
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="block text-[11px] font-medium text-ew-muted mb-1">Trial start date</label>
+                  <input type="date" className={ic} value={newEntry.trialStartDate || ''} onChange={e => setNewEntry(n => ({ ...n, trialStartDate: e.target.value }))} />
+                </div>
+                <div>
+                  <label className="block text-[11px] font-medium text-ew-muted mb-1">Trial length</label>
+                  <select className={ic} value={newEntry.trialLength || ''} onChange={e => setNewEntry(n => ({ ...n, trialLength: e.target.value }))}>
+                    <option value="">Select…</option>
+                    {TRIAL_LENGTHS.map(l => <option key={l}>{l}</option>)}
+                  </select>
+                </div>
+              </div>
+            </>
           ) : (
             <div>
               <label className="block text-[11px] font-medium text-ew-muted mb-1">Summary <span className="text-red-400">*</span></label>
@@ -396,9 +425,24 @@ function ActivityLog({ entries, onSave, currentUser }) {
                             <input className={ic} value={editDraft.description || ''} onChange={e => setEditDraft(d => ({ ...d, description: e.target.value }))} placeholder="Task / Description" />
                           </>
                         ) : null}
+                        {editDraft.type === 'Trial Kickoff' && (
+                          <div className="grid grid-cols-2 gap-2">
+                            <div>
+                              <label className="text-[10px] text-ew-muted">Trial start</label>
+                              <input type="date" className={ic + ' text-xs py-1.5'} value={editDraft.trialStartDate || ''} onChange={e => setEditDraft(d => ({ ...d, trialStartDate: e.target.value }))} />
+                            </div>
+                            <div>
+                              <label className="text-[10px] text-ew-muted">Trial length</label>
+                              <select className={ic + ' text-xs py-1.5'} value={editDraft.trialLength || ''} onChange={e => setEditDraft(d => ({ ...d, trialLength: e.target.value }))}>
+                                <option value="">Select…</option>
+                                {TRIAL_LENGTHS.map(l => <option key={l}>{l}</option>)}
+                              </select>
+                            </div>
+                          </div>
+                        )}
                         <textarea className={ic + ' h-16 resize-none text-sm'}
                           value={editDraft.summary || ''}
-                          placeholder={editDraft.type === 'Time logged' ? 'Notes (optional)' : 'Summary'}
+                          placeholder={editDraft.type === 'Time logged' ? 'Notes (optional)' : editDraft.type === 'Trial Kickoff' ? 'Notes' : 'Summary'}
                           onChange={e => setEditDraft(d => ({ ...d, summary: e.target.value }))} />
                         {TRANSCRIPT_TYPES.includes(editDraft.type) && (
                           <input className={ic} value={editDraft.transcriptLink || ''} onChange={e => setEditDraft(d => ({ ...d, transcriptLink: e.target.value }))} placeholder="Transcript link (https://…)" />
@@ -426,6 +470,16 @@ function ActivityLog({ entries, onSave, currentUser }) {
                               {entry.description && <p className="text-sm text-ew-body font-medium">{entry.description}</p>}
                               {entry.summary && <p className="text-xs text-ew-muted mt-0.5">{entry.summary}</p>}
                             </div>
+                          ) : entry.type === 'Trial Kickoff' ? (
+                            <div>
+                              <p className="text-sm text-ew-body whitespace-pre-wrap">{entry.summary || ''}</p>
+                              {(entry.trialStartDate || entry.trialLength) && (
+                                <div className="flex items-center gap-1.5 mt-1 flex-wrap">
+                                  {entry.trialStartDate && <span className="inline-block text-[10px] font-semibold px-2 py-0.5 rounded-full bg-orange-100 text-orange-700">Starts {fmtDate(entry.trialStartDate)}</span>}
+                                  {entry.trialLength && <span className="inline-block text-[10px] font-semibold px-2 py-0.5 rounded-full bg-[#EBEBF5] text-[#5777AB]">{entry.trialLength}</span>}
+                                </div>
+                              )}
+                            </div>
                           ) : (
                             <p className="text-sm text-ew-body whitespace-pre-wrap">{entry.summary || entry.label || entry.description || ''}</p>
                           )}
@@ -451,7 +505,7 @@ function ActivityLog({ entries, onSave, currentUser }) {
                             onClick={() => {
                               setEditingId(entry.id);
                               const dtVal = entry.createdAt ? format(new Date(entry.createdAt), "yyyy-MM-dd'T'HH:mm") : (entry.datetime || entry.date || '');
-                              setEditDraft({ type: entry.type, datetime: dtVal, summary: entry.summary || '', category: entry.category || '', duration: entry.duration || '', description: entry.description || '', transcriptLink: entry.transcriptLink || '', transcriptFileUrl: entry.transcriptFileUrl || '', transcriptFileName: entry.transcriptFileName || '' });
+                              setEditDraft({ type: entry.type, datetime: dtVal, summary: entry.summary || '', category: entry.category || '', duration: entry.duration || '', description: entry.description || '', transcriptLink: entry.transcriptLink || '', transcriptFileUrl: entry.transcriptFileUrl || '', transcriptFileName: entry.transcriptFileName || '', trialStartDate: entry.trialStartDate || '', trialLength: entry.trialLength || '' });
                             }}
                             className="p-1 text-ew-muted hover:text-navy rounded"><Pencil className="w-3 h-3" /></button>
                           <button onClick={() => setDeleteConfirm(entry.id)}
