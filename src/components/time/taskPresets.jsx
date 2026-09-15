@@ -22,6 +22,12 @@ export const TASK_PRESETS = {
     'CS reporting & tracking',
     'Client relationship call',
     'Chasing outstanding items from client',
+    'Loading budgets',
+    'Ticket counts',
+    'Setting up accounts',
+    'Emailing clients',
+    'Drafts',
+    'Setting up customer success procedures',
   ],
   'Marketing & Content': [
     'LinkedIn content creation',
