@@ -122,7 +122,7 @@ export default function DraftEmailModal({ lead, entries, currentUser, onClose, o
               {/* Body */}
               <div>
                 <label className="block text-[11px] font-semibold text-ew-muted uppercase tracking-[0.08em] mb-1">Body</label>
-                <textarea className={inputCls + ' min-h-[280px] resize-y'} value={body} onChange={e => setBody(e.target.value)} />
+                <textarea className={inputCls + ' min-h-[280px] resize-y whitespace-pre-wrap leading-relaxed'} value={body} onChange={e => setBody(e.target.value)} />
               </div>
             </div>
           )}
