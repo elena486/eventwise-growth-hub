@@ -257,7 +257,7 @@ export default function ProposalChatPanel({ form, setForm, leads = [] }) {
       {!isOpen && (
         <button
           onClick={() => setIsOpen(true)}
-          className="fixed bottom-6 right-6 z-40 flex items-center gap-2 px-4 py-3 bg-[#8403C5] text-white rounded-full shadow-lg hover:bg-[#7002A8] transition-colors"
+          className="fixed bottom-4 right-4 md:bottom-6 md:right-6 z-40 flex items-center gap-2 px-4 py-3 bg-[#8403C5] text-white rounded-full shadow-lg hover:bg-[#7002A8] transition-colors"
         >
           <MessageSquare className="w-5 h-5" />
           <span className="text-sm font-semibold">AI Edit</span>
@@ -266,7 +266,7 @@ export default function ProposalChatPanel({ form, setForm, leads = [] }) {
 
       {/* Chat panel */}
       {isOpen && (
-        <div className="fixed bottom-6 right-6 z-50 w-[380px] h-[600px] max-h-[calc(100vh-48px)] bg-white rounded-2xl shadow-2xl border border-ew-border flex flex-col overflow-hidden animate-modal-in">
+        <div className="fixed bottom-4 right-4 md:bottom-6 md:right-6 z-50 w-[calc(100vw-32px)] max-w-[380px] h-[calc(100vh-32px)] max-h-[600px] bg-white rounded-2xl shadow-2xl border border-ew-border flex flex-col overflow-hidden animate-modal-in">
           {/* Header */}
           <div className="flex items-center justify-between px-4 py-3 border-b border-ew-border bg-[#8403C5] shrink-0">
             <div className="flex items-center gap-2">

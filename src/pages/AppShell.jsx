@@ -32,7 +32,7 @@ import ClientFullPanel from '@/components/clients/ClientFullPanel';
 import { useDarkMode } from '@/hooks/useDarkMode';
 import useAutoRefresh from '@/hooks/useAutoRefresh';
 import AutoRefreshToast from '@/components/AutoRefreshToast';
-import { Moon, Sun, LogOut, ChevronDown, Settings, Search, HelpCircle, Clock, RefreshCw } from 'lucide-react';
+import { Moon, Sun, LogOut, ChevronDown, Settings, Search, HelpCircle, Clock, RefreshCw, Menu, X } from 'lucide-react';
 import NotificationBell from '@/components/NotificationBell';
 import PostRefreshBanner from '@/components/PostRefreshBanner';
 import FirstVisitModal from '@/components/FirstVisitModal';
@@ -106,6 +106,7 @@ export default function AppShell() {
   const [dark, setDark] = useDarkMode();
   const { showWarning, countdown, reload, dismiss } = useAutoRefresh();
   const [avatarOpen, setAvatarOpen] = useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   // Changelog / what's new state (separate from the notification bell)
   const [changelogEntries, setChangelogEntries] = useState([]);
@@ -317,8 +318,16 @@ export default function AppShell() {
     <div className="flex flex-col h-screen font-dm overflow-hidden">
       <UpdateBanner />
       {/* Top nav */}
-      <nav className="bg-[#0F0F1A] shrink-0 px-6 flex items-center justify-between h-[52px] border-b border-[#1E1E32]">
-        <div className="flex items-center gap-6 min-w-0">
+      <nav className="bg-[#0F0F1A] shrink-0 px-4 md:px-6 flex items-center justify-between h-[52px] border-b border-[#1E1E32]">
+        <div className="flex items-center gap-2 md:gap-6 min-w-0">
+          {/* Mobile menu button */}
+          <button
+            onClick={() => setMobileMenuOpen(true)}
+            className="md:hidden p-2 -ml-2 text-[#8B8FA8] hover:text-white rounded-lg hover:bg-white/5 transition-colors"
+            title="Menu"
+          >
+            <Menu className="w-5 h-5" />
+          </button>
           {/* Logo + HQ dropdown */}
           <div className="relative flex items-center gap-2.5 shrink-0" ref={hqRef}>
             <button onClick={() => setSearchParams({})} className="shrink-0" title="Dashboard">
@@ -405,7 +414,7 @@ export default function AppShell() {
           </button>
 
           {/* Group tabs */}
-          <div className="flex items-center gap-1 overflow-x-auto" style={{ scrollbarWidth: 'none' }}>
+          <div className="hidden md:flex items-center gap-1 overflow-x-auto" style={{ scrollbarWidth: 'none' }}>
             {GROUPS.map(g => (
               <button
                 key={g.id}
@@ -429,12 +438,12 @@ export default function AppShell() {
         <div className="flex items-center gap-2 shrink-0 ml-4">
           <button
             onClick={() => window.location.reload()}
-            className="p-2 text-[#8B8FA8] hover:text-white rounded-lg hover:bg-white/5 transition-colors"
+            className="hidden md:block p-2 text-[#8B8FA8] hover:text-white rounded-lg hover:bg-white/5 transition-colors"
             title="Refresh app"
           >
             <RefreshCw className="w-4 h-4" />
           </button>
-          <NavTimer onStopAndLog={() => setSearchParams({ tab: 'time-log' })} onLogTime={() => setLogTimeTrigger(n => n + 1)} />
+          <div className="hidden md:block"><NavTimer onStopAndLog={() => setSearchParams({ tab: 'time-log' })} onLogTime={() => setLogTimeTrigger(n => n + 1)} /></div>
           <NotificationBell
             currentUserName={user?.full_name?.split(' ')[0] || ''}
             onNavigate={(tabId, recordId) => {
@@ -532,7 +541,7 @@ export default function AppShell() {
 
       {/* Sub-nav — skip for dashboard */}
       {tab !== 'dashboard' && activeGroup.tabs.length > 1 && (
-        <div className="bg-white border-b border-[#F0F0F0] shrink-0 px-6 flex items-center gap-1 h-10">
+        <div className="bg-white border-b border-[#F0F0F0] shrink-0 px-4 md:px-6 flex items-center gap-1 h-10 overflow-x-auto" style={{ scrollbarWidth: 'none' }}>
           {activeGroup.tabs.filter(t => {
             const isAdmin = (user?.email || '').toLowerCase().includes('elena') || (user?.email || '').toLowerCase().includes('chris');
             if (t.id === 'time-templates' && !isAdmin) return false;
@@ -611,7 +620,7 @@ export default function AppShell() {
       {/* Shortcut hint button */}
       <button
         onClick={() => setShortcutsModalOpen(true)}
-        className="fixed bottom-5 right-5 w-9 h-9 flex items-center justify-center rounded-full bg-white border border-[#F0F0F0] text-[#9CA3AF] hover:text-[#0F0F1A] hover:border-[#E5E7EB] transition-all z-40"
+        className="hidden md:flex fixed bottom-5 right-5 w-9 h-9 items-center justify-center rounded-full bg-white border border-[#F0F0F0] text-[#9CA3AF] hover:text-[#0F0F1A] hover:border-[#E5E7EB] transition-all z-40"
         title="Keyboard shortcuts (⌘/)"
       >
         <HelpCircle className="w-4 h-4" />
@@ -659,6 +668,44 @@ export default function AppShell() {
           onSuccess={() => { setPasswordModalOpen(false); setTab('time-activity'); }}
           onClose={() => setPasswordModalOpen(false)}
         />
+      )}
+
+      {/* Mobile menu drawer */}
+      {mobileMenuOpen && (
+        <div className="md:hidden fixed inset-0 z-[100]">
+          <div className="absolute inset-0 bg-black/50" onClick={() => setMobileMenuOpen(false)} />
+          <div className="absolute left-0 top-0 bottom-0 w-[280px] bg-[#0F0F1A] overflow-y-auto animate-modal-in">
+            <div className="flex items-center justify-between px-4 h-[52px] border-b border-[#1E1E32]">
+              <img src={LOGO_WHITE} alt="Eventwise" className="h-4" />
+              <button onClick={() => setMobileMenuOpen(false)} className="p-2 text-[#8B8FA8] hover:text-white rounded-lg hover:bg-white/5 transition-colors">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="py-2">
+              {GROUPS.map(g => (
+                <div key={g.id} className="border-b border-[#1E1E32]">
+                  <p className="px-4 py-2 text-[10px] font-bold text-[#8B8FA8] uppercase tracking-[0.08em]">{g.label}</p>
+                  {g.tabs.filter(t => {
+                    const isAdmin = (user?.email || '').toLowerCase().includes('elena') || (user?.email || '').toLowerCase().includes('chris');
+                    if (t.id === 'time-templates' && !isAdmin) return false;
+                    if (t.id === 'time-overview' && !isAdmin) return false;
+                    return true;
+                  }).map(t => (
+                    <button
+                      key={t.id}
+                      onClick={() => { setTab(t.id); setMobileMenuOpen(false); }}
+                      className={`w-full text-left px-4 py-2.5 text-sm font-medium transition-colors ${
+                        tab === t.id ? 'text-white bg-white/10' : 'text-[#8B8FA8] hover:text-white hover:bg-white/5'
+                      }`}
+                    >
+                      {t.label}
+                    </button>
+                  ))}
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );
