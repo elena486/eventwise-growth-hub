@@ -99,7 +99,60 @@ RULES:
 - summary_lines: human-readable bullet points of each change, e.g. ["Plan → Business (£799/mo)", "Contact → Sarah Jones (sarah@festival.com)"].
 - For accountingServices, always return all 8 elements representing the new state.
 
+SCOPE DETECTION — MULTIPLE COMPANIES:
+This proposal represents a SINGLE company at a time. Before mapping any fields, check if the request implies a second or different company/client/proposal rather than an edit to the current one. Trigger phrases include (not exhaustive): "a different company," "another client," "a second package for," "add another proposal for," "for another company," "create a separate proposal for."
+
+If detected, set response_type to "clarify" with NO changes, and use this exact message format:
+"This proposal is set up for a single company at a time — right now it's for [${form.companyName || 'not yet set'}]. To create a package for a different company, you'll need to start a new proposal rather than editing this one. Want me to leave this proposal as-is?"
+
 User request: "${request}"`;
+}
+
+function formatFieldValue(field, value) {
+  if (value === undefined || value === null || value === '') return 'Not set';
+  switch (field) {
+    case 'plan': return PLAN_LABELS[value] || value;
+    case 'onboarding': return ONBOARDING_LABELS[value] || value;
+    case 'accountingServiceType': return SERVICE_TYPE_LABELS[value] || value;
+    case 'customPrice': return `£${value}/mo`;
+    case 'accountingPrice': return `£${value}/yr`;
+    case 'showAllOnboarding': return value ? 'Yes' : 'No';
+    default: return String(value);
+  }
+}
+
+function buildBeforeAfter(form, changes) {
+  const lines = [];
+  const fieldMap = [
+    { key: 'companyName', label: 'Company' },
+    { key: 'contactName', label: 'Contact name' },
+    { key: 'contactEmail', label: 'Contact email' },
+    { key: 'date', label: 'Month/Year' },
+    { key: 'validUntil', label: 'Valid until' },
+    { key: 'plan', label: 'Plan' },
+    { key: 'customPrice', label: 'Custom price' },
+    { key: 'accountingServiceType', label: 'Accounting service type' },
+    { key: 'accountingPrice', label: 'Accounting price' },
+    { key: 'onboarding', label: 'Onboarding' },
+    { key: 'showAllOnboarding', label: 'Show all onboarding packages' },
+    { key: 'notes', label: 'Notes' },
+  ];
+
+  fieldMap.forEach(({ key, label }) => {
+    if (changes[key] !== undefined) {
+      lines.push({ label, before: formatFieldValue(key, form[key]), after: formatFieldValue(key, changes[key]) });
+    }
+  });
+
+  if (Array.isArray(changes.accountingServices) && changes.accountingServices.length === 8) {
+    DEFAULT_ACCOUNTING_SERVICES.forEach((s, i) => {
+      if (form.accountingServices[i] !== changes.accountingServices[i]) {
+        lines.push({ label: s, before: form.accountingServices[i] ? 'ON' : 'OFF', after: changes.accountingServices[i] ? 'ON' : 'OFF' });
+      }
+    });
+  }
+
+  return lines;
 }
 
 export default function ProposalChatPanel({ form, setForm, leads = [] }) {
@@ -164,11 +217,18 @@ export default function ProposalChatPanel({ form, setForm, leads = [] }) {
       });
 
       if (result.response_type === 'apply' && result.changes) {
+        const beforeAfterLines = buildBeforeAfter(form, result.changes);
+        const companyIsChanging = result.changes.companyName !== undefined
+          && form.companyName
+          && form.companyName !== result.changes.companyName;
         setPendingChange({
           changes: result.changes,
           summaryLines: result.summary_lines || [],
+          beforeAfterLines,
           companyIsNew: result.changes.companyIsNew,
           companyName: result.changes.companyName,
+          companyIsChanging,
+          oldCompanyName: form.companyName,
         });
       } else {
         setMessages(prev => [...prev, { role: 'assistant', content: result.message || 'I couldn\'t process that request.' }]);
@@ -258,13 +318,21 @@ export default function ProposalChatPanel({ form, setForm, leads = [] }) {
                   <span className="text-sm font-semibold text-navy">Proposed changes</span>
                 </div>
                 <div className="space-y-1.5">
-                  {pendingChange.summaryLines.map((line, i) => (
-                    <div key={i} className="flex items-start gap-2 text-sm text-ew-body">
-                      <span className="text-[#1D9E75] font-bold mt-0.5 shrink-0">→</span>
-                      <span>{line}</span>
+                  {pendingChange.beforeAfterLines.map((line, i) => (
+                    <div key={i} className="text-sm text-ew-body leading-relaxed">
+                      <span className="font-medium text-ew-muted">{line.label}:</span>{' '}
+                      <span className="text-ew-muted line-through">{line.before}</span>{' '}
+                      <span className="text-[#1D9E75] font-bold">→</span>{' '}
+                      <span className="font-medium text-navy">{line.after}</span>
                     </div>
                   ))}
                 </div>
+                {pendingChange.companyIsChanging && (
+                  <div className="flex items-start gap-2 text-xs text-red-700 bg-red-50 border border-red-200 rounded-lg px-3 py-2">
+                    <AlertCircle className="w-3.5 h-3.5 shrink-0 mt-0.5" />
+                    <span>⚠ This will change the proposal's company from "{pendingChange.oldCompanyName}" to "{pendingChange.companyName}" — all other fields will stay as they are for the new company. Confirm this is intended.</span>
+                  </div>
+                )}
                 {pendingChange.companyIsNew && (
                   <div className="flex items-start gap-2 text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
                     <AlertCircle className="w-3.5 h-3.5 shrink-0 mt-0.5" />
