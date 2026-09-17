@@ -4,6 +4,7 @@ import ProposalDocument from './ProposalDocument';
 import { PLANS, DEFAULT_ACCOUNTING_SERVICES, ONBOARDING_PACKAGES, ONBOARDING_FEATURES } from '@/lib/proposalData';
 import { format, addDays } from 'date-fns';
 import { base44 } from '@/api/base44Client';
+import ProposalChatPanel from './ProposalChatPanel';
 
 const UPDATED_PLAN_FEATURES = {
   starter: [
@@ -505,6 +506,9 @@ export default function ProposalGeneratorInner({ handoff, onHandoffConsumed }) {
           </div>
         </div>
       )}
+
+      {/* AI Chat Edit Panel */}
+      <ProposalChatPanel form={form} setForm={setForm} leads={leads} />
     </div>
   );
 }
