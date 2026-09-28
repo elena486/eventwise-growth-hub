@@ -128,25 +128,45 @@ export function generateReportPDF(reportData, aiSummary) {
   const doc = new jsPDF({ format: 'a4', unit: 'mm', orientation: 'portrait' });
   const pageW = 210, pageH = 297, margin = 20;
   const usableW = pageW - 2 * margin;
+  const hoursW = 25;
+  const titleW = usableW - hoursW;
   let y = margin;
-
-  // Header
-  doc.setFont('helvetica', 'bold'); doc.setFontSize(18); doc.setTextColor(...C.purple);
-  doc.text('Eventwise', margin, y + 7);
-  doc.setFont('helvetica', 'normal'); doc.setFontSize(13); doc.setTextColor(...C.navy);
-  doc.text('Weekly Report', margin, y + 14);
   const name = reportData.isWholeTeam ? 'Whole Team' : Object.keys(reportData.reportByPerson)[0];
-  doc.setFont('helvetica', 'bold'); doc.setFontSize(11); doc.setTextColor(...C.navy);
-  doc.text(name, margin, y + 20);
-  doc.setFont('helvetica', 'normal'); doc.setFontSize(10); doc.setTextColor(...C.grey);
-  doc.text(`${format(reportData.weekStart, 'd MMM')} – ${format(reportData.weekEnd, 'd MMM yyyy')}`, margin, y + 25);
-  doc.setFontSize(9); doc.setTextColor(...C.lightGrey);
-  doc.text(`Generated ${format(new Date(), 'd MMM yyyy')}`, margin, y + 30);
-  doc.setDrawColor(...C.border); doc.setLineWidth(0.3);
-  doc.line(margin, y + 33, margin + usableW, y + 33);
-  y += 38;
+  const weekLabel = `${format(reportData.weekStart, 'd MMM')} – ${format(reportData.weekEnd, 'd MMM yyyy')}`;
 
-  // Stat tiles
+  // Running header for continuation pages
+  const drawRunningHeader = () => {
+    doc.setFont('helvetica', 'normal'); doc.setFontSize(9); doc.setTextColor(...C.lightGrey);
+    doc.text(`${name} — ${weekLabel}`, margin, margin + 5);
+    doc.setDrawColor(...C.border); doc.setLineWidth(0.3);
+    doc.line(margin, margin + 8, margin + usableW, margin + 8);
+  };
+
+  // Page break helper — never splits a block
+  const ensureSpace = (needed) => {
+    const fullPageH = pageH - 2 * margin - 12;
+    if (needed > fullPageH) {
+      if (y > margin + 12) { doc.addPage(); drawRunningHeader(); y = margin + 12; }
+      return;
+    }
+    if (y + needed > pageH - margin - 10) { doc.addPage(); drawRunningHeader(); y = margin + 12; }
+  };
+
+  // ── Main header (first page only) ──
+  doc.setFont('helvetica', 'bold'); doc.setFontSize(18); doc.setTextColor(...C.purple);
+  doc.text('Eventwise', margin, y + 6); y += 8;
+  doc.setFont('helvetica', 'normal'); doc.setFontSize(13); doc.setTextColor(...C.navy);
+  doc.text('Weekly Report', margin, y + 5); y += 7;
+  doc.setFont('helvetica', 'bold'); doc.setFontSize(11); doc.setTextColor(...C.navy);
+  doc.text(name, margin, y + 4); y += 6;
+  doc.setFont('helvetica', 'normal'); doc.setFontSize(10); doc.setTextColor(...C.grey);
+  doc.text(weekLabel, margin, y + 4); y += 5;
+  doc.setFontSize(9); doc.setTextColor(...C.lightGrey);
+  doc.text(`Generated ${format(new Date(), 'd MMM yyyy')}`, margin, y + 3); y += 5;
+  doc.setDrawColor(...C.border); doc.setLineWidth(0.3);
+  doc.line(margin, y, margin + usableW, y); y += 6;
+
+  // ── Stat tiles ──
   const stats = getStats(reportData);
   const prev = getPrevStats(reportData);
   const tiles = [
@@ -169,148 +189,162 @@ export function generateReportPDF(reportData, aiSummary) {
       doc.text(tile.delta, x + tileW / 2, y + 21, { align: 'center' });
     }
   });
-  y += tileH + 6;
+  y += tileH + 8;
 
-  // Summary
+  // ── Summary (shaded box, sized to fit wrapped text) ──
   if (aiSummary) {
-    if (y + 20 > pageH - 20) { doc.addPage(); y = margin; }
+    // Set font BEFORE splitTextToSize so wrapping matches render size
+    doc.setFont('helvetica', 'normal'); doc.setFontSize(10);
     const lines = doc.splitTextToSize(aiSummary, usableW - 10);
-    const boxH = 8 + lines.length * 5 + 4;
+    const padding = 5, headingH = 6, textLineH = 4.5;
+    const boxH = padding + headingH + lines.length * textLineH + padding;
+    ensureSpace(boxH + 6);
     doc.setFillColor(...C.shadeBg);
     doc.roundedRect(margin, y, usableW, boxH, 2, 2, 'F');
     doc.setFont('helvetica', 'bold'); doc.setFontSize(11); doc.setTextColor(...C.navy);
-    doc.text('Summary', margin + 4, y + 6);
+    doc.text('Summary', margin + 4, y + padding + 4);
     doc.setFont('helvetica', 'normal'); doc.setFontSize(10); doc.setTextColor(...C.grey);
-    doc.text(lines, margin + 4, y + 12);
-    y += boxH + 5;
+    lines.forEach((line, i) => {
+      doc.text(line, margin + 4, y + padding + headingH + 4 + i * textLineH);
+    });
+    y += boxH + 8;
   }
 
   if (reportData.isWholeTeam) {
-    // Person cards
+    // ── Person cards (each kept on one page) ──
     for (const [person, report] of Object.entries(reportData.reportByPerson)) {
       const lines = [];
       report.done.slice(0, 3).forEach(t => lines.push(t.title));
       if (lines.length < 3) report.inProgress.slice(0, 3 - lines.length).forEach(t => lines.push(t.title));
-      const cardH = 8 + 5 + lines.length * 4 + (report.blocked.length > 0 ? 5 : 0) + 5;
-      if (y + cardH > pageH - 15) { doc.addPage(); y = margin; }
+      let cardH = 5 + 5 + 5 + lines.length * 4 + (report.blocked.length > 0 ? 5 : 0) + 5;
+      ensureSpace(cardH + 4);
       doc.setDrawColor(...C.border); doc.setLineWidth(0.3);
       doc.roundedRect(margin, y, usableW, cardH, 2, 2, 'S');
       let iy = y + 5;
       doc.setFont('helvetica', 'bold'); doc.setFontSize(12); doc.setTextColor(...C.navy);
-      doc.text(person, margin + 4, iy); iy += 5;
+      doc.text(person, margin + 4, iy + 3); iy += 5;
       doc.setFont('helvetica', 'normal'); doc.setFontSize(10); doc.setTextColor(...C.purple);
-      doc.text(`${formatDuration(report.stats.hoursLogged)} logged | ${report.stats.completed} completed`, margin + 4, iy); iy += 5;
+      doc.text(`${formatDuration(report.stats.hoursLogged)} logged | ${report.stats.completed} completed`, margin + 4, iy + 3); iy += 5;
       doc.setFontSize(9); doc.setTextColor(...C.grey);
-      lines.forEach(l => { doc.text(l, margin + 4, iy); iy += 4; });
+      lines.forEach(l => { doc.text(l, margin + 4, iy + 3); iy += 4; });
       if (report.blocked.length > 0) {
         doc.setTextColor(...C.red);
-        doc.text(`Blocked: ${report.blocked.map(t => t.title).join(', ')}`, margin + 4, iy);
+        doc.text(`Blocked: ${report.blocked.map(t => t.title).join(', ')}`, margin + 4, iy + 3);
       }
       y += cardH + 4;
     }
   } else {
-    // Individual sections
+    // ── Individual sections ──
     const report = Object.values(reportData.reportByPerson)[0];
 
     const drawSection = (title, rows, opts = {}) => {
-      const headingH = 7;
-      const rowH = 5;
-      let sectionH = headingH;
+      // Compute section height by pre-wrapping all text
+      let sectionH = 8; // heading + gap
       rows.forEach(r => {
-        sectionH += rowH;
-        if (r.outcome) sectionH += 4;
+        doc.setFont('helvetica', 'normal'); doc.setFontSize(10);
+        const tw = r.right ? titleW : usableW;
+        const tl = doc.splitTextToSize(r.title, tw);
+        sectionH += tl.length * 4.5 + 2;
+        if (r.outcome) {
+          doc.setFont('helvetica', 'italic'); doc.setFontSize(9);
+          const ol = doc.splitTextToSize(r.outcome, usableW - 4);
+          sectionH += ol.length * 4 + 2;
+        }
       });
-      sectionH += 4;
-      if (y + sectionH > pageH - 15) { doc.addPage(); y = margin; }
+      if (opts.footer) sectionH += 5;
+      sectionH += 8; // gap after section
+      ensureSpace(sectionH);
+
+      // Draw heading
       doc.setFont('helvetica', 'bold'); doc.setFontSize(11); doc.setTextColor(...C.purple);
-      doc.text(title, margin, y + 5);
-      let ry = y + headingH;
-      doc.setFont('helvetica', 'normal'); doc.setFontSize(10); doc.setTextColor(...C.navy);
+      doc.text(title, margin, y + 4);
+      y += 8; // advance past heading + gap before content
+
+      // Draw rows
       rows.forEach(r => {
-        doc.text(r.title, margin, ry);
-        if (r.right) doc.text(r.right, margin + usableW, ry, { align: 'right' });
-        ry += rowH;
+        doc.setFont('helvetica', 'normal'); doc.setFontSize(10); doc.setTextColor(...C.navy);
+        const tw = r.right ? titleW : usableW;
+        const tl = doc.splitTextToSize(r.title, tw);
+        tl.forEach((line, i) => {
+          doc.text(line, margin, y + 3);
+          if (i === tl.length - 1 && r.right) {
+            doc.text(r.right, margin + usableW, y + 3, { align: 'right' });
+          }
+          y += 4.5;
+        });
+        y += 2; // row spacing
         if (r.outcome) {
           doc.setFont('helvetica', 'italic'); doc.setFontSize(9); doc.setTextColor(...C.grey);
           const ol = doc.splitTextToSize(r.outcome, usableW - 4);
-          doc.text(ol, margin + 2, ry);
-          ry += ol.length * 4;
-          doc.setFont('helvetica', 'normal'); doc.setFontSize(10); doc.setTextColor(...C.navy);
+          ol.forEach((line, i) => { doc.text(line, margin + 2, y + 3 + i * 4); });
+          y += ol.length * 4 + 2;
         }
       });
+
       if (opts.footer) {
         doc.setFont('helvetica', 'normal'); doc.setFontSize(9); doc.setTextColor(...C.grey);
-        doc.text(opts.footer, margin, ry);
-        ry += 5;
+        doc.text(opts.footer, margin, y + 3);
+        y += 5;
       }
-      y = ry + 3;
+      y += 8; // gap between sections
     };
 
-    // Completed
     drawSection('Completed this week',
       report.done.length === 0 ? [{ title: 'Nothing completed this week.' }] :
       report.done.map(t => ({ title: t.title, right: formatDuration(t.timeMinutes), outcome: t.outcome || null }))
     );
 
-    // In progress
     const ipRows = report.inProgress.slice(0, 5).map(t => ({ title: t.title, right: formatDuration(t.timeMinutes) }));
     if (report.inProgress.length === 0 && report.longRunning.length === 0) ipRows.push({ title: 'Nothing in progress.' });
     drawSection('In progress', ipRows,
       report.inProgress.length > 5 ? { footer: `+ ${report.inProgress.length - 5} more` } : {}
     );
 
-    // Long-running
     if (report.longRunning.length > 0) {
       drawSection(`Long-running (${report.longRunning.length})`,
         report.longRunning.map(t => ({ title: t.title, right: formatDuration(t.timeMinutes) }))
       );
     }
 
-    // Blocked
     if (report.blocked.length > 0) {
       drawSection('Blocked', report.blocked.map(t => ({ title: t.title })));
     }
 
-    // Coming up
     const cuRows = report.comingUp.map(t => ({ title: t.title, right: `due ${format(parseISO(t.deadline), 'd MMM')}` }));
     if (report.comingUp.length === 0) cuRows.push({ title: 'Nothing due in the next 7 days.' });
     drawSection('Coming up', cuRows,
       report.unscheduledCount > 0 ? { footer: `${report.unscheduledCount} unscheduled ${report.unscheduledCount === 1 ? 'task' : 'tasks'} in backlog` } : {}
     );
 
-    // Time by category
+    // Time by category (stacked bar + legend)
     if (report.timeByCategory.length === 0) {
       drawSection('Time by category', [{ title: 'No time logged.' }]);
     } else {
-      const barH = 7;
-      const legendCols = 2;
+      const barH = 7, legendCols = 2;
       const legendRows = Math.ceil(report.timeByCategory.length / legendCols);
-      const sectionH = 7 + barH + 3 + legendRows * 5 + 4;
-      if (y + sectionH > pageH - 15) { doc.addPage(); y = margin; }
+      const sectionH = 8 + barH + 3 + legendRows * 5 + 8;
+      ensureSpace(sectionH);
       doc.setFont('helvetica', 'bold'); doc.setFontSize(11); doc.setTextColor(...C.purple);
-      doc.text('Time by category', margin, y + 5);
-      const barY = y + 7;
+      doc.text('Time by category', margin, y + 4);
+      y += 8;
       let xOffset = margin;
       report.timeByCategory.forEach((c, i) => {
         const segW = (c.share / 100) * usableW;
         doc.setFillColor(...BAR_RGB[i % BAR_RGB.length]);
-        doc.rect(xOffset, barY, segW, barH, 'F');
+        doc.rect(xOffset, y, segW, barH, 'F');
         xOffset += segW;
       });
-      let legendY = barY + barH + 4;
-      let legendX = margin;
+      y += barH + 3;
       const colW = usableW / legendCols;
       report.timeByCategory.forEach((c, i) => {
-        const col = i % legendCols;
-        const row = Math.floor(i / legendCols);
-        const lx = margin + col * colW;
-        const ly = legendY + row * 5;
+        const col = i % legendCols, row = Math.floor(i / legendCols);
+        const lx = margin + col * colW, ly = y + row * 5;
         doc.setFillColor(...BAR_RGB[i % BAR_RGB.length]);
-        doc.rect(lx, ly - 3, 3, 3, 'F');
+        doc.rect(lx, ly - 2, 3, 3, 'F');
         doc.setFont('helvetica', 'normal'); doc.setFontSize(9); doc.setTextColor(...C.navy);
-        doc.text(`${c.category}: ${formatDuration(c.minutes)}`, lx + 4, ly);
+        doc.text(`${c.category}: ${formatDuration(c.minutes)}`, lx + 4, ly + 1);
       });
-      y = legendY + legendRows * 5 + 3;
+      y += legendRows * 5 + 8;
     }
   }
 
