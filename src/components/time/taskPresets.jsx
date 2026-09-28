@@ -62,6 +62,7 @@ export const TASK_PRESETS = {
     'Sprint QA review',
     'Product strategy session',
     'Technical troubleshooting',
+    'Automation testing',
   ],
   'Finance': [
     'Invoice processing',
