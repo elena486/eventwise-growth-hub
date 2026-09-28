@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
 import { startOfWeek, endOfWeek, addWeeks, subWeeks, format } from 'date-fns';
 import { ChevronLeft, ChevronRight, AlertTriangle, Copy, Download } from 'lucide-react';
