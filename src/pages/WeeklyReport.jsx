@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
 import { startOfWeek, endOfWeek, addWeeks, subWeeks, format } from 'date-fns';
-import { ChevronLeft, ChevronRight, Sparkles, AlertTriangle, Copy, Download } from 'lucide-react';
+import { ChevronLeft, ChevronRight, AlertTriangle, Copy, Download } from 'lucide-react';
 import { fetchReportData, buildFlags, generateAISummary, formatDuration, TEAM_MEMBERS } from '@/lib/weeklyReportData';
 import { formatReportAsText, generateReportPDF } from '@/lib/weeklyReportFormat';
 import PersonReport from '@/components/weekly-report/PersonReport';
+import TeamPersonCard from '@/components/weekly-report/TeamPersonCard';
 
 export default function WeeklyReport() {
   const [user, setUser] = useState(null);
@@ -27,27 +28,26 @@ export default function WeeklyReport() {
     }).catch(() => {});
   }, []);
 
-  const isElena = (user?.email || '').toLowerCase().includes('elena');
-  const isElenaOrChris = isElena || (user?.email || '').toLowerCase().includes('chris');
+  const viewingPersonName = user?.full_name?.split(' ')[0] || '';
+  const isElena = viewingPersonName === 'Elena';
+  const isElenaOrChris = isElena || viewingPersonName === 'Chris';
   const personOptions = isElenaOrChris ? [...TEAM_MEMBERS, 'Whole team'] : (person ? [person] : []);
 
   const weekEnd = endOfWeek(weekStart, { weekStartsOn: 1 });
   const weekLabel = `${format(weekStart, 'd MMM')} – ${format(weekEnd, 'd MMM yyyy')}`;
 
-  const handleGenerate = async () => {
-    if (!person) return;
+  const generateFor = async (personName) => {
     setGenerating(true);
     setAiError(false);
     setAiSummary('');
     setFlags([]);
+    setFlagsOpen(false);
     try {
-      const data = await fetchReportData(person, weekStart);
+      const data = await fetchReportData(personName, weekStart);
       setReportData(data);
-
       if (isElena) {
-        setFlags(buildFlags(data.reportByPerson, data.isWholeTeam));
+        setFlags(buildFlags(data.reportByPerson, data.isWholeTeam, viewingPersonName));
       }
-
       setAiLoading(true);
       try {
         const summary = await generateAISummary(data);
@@ -62,6 +62,9 @@ export default function WeeklyReport() {
     }
     setGenerating(false);
   };
+
+  const handleGenerate = () => generateFor(person);
+  const handleViewPerson = (personName) => { setPerson(personName); generateFor(personName); };
 
   const handleRegenerateSummary = async () => {
     if (!reportData) return;
@@ -101,11 +104,13 @@ export default function WeeklyReport() {
   };
 
   // Team totals
-  let totalDone = 0, totalTime = 0;
+  let totalDone = 0, totalInProgress = 0, totalBlocked = 0, totalTime = 0;
   if (reportData?.isWholeTeam) {
     for (const r of Object.values(reportData.reportByPerson)) {
-      totalDone += r.done.length;
-      totalTime += r.totalTime;
+      totalDone += r.stats.completed;
+      totalInProgress += r.stats.inProgress;
+      totalBlocked += r.stats.blocked;
+      totalTime += r.stats.hoursLogged;
     }
   }
 
@@ -149,58 +154,54 @@ export default function WeeklyReport() {
             </button>
           </div>
 
-          {/* AI Summary */}
-          <div className="bg-white border border-[#EBEBF5] rounded-xl p-5 mb-6">
-            <div className="flex items-center gap-2 mb-3">
-              <Sparkles className="w-4 h-4 text-[#8403C5]" />
-              <h2 className="text-sm font-bold text-[#242450]">Summary</h2>
-            </div>
-            {aiLoading ? (
-              <div className="flex items-center gap-2">
-                <div className="w-4 h-4 border-2 border-[#8403C5]/20 border-t-[#8403C5] rounded-full animate-spin" />
-                <p className="text-sm text-[#5777AB]">Generating summary…</p>
-              </div>
-            ) : aiError ? (
-              <div>
-                <p className="text-sm text-[#5777AB] mb-2">Summary unavailable, try again</p>
-                <button onClick={handleRegenerateSummary}
-                  className="px-3 py-1.5 text-xs font-semibold bg-[#8403C5] hover:bg-[#6B02A0] text-white rounded-lg transition-colors">
-                  Regenerate summary
-                </button>
-              </div>
-            ) : (
-              <p className="text-sm text-[#242450] leading-relaxed">{aiSummary}</p>
-            )}
-          </div>
-
-          {/* Team totals */}
-          {reportData.isWholeTeam && (
-            <div className="bg-[#F3E8FF] border border-[#8403C5]/20 rounded-xl p-5 mb-6">
-              <div className="flex items-center gap-8">
-                <div>
-                  <p className="text-2xl font-bold text-[#8403C5]">{totalDone}</p>
-                  <p className="text-xs text-[#5777AB] uppercase tracking-wide">Tasks done</p>
-                </div>
-                <div>
-                  <p className="text-2xl font-bold text-[#8403C5]">{formatDuration(totalTime)}</p>
-                  <p className="text-xs text-[#5777AB] uppercase tracking-wide">Total time</p>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Report sections */}
           {reportData.isWholeTeam ? (
-            <div className="space-y-6">
-              {reportData.people.map(p => (
-                <PersonReport key={p} person={p} report={reportData.reportByPerson[p]} />
-              ))}
+            /* WHOLE TEAM VIEW */
+            <div>
+              {/* Team stat tiles */}
+              <div className="grid grid-cols-4 gap-3 mb-6">
+                <TeamStatTile label="Completed" value={totalDone} />
+                <TeamStatTile label="In progress" value={totalInProgress} />
+                <TeamStatTile label="Blocked" value={totalBlocked} />
+                <TeamStatTile label="Hours logged" value={formatDuration(totalTime)} />
+              </div>
+
+              {/* Team AI summary */}
+              <div className="bg-white border border-[#EBEBF5] rounded-xl p-5 mb-6">
+                <h3 className="text-sm font-bold text-[#242450] mb-2">Team summary</h3>
+                {aiLoading ? (
+                  <div className="flex items-center gap-2">
+                    <div className="w-4 h-4 border-2 border-[#8403C5]/20 border-t-[#8403C5] rounded-full animate-spin" />
+                    <p className="text-sm text-[#5777AB]">Generating summary…</p>
+                  </div>
+                ) : aiError ? (
+                  <div>
+                    <p className="text-sm text-[#5777AB] mb-2">Summary unavailable, try again</p>
+                    <button onClick={handleRegenerateSummary} className="px-3 py-1.5 text-xs font-semibold bg-[#8403C5] hover:bg-[#6B02A0] text-white rounded-lg transition-colors">Regenerate summary</button>
+                  </div>
+                ) : (
+                  <p className="text-sm text-[#242450] leading-relaxed">{aiSummary}</p>
+                )}
+              </div>
+
+              {/* Person cards */}
+              <div className="grid grid-cols-2 gap-4">
+                {reportData.people.map(p => (
+                  <TeamPersonCard key={p} person={p} report={reportData.reportByPerson[p]} onViewPerson={handleViewPerson} />
+                ))}
+              </div>
             </div>
           ) : (
-            <PersonReport person={null} report={Object.values(reportData.reportByPerson)[0]} />
+            /* INDIVIDUAL VIEW */
+            <PersonReport
+              report={Object.values(reportData.reportByPerson)[0]}
+              aiSummary={aiSummary}
+              aiLoading={aiLoading}
+              aiError={aiError}
+              onRegenerateSummary={handleRegenerateSummary}
+            />
           )}
 
-          {/* Flags (Elena only) */}
+          {/* Flags (Elena only, not on own report) */}
           {isElena && flags.length > 0 && (
             <div className="mt-6">
               <button onClick={() => setFlagsOpen(o => !o)}
@@ -211,9 +212,7 @@ export default function WeeklyReport() {
               {flagsOpen && (
                 <div className="mt-3 bg-[#FFFBEB] border border-[#FDE68A] rounded-xl p-4 space-y-2">
                   {flags.map((f, i) => (
-                    <p key={i} className="text-sm text-[#A16207] flex items-start gap-2">
-                      <span className="text-[#E8A020] mt-0.5">•</span> {f}
-                    </p>
+                    <p key={i} className="text-sm text-[#A16207]">{f}</p>
                   ))}
                 </div>
               )}
@@ -221,6 +220,15 @@ export default function WeeklyReport() {
           )}
         </div>
       )}
+    </div>
+  );
+}
+
+function TeamStatTile({ label, value }) {
+  return (
+    <div className="bg-white border border-[#EBEBF5] rounded-xl p-4">
+      <p className="text-2xl font-bold text-[#8403C5]">{value}</p>
+      <p className="text-xs text-[#5777AB] uppercase tracking-wide mt-1">{label}</p>
     </div>
   );
 }

@@ -1,87 +1,147 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { format, parseISO } from 'date-fns';
 import { formatDuration } from '@/lib/weeklyReportData';
+import TimeByCategoryBar from './TimeByCategoryBar';
 
-export default function PersonReport({ person, report }) {
+export default function PersonReport({ report, aiSummary, aiLoading, aiError, onRegenerateSummary }) {
+  const [expanded, setExpanded] = useState(false);
+  const [longRunningOpen, setLongRunningOpen] = useState(false);
+
   return (
-    <div className="bg-white border border-[#EBEBF5] rounded-xl p-6">
-      {person && <h3 className="text-base font-bold text-[#242450] mb-4">{person}</h3>}
+    <div>
+      {/* Stat tiles */}
+      <div className="grid grid-cols-4 gap-3 mb-6">
+        <StatTile label="Completed" value={report.stats.completed} />
+        <StatTile label="In progress" value={report.stats.inProgress} />
+        <StatTile label="Blocked" value={report.stats.blocked} />
+        <StatTile label="Hours logged" value={formatDuration(report.stats.hoursLogged)} />
+      </div>
 
-      <Section title="Done this week" empty="Nothing completed this week.">
-        {report.done.map((t, i) => (
-          <div key={i} className="flex items-start gap-2 py-1.5">
-            <span className="text-[#1D9E75] mt-0.5">✓</span>
-            <div className="flex-1">
-              <p className="text-sm text-[#242450]">
-                {t.title} <span className="text-[#5777AB]">[{t.category}]</span> — <span className="font-medium">{formatDuration(t.timeMinutes)}</span>
-              </p>
-              {t.outcome && <p className="text-xs text-[#5777AB] italic mt-0.5">{t.outcome}</p>}
+      {/* AI summary */}
+      <div className="bg-white border border-[#EBEBF5] rounded-xl p-5 mb-4">
+        <h3 className="text-sm font-bold text-[#242450] mb-2">Summary</h3>
+        {aiLoading ? (
+          <div className="flex items-center gap-2">
+            <div className="w-4 h-4 border-2 border-[#8403C5]/20 border-t-[#8403C5] rounded-full animate-spin" />
+            <p className="text-sm text-[#5777AB]">Generating summary…</p>
+          </div>
+        ) : aiError ? (
+          <div>
+            <p className="text-sm text-[#5777AB] mb-2">Summary unavailable, try again</p>
+            <button onClick={onRegenerateSummary} className="px-3 py-1.5 text-xs font-semibold bg-[#8403C5] hover:bg-[#6B02A0] text-white rounded-lg transition-colors">Regenerate summary</button>
+          </div>
+        ) : (
+          <p className="text-sm text-[#242450] leading-relaxed">{aiSummary}</p>
+        )}
+      </div>
+
+      {/* Completed */}
+      <Section title="Completed this week">
+        {report.done.length === 0 ? (
+          <p className="text-sm text-[#9CA3AF] italic">Nothing completed this week.</p>
+        ) : (
+          report.done.map((t, i) => (
+            <div key={i} className="py-2.5 border-b border-[#F2F2F4] last:border-0">
+              <div className="flex items-center justify-between gap-3">
+                <p className="text-sm text-[#242450] truncate flex-1" title={t.title}>{t.title}</p>
+                <span className="text-xs text-[#5777AB] shrink-0">{formatDuration(t.timeMinutes)}</span>
+              </div>
+              {t.outcome && <p className="text-xs text-[#5777AB] italic mt-1">{t.outcome}</p>}
             </div>
-          </div>
-        ))}
-      </Section>
-
-      <Section title="In progress / carried over" empty="Nothing in progress.">
-        {report.inProgress.map((t, i) => (
-          <div key={i} className="flex items-start gap-2 py-1.5">
-            <span className="text-[#5777AB] mt-0.5">→</span>
-            <p className="text-sm text-[#242450] flex-1">
-              {t.title} — <span className="font-medium">{formatDuration(t.timeMinutes)}</span>
-              {t.carriedWeeks >= 2 && <span className="text-xs text-[#A16207] ml-2">carried over {t.carriedWeeks} weeks</span>}
-            </p>
-          </div>
-        ))}
-      </Section>
-
-      <Section title="Blocked" empty="Nothing blocked.">
-        {report.blocked.map((t, i) => (
-          <div key={i} className="flex items-start gap-2 py-1.5">
-            <span className="text-[#DC2626] mt-0.5">⊘</span>
-            <p className="text-sm text-[#242450]">{t.title} <span className="text-[#5777AB]">[{t.category}]</span></p>
-          </div>
-        ))}
-      </Section>
-
-      <Section title="Next week" empty="Nothing scheduled.">
-        {report.nextWeek.map((t, i) => (
-          <div key={i} className="flex items-start gap-2 py-1.5">
-            <span className="text-[#8403C5] mt-0.5">→</span>
-            <p className="text-sm text-[#242450]">{t.title} <span className="text-[#5777AB]">(due {format(parseISO(t.deadline), 'd MMM')})</span></p>
-          </div>
-        ))}
-        {report.notScheduled.length > 0 && (
-          <div className="mt-2 pt-2 border-t border-[#F2F2F4]">
-            <p className="text-xs font-semibold text-[#5777AB] uppercase tracking-wide mb-1">Not yet scheduled</p>
-            {report.notScheduled.map((t, i) => (
-              <p key={i} className="text-sm text-[#5777AB] py-0.5">• {t.title}</p>
-            ))}
-          </div>
+          ))
         )}
       </Section>
 
-      <Section title="Time by category" empty="No time logged.">
-        <table className="w-full text-sm">
-          <tbody>
-            {report.timeByCategory.map((c, i) => (
-              <tr key={i} className="border-b border-[#F2F2F4] last:border-0">
-                <td className="py-1.5 text-[#242450]">{c.category}</td>
-                <td className="py-1.5 text-right text-[#242450] font-medium">{formatDuration(c.minutes)}</td>
-                <td className="py-1.5 text-right text-[#5777AB] w-16">{c.share}%</td>
-              </tr>
+      {/* In progress */}
+      <Section title="In progress">
+        {report.inProgress.length === 0 && report.longRunning.length === 0 ? (
+          <p className="text-sm text-[#9CA3AF] italic">Nothing in progress.</p>
+        ) : (
+          <>
+            {report.inProgress.slice(0, 5).map((t, i) => (
+              <TaskRow key={i} title={t.title} hours={formatDuration(t.timeMinutes)} />
             ))}
-          </tbody>
-        </table>
+            {report.inProgress.length > 5 && (
+              <div className="mt-1">
+                <button onClick={() => setExpanded(!expanded)} className="text-xs text-[#8403C5] font-medium hover:underline">
+                  {expanded ? 'Show less' : `+ ${report.inProgress.length - 5} more`}
+                </button>
+                {expanded && report.inProgress.slice(5).map((t, i) => (
+                  <TaskRow key={i + 5} title={t.title} hours={formatDuration(t.timeMinutes)} />
+                ))}
+              </div>
+            )}
+            {report.longRunning.length > 0 && (
+              <div className="mt-3 pt-2 border-t border-[#F2F2F4]">
+                <button onClick={() => setLongRunningOpen(!longRunningOpen)} className="text-xs text-[#5777AB] font-medium hover:text-[#242450]">
+                  Long-running ({report.longRunning.length}) {longRunningOpen ? '▾' : '▸'}
+                </button>
+                {longRunningOpen && report.longRunning.map((t, i) => (
+                  <TaskRow key={i} title={t.title} hours={formatDuration(t.timeMinutes)} />
+                ))}
+              </div>
+            )}
+          </>
+        )}
+      </Section>
+
+      {/* Blocked — only shown if not empty */}
+      {report.blocked.length > 0 && (
+        <Section title="Blocked">
+          {report.blocked.map((t, i) => (
+            <TaskRow key={i} title={t.title} />
+          ))}
+        </Section>
+      )}
+
+      {/* Coming up */}
+      <Section title="Coming up">
+        {report.comingUp.length === 0 ? (
+          <p className="text-sm text-[#9CA3AF] italic">Nothing due in the next 7 days.</p>
+        ) : (
+          report.comingUp.map((t, i) => (
+            <div key={i} className="flex items-center justify-between gap-3 py-2.5 border-b border-[#F2F2F4] last:border-0">
+              <p className="text-sm text-[#242450] truncate flex-1" title={t.title}>{t.title}</p>
+              <span className="text-xs text-[#5777AB] shrink-0">{format(parseISO(t.deadline), 'd MMM')}</span>
+            </div>
+          ))
+        )}
+        {report.unscheduledCount > 0 && (
+          <p className="text-xs text-[#5777AB] mt-2">{report.unscheduledCount} unscheduled {report.unscheduledCount === 1 ? 'task' : 'tasks'} in backlog</p>
+        )}
+      </Section>
+
+      {/* Time by category */}
+      <Section title="Time by category">
+        <TimeByCategoryBar timeByCategory={report.timeByCategory} totalTime={report.totalTime} />
       </Section>
     </div>
   );
 }
 
-function Section({ title, empty, children }) {
-  const hasContent = React.Children.count(children) > 0;
+function StatTile({ label, value }) {
   return (
-    <div className="mb-5 last:mb-0">
-      <h4 className="text-xs font-bold text-[#5777AB] uppercase tracking-[0.06em] mb-2">{title}</h4>
-      {hasContent ? <div>{children}</div> : <p className="text-sm text-[#9CA3AF] italic">{empty}</p>}
+    <div className="bg-white border border-[#EBEBF5] rounded-xl p-4">
+      <p className="text-2xl font-bold text-[#8403C5]">{value}</p>
+      <p className="text-xs text-[#5777AB] uppercase tracking-wide mt-1">{label}</p>
+    </div>
+  );
+}
+
+function Section({ title, children }) {
+  return (
+    <div className="bg-white border border-[#EBEBF5] rounded-xl p-5 mb-4">
+      <h3 className="text-sm font-bold text-[#242450] mb-3">{title}</h3>
+      {children}
+    </div>
+  );
+}
+
+function TaskRow({ title, hours }) {
+  return (
+    <div className="flex items-center justify-between gap-3 py-2.5 border-b border-[#F2F2F4] last:border-0">
+      <p className="text-sm text-[#242450] truncate flex-1" title={title}>{title}</p>
+      {hours && <span className="text-xs text-[#5777AB] shrink-0">{hours}</span>}
     </div>
   );
 }
