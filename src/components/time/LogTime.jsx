@@ -13,6 +13,11 @@ import {
   useSharedTimer, sharedTimerStart, sharedTimerPause, sharedTimerResume,
   sharedTimerStop, sharedTimerCommit, sharedTimerBootstrap, sharedTimerUpdateMeta
 } from '@/hooks/useSharedTimer';
+import TaskPicker from './TaskPicker';
+import RunningTaskBadge from './RunningTaskBadge';
+import TaskCompletePrompt from './TaskCompletePrompt';
+import { mapTaskCategoryToTimeCategory } from '@/lib/taskCategoryMap';
+import { moveTaskToInProgress, completeTask, getTaskStatus, showTaskToast } from '@/lib/taskTimerLink';
 
 async function writeLeadActivityLog({ leadId, leadName, teamMember, category, projectTask, durationMinutes, notes, transcriptLink, transcriptFileUrl, transcriptFileName }) {
   if (!leadId) return;
@@ -73,19 +78,24 @@ export default function LogTime({ onLogged }) {
   const [quickClientName, setQuickClientNameRaw] = useState(timer.clientName || '');
   const [quickLeadId, setQuickLeadIdRaw] = useState(timer.leadId || '');
   const [quickLeadName, setQuickLeadNameRaw] = useState(timer.leadName || '');
+  const [quickLinkedTaskId, setQuickLinkedTaskIdRaw] = useState(timer.linkedTaskId || '');
+  const [quickLinkedTaskTitle, setQuickLinkedTaskTitleRaw] = useState(timer.linkedTaskTitle || '');
+  const [taskCompletePrompt, setTaskCompletePrompt] = useState(null);
 
   // Keep local fields in sync when shared state changes from another surface
   const prevTimerRef = useRef(timer);
   useEffect(() => {
     const prev = prevTimerRef.current;
-    if (prev.timerId !== timer.timerId || prev.category !== timer.category || prev.projectTask !== timer.projectTask) {
+    if (prev.timerId !== timer.timerId || prev.category !== timer.category || prev.projectTask !== timer.projectTask || prev.linkedTaskId !== timer.linkedTaskId) {
       setQuickCatRaw(timer.category || '');
       setQuickDescRaw(timer.projectTask || '');
       setQuickClientIdRaw(timer.clientId || '');
       setQuickClientNameRaw(timer.clientName || '');
+      setQuickLinkedTaskIdRaw(timer.linkedTaskId || '');
+      setQuickLinkedTaskTitleRaw(timer.linkedTaskTitle || '');
     }
     prevTimerRef.current = timer;
-  }, [timer.timerId, timer.category, timer.projectTask, timer.clientId]);
+  }, [timer.timerId, timer.category, timer.projectTask, timer.clientId, timer.linkedTaskId]);
 
   const setQuickCat = (v) => { setQuickCatRaw(v); if (timer.timerId) sharedTimerUpdateMeta({ category: v }); };
   const setQuickDesc = (v) => { setQuickDescRaw(v); if (timer.timerId) sharedTimerUpdateMeta({ projectTask: v }); };
@@ -93,6 +103,22 @@ export default function LogTime({ onLogged }) {
   const setQuickClientName = (v) => { setQuickClientNameRaw(v); if (timer.timerId) sharedTimerUpdateMeta({ clientName: v }); };
   const setQuickLeadId = (v) => { setQuickLeadIdRaw(v); if (v) { setQuickClientIdRaw(''); setQuickClientNameRaw(''); } };
   const setQuickLeadName = (v) => { setQuickLeadNameRaw(v); };
+
+  const handleTaskSelect = (task) => {
+    if (!task) {
+      setQuickLinkedTaskIdRaw('');
+      setQuickLinkedTaskTitleRaw('');
+      return;
+    }
+    setQuickLinkedTaskIdRaw(task.id);
+    setQuickLinkedTaskTitleRaw(task.title || '');
+    const mappedCat = mapTaskCategoryToTimeCategory(task.category);
+    setQuickCatRaw(mappedCat);
+    setQuickDescRaw(task.title || '');
+    if (timer.timerId) {
+      sharedTimerUpdateMeta({ linkedTaskId: task.id, linkedTaskTitle: task.title || '', category: mappedCat, projectTask: task.title || '' });
+    }
+  };
 
   // Inline validation after stop
   const [stoppedEntry, setStoppedEntry] = useState(null); // { timerId, durationMinutes, durationMs }
@@ -193,7 +219,8 @@ export default function LogTime({ onLogged }) {
     setStoppedEntry(null); setSaveError('');
     const me = await base44.auth.me().catch(() => null);
     const firstName = me?.full_name?.split(' ')[0] || '';
-    await sharedTimerStart({ teamMember: firstName, category: quickCat, projectTask: quickDesc, clientId: quickClientId, clientName: quickClientName, leadId: quickLeadId, leadName: quickLeadName, userId: me?.id });
+    await sharedTimerStart({ teamMember: firstName, category: quickCat, projectTask: quickDesc, clientId: quickClientId, clientName: quickClientName, leadId: quickLeadId, leadName: quickLeadName, linkedTaskId: quickLinkedTaskId, linkedTaskTitle: quickLinkedTaskTitle, userId: me?.id });
+    if (quickLinkedTaskId) moveTaskToInProgress(quickLinkedTaskId, firstName);
     logActivity({ teamMember: firstName, actionType: 'Started a timer', section: 'Time & Capacity', recordName: quickDesc.trim() || '(Untitled session)' });
   };
 
@@ -203,6 +230,8 @@ export default function LogTime({ onLogged }) {
     // Check required fields
     const cat = quickCat;
     const task = quickDesc.trim();
+    const linkedId = quickLinkedTaskId;
+    const linkedTitle = quickLinkedTaskTitle;
     if (!cat || !task) {
       setStoppedEntry({ ...result, category: cat, projectTask: task });
       setSaveError('Category and Task are required before saving.');
@@ -210,6 +239,30 @@ export default function LogTime({ onLogged }) {
     }
     // Auto-save immediately
     await commitEntry(result.timerId, result.durationMinutes, cat, task);
+    // Show completion prompt if a task is linked and not already Done
+    if (linkedId) {
+      const status = await getTaskStatus(linkedId);
+      if (status && status !== 'Done') {
+        setTaskCompletePrompt({ taskId: linkedId, taskTitle: linkedTitle || task, teamMember });
+      }
+    }
+  };
+
+  const handleCompleteAndStop = async () => {
+    const result = await sharedTimerStop();
+    const cat = quickCat;
+    const task = quickDesc.trim();
+    const linkedId = quickLinkedTaskId;
+    if (!cat || !task) {
+      setStoppedEntry({ ...result, category: cat, projectTask: task });
+      setSaveError('Category and Task are required before saving.');
+      return;
+    }
+    await commitEntry(result.timerId, result.durationMinutes, cat, task);
+    if (linkedId) {
+      await completeTask(linkedId, teamMember);
+      showTaskToast('Task marked complete');
+    }
   };
 
   const commitEntry = async (timerId, durationMinutes, cat, task) => {
@@ -217,6 +270,7 @@ export default function LogTime({ onLogged }) {
       category: cat, projectTask: task,
       clientId: quickClientId, clientName: quickClientName,
       leadId: quickLeadId, leadName: quickLeadName,
+      linkedTaskId: quickLinkedTaskId, linkedTaskTitle: quickLinkedTaskTitle,
       date: format(new Date(), 'yyyy-MM-dd'),
       durationMinutes,
       notes: '',
@@ -227,7 +281,7 @@ export default function LogTime({ onLogged }) {
     await writeClientActivityLog({ clientId: quickClientId, clientName: quickClientName, teamMember, category: cat, projectTask: task, durationMinutes, notes: '', transcriptLink: quickTranscriptLink.trim() });
     if (quickLeadId) { writeLeadActivityLog({ leadId: quickLeadId, leadName: quickLeadName, teamMember, category: cat, projectTask: task, durationMinutes, notes: '', transcriptLink: quickTranscriptLink.trim(), transcriptFileUrl: quickTranscriptFileUrl, transcriptFileName: quickTranscriptFileName }); }
     setStoppedEntry(null); setSaveError('');
-    setQuickCatRaw(''); setQuickDescRaw(''); setQuickClientIdRaw(''); setQuickClientNameRaw(''); setQuickLeadIdRaw(''); setQuickLeadNameRaw('');
+    setQuickCatRaw(''); setQuickDescRaw(''); setQuickClientIdRaw(''); setQuickClientNameRaw(''); setQuickLeadIdRaw(''); setQuickLeadNameRaw(''); setQuickLinkedTaskIdRaw(''); setQuickLinkedTaskTitleRaw('');
     setQuickTranscriptLink(''); setQuickTranscriptFileUrl(''); setQuickTranscriptFileName('');
     loadEntries();
     onLogged?.();
@@ -238,8 +292,16 @@ export default function LogTime({ onLogged }) {
     if (!stoppedEntry) return;
     const cat = quickCat;
     const task = quickDesc.trim();
+    const linkedId = quickLinkedTaskId;
+    const linkedTitle = quickLinkedTaskTitle;
     if (!cat || !task) { setSaveError('Category and Task are required before saving.'); return; }
     await commitEntry(stoppedEntry.timerId, stoppedEntry.durationMinutes, cat, task);
+    if (linkedId) {
+      const status = await getTaskStatus(linkedId);
+      if (status && status !== 'Done') {
+        setTaskCompletePrompt({ taskId: linkedId, taskTitle: linkedTitle || task, teamMember });
+      }
+    }
   };
 
   // Compute duration from start/end time
@@ -270,10 +332,12 @@ export default function LogTime({ onLogged }) {
         ...(endISO ? { timerStoppedAt: endISO } : {}),
         ...(quickClientId ? { clientId: quickClientId, clientName: quickClientName } : {}),
         ...(quickLeadId ? { leadId: quickLeadId, leadName: quickLeadName } : {}),
+        ...(quickLinkedTaskId ? { linkedTaskId: quickLinkedTaskId, linkedTaskTitle: quickLinkedTaskTitle } : {}),
       });
+      if (quickLinkedTaskId) moveTaskToInProgress(quickLinkedTaskId, teamMember);
       await writeClientActivityLog({ clientId: quickClientId, clientName: quickClientName, teamMember, category: quickCat || 'Other', projectTask: quickDesc.trim(), durationMinutes: quickDuration, notes: '', transcriptLink: quickTranscriptLink.trim() });
       if (quickLeadId) { writeLeadActivityLog({ leadId: quickLeadId, leadName: quickLeadName, teamMember, category: quickCat || 'Other', projectTask: quickDesc.trim(), durationMinutes: quickDuration, notes: '', transcriptLink: quickTranscriptLink.trim(), transcriptFileUrl: quickTranscriptFileUrl, transcriptFileName: quickTranscriptFileName }); }
-      setQuickDesc(''); setQuickStartTime(''); setQuickEndTime(''); setQuickTranscriptLink(''); setQuickTranscriptFileUrl(''); setQuickTranscriptFileName(''); setQuickLeadIdRaw(''); setQuickLeadNameRaw('');
+      setQuickDesc(''); setQuickStartTime(''); setQuickEndTime(''); setQuickTranscriptLink(''); setQuickTranscriptFileUrl(''); setQuickTranscriptFileName(''); setQuickLeadIdRaw(''); setQuickLeadNameRaw(''); setQuickLinkedTaskIdRaw(''); setQuickLinkedTaskTitleRaw('');
       loadEntries(); onLogged?.();
       logActivity({ teamMember, actionType: 'Logged a time entry', section: 'Time & Capacity', recordName: quickDesc.trim(), details: `${quickCat || 'Other'} — ${formatDuration(quickDuration)}` });
     } catch {}
@@ -383,6 +447,16 @@ export default function LogTime({ onLogged }) {
       {/* ── QUICK ENTRY BAR ── */}
       <div className={`bg-white rounded-xl shadow-[0_2px_12px_rgba(0,0,0,0.06)] border-l-4 ${isStopped ? 'border-l-[#DC2626]' : 'border-l-[#8403C5]'} px-7 py-6`}>
         <div className="space-y-3">
+          {/* To-Do Board task picker */}
+          <div>
+            <label className="block text-[10px] font-semibold text-[#242450] uppercase tracking-[0.06em] mb-1">To-Do Board task <span className="font-normal normal-case text-[#9CA3AF]">(optional — auto-fills category &amp; task)</span></label>
+            <TaskPicker
+              value={quickLinkedTaskId}
+              onChange={handleTaskSelect}
+              currentUser={teamMember}
+              className="w-full px-3 py-2 text-sm border border-[#E2E8F0] rounded-lg bg-[#F8FAFC] text-[#242450] focus:outline-none focus:border-[#8403C5] transition-all"
+            />
+          </div>
           <div className="flex items-end gap-3 flex-wrap">
             {/* Team Member */}
             <div className="shrink-0">
@@ -479,6 +553,7 @@ export default function LogTime({ onLogged }) {
                     </button>
                   ) : (
                     <>
+                      {timer.linkedTaskId && <RunningTaskBadge linkedTaskId={timer.linkedTaskId} linkedTaskTitle={timer.linkedTaskTitle} />}
                       <button onClick={timer.status === 'running' ? sharedTimerPause : sharedTimerResume}
                         className={`flex items-center gap-1.5 px-4 py-2 text-sm font-bold rounded-full transition-all ${timer.status === 'running' ? 'bg-[#FFFBEB] border-2 border-[#E8A020] text-[#A16207] animate-pulse' : 'border-2 border-[#EBEBF5] text-[#5777AB] hover:bg-[#F6F6FB]'}`}>
                         <span className="w-2 h-2 rounded-full" style={{ backgroundColor: timer.status === 'running' ? '#E8A020' : '#9CA3AF' }} />
@@ -488,6 +563,13 @@ export default function LogTime({ onLogged }) {
                         className="flex items-center gap-1 px-3 py-2 text-sm font-semibold border-2 border-[#FECACA] text-[#DC2626] hover:bg-[#FEF2F2] rounded-lg transition-all">
                         <Square className="w-3.5 h-3.5" /> Stop
                       </button>
+                      {timer.linkedTaskId && (
+                        <button onClick={handleCompleteAndStop}
+                          className="flex items-center gap-1 px-3 py-2 text-sm font-semibold bg-[#1D9E75] hover:bg-[#17856A] text-white rounded-lg transition-all"
+                          title="Stop timer and mark task complete">
+                          ✓ Complete
+                        </button>
+                      )}
                     </>
                   )}
                 </div>
@@ -603,6 +685,20 @@ export default function LogTime({ onLogged }) {
           }}
         />
       )}
+
+      {/* Task completion prompt */}
+      <TaskCompletePrompt
+        open={!!taskCompletePrompt}
+        taskTitle={taskCompletePrompt?.taskTitle}
+        onMarkComplete={async () => {
+          if (taskCompletePrompt) {
+            await completeTask(taskCompletePrompt.taskId, taskCompletePrompt.teamMember);
+            showTaskToast('Task marked complete');
+          }
+          setTaskCompletePrompt(null);
+        }}
+        onNotYet={() => setTaskCompletePrompt(null)}
+      />
     </div>
   );
 }

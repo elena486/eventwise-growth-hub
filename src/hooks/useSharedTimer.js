@@ -26,6 +26,8 @@ let _state = {
   clientName: '',
   leadId: '',
   leadName: '',
+  linkedTaskId: '',
+  linkedTaskTitle: '',
   transcriptLink: '',
   transcriptFileUrl: '',
   transcriptFileName: '',
@@ -60,7 +62,7 @@ function stopTick() {
 
 // ─── Actions (these mutate shared state + hit the DB) ────────────────────────
 
-export async function sharedTimerStart({ teamMember, category, projectTask, clientId, clientName, leadId, leadName, userId }) {
+export async function sharedTimerStart({ teamMember, category, projectTask, clientId, clientName, leadId, leadName, linkedTaskId, linkedTaskTitle, userId }) {
   if (_state.timerId) return; // already running
   const now = new Date().toISOString();
   const nowMs = new Date(now).getTime();
@@ -75,11 +77,12 @@ export async function sharedTimerStart({ teamMember, category, projectTask, clie
     timerPauseIntervals: '[]',
     ...(clientId ? { clientId, clientName } : {}),
     ...(leadId ? { leadId, leadName } : {}),
+    ...(linkedTaskId ? { linkedTaskId, linkedTaskTitle } : {}),
   });
   _startTimeMs = nowMs;
   _totalPausedMs = 0;
   _pauseStartMs = null;
-  setState({ status: 'running', elapsed: 0, timerId: record.id, category: category || '', projectTask: projectTask?.trim() || '', clientId: clientId || '', clientName: clientName || '', leadId: leadId || '', leadName: leadName || '', userId });
+  setState({ status: 'running', elapsed: 0, timerId: record.id, category: category || '', projectTask: projectTask?.trim() || '', clientId: clientId || '', clientName: clientName || '', leadId: leadId || '', leadName: leadName || '', linkedTaskId: linkedTaskId || '', linkedTaskTitle: linkedTaskTitle || '', userId });
   startTick();
   if (userId) lsSave(userId, { startedAt: now, status: 'running', totalPausedMs: 0, pauseIntervals: [], recordId: record.id });
 }
@@ -122,7 +125,7 @@ export async function sharedTimerStop() {
   const durationMs = _state.status !== 'idle' ? Date.now() - _startTimeMs - _totalPausedMs : _state.elapsed;
   const durationMinutes = Math.max(1, Math.round(durationMs / 60000));
   stopTick();
-  const result = { durationMs, durationMinutes, timerId: _state.timerId, category: _state.category, projectTask: _state.projectTask, clientId: _state.clientId, clientName: _state.clientName, leadId: _state.leadId, leadName: _state.leadName };
+  const result = { durationMs, durationMinutes, timerId: _state.timerId, category: _state.category, projectTask: _state.projectTask, clientId: _state.clientId, clientName: _state.clientName, leadId: _state.leadId, leadName: _state.leadName, linkedTaskId: _state.linkedTaskId, linkedTaskTitle: _state.linkedTaskTitle };
   // Update DB to stopped
   if (_state.timerId) {
     await base44.entities.TimeEntry.update(_state.timerId, {
@@ -130,10 +133,11 @@ export async function sharedTimerStop() {
       category: _state.category, projectTask: _state.projectTask || '(Untitled session)',
       ...(_state.clientId ? { clientId: _state.clientId, clientName: _state.clientName } : {}),
       ...(_state.leadId ? { leadId: _state.leadId, leadName: _state.leadName } : {}),
+      ...(_state.linkedTaskId ? { linkedTaskId: _state.linkedTaskId, linkedTaskTitle: _state.linkedTaskTitle } : {}),
     }).catch(() => {});
   }
   const userId = _state.userId;
-  setState({ status: 'idle', elapsed: 0, timerId: null, category: '', projectTask: '', clientId: '', clientName: '', leadId: '', leadName: '', userId: null });
+  setState({ status: 'idle', elapsed: 0, timerId: null, category: '', projectTask: '', clientId: '', clientName: '', leadId: '', leadName: '', linkedTaskId: '', linkedTaskTitle: '', userId: null });
   if (userId) lsClear(userId);
   return result;
 }
@@ -151,6 +155,7 @@ export async function sharedTimerCommit(timerId, formData, teamMember) {
     transcriptLink: formData.transcriptLink || '',
     ...(!formData.clientId ? { clientId: '', clientName: '' } : {}),
     ...(!formData.leadId ? { leadId: '', leadName: '' } : {}),
+    ...(!formData.linkedTaskId ? { linkedTaskId: '', linkedTaskTitle: '' } : {}),
   });
 }
 
@@ -186,6 +191,8 @@ export async function sharedTimerBootstrap(teamMember, userId) {
       clientName: rec.clientName || '',
       leadId: rec.leadId || '',
       leadName: rec.leadName || '',
+      linkedTaskId: rec.linkedTaskId || '',
+      linkedTaskTitle: rec.linkedTaskTitle || '',
       userId,
     });
     if (rec.timerStatus === 'running') {

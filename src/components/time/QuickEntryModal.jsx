@@ -2,6 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
 import { CATEGORY_LABELS } from './categoryColors';
 import TaskPresetSelect from './TaskPresetSelect';
+import TaskPicker from './TaskPicker';
+import { mapTaskCategoryToTimeCategory } from '@/lib/taskCategoryMap';
+import { moveTaskToInProgress } from '@/lib/taskTimerLink';
 import { Link } from 'lucide-react';
 import LeadSelect from './LeadSelect';
 
@@ -15,6 +18,8 @@ export default function QuickEntryModal({ open, onClose, onSaved, initial }) {
   const [clientName, setClientName] = useState('');
   const [leadId, setLeadId] = useState('');
   const [leadName, setLeadName] = useState('');
+  const [linkedTaskId, setLinkedTaskId] = useState('');
+  const [linkedTaskTitle, setLinkedTaskTitle] = useState('');
   const [projectTask, setProjectTask] = useState('');
   const [startTime, setStartTime] = useState('');
   const [hours, setHours] = useState('');
@@ -46,6 +51,8 @@ export default function QuickEntryModal({ open, onClose, onSaved, initial }) {
       setClientName(initial.clientName || '');
       setLeadId(initial.leadId || '');
       setLeadName(initial.leadName || '');
+      setLinkedTaskId(initial.linkedTaskId || '');
+      setLinkedTaskTitle(initial.linkedTaskTitle || '');
       setProjectTask(initial.projectTask || '');
       setStartTime(initial.startTime || '');
       setHours(String(h));
@@ -59,6 +66,8 @@ export default function QuickEntryModal({ open, onClose, onSaved, initial }) {
       setClientName('');
       setLeadId('');
       setLeadName('');
+      setLinkedTaskId('');
+      setLinkedTaskTitle('');
       setProjectTask('');
       setStartTime(initial?.startTime || '');
       setHours('');
@@ -86,12 +95,14 @@ export default function QuickEntryModal({ open, onClose, onSaved, initial }) {
         transcriptLink: transcriptLink.trim() || undefined,
         ...(clientId ? { clientId, clientName } : {}),
         ...(leadId ? { leadId, leadName } : {}),
+        ...(linkedTaskId ? { linkedTaskId, linkedTaskTitle } : {}),
       };
 
       if (isEdit) {
         await base44.entities.TimeEntry.update(initial.id, payload);
       } else {
         await base44.entities.TimeEntry.create(payload);
+        if (linkedTaskId) moveTaskToInProgress(linkedTaskId, initial?.teamMember || teamMember);
       }
 
       // Activity log for client
@@ -159,6 +170,25 @@ export default function QuickEntryModal({ open, onClose, onSaved, initial }) {
               <option value="">Select…</option>
               {TEAM_MEMBERS.map(m => <option key={m} value={m}>{m}</option>)}
             </select>
+          </div>
+          <div>
+            <label className="block text-[11px] font-semibold text-[#5777AB] uppercase mb-1">To-Do Board task <span className="font-normal normal-case text-[#9CA3AF]">(optional)</span></label>
+            <TaskPicker
+              value={linkedTaskId}
+              onChange={(task) => {
+                if (!task) {
+                  setLinkedTaskId('');
+                  setLinkedTaskTitle('');
+                  return;
+                }
+                setLinkedTaskId(task.id);
+                setLinkedTaskTitle(task.title || '');
+                setCategory(mapTaskCategoryToTimeCategory(task.category));
+                setProjectTask(task.title || '');
+              }}
+              currentUser={teamMember}
+              className="w-full px-3 py-2 text-sm border border-[#EBEBF5] rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-[#8403C5]/20"
+            />
           </div>
           <div>
             <label className="block text-[11px] font-semibold text-[#5777AB] uppercase mb-1">Category</label>

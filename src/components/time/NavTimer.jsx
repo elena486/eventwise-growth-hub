@@ -7,10 +7,15 @@ import React, { useState, useEffect, useRef } from 'react';
 import { base44 } from '@/api/base44Client';
 import { Clock, Play, Square, Pause } from 'lucide-react';
 import TaskPresetSelect from './TaskPresetSelect';
+import TaskPicker from './TaskPicker';
+import RunningTaskBadge from './RunningTaskBadge';
+import TaskCompletePrompt from './TaskCompletePrompt';
 import {
   useSharedTimer, sharedTimerStart, sharedTimerPause, sharedTimerResume,
   sharedTimerStop, sharedTimerCommit, sharedTimerBootstrap, sharedTimerUpdateMeta
 } from '@/hooks/useSharedTimer';
+import { mapTaskCategoryToTimeCategory } from '@/lib/taskCategoryMap';
+import { moveTaskToInProgress, completeTask, getTaskStatus, showTaskToast } from '@/lib/taskTimerLink';
 
 function formatDuration(minutes) {
   const h = Math.floor(minutes / 60); const m = minutes % 60;
@@ -55,6 +60,9 @@ export default function NavTimer({ onStopAndLog, onLogTime }) {
   const [clientName, setClientName] = useState(timer.clientName || '');
   const [leadId, setLeadId] = useState(timer.leadId || '');
   const [leadName, setLeadName] = useState(timer.leadName || '');
+  const [linkedTaskId, setLinkedTaskId] = useState(timer.linkedTaskId || '');
+  const [linkedTaskTitle, setLinkedTaskTitle] = useState(timer.linkedTaskTitle || '');
+  const [taskCompletePrompt, setTaskCompletePrompt] = useState(null);
   const [clients, setClients] = useState([]);
   const panelRef = useRef(null);
   const userIdRef = useRef(null);
@@ -82,12 +90,30 @@ export default function NavTimer({ onStopAndLog, onLogTime }) {
       setClientName(timer.clientName || '');
       setLeadId(timer.leadId || '');
       setLeadName(timer.leadName || '');
+      setLinkedTaskId(timer.linkedTaskId || '');
+      setLinkedTaskTitle(timer.linkedTaskTitle || '');
     }
-  }, [timer.timerId, timer.category, timer.projectTask, timer.leadId]);
+  }, [timer.timerId, timer.category, timer.projectTask, timer.leadId, timer.linkedTaskId]);
 
   const setAndSyncCategory = (v) => { setCategory(v); setProjectTask(''); if (timer.timerId) sharedTimerUpdateMeta({ category: v }); };
   const setAndSyncTask = (v) => { setProjectTask(v); if (timer.timerId) sharedTimerUpdateMeta({ projectTask: v }); };
   const setAndSyncClient = (v, name) => { setClientId(v); setClientName(name); if (timer.timerId) sharedTimerUpdateMeta({ clientId: v, clientName: name }); };
+
+  const handleTaskSelect = (task) => {
+    if (!task) {
+      setLinkedTaskId('');
+      setLinkedTaskTitle('');
+      return;
+    }
+    setLinkedTaskId(task.id);
+    setLinkedTaskTitle(task.title || '');
+    const mappedCat = mapTaskCategoryToTimeCategory(task.category);
+    setCategory(mappedCat);
+    setProjectTask(task.title || '');
+    if (timer.timerId) {
+      sharedTimerUpdateMeta({ linkedTaskId: task.id, linkedTaskTitle: task.title || '', category: mappedCat, projectTask: task.title || '' });
+    }
+  };
 
   // Debounced DB sync when fields change
   useEffect(() => {
@@ -113,17 +139,21 @@ export default function NavTimer({ onStopAndLog, onLogTime }) {
   }, [open]);
 
   const handleStart = async () => {
-    await sharedTimerStart({ teamMember, category, projectTask, clientId, clientName, userId: userIdRef.current });
+    await sharedTimerStart({ teamMember, category, projectTask, clientId, clientName, linkedTaskId, linkedTaskTitle, userId: userIdRef.current });
+    if (linkedTaskId) moveTaskToInProgress(linkedTaskId, teamMember);
   };
 
   const handleStopAndLog = async () => {
     const result = await sharedTimerStop();
+    const linkedId = result.linkedTaskId;
+    const linkedTitle = result.linkedTaskTitle;
     // Auto-commit if fields are filled, otherwise navigate so the Today tab shows inline validation
     if (result.category && result.projectTask) {
       await sharedTimerCommit(result.timerId, {
         category: result.category, projectTask: result.projectTask,
         clientId: result.clientId || '', clientName: result.clientName || '',
         leadId: result.leadId || '', leadName: result.leadName || '',
+        linkedTaskId: linkedId || '', linkedTaskTitle: linkedTitle || '',
         date: new Date().toISOString().slice(0, 10),
         durationMinutes: result.durationMinutes,
         notes: '', transcriptLink: '',
@@ -135,6 +165,38 @@ export default function NavTimer({ onStopAndLog, onLogTime }) {
     }
     setOpen(false);
     onStopAndLog?.();
+    // Show completion prompt if a task is linked and not already Done
+    if (linkedId) {
+      const status = await getTaskStatus(linkedId);
+      if (status && status !== 'Done') {
+        setTaskCompletePrompt({ taskId: linkedId, taskTitle: linkedTitle || result.projectTask, teamMember });
+      }
+    }
+  };
+
+  const handleCompleteAndStop = async () => {
+    const result = await sharedTimerStop();
+    const linkedId = result.linkedTaskId;
+    if (result.category && result.projectTask) {
+      await sharedTimerCommit(result.timerId, {
+        category: result.category, projectTask: result.projectTask,
+        clientId: result.clientId || '', clientName: result.clientName || '',
+        leadId: result.leadId || '', leadName: result.leadName || '',
+        linkedTaskId: linkedId || '', linkedTaskTitle: result.linkedTaskTitle || '',
+        date: new Date().toISOString().slice(0, 10),
+        durationMinutes: result.durationMinutes,
+        notes: '', transcriptLink: '',
+      }, teamMember);
+      if (result.leadId) {
+        writeLeadActivityLog({ leadId: result.leadId, teamMember, category: result.category, projectTask: result.projectTask, durationMinutes: result.durationMinutes });
+      }
+    }
+    setOpen(false);
+    onStopAndLog?.();
+    if (linkedId) {
+      await completeTask(linkedId, teamMember);
+      showTaskToast('Task marked complete');
+    }
   };
 
   const handleDiscard = async () => {
@@ -184,6 +246,16 @@ export default function NavTimer({ onStopAndLog, onLogTime }) {
           </div>
 
           <div className="px-4 py-3 space-y-2.5">
+            {/* To-Do Board task picker */}
+            <div>
+              <label className="text-[10px] font-bold text-[#5777AB] uppercase tracking-[0.06em] block mb-1">To-Do task <span className="font-normal normal-case text-[#9CA3AF]">(optional)</span></label>
+              <TaskPicker
+                value={linkedTaskId}
+                onChange={handleTaskSelect}
+                currentUser={teamMember}
+                compact
+              />
+            </div>
             <div>
               <label className="text-[10px] font-bold text-[#5777AB] uppercase tracking-[0.06em] block mb-1">Category</label>
               <select value={category} onChange={e => setAndSyncCategory(e.target.value)}
@@ -211,6 +283,10 @@ export default function NavTimer({ onStopAndLog, onLogTime }) {
               </select>
             </div>
 
+            {timer.status !== 'idle' && timer.linkedTaskId && (
+              <RunningTaskBadge linkedTaskId={timer.linkedTaskId} linkedTaskTitle={timer.linkedTaskTitle} />
+            )}
+
             {timer.status === 'idle' && (
               <button onClick={handleStart}
                 className="w-full py-2 bg-[#242450] hover:bg-[#1A1A3A] text-white font-semibold text-sm rounded-lg transition-colors flex items-center justify-center gap-2">
@@ -218,28 +294,44 @@ export default function NavTimer({ onStopAndLog, onLogTime }) {
               </button>
             )}
             {timer.status === 'running' && (
-              <div className="flex gap-2">
-                <button onClick={sharedTimerPause}
-                  className="flex-1 py-2 bg-white border border-[#EBEBF5] text-[#5777AB] hover:bg-[#F6F6FB] font-semibold text-sm rounded-lg flex items-center justify-center gap-1.5">
-                  <Pause className="w-3.5 h-3.5" /> Pause
-                </button>
-                <button onClick={handleStopAndLog}
-                  className="flex-1 py-2 bg-[#DC2626] hover:bg-[#B91C1C] text-white font-semibold text-sm rounded-lg flex items-center justify-center gap-1.5">
-                  <Square className="w-3.5 h-3.5" fill="white" /> Stop &amp; Log
-                </button>
-              </div>
+              <>
+                <div className="flex gap-2">
+                  <button onClick={sharedTimerPause}
+                    className="flex-1 py-2 bg-white border border-[#EBEBF5] text-[#5777AB] hover:bg-[#F6F6FB] font-semibold text-sm rounded-lg flex items-center justify-center gap-1.5">
+                    <Pause className="w-3.5 h-3.5" /> Pause
+                  </button>
+                  <button onClick={handleStopAndLog}
+                    className="flex-1 py-2 bg-[#DC2626] hover:bg-[#B91C1C] text-white font-semibold text-sm rounded-lg flex items-center justify-center gap-1.5">
+                    <Square className="w-3.5 h-3.5" fill="white" /> Stop &amp; Log
+                  </button>
+                </div>
+                {timer.linkedTaskId && (
+                  <button onClick={handleCompleteAndStop}
+                    className="w-full py-2 bg-[#1D9E75] hover:bg-[#17856A] text-white font-semibold text-sm rounded-lg flex items-center justify-center gap-1.5">
+                    ✓ Complete task
+                  </button>
+                )}
+              </>
             )}
             {timer.status === 'paused' && (
-              <div className="flex gap-2">
-                <button onClick={sharedTimerResume}
-                  className="flex-1 py-2 bg-[#242450] hover:bg-[#1A1A3A] text-white font-semibold text-sm rounded-lg flex items-center justify-center gap-1.5">
-                  <Play className="w-3.5 h-3.5" fill="white" /> Resume
-                </button>
-                <button onClick={handleStopAndLog}
-                  className="flex-1 py-2 bg-white border border-[#EBEBF5] text-[#5777AB] hover:bg-[#F6F6FB] font-semibold text-sm rounded-lg flex items-center justify-center gap-1.5">
-                  <Square className="w-3.5 h-3.5" /> Stop &amp; Log
-                </button>
-              </div>
+              <>
+                <div className="flex gap-2">
+                  <button onClick={sharedTimerResume}
+                    className="flex-1 py-2 bg-[#242450] hover:bg-[#1A1A3A] text-white font-semibold text-sm rounded-lg flex items-center justify-center gap-1.5">
+                    <Play className="w-3.5 h-3.5" fill="white" /> Resume
+                  </button>
+                  <button onClick={handleStopAndLog}
+                    className="flex-1 py-2 bg-white border border-[#EBEBF5] text-[#5777AB] hover:bg-[#F6F6FB] font-semibold text-sm rounded-lg flex items-center justify-center gap-1.5">
+                    <Square className="w-3.5 h-3.5" /> Stop &amp; Log
+                  </button>
+                </div>
+                {timer.linkedTaskId && (
+                  <button onClick={handleCompleteAndStop}
+                    className="w-full py-2 bg-[#1D9E75] hover:bg-[#17856A] text-white font-semibold text-sm rounded-lg flex items-center justify-center gap-1.5">
+                    ✓ Complete task
+                  </button>
+                )}
+              </>
             )}
             {timer.status !== 'idle' && (
               <button onClick={handleDiscard}
@@ -249,6 +341,19 @@ export default function NavTimer({ onStopAndLog, onLogTime }) {
             )}
           </div>
         </div>
+      )}
+
+      {taskCompletePrompt && (
+        <TaskCompletePrompt
+          open={true}
+          taskTitle={taskCompletePrompt.taskTitle}
+          onMarkComplete={async () => {
+            await completeTask(taskCompletePrompt.taskId, taskCompletePrompt.teamMember);
+            showTaskToast('Task marked complete');
+            setTaskCompletePrompt(null);
+          }}
+          onNotYet={() => setTaskCompletePrompt(null)}
+        />
       )}
     </div>
   );

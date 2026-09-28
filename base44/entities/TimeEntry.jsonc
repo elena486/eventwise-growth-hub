@@ -94,6 +94,14 @@
     "leadName": {
       "type": "string",
       "description": "Denormalised lead company name for display"
+    },
+    "linkedTaskId": {
+      "type": "string",
+      "description": "Optional linked To-Do Board task (Request) ID"
+    },
+    "linkedTaskTitle": {
+      "type": "string",
+      "description": "Denormalised task title for display when the linked task is deleted or archived"
     }
   },
   "required": [

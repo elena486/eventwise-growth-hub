@@ -3,11 +3,12 @@ import { base44 } from '@/api/base44Client';
 import { addRecentlyViewed } from '@/utils/recentlyViewed';
 import { format, isPast, isToday, parseISO } from 'date-fns';
 import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
-import { Plus, Search, Filter, Columns, List, Users, ArrowUpDown, ChevronDown, ChevronRight, Archive, RotateCcw, MoreHorizontal, Pencil, Trash2 } from 'lucide-react';
+import { Plus, Search, Filter, Columns, List, Users, ArrowUpDown, ChevronDown, ChevronRight, Archive, RotateCcw, MoreHorizontal, Pencil, Trash2, Clock } from 'lucide-react';
 import AddTaskModal from './AddTaskModal';
 import RequestDetail from './RequestDetail';
 import { PRIORITY_STYLES, STATUS_STYLES, CATEGORY_STYLES, PRIORITY_ORDER, BOARD_STATUSES, PRIORITIES, TEAM_MEMBERS, NEW_CATEGORIES, STATUS_MAP } from './requestStyles';
 import { logActivity } from '@/lib/logActivity';
+import { loadTaskTimeTotals, formatTaskDuration } from '@/lib/taskTimerLink';
 import ColumnSelector from '@/components/shared/ColumnSelector';
 import { useColumnVisibility } from '@/hooks/useColumnVisibility';
 
@@ -55,6 +56,7 @@ function resolveUserName(me) {
 
 export default function RequestBoard({ refresh }) {
   const [requests, setRequests] = useState([]);
+  const [taskTimeMap, setTaskTimeMap] = useState({});
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [selectedReq, setSelectedReq] = useState(null);
@@ -91,11 +93,13 @@ export default function RequestBoard({ refresh }) {
 
   const load = async () => {
     try {
-      const [data, me] = await Promise.all([
+      const [data, me, timeMap] = await Promise.all([
         base44.entities.Request.list('-created_date', 500),
         base44.auth.me().catch(() => null),
+        loadTaskTimeTotals(),
       ]);
       setRequests(data);
+      setTaskTimeMap(timeMap);
       setCurrentUser(resolveUserName(me));
     } catch {}
     setLoading(false);
@@ -352,7 +356,7 @@ export default function RequestBoard({ refresh }) {
         ) : showArchived ? (
           <ArchivedView requests={displayRequests} onRestore={handleRestore} onDelete={handleDeletePermanently} onSelect={setSelectedReq} isValidCategory={isValidCategory} fmtDate={fmtDate} />
         ) : view === 'kanban' ? (
-          <KanbanView columns={columns} onDragEnd={handleDragEnd} onSelect={setSelectedReq} isValidCategory={isValidCategory} onArchive={handleArchive} doneCount={doneCount} onBulkArchive={() => setConfirmBulkArchive(true)} />
+          <KanbanView columns={columns} onDragEnd={handleDragEnd} onSelect={setSelectedReq} isValidCategory={isValidCategory} onArchive={handleArchive} doneCount={doneCount} onBulkArchive={() => setConfirmBulkArchive(true)} taskTimeMap={taskTimeMap} />
         ) : view === 'list' ? (
           <ListView sorted={sorted} sortField={sortField} sortDir={sortDir} onSort={handleSort} onSelect={setSelectedReq} isValidCategory={isValidCategory} fmtDate={fmtDate} onStatusChange={handleStatusChange} isVisible={isColVisible} />
         ) : (
@@ -448,7 +452,7 @@ function CardMenu({ req, onArchive }) {
 }
 
 // ── Kanban View ──
-function KanbanView({ columns, onDragEnd, onSelect, isValidCategory, onArchive, doneCount, onBulkArchive }) {
+function KanbanView({ columns, onDragEnd, onSelect, isValidCategory, onArchive, doneCount, onBulkArchive, taskTimeMap }) {
   return (
     <DragDropContext onDragEnd={onDragEnd} style={{ height: '100%' }}>
       <div className="flex gap-4 overflow-x-auto pb-4" style={{ height: '100%' }}>
@@ -500,6 +504,12 @@ function KanbanView({ columns, onDragEnd, onSelect, isValidCategory, onArchive, 
                                 <span className="text-[11px]">Due {format(new Date(req.deadline), 'd MMM yyyy')}</span>
                                 {dlStatus === 'overdue' && <span className="text-[9px] font-bold bg-[#FEF2F2] text-[#DC2626] px-1.5 py-0.5 rounded-full uppercase tracking-wide">Overdue</span>}
                                 {dlStatus === 'today' && <span className="text-[9px] font-bold bg-[#FFFBEB] text-[#A16207] px-1.5 py-0.5 rounded-full uppercase tracking-wide">Due today</span>}
+                              </div>
+                            )}
+                            {taskTimeMap[req.id] > 0 && (
+                              <div className="flex items-center gap-1.5 mt-2 text-[#5777AB]">
+                                <Clock className="w-3 h-3" />
+                                <span className="text-[11px] font-medium">{formatTaskDuration(taskTimeMap[req.id])} logged</span>
                               </div>
                             )}
                           </div>

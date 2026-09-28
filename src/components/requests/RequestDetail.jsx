@@ -5,6 +5,7 @@ import { PRIORITY_STYLES, STATUS_STYLES, CATEGORY_STYLES, BOARD_STATUSES, NEW_CA
 import InlineCell from '@/components/shared/InlineCell';
 import { base44 } from '@/api/base44Client';
 import { logActivity } from '@/lib/logActivity';
+import { loadTaskTimeTotals, formatTaskDuration } from '@/lib/taskTimerLink';
 
 const ACCEPTED = '.pdf,.doc,.docx,.png,.jpg,.jpeg,.mp4,.mov,.zip,.csv,.xls,.xlsx';
 const MAX_MB = 50;
@@ -166,6 +167,7 @@ function AttachmentZone({ request, onUpdate }) {
 export default function RequestDetail({ request, onBack, onUpdate, onDelete }) {
   const [showDeleteConfirm, setShowDeleteConfirm] = React.useState(false);
   const [overflowOpen, setOverflowOpen] = React.useState(false);
+  const [taskTimeMinutes, setTaskTimeMinutes] = React.useState(0);
   const overflowRef = React.useRef(null);
 
   React.useEffect(() => {
@@ -175,6 +177,12 @@ export default function RequestDetail({ request, onBack, onUpdate, onDelete }) {
     document.addEventListener('mousedown', handler);
     return () => document.removeEventListener('mousedown', handler);
   }, []);
+
+  React.useEffect(() => {
+    loadTaskTimeTotals().then(map => {
+      setTaskTimeMinutes(map[request.id] || 0);
+    }).catch(() => {});
+  }, [request.id]);
 
   const save = (field) => async (value) => {
     await base44.entities.Request.update(request.id, { [field]: value });
@@ -248,6 +256,13 @@ export default function RequestDetail({ request, onBack, onUpdate, onDelete }) {
         </Row>
         <Row label="Submitted">
           <span className="text-sm text-ew-body">{request.submittedAt ? format(new Date(request.submittedAt), 'd MMM yyyy, HH:mm') : '—'}</span>
+        </Row>
+        <Row label="Time logged">
+          {taskTimeMinutes > 0 ? (
+            <span className="text-sm text-ew-body font-medium">{formatTaskDuration(taskTimeMinutes)}</span>
+          ) : (
+            <span className="text-ew-muted italic">—</span>
+          )}
         </Row>
         <Row label="Description">
           <InlineCell value={request.description || ''} onSave={save('description')} type="textarea"

@@ -7,6 +7,9 @@ import { format } from 'date-fns';
 import { base44 } from '@/api/base44Client';
 import { CATEGORY_COLORS, CATEGORY_LABELS } from './categoryColors';
 import TaskPresetSelect from './TaskPresetSelect';
+import TaskPicker from './TaskPicker';
+import { mapTaskCategoryToTimeCategory } from '@/lib/taskCategoryMap';
+import { moveTaskToInProgress } from '@/lib/taskTimerLink';
 
 const CALENDAR_HOURS = Array.from({ length: 16 }, (_, i) => i + 7); // 07:00–22:00
 const HOUR_HEIGHT = 60; // px per hour
@@ -157,6 +160,8 @@ export default function InteractiveCalendar({
           task: '',
           clientId: '',
           clientName: '',
+          linkedTaskId: '',
+          linkedTaskTitle: '',
           saving: false,
           error: '',
         });
@@ -219,8 +224,10 @@ export default function InteractiveCalendar({
       timerStoppedAt: endISO,
       timerStatus: 'logged',
       ...(newForm.clientId ? { clientId: newForm.clientId, clientName: newForm.clientName } : {}),
+      ...(newForm.linkedTaskId ? { linkedTaskId: newForm.linkedTaskId, linkedTaskTitle: newForm.linkedTaskTitle } : {}),
     }).catch(() => null);
     if (!created) { setNewForm(f => ({ ...f, saving: false, error: 'Failed to save — please try again.' })); return; }
+    if (newForm.linkedTaskId) moveTaskToInProgress(newForm.linkedTaskId, teamMember);
     // Write client activity log if client linked
     if (newForm.clientId) {
       try {
@@ -397,6 +404,19 @@ export default function InteractiveCalendar({
                 </button>
               </div>
               <div className="space-y-2">
+                <TaskPicker
+                  value={newForm.linkedTaskId}
+                  onChange={(task) => {
+                    if (!task) {
+                      setNewForm(f => ({ ...f, linkedTaskId: '', linkedTaskTitle: '' }));
+                      return;
+                    }
+                    const mappedCat = mapTaskCategoryToTimeCategory(task.category);
+                    setNewForm(f => ({ ...f, linkedTaskId: task.id, linkedTaskTitle: task.title || '', category: mappedCat, task: task.title || '' }));
+                  }}
+                  currentUser={teamMember}
+                  compact
+                />
                 <select value={newForm.category} onChange={e => setNewForm(f => ({ ...f, category: e.target.value, task: '' }))}
                   className={`w-full px-2 py-1.5 text-xs border rounded-lg focus:outline-none ${!newForm.category && newForm.error ? 'border-[#DC2626]' : 'border-[#EBEBF5] focus:border-[#8403C5]'}`}>
                   <option value="">Category…</option>
