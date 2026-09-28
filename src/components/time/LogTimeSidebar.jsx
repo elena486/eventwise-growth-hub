@@ -466,8 +466,8 @@ export default function LogTimeSidebar({ triggerOpen, onTriggerConsumed }) {
         <TaskCompletePrompt
           open={true}
           taskTitle={taskCompletePrompt.taskTitle}
-          onMarkComplete={async () => {
-            await completeTask(taskCompletePrompt.taskId, taskCompletePrompt.teamMember);
+          onMarkComplete={async (outcome) => {
+            await completeTask(taskCompletePrompt.taskId, taskCompletePrompt.teamMember, outcome);
             showTaskToast('Task marked complete');
             setTaskCompletePrompt(null);
           }}

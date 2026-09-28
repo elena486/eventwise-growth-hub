@@ -78,6 +78,15 @@
       "type": "string",
       "format": "date"
     },
+    "completedDate": {
+      "type": "string",
+      "format": "date",
+      "description": "Date the task was marked Done \u2014 set automatically when status changes to Done, cleared when moved back"
+    },
+    "outcome": {
+      "type": "string",
+      "description": "Short one-line outcome note set when the task is marked complete"
+    },
     "extraNotes": {
       "type": "string"
     },

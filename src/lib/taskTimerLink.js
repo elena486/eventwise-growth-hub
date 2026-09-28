@@ -40,13 +40,35 @@ export async function moveTaskToInProgress(taskId, teamMember) {
  * Mark a task as Done. Called when the user clicks "Mark task complete"
  * after stopping a timer, or uses the "✓ Complete" shortcut.
  */
-export async function completeTask(taskId, teamMember) {
+export async function completeTask(taskId, teamMember, outcome) {
   if (!taskId) return;
   try {
     const task = await base44.entities.Request.get(taskId);
     if (!task) return;
-    await base44.entities.Request.update(taskId, { status: 'Done' });
+    const today = new Date().toISOString().split('T')[0];
+    const updates = { status: 'Done', completedDate: today };
+    if (outcome !== undefined) updates.outcome = outcome;
+    await base44.entities.Request.update(taskId, updates);
     logActivity({ teamMember: teamMember || '', actionType: 'Updated a task status', section: 'To-Do Board', recordName: task.title || '', details: '→ Done' });
+  } catch {}
+}
+
+/**
+ * Update a task's status, automatically setting/clearing completedDate.
+ * Does NOT log activity — callers handle their own logging.
+ * options.outcome: optional string to save as the task outcome when marking Done.
+ */
+export async function updateTaskStatus(taskId, newStatus, options = {}) {
+  if (!taskId) return;
+  try {
+    const updates = { status: newStatus };
+    if (newStatus === 'Done') {
+      updates.completedDate = new Date().toISOString().split('T')[0];
+      if (options.outcome !== undefined) updates.outcome = options.outcome;
+    } else {
+      updates.completedDate = '';
+    }
+    await base44.entities.Request.update(taskId, updates);
   } catch {}
 }
 

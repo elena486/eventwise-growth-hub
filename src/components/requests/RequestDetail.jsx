@@ -5,7 +5,8 @@ import { PRIORITY_STYLES, STATUS_STYLES, CATEGORY_STYLES, BOARD_STATUSES, NEW_CA
 import InlineCell from '@/components/shared/InlineCell';
 import { base44 } from '@/api/base44Client';
 import { logActivity } from '@/lib/logActivity';
-import { loadTaskTimeTotals, formatTaskDuration } from '@/lib/taskTimerLink';
+import { loadTaskTimeTotals, formatTaskDuration, updateTaskStatus } from '@/lib/taskTimerLink';
+import OutcomePrompt from './OutcomePrompt';
 
 const ACCEPTED = '.pdf,.doc,.docx,.png,.jpg,.jpeg,.mp4,.mov,.zip,.csv,.xls,.xlsx';
 const MAX_MB = 50;
@@ -168,6 +169,7 @@ export default function RequestDetail({ request, onBack, onUpdate, onDelete }) {
   const [showDeleteConfirm, setShowDeleteConfirm] = React.useState(false);
   const [overflowOpen, setOverflowOpen] = React.useState(false);
   const [taskTimeMinutes, setTaskTimeMinutes] = React.useState(0);
+  const [outcomePrompt, setOutcomePrompt] = React.useState(null);
   const overflowRef = React.useRef(null);
 
   React.useEffect(() => {
@@ -185,10 +187,21 @@ export default function RequestDetail({ request, onBack, onUpdate, onDelete }) {
   }, [request.id]);
 
   const save = (field) => async (value) => {
-    await base44.entities.Request.update(request.id, { [field]: value });
-    onUpdate({ ...request, [field]: value });
+    let updates = { [field]: value };
+    if (field === 'status') {
+      if (value === 'Done') {
+        updates.completedDate = new Date().toISOString().split('T')[0];
+      } else {
+        updates.completedDate = '';
+      }
+    }
+    await base44.entities.Request.update(request.id, updates);
+    onUpdate({ ...request, ...updates });
     if (['status', 'assignedTo', 'priority'].includes(field)) {
       logActivity({ teamMember: '', actionType: field === 'assignedTo' ? 'Assigned a task' : 'Updated a task', section: 'To-Do Board', recordName: request.title || '', details: field === 'assignedTo' ? `→ ${value}` : field === 'status' ? `→ ${value}` : `${field}: ${value}` });
+    }
+    if (field === 'status' && value === 'Done') {
+      setOutcomePrompt({ id: request.id, title: request.title });
     }
   };
 
@@ -254,6 +267,13 @@ export default function RequestDetail({ request, onBack, onUpdate, onDelete }) {
           <InlineCell value={request.deadline || ''} onSave={save('deadline')} type="date"
             displayEl={<span className="text-sm text-ew-body">{request.deadline ? format(new Date(request.deadline), 'd MMM yyyy') : <span className="text-ew-muted italic">—</span>}</span>} />
         </Row>
+        <Row label="Completed">
+          <span className="text-sm text-ew-body">{request.completedDate ? format(new Date(request.completedDate), 'd MMM yyyy') : <span className="text-ew-muted italic">—</span>}</span>
+        </Row>
+        <Row label="Outcome">
+          <InlineCell value={request.outcome || ''} onSave={save('outcome')} type="text" placeholder="Add outcome…"
+            displayEl={request.outcome ? <p className="text-sm text-ew-body">{request.outcome}</p> : <span className="text-ew-muted italic">—</span>} />
+        </Row>
         <Row label="Submitted">
           <span className="text-sm text-ew-body">{request.submittedAt ? format(new Date(request.submittedAt), 'd MMM yyyy, HH:mm') : '—'}</span>
         </Row>
@@ -303,6 +323,20 @@ export default function RequestDetail({ request, onBack, onUpdate, onDelete }) {
           </div>
         </div>
       )}
+
+      {/* Outcome prompt — shown when status changed to Done */}
+      <OutcomePrompt
+        open={!!outcomePrompt}
+        taskTitle={outcomePrompt?.title}
+        onSave={async (outcome) => {
+          if (outcome !== undefined && outcome) {
+            await base44.entities.Request.update(outcomePrompt.id, { outcome });
+            onUpdate({ ...request, outcome });
+          }
+          setOutcomePrompt(null);
+        }}
+        onSkip={() => setOutcomePrompt(null)}
+      />
     </div>
   );
 }

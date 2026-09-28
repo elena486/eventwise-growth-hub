@@ -15,6 +15,7 @@ import Marketing from './Marketing';
 import Handbook from './Handbook';
 import RequestBoard from '@/components/requests/RequestBoard';
 import SubmitRequestForm from '@/components/requests/SubmitRequestForm';
+import WeeklyReport from './WeeklyReport';
 import SalesAssets from './SalesAssets';
 import MQLTracker from './MQLTracker';
 import OutreachAnalytics from './OutreachAnalytics';
@@ -67,6 +68,7 @@ const GROUPS = [
   { id: 'ops', label: 'Operations', tabs: [
     { id: 'team-board', label: "Team To Do's" },
     { id: 'submit-request', label: 'Submit a Request' },
+    { id: 'weekly-report', label: 'Weekly Report' },
     { id: 'sprints', label: 'Sprints' },
     { id: 'leave', label: 'Time Off & Availability' },
     { id: 'competitors', label: 'Competitors' },
@@ -583,6 +585,7 @@ export default function AppShell() {
           </div>
         )}
         {tab === 'submit-request' && <SubmitRequestForm onSubmitted={() => { setTeamBoardRefresh(n => n + 1); setTab('team-board'); }} />}
+        {tab === 'weekly-report' && <WeeklyReport />}
         {tab === 'sprints' && <Sprints />}
         {tab === 'leave' && <Leave />}
         {tab === 'competitors' && <Competitors focusCompetitorId={searchFocus?.focusType === 'competitor' ? searchFocus.focusId : null} onFocusConsumed={() => setSearchFocus(null)} />}

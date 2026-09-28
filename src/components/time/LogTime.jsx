@@ -690,9 +690,9 @@ export default function LogTime({ onLogged }) {
       <TaskCompletePrompt
         open={!!taskCompletePrompt}
         taskTitle={taskCompletePrompt?.taskTitle}
-        onMarkComplete={async () => {
+        onMarkComplete={async (outcome) => {
           if (taskCompletePrompt) {
-            await completeTask(taskCompletePrompt.taskId, taskCompletePrompt.teamMember);
+            await completeTask(taskCompletePrompt.taskId, taskCompletePrompt.teamMember, outcome);
             showTaskToast('Task marked complete');
           }
           setTaskCompletePrompt(null);

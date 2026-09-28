@@ -8,7 +8,8 @@ import AddTaskModal from './AddTaskModal';
 import RequestDetail from './RequestDetail';
 import { PRIORITY_STYLES, STATUS_STYLES, CATEGORY_STYLES, PRIORITY_ORDER, BOARD_STATUSES, PRIORITIES, TEAM_MEMBERS, NEW_CATEGORIES, STATUS_MAP } from './requestStyles';
 import { logActivity } from '@/lib/logActivity';
-import { loadTaskTimeTotals, formatTaskDuration } from '@/lib/taskTimerLink';
+import { loadTaskTimeTotals, formatTaskDuration, updateTaskStatus } from '@/lib/taskTimerLink';
+import OutcomePrompt from './OutcomePrompt';
 import ColumnSelector from '@/components/shared/ColumnSelector';
 import { useColumnVisibility } from '@/hooks/useColumnVisibility';
 
@@ -82,6 +83,7 @@ export default function RequestBoard({ refresh }) {
   const [openDropdown, setOpenDropdown] = useState(null);
   const [showArchived, setShowArchived] = useState(false);
   const [confirmBulkArchive, setConfirmBulkArchive] = useState(false);
+  const [outcomePromptTask, setOutcomePromptTask] = useState(null);
 
   // Grouped view: collapsed sections
   const [collapsedGroups, setCollapsedGroups] = useState({});
@@ -212,9 +214,10 @@ export default function RequestBoard({ refresh }) {
     if (newStatus === result.source.droppableId) return;
     const reqId = result.draggableId;
     const task = requests.find(r => r.id === reqId);
-    setRequests(prev => prev.map(r => r.id === reqId ? { ...r, status: newStatus } : r));
-    await base44.entities.Request.update(reqId, { status: newStatus });
+    setRequests(prev => prev.map(r => r.id === reqId ? { ...r, status: newStatus, ...(newStatus === 'Done' ? { completedDate: new Date().toISOString().split('T')[0] } : { completedDate: '' }) } : r));
+    await updateTaskStatus(reqId, newStatus);
     if (task) logActivity({ teamMember: currentUser || '', actionType: 'Updated a task status', section: 'To-Do Board', recordName: task.title || '', details: `→ ${newStatus}` });
+    if (task && newStatus === 'Done') setOutcomePromptTask({ id: reqId, title: task.title });
   };
 
   const handleDetailUpdate = (updated) => {
@@ -231,9 +234,10 @@ export default function RequestBoard({ refresh }) {
 
   const handleStatusChange = async (id, newStatus) => {
     const task = requests.find(r => r.id === id);
-    setRequests(prev => prev.map(r => r.id === id ? { ...r, status: newStatus } : r));
-    await base44.entities.Request.update(id, { status: newStatus });
+    setRequests(prev => prev.map(r => r.id === id ? { ...r, status: newStatus, ...(newStatus === 'Done' ? { completedDate: new Date().toISOString().split('T')[0] } : { completedDate: '' }) } : r));
+    await updateTaskStatus(id, newStatus);
     if (task) logActivity({ teamMember: currentUser || '', actionType: 'Updated a task status', section: 'To-Do Board', recordName: task.title || '', details: `→ ${newStatus}` });
+    if (task && newStatus === 'Done') setOutcomePromptTask({ id, title: task.title });
   };
 
   const handleArchive = async (id) => {
@@ -242,8 +246,9 @@ export default function RequestBoard({ refresh }) {
   };
 
   const handleRestore = async (id) => {
-    setRequests(prev => prev.map(r => r.id === id ? { ...r, archived: false, status: 'Done' } : r));
-    await base44.entities.Request.update(id, { archived: false, status: 'Done' });
+    const today = new Date().toISOString().split('T')[0];
+    setRequests(prev => prev.map(r => r.id === id ? { ...r, archived: false, status: 'Done', completedDate: r.completedDate || today } : r));
+    await base44.entities.Request.update(id, { archived: false, status: 'Done', completedDate: today });
   };
 
   const handleDeletePermanently = async (id) => {
@@ -379,6 +384,19 @@ export default function RequestBoard({ refresh }) {
 
       {showModal && <AddTaskModal onClose={() => setShowModal(false)} onSubmit={handleAddTask} />}
       {openDropdown && <div className="fixed inset-0 z-[45]" onClick={() => setOpenDropdown(null)} />}
+
+      <OutcomePrompt
+        open={!!outcomePromptTask}
+        taskTitle={outcomePromptTask?.title}
+        onSave={async (outcome) => {
+          if (outcome !== undefined && outcome && outcomePromptTask) {
+            await base44.entities.Request.update(outcomePromptTask.id, { outcome });
+            setRequests(prev => prev.map(r => r.id === outcomePromptTask.id ? { ...r, outcome } : r));
+          }
+          setOutcomePromptTask(null);
+        }}
+        onSkip={() => setOutcomePromptTask(null)}
+      />
     </div>
   );
 }
@@ -509,6 +527,11 @@ function KanbanView({ columns, onDragEnd, onSelect, isValidCategory, onArchive, 
                               <div className="flex items-center gap-1.5 mt-2 text-[#5777AB]">
                                 <Clock className="w-3 h-3" />
                                 <span className="text-[11px] font-medium">{formatTaskDuration(taskTimeMap[req.id])} logged</span>
+                              </div>
+                            )}
+                            {req.outcome && (
+                              <div className="mt-2 pt-2 border-t border-[#F2F2F4]">
+                                <p className="text-[11px] text-[#5777AB] italic line-clamp-2">{req.outcome}</p>
                               </div>
                             )}
                           </div>
