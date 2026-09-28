@@ -203,7 +203,6 @@ export default function RequestBoard({ refresh }) {
     const nextNum = requests.length > 0 ? Math.max(...requests.map(r => r.requestNumber || 0)) + 1 : 1;
     const newReq = await base44.entities.Request.create({ ...data, requestNumber: nextNum });
     setRequests(prev => [newReq, ...prev]);
-    base44.functions.invoke('notifyNewRequest', { ...data, submittedAt: data.submittedAt }).catch(() => {});
     logActivity({ teamMember: currentUser || data.requestedBy || '', actionType: 'Created a task', section: 'To-Do Board', recordName: data.title || '' });
   };
 

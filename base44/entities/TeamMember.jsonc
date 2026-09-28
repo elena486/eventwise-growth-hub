@@ -6,6 +6,10 @@
       "type": "string",
       "description": "Team member first name"
     },
+    "email": {
+      "type": "string",
+      "description": "Team member email address \u2014 used for task assignment email notifications"
+    },
     "availabilityRequired": {
       "type": "boolean",
       "default": false,

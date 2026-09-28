@@ -38,17 +38,6 @@ export default function SubmitRequestForm({ onSubmitted }) {
       archived: false,
     });
 
-    base44.functions.invoke('notifyNewRequest', {
-      requestedBy: form.requestedBy,
-      recipient: form.recipient,
-      title: form.title,
-      category: form.category,
-      priority: form.priority,
-      deadline: form.deadline,
-      description: form.description,
-      submittedAt,
-    }).catch(() => {});
-
     setSubmitting(false);
     setDone(true);
     setTimeout(() => {

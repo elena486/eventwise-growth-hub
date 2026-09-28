@@ -16,6 +16,62 @@ Deno.serve(async (req) => {
       });
     }
 
+    // ── Email helper for task assignments ────────────────────────────────────
+    // Looks up the assignee's email from the TeamMember table and sends a
+    // friendly notification email. Skips silently if no email is on file.
+    let _teamEmails: Record<string, string> | null = null;
+    async function getTeamEmail(name: string): Promise<string | null> {
+      if (_teamEmails === null) {
+        _teamEmails = {};
+        try {
+          const members = await base44.asServiceRole.entities.TeamMember.list();
+          for (const m of members) {
+            if (m.name && m.email) _teamEmails[m.name] = m.email;
+          }
+        } catch {}
+      }
+      return _teamEmails[name] || null;
+    }
+
+    async function sendAssignmentEmail(assignee: string, assignedBy: string, task: any) {
+      const email = await getTeamEmail(assignee);
+      if (!email) return;
+
+      const deadlineStr = task.deadline
+        ? new Date(task.deadline + 'T00:00:00').toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })
+        : null;
+
+      const hubUrl = 'https://eventwise-hq.base44.app/AppShell?tab=team-board';
+      const subject = `New task assigned: ${task.title || 'Untitled task'}`;
+
+      const rows = [
+        `<tr><td style="padding:3px 14px 3px 0;font-weight:600;color:#5777AB;">Assigned by</td><td style="padding:3px 0;color:#242450;">${assignedBy || '—'}</td></tr>`,
+        `<tr><td style="padding:3px 14px 3px 0;font-weight:600;color:#5777AB;">Category</td><td style="padding:3px 0;color:#242450;">${task.category || '—'}</td></tr>`,
+        `<tr><td style="padding:3px 14px 3px 0;font-weight:600;color:#5777AB;">Priority</td><td style="padding:3px 0;color:#242450;">${task.priority || '—'}</td></tr>`,
+        deadlineStr ? `<tr><td style="padding:3px 14px 3px 0;font-weight:600;color:#5777AB;">Due date</td><td style="padding:3px 0;color:#242450;">${deadlineStr}</td></tr>` : '',
+      ].filter(Boolean).join('');
+
+      const descBlock = task.description
+        ? `<p style="font-size:13px;color:#1A1A3A;margin:14px 0 0;padding-top:14px;border-top:1px solid #EBEBF5;white-space:pre-wrap;">${task.description}</p>`
+        : '';
+
+      const html = `<div style="font-family:'DM Sans',Arial,sans-serif;max-width:480px;margin:0 auto;padding:24px;color:#242450;">
+  <p style="font-size:15px;margin:0 0 16px;">Hi ${assignee},</p>
+  <p style="font-size:15px;margin:0 0 20px;">${assignedBy || 'Someone'} just assigned you a task in Eventwise HQ:</p>
+  <div style="background:#F6F6FB;border:1px solid #EBEBF5;border-radius:10px;padding:20px;margin:0 0 20px;">
+    <p style="font-size:16px;font-weight:700;margin:0 0 12px;color:#242450;">${task.title || 'Untitled task'}</p>
+    <table style="font-size:13px;border-collapse:collapse;">${rows}</table>
+    ${descBlock}
+  </div>
+  <a href="${hubUrl}" style="display:inline-block;background:#8403C5;color:#FFFFFF;font-size:14px;font-weight:600;text-decoration:none;padding:10px 24px;border-radius:8px;">Open in the Hub</a>
+  <p style="font-size:12px;color:#9CA3AF;margin:24px 0 0;">Sent from Eventwise HQ</p>
+</div>`;
+
+      try {
+        await base44.asServiceRole.integrations.Core.SendEmail({ to: email, subject, html });
+      } catch {}
+    }
+
     // ── REQUEST / TASK (To-Do Board) ──────────────────────────────────────────
     if (entityName === 'Request') {
       const assignee = data?.assignedTo;
@@ -46,6 +102,7 @@ Deno.serve(async (req) => {
             recordId,
             actorName: requester || '',
           });
+          await sendAssignmentEmail(assignee, requester || '', data);
         }
       }
 
@@ -63,6 +120,7 @@ Deno.serve(async (req) => {
             recordId,
             actorName: requester || '',
           });
+          await sendAssignmentEmail(assignee, requester || '', data);
         }
 
         // Requester notifications at two key moments — work started & work done.
