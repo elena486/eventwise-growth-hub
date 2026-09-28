@@ -2,9 +2,10 @@
  * Data fetching, report building, flags, and AI summary for the Weekly Report.
  * Tasks are attributed by `assignedTo` (current assignee only).
  * Time entries are attributed by `teamMember` (the person who logged them).
+ * All time entries (linked or unlinked) are included in Hours and Time by Category.
  */
 import { base44 } from '@/api/base44Client';
-import { startOfWeek, endOfWeek, isWithinInterval, parseISO, addDays, differenceInWeeks, format } from 'date-fns';
+import { startOfWeek, endOfWeek, isWithinInterval, parseISO, addDays, subWeeks, differenceInWeeks, format } from 'date-fns';
 
 export const TEAM_MEMBERS = ['Chris', 'Elena', 'George', 'Martinique', 'Sreeja', 'Ramesh', 'Eleanor'];
 
@@ -25,11 +26,13 @@ const PRIORITY_ORDER = { Urgent: 0, High: 1, Medium: 2, Low: 3 };
 
 export async function fetchReportData(person, weekStart) {
   const weekEnd = endOfWeek(weekStart, { weekStartsOn: 1 });
+  const prevWeekStart = subWeeks(weekStart, 1);
+  const prevWeekEnd = endOfWeek(prevWeekStart, { weekStartsOn: 1 });
   const isWholeTeam = person === 'Whole team';
 
   const [allTasks, allEntries] = await Promise.all([
     base44.entities.Request.list('-created_date', 500),
-    base44.entities.TimeEntry.list('-created_date', 500),
+    base44.entities.TimeEntry.list('-created_date', 1000),
   ]);
 
   const tasks = allTasks.filter(t => !t.archived);
@@ -38,17 +41,41 @@ export async function fetchReportData(person, weekStart) {
     try { return isWithinInterval(parseISO(e.date), { start: weekStart, end: weekEnd }); } catch { return false; }
   });
 
+  const prevWeekEntries = allEntries.filter(e => {
+    try { return isWithinInterval(parseISO(e.date), { start: prevWeekStart, end: prevWeekEnd }); } catch { return false; }
+  });
+
   const people = isWholeTeam ? TEAM_MEMBERS : [person];
   const reportByPerson = {};
+  const prevStatsByPerson = {};
 
   for (const p of people) {
-    // FIX: always filter by assignee for tasks, by teamMember for time entries
     const pTasks = tasks.filter(t => t.assignedTo === p);
     const pEntries = weekEntries.filter(e => e.teamMember === p);
+    const pPrevEntries = prevWeekEntries.filter(e => e.teamMember === p);
     reportByPerson[p] = buildPersonReport(pTasks, pEntries, weekStart, weekEnd);
+    prevStatsByPerson[p] = computeStats(pTasks, pPrevEntries, prevWeekStart, prevWeekEnd);
   }
 
-  return { reportByPerson, isWholeTeam, weekStart, weekEnd, people };
+  return { reportByPerson, prevStatsByPerson, isWholeTeam, weekStart, weekEnd, people };
+}
+
+function computeStats(tasks, entries, weekStart, weekEnd) {
+  const completed = tasks.filter(t => {
+    if (!t.completedDate) return false;
+    try { return isWithinInterval(parseISO(t.completedDate), { start: weekStart, end: weekEnd }); } catch { return false; }
+  }).length;
+
+  const inProgress = tasks.filter(t => {
+    if (t.status === 'Done' || t.status === 'Blocked') return false;
+    const hasTime = entries.some(e => e.linkedTaskId === t.id);
+    return t.status === 'In Progress' || (t.status === 'To Do' && hasTime);
+  }).length;
+
+  const blocked = tasks.filter(t => t.status === 'Blocked').length;
+  const hoursLogged = entries.reduce((s, e) => s + (e.durationMinutes || 0), 0);
+
+  return { completed, inProgress, blocked, hoursLogged };
 }
 
 function buildPersonReport(tasks, entries, weekStart, weekEnd) {
@@ -127,7 +154,7 @@ function buildPersonReport(tasks, entries, weekStart, weekEnd) {
 
   const unscheduledCount = tasks.filter(t => t.status === 'To Do' && !t.deadline).length;
 
-  // 5. TIME BY CATEGORY
+  // 5. TIME BY CATEGORY — all entries, linked or not
   const byCategory = {};
   entries.forEach(e => {
     const cat = e.category || 'Other';
@@ -142,6 +169,10 @@ function buildPersonReport(tasks, entries, weekStart, weekEnd) {
       share: totalTime > 0 ? Math.round(minutes / totalTime * 100) : 0,
     }));
 
+  // Board task adoption
+  const boardTaskHours = entries.filter(e => e.linkedTaskId).reduce((s, e) => s + (e.durationMinutes || 0), 0);
+  const boardTaskAdoptionPct = totalTime > 0 ? Math.round(boardTaskHours / totalTime * 100) : 0;
+
   return {
     done,
     inProgress,
@@ -151,6 +182,8 @@ function buildPersonReport(tasks, entries, weekStart, weekEnd) {
     unscheduledCount,
     timeByCategory,
     totalTime,
+    boardTaskHours,
+    boardTaskAdoptionPct,
     stats: {
       completed: done.length,
       inProgress: allInProgress.length,
@@ -164,13 +197,11 @@ export function buildFlags(reportByPerson, isWholeTeam, viewingPerson) {
   const flags = [];
 
   for (const [person, report] of Object.entries(reportByPerson)) {
-    // Skip the viewer's own tasks in their individual report
     if (!isWholeTeam && viewingPerson && person === viewingPerson) continue;
 
     const personFlags = [];
     const flaggedTitles = new Set();
 
-    // 1. Blocked more than 3 days
     report.blocked.forEach(t => {
       if (t.blockedDays > 3 && !flaggedTitles.has(t.title)) {
         personFlags.push(`${person}: "${t.title}" blocked for ${t.blockedDays} days`);
@@ -178,7 +209,6 @@ export function buildFlags(reportByPerson, isWholeTeam, viewingPerson) {
       }
     });
 
-    // 2. Open 4+ weeks
     report.longRunning.forEach(t => {
       if (!flaggedTitles.has(t.title)) {
         personFlags.push(`${person}: "${t.title}" open for ${t.carriedWeeks} weeks`);
@@ -186,13 +216,11 @@ export function buildFlags(reportByPerson, isWholeTeam, viewingPerson) {
       }
     });
 
-    // 3. No activity in the week
     const hasActivity = report.stats.completed > 0 || report.stats.inProgress > 0 || report.stats.blocked > 0 || report.stats.hoursLogged > 0;
     if (!hasActivity) {
       personFlags.push(`${person}: no board or timer activity this week`);
     }
 
-    // Max 5 per person
     flags.push(...personFlags.slice(0, 5));
   }
 

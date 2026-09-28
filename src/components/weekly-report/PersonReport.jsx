@@ -3,23 +3,37 @@ import { format, parseISO } from 'date-fns';
 import { formatDuration } from '@/lib/weeklyReportData';
 import TimeByCategoryBar from './TimeByCategoryBar';
 
-export default function PersonReport({ report, aiSummary, aiLoading, aiError, onRegenerateSummary }) {
+export default function PersonReport({ report, prevStats, isElena, isPastWeek, aiSummary, aiLoading, aiError, onRegenerateSummary }) {
   const [expanded, setExpanded] = useState(false);
   const [longRunningOpen, setLongRunningOpen] = useState(false);
 
   return (
     <div>
       {/* Stat tiles */}
-      <div className="grid grid-cols-4 gap-3 mb-6">
-        <StatTile label="Completed" value={report.stats.completed} />
-        <StatTile label="In progress" value={report.stats.inProgress} />
-        <StatTile label="Blocked" value={report.stats.blocked} />
-        <StatTile label="Hours logged" value={formatDuration(report.stats.hoursLogged)} />
+      <div className="grid grid-cols-4 gap-3 mb-4">
+        <StatTile label="Completed" value={report.stats.completed} delta={report.stats.completed - (prevStats?.completed ?? 0)} prev={prevStats?.completed ?? 0} />
+        <StatTile label="In progress" value={report.stats.inProgress} delta={report.stats.inProgress - (prevStats?.inProgress ?? 0)} prev={prevStats?.inProgress ?? 0} />
+        <StatTile label="Blocked" value={report.stats.blocked} delta={report.stats.blocked - (prevStats?.blocked ?? 0)} prev={prevStats?.blocked ?? 0} />
+        <StatTile label="Hours logged" value={formatDuration(report.stats.hoursLogged)} delta={report.stats.hoursLogged - (prevStats?.hoursLogged ?? 0)} prev={prevStats?.hoursLogged ?? 0} isHours
+          subline={isElena ? `${formatDuration(report.boardTaskHours)} of ${formatDuration(report.stats.hoursLogged)} against board tasks (${report.boardTaskAdoptionPct}%)` : null}
+        />
       </div>
+
+      {/* Past week note */}
+      {isPastWeek && (
+        <p className="text-xs text-[#9CA3AF] italic mb-4">Task statuses reflect today, not that week.</p>
+      )}
 
       {/* AI summary */}
       <div className="bg-white border border-[#EBEBF5] rounded-xl p-5 mb-4">
-        <h3 className="text-sm font-bold text-[#242450] mb-2">Summary</h3>
+        <div className="flex items-center justify-between mb-2">
+          <h3 className="text-sm font-bold text-[#242450]">Summary</h3>
+          {!aiLoading && !aiError && aiSummary && (
+            <button onClick={onRegenerateSummary} className="text-xs text-[#8403C5] hover:underline font-medium">
+              Regenerate summary
+            </button>
+          )}
+        </div>
         {aiLoading ? (
           <div className="flex items-center gap-2">
             <div className="w-4 h-4 border-2 border-[#8403C5]/20 border-t-[#8403C5] rounded-full animate-spin" />
@@ -119,11 +133,18 @@ export default function PersonReport({ report, aiSummary, aiLoading, aiError, on
   );
 }
 
-function StatTile({ label, value }) {
+function StatTile({ label, value, delta, prev, isHours, subline }) {
+  const showDelta = prev > 0 && delta !== 0;
+  const deltaText = isHours
+    ? `${delta > 0 ? '+' : '-'}${formatDuration(Math.abs(delta))} vs last week`
+    : `${delta > 0 ? '+' : ''}${delta} vs last week`;
+
   return (
     <div className="bg-white border border-[#EBEBF5] rounded-xl p-4">
       <p className="text-2xl font-bold text-[#8403C5]">{value}</p>
       <p className="text-xs text-[#5777AB] uppercase tracking-wide mt-1">{label}</p>
+      {showDelta && <p className="text-[11px] text-[#9CA3AF] mt-0.5">{deltaText}</p>}
+      {subline && <p className="text-[11px] text-[#9CA3AF] mt-0.5">{subline}</p>}
     </div>
   );
 }

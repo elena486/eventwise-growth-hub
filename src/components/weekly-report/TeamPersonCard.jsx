@@ -1,7 +1,7 @@
 import React from 'react';
 import { formatDuration } from '@/lib/weeklyReportData';
 
-export default function TeamPersonCard({ person, report, onViewPerson }) {
+export default function TeamPersonCard({ person, report, isElena, onViewPerson }) {
   const lines = [];
   report.done.slice(0, 3).forEach(t => lines.push(t.title));
   if (lines.length < 3) report.inProgress.slice(0, 3 - lines.length).forEach(t => lines.push(t.title));
@@ -27,6 +27,11 @@ export default function TeamPersonCard({ person, report, onViewPerson }) {
       </div>
       {report.blocked.length > 0 && (
         <p className="text-xs text-[#DC2626] mt-2">Blocked: {report.blocked.map(t => t.title).join(', ')}</p>
+      )}
+      {isElena && report.stats.hoursLogged > 0 && (
+        <p className="text-[11px] text-[#9CA3AF] mt-2">
+          {formatDuration(report.boardTaskHours)} of {formatDuration(report.stats.hoursLogged)} against board tasks ({report.boardTaskAdoptionPct}%)
+        </p>
       )}
     </div>
   );
