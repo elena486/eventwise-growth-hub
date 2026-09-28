@@ -36,7 +36,7 @@ export default function OutcomePrompt({ open, taskTitle, onSave, onSkip }) {
         <p className="text-xs text-[#5777AB] mb-3 truncate pl-7">{taskTitle}</p>
         <div className="mb-4">
           <label className="block text-[10px] font-semibold text-[#5777AB] uppercase tracking-[0.06em] mb-1">
-            What was the outcome? <span className="font-normal normal-case text-[#9CA3AF]">(optional, one line)</span>
+            What did this achieve or unblock? <span className="font-normal normal-case text-[#9CA3AF]">(optional, one line)</span>
           </label>
           <input
             type="text"

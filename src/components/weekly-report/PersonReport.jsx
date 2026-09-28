@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { format, parseISO } from 'date-fns';
 import { formatDuration } from '@/lib/weeklyReportData';
 import TimeByCategoryBar from './TimeByCategoryBar';
+import SummaryLines from './SummaryLines';
 
 export default function PersonReport({ report, prevStats, isElena, isPastWeek, aiSummary, aiLoading, aiError, onRegenerateSummary }) {
   const [expanded, setExpanded] = useState(false);
@@ -45,7 +46,7 @@ export default function PersonReport({ report, prevStats, isElena, isPastWeek, a
             <button onClick={onRegenerateSummary} className="px-3 py-1.5 text-xs font-semibold bg-[#8403C5] hover:bg-[#6B02A0] text-white rounded-lg transition-colors">Regenerate summary</button>
           </div>
         ) : (
-          <p className="text-sm text-[#242450] leading-relaxed">{aiSummary}</p>
+          <SummaryLines summary={aiSummary} />
         )}
       </div>
 

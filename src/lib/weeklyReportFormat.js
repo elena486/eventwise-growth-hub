@@ -49,7 +49,10 @@ export function formatReportAsText(reportData, aiSummary) {
   text += `Completed ${stats.completed} | In progress ${stats.inProgress} | Blocked ${stats.blocked} | Hours ${formatDuration(stats.hoursLogged)}\n\n`;
 
   if (aiSummary) {
-    text += `${aiSummary}\n\n`;
+    if (aiSummary.moved) text += `Moved: ${aiSummary.moved}\n`;
+    if (aiSummary.blocking) text += `Blocking: ${aiSummary.blocking}\n`;
+    if (aiSummary.next) text += `Next: ${aiSummary.next}\n`;
+    text += '\n';
   }
 
   for (const [person, report] of Object.entries(reportByPerson)) {
@@ -191,21 +194,40 @@ export function generateReportPDF(reportData, aiSummary) {
   });
   y += tileH + 8;
 
-  // ── Summary (shaded box, sized to fit wrapped text) ──
-  if (aiSummary) {
-    // Set font BEFORE splitTextToSize so wrapping matches render size
+  // ── Summary (shaded box, three labelled lines) ──
+  if (aiSummary && (aiSummary.moved || aiSummary.blocking || aiSummary.next)) {
+    const padding = 5, headingH = 6, lineH = 5, gapBetween = 2;
+    const labelW = 20;
+    const entries = [
+      { label: 'Moved:', text: aiSummary.moved },
+      { label: 'Blocking:', text: aiSummary.blocking },
+      { label: 'Next:', text: aiSummary.next },
+    ].filter(l => l.text);
+    // Pre-wrap text for each entry (font set before splitTextToSize)
     doc.setFont('helvetica', 'normal'); doc.setFontSize(10);
-    const lines = doc.splitTextToSize(aiSummary, usableW - 10);
-    const padding = 5, headingH = 6, textLineH = 4.5;
-    const boxH = padding + headingH + lines.length * textLineH + padding;
+    const wrapped = entries.map(e => ({
+      label: e.label,
+      lines: doc.splitTextToSize(e.text, usableW - 10 - labelW),
+    }));
+    const totalTextLines = wrapped.reduce((s, w) => s + w.lines.length, 0);
+    const boxH = padding + headingH + totalTextLines * lineH + (wrapped.length > 0 ? (wrapped.length - 1) * gapBetween : 0) + padding;
     ensureSpace(boxH + 6);
     doc.setFillColor(...C.shadeBg);
     doc.roundedRect(margin, y, usableW, boxH, 2, 2, 'F');
     doc.setFont('helvetica', 'bold'); doc.setFontSize(11); doc.setTextColor(...C.navy);
     doc.text('Summary', margin + 4, y + padding + 4);
-    doc.setFont('helvetica', 'normal'); doc.setFontSize(10); doc.setTextColor(...C.grey);
-    lines.forEach((line, i) => {
-      doc.text(line, margin + 4, y + padding + headingH + 4 + i * textLineH);
+    let ty = y + padding + headingH + 4;
+    wrapped.forEach((w) => {
+      w.lines.forEach((line, i) => {
+        if (i === 0) {
+          doc.setFont('helvetica', 'bold'); doc.setFontSize(10); doc.setTextColor(...C.navy);
+          doc.text(w.label, margin + 4, ty);
+        }
+        doc.setFont('helvetica', 'normal'); doc.setFontSize(10); doc.setTextColor(...C.grey);
+        doc.text(line, margin + 4 + labelW, ty);
+        ty += lineH;
+      });
+      ty += gapBetween;
     });
     y += boxH + 8;
   }

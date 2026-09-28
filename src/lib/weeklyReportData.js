@@ -138,6 +138,8 @@ function buildPersonReport(tasks, entries, weekStart, weekEnd) {
         title: t.title || 'Untitled',
         category: t.category || '—',
         blockedDays,
+        notes: t.notes || '',
+        outcome: t.outcome || '',
       };
     });
 
@@ -227,34 +229,64 @@ export function buildFlags(reportByPerson, isWholeTeam, viewingPerson) {
   return flags;
 }
 
-export async function generateAISummary(reportData) {
+export async function generateAISummary(reportData, companyPriorities) {
   const isWholeTeam = reportData.isWholeTeam;
 
   const dataForAI = {};
   for (const [p, report] of Object.entries(reportData.reportByPerson)) {
     dataForAI[p] = {
-      completed: report.done.map(t => ({ title: t.title, outcome: t.outcome || null, hours: formatDuration(t.timeMinutes) })),
-      inProgress: report.inProgress.map(t => ({ title: t.title, hours: formatDuration(t.timeMinutes) })),
-      longRunning: report.longRunning.map(t => ({ title: t.title, weeksOpen: t.carriedWeeks })),
-      blocked: report.blocked.map(t => ({ title: t.title })),
+      completed: report.done.map(t => ({ title: t.title, outcome: t.outcome || null })),
+      inProgress: report.inProgress.map(t => ({ title: t.title })),
+      blocked: report.blocked.map(t => ({ title: t.title, notes: t.notes || null, outcome: t.outcome || null })),
       comingUp: report.comingUp.map(t => ({ title: t.title, deadline: t.deadline })),
-      totalTime: formatDuration(report.totalTime),
-      stats: report.stats,
+      hasBlocked: report.blocked.length > 0,
+      hasComingUp: report.comingUp.length > 0,
     };
   }
 
-  const prompt = `You are writing a weekly report summary. Generate a ${isWholeTeam ? '3-4 sentence' : '2-3 sentence'} summary.
+  const prompt = `You are writing a weekly report summary with three labelled lines: Moved, Blocking, and Next.
 
-STRICT RULES:
-- Use ONLY the information in the data below. Never invent outcomes, results, reasons, or impact.
-- If a task has no outcome, describe it as completed and nothing more.
-- Do not evaluate or judge performance, productivity, or effort. No comparisons between people. Hours are not a measure of value.
-- Plain, neutral, professional tone. Short sentences.
-${isWholeTeam ? '- Cover what moved across the team, what is blocked, and what is coming next.' : ''}
+${isWholeTeam ? 'This is a WHOLE TEAM report. Write one to two sentences per line, covering the team as a whole rather than person by person.' : 'This is an INDIVIDUAL report. Write one sentence per line.'}
+
+CONTENT RULES:
+- Do NOT restate what is already visible in the report tiles and lists: no counts, no hours, no listing task titles one by one. Refer to themes of work, not individual tasks.
+- Explain relevance: connect the work to the company priorities below when there is a genuine link. Skip the link if there isn't one. Never force it.
+- Use intent wording for work without a recorded outcome: "supports", "aims to", "lays groundwork for", "keeps X moving". Use result wording ("reduced", "improved", "saved", "increased") ONLY when a task's Outcome line states it, and stay as close to that wording as possible.
+- Never invent numbers, results, customers, or causes.
+- Moved: what progressed this week and why it matters to the team or company.
+- Blocking: use Blocked-status tasks and their Outcome or notes text only. Do not infer blockers from missing time or long-running tasks. If there are no Blocked tasks, write exactly "Nothing flagged."
+- Next: base on tasks due in the next 7 days and current in-progress focus. If nothing is scheduled, write exactly "No dated work scheduled yet."
+- No judgement of performance, effort or productivity. No comparisons between people. Neutral, plain, professional tone. Short sentences.
+- If there is very little data, keep it short and honest rather than padding it out.
+
+${companyPriorities ? `COMPANY PRIORITIES (use to explain why work matters where there is a genuine link):\n${companyPriorities}` : 'No company priorities have been set. Do not make company-level claims.'}
 
 Report data:
-${JSON.stringify(dataForAI, null, 2)}`;
+${JSON.stringify(dataForAI, null, 2)}
 
-  const result = await base44.integrations.Core.InvokeLLM({ prompt });
-  return typeof result === 'string' ? result : String(result?.response || result || '');
+Return a JSON object with three string fields: "moved", "blocking", "next".`;
+
+  const result = await base44.integrations.Core.InvokeLLM({
+    prompt,
+    response_json_schema: {
+      type: 'object',
+      properties: {
+        moved: { type: 'string' },
+        blocking: { type: 'string' },
+        next: { type: 'string' },
+      },
+      required: ['moved', 'blocking', 'next'],
+    },
+  });
+
+  if (result && typeof result === 'object' && result.moved !== undefined) {
+    return { moved: result.moved || '', blocking: result.blocking || '', next: result.next || '' };
+  }
+  if (typeof result === 'string') {
+    try {
+      const parsed = JSON.parse(result);
+      return { moved: parsed.moved || '', blocking: parsed.blocking || '', next: parsed.next || '' };
+    } catch {}
+  }
+  return { moved: '', blocking: '', next: '' };
 }

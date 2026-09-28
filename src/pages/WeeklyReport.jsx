@@ -7,6 +7,8 @@ import { formatReportAsText, generateReportPDF } from '@/lib/weeklyReportFormat'
 import PersonReport from '@/components/weekly-report/PersonReport';
 import TeamPersonCard from '@/components/weekly-report/TeamPersonCard';
 import ReportSkeleton from '@/components/weekly-report/ReportSkeleton';
+import SummarySettings from '@/components/weekly-report/SummarySettings';
+import SummaryLines from '@/components/weekly-report/SummaryLines';
 
 export default function WeeklyReport() {
   const [user, setUser] = useState(null);
@@ -14,18 +16,25 @@ export default function WeeklyReport() {
   const [weekStart, setWeekStart] = useState(startOfWeek(new Date(), { weekStartsOn: 1 }));
   const [reportData, setReportData] = useState(null);
   const [generating, setGenerating] = useState(false);
-  const [aiSummary, setAiSummary] = useState('');
+  const [aiSummary, setAiSummary] = useState(null);
   const [aiLoading, setAiLoading] = useState(false);
   const [aiError, setAiError] = useState(false);
   const [flags, setFlags] = useState([]);
   const [flagsOpen, setFlagsOpen] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [companyPriorities, setCompanyPriorities] = useState('');
 
   useEffect(() => {
     base44.auth.me().then(me => {
       setUser(me);
       const first = me?.full_name?.split(' ')[0] || '';
       if (TEAM_MEMBERS.includes(first)) setPerson(first);
+    }).catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    base44.entities.WeeklyReportSettings.list().then(records => {
+      if (records.length > 0) setCompanyPriorities(records[0].companyPriorities || '');
     }).catch(() => {});
   }, []);
 
@@ -39,14 +48,12 @@ export default function WeeklyReport() {
   const currentWeekStart = startOfWeek(new Date(), { weekStartsOn: 1 });
   const isPastWeek = weekStart.getTime() < currentWeekStart.getTime();
 
-  // Auto-generate when person or week changes
+  // Fetch report data when person or week changes
   useEffect(() => {
     if (!person) return;
 
     let cancelled = false;
     setGenerating(true);
-    setAiError(false);
-    setAiSummary('');
     setFlags([]);
     setFlagsOpen(false);
     setReportData(null);
@@ -59,16 +66,6 @@ export default function WeeklyReport() {
         if (isElena) {
           setFlags(buildFlags(data.reportByPerson, data.isWholeTeam, viewingPersonName));
         }
-        setAiLoading(true);
-        try {
-          const summary = await generateAISummary(data);
-          if (cancelled) return;
-          setAiSummary(summary);
-        } catch {
-          if (!cancelled) setAiError(true);
-        } finally {
-          if (!cancelled) setAiLoading(false);
-        }
       } catch {
         if (!cancelled) setReportData(null);
       }
@@ -79,6 +76,31 @@ export default function WeeklyReport() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [person, weekStart]);
 
+  // Generate AI summary when data or priorities change
+  useEffect(() => {
+    if (!reportData) return;
+
+    let cancelled = false;
+    setAiError(false);
+    setAiSummary(null);
+    setAiLoading(true);
+
+    (async () => {
+      try {
+        const summary = await generateAISummary(reportData, companyPriorities);
+        if (cancelled) return;
+        setAiSummary(summary);
+      } catch {
+        if (!cancelled) setAiError(true);
+      } finally {
+        if (!cancelled) setAiLoading(false);
+      }
+    })();
+
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [reportData, companyPriorities]);
+
   const handleViewPerson = (personName) => setPerson(personName);
 
   const handleRegenerateSummary = async () => {
@@ -86,7 +108,7 @@ export default function WeeklyReport() {
     setAiError(false);
     setAiLoading(true);
     try {
-      const summary = await generateAISummary(reportData);
+      const summary = await generateAISummary(reportData, companyPriorities);
       setAiSummary(summary);
     } catch {
       setAiError(true);
@@ -226,7 +248,7 @@ export default function WeeklyReport() {
                       <button onClick={handleRegenerateSummary} className="px-3 py-1.5 text-xs font-semibold bg-[#8403C5] hover:bg-[#6B02A0] text-white rounded-lg transition-colors">Regenerate summary</button>
                     </div>
                   ) : (
-                    <p className="text-sm text-[#242450] leading-relaxed">{aiSummary}</p>
+                    <SummaryLines summary={aiSummary} />
                   )}
                 </div>
 
@@ -266,6 +288,11 @@ export default function WeeklyReport() {
                   </div>
                 )}
               </div>
+            )}
+
+            {/* Summary settings (Elena only) */}
+            {isElena && (
+              <SummarySettings onSaved={(p) => setCompanyPriorities(p)} />
             )}
           </>
         ) : null}

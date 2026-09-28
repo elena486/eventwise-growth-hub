@@ -1,0 +1,11 @@
+{
+  "name": "WeeklyReportSettings",
+  "type": "object",
+  "properties": {
+    "companyPriorities": {
+      "type": "string",
+      "description": "Current company priorities used to explain why work matters in the AI summary \u2014 set by Elena, shared across all reports"
+    }
+  },
+  "required": []
+}
