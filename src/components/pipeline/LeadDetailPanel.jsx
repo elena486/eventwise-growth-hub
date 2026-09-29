@@ -952,6 +952,32 @@ export default function LeadDetailPanel({ lead, onClose, onUpdate, onDelete, onC
         {/* DEAL INFO TAB */}
         {activeTab === 'deal' && (
           <div>
+            {/* Sales Attribution — SDR + Demo Booked Date */}
+            <div className="mb-5">
+              <SectionTitle>Sales Attribution</SectionTitle>
+              <div className="grid grid-cols-2 gap-3">
+                {data.heardAbout === 'Outbound' ? (
+                  <FieldRow label="SDR (who sourced it)">
+                    <select
+                      className={ic}
+                      value={data.sdr || ''}
+                      onChange={e => autoSave({ sdr: e.target.value })}
+                    >
+                      <option value="">Select…</option>
+                      {SDR_OPTIONS.map(o => <option key={o} value={o}>{o}</option>)}
+                    </select>
+                  </FieldRow>
+                ) : (
+                  <div className="col-span-2 text-xs text-ew-muted bg-ew-bg rounded-lg px-3 py-2.5">
+                    Source is {data.heardAbout ? <strong>{data.heardAbout}</strong> : 'not set'}. Set Source to <strong>Outbound</strong> on the Contacts tab to assign an SDR.
+                  </div>
+                )}
+                <FieldRow label="Demo booked date">
+                  <input type="date" className={ic} value={data.demoDate || ''} onChange={f('demoDate')} />
+                </FieldRow>
+              </div>
+            </div>
+
             <SectionTitle>Deal Info</SectionTitle>
             <div className="grid grid-cols-2 gap-3">
               <FieldRow label="Plan">
@@ -1045,11 +1071,9 @@ export default function LeadDetailPanel({ lead, onClose, onUpdate, onDelete, onC
                 <FieldRow label="Demo completed">
                   <Toggle value={!!data.demoCompleted} onChange={val => autoSave({ demoCompleted: val })} />
                 </FieldRow>
-                {data.demoCompleted && (
-                  <FieldRow label="Demo date">
-                    <input type="date" className={ic} value={data.demoDate || ''} onChange={f('demoDate')} />
-                  </FieldRow>
-                )}
+                <FieldRow label="Demo booked date">
+                  <input type="date" className={ic} value={data.demoDate || ''} onChange={f('demoDate')} />
+                </FieldRow>
                 {data.demoCompleted && (
                   <div className="col-span-2">
                     <FieldRow label="Demo notes">
