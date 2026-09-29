@@ -102,6 +102,16 @@
       ],
       "description": "Who booked this demo \u2014 shown as 'Booked By' in the UI. Optional on any prospect, always available to fill in when known."
     },
+    "markedAsMql": {
+      "type": "boolean",
+      "default": false,
+      "description": "True if this prospect has been marked as a Marketing Qualified Lead. Settable by anyone, not gated by Source."
+    },
+    "mqlMarkedDate": {
+      "type": "string",
+      "format": "date",
+      "description": "Date the prospect was marked as MQL \u2014 auto-set when markedAsMql is toggled to Yes, cleared when toggled to No. Updated to the latest date on re-marking. This is what Elena's sprint form auto-pull counts against."
+    },
     "plan": {
       "type": "string",
       "enum": [

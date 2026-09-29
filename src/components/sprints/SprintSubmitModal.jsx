@@ -5,6 +5,7 @@ import { X, Copy, Check, ChevronRight } from 'lucide-react';
 import { format, addDays, parseISO, isWithinInterval } from 'date-fns';
 import { logActivity } from '@/lib/logActivity';
 import DemosBookedField from './DemosBookedField';
+import MqlsMarkedField from './MqlsMarkedField';
 
 const SELF_RATINGS = [
   { value: 'on_track',  label: 'On track',  emoji: '🟢', color: 'border-green-400 bg-green-50 text-green-700' },
@@ -33,6 +34,8 @@ export default function SprintSubmitModal({ onClose, onSaved }) {
   const [loadingWeeks, setLoadingWeeks] = useState(false);
   const [pulledDemos, setPulledDemos] = useState([]);
   const [pulledDemosLoading, setPulledDemosLoading] = useState(false);
+  const [pulledMqls, setPulledMqls] = useState([]);
+  const [pulledMqlsLoading, setPulledMqlsLoading] = useState(false);
 
   const weekStart = selectedWeek;
   const weekNum = getWeekNumber(weekStart);
@@ -113,6 +116,29 @@ export default function SprintSubmitModal({ onClose, onSaved }) {
     }).catch(() => {}).finally(() => setPulledDemosLoading(false));
   }, [selectedMemberId, weekStart]);
 
+  // Auto-pull MQLs marked this week — company-wide (not person-filtered), since MQL count is a marketing metric
+  useEffect(() => {
+    if (!member) return;
+    const hasAutoPull = member.questions.some(q => q.autoPull === 'mqls_marked');
+    if (!hasAutoPull) { setPulledMqls([]); return; }
+
+    setPulledMqlsLoading(true);
+    const weekEndDate = addDays(parseISO(weekStart), 6);
+    base44.entities.Lead.filter({ markedAsMql: true }).then(leads => {
+      const weekMqls = leads.filter(l => {
+        if (!l.mqlMarkedDate) return false;
+        try {
+          return isWithinInterval(parseISO(l.mqlMarkedDate), { start: parseISO(weekStart), end: weekEndDate });
+        } catch { return false; }
+      });
+      setPulledMqls(weekMqls);
+      const autoQ = member.questions.find(q => q.autoPull === 'mqls_marked');
+      if (autoQ) {
+        setAnswers(prev => ({ ...prev, [autoQ.id]: String(weekMqls.length) }));
+      }
+    }).catch(() => {}).finally(() => setPulledMqlsLoading(false));
+  }, [selectedMemberId, weekStart]);
+
   const handleChange = (qid, value) => {
     setAnswers(prev => ({ ...prev, [qid]: value }));
     setDraftSaved(false);
@@ -182,6 +208,12 @@ export default function SprintSubmitModal({ onClose, onSaved }) {
             count={Number(answers[q.id]) || 0}
             demos={pulledDemos}
             loading={pulledDemosLoading}
+          />
+        ) : q.autoPull === 'mqls_marked' ? (
+          <MqlsMarkedField
+            count={Number(answers[q.id]) || 0}
+            mqls={pulledMqls}
+            loading={pulledMqlsLoading}
           />
         ) : q.type === 'text' ? (
           <textarea rows={2} placeholder={q.placeholder || 'Your answer…'}

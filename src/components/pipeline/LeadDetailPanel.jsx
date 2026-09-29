@@ -975,6 +975,22 @@ export default function LeadDetailPanel({ lead, onClose, onUpdate, onDelete, onC
               </div>
             </div>
 
+            {/* MQL — visible on all prospects, not gated by Source */}
+            <div className="mb-5">
+              <SectionTitle>MQL</SectionTitle>
+              <FieldRow label="Marked as MQL">
+                <div className="flex items-center gap-4">
+                  <Toggle
+                    value={!!data.markedAsMql}
+                    onChange={val => autoSave({ markedAsMql: val, mqlMarkedDate: val ? todayStr() : null })}
+                  />
+                  {data.markedAsMql && data.mqlMarkedDate && (
+                    <span className="text-xs text-ew-muted">Marked on <strong className="text-navy">{fmtDate(data.mqlMarkedDate)}</strong></span>
+                  )}
+                </div>
+              </FieldRow>
+            </div>
+
             <SectionTitle>Deal Info</SectionTitle>
             <div className="grid grid-cols-2 gap-3">
               <FieldRow label="Plan">

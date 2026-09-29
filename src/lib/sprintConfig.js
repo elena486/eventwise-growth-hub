@@ -41,7 +41,7 @@ export const MEMBERS = [
     name: 'Elena Brouckaert',
     role: 'Marketing',
     questions: [
-      { id: 'q1', label: 'New MQLs', type: 'number', targetLabel: '3 target' },
+      { id: 'q1', label: 'New MQLs', type: 'number', targetLabel: '3 target', autoPull: 'mqls_marked' },
       { id: 'q4', label: 'Content or campaigns published', type: 'number', targetLabel: '4 target' },
       { id: 'q_ops', label: 'Ops/process improvements shipped this week', type: 'text', placeholder: 'Hub features, workflow changes, automations built...' },
       { id: 'q5', label: 'Confidence (1–5)', type: 'confidence' },
