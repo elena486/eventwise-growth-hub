@@ -2,8 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
 import { MEMBERS, currentWeekStart, getWeekNumber, subWeeks } from '@/lib/sprintConfig';
 import { X, Copy, Check, ChevronRight } from 'lucide-react';
-import { format, addDays } from 'date-fns';
+import { format, addDays, parseISO, isWithinInterval } from 'date-fns';
 import { logActivity } from '@/lib/logActivity';
+import DemosBookedField from './DemosBookedField';
 
 const SELF_RATINGS = [
   { value: 'on_track',  label: 'On track',  emoji: '🟢', color: 'border-green-400 bg-green-50 text-green-700' },
@@ -30,6 +31,8 @@ export default function SprintSubmitModal({ onClose, onSaved }) {
   const [draftSaved, setDraftSaved] = useState(false);
   const [notes, setNotes] = useState('');
   const [loadingWeeks, setLoadingWeeks] = useState(false);
+  const [pulledDemos, setPulledDemos] = useState([]);
+  const [pulledDemosLoading, setPulledDemosLoading] = useState(false);
 
   const weekStart = selectedWeek;
   const weekNum = getWeekNumber(weekStart);
@@ -87,6 +90,29 @@ export default function SprintSubmitModal({ onClose, onSaved }) {
     }
   }, [selectedMemberId, selectedWeek]);
 
+  // Auto-pull demos booked from prospects where SDR = this person
+  useEffect(() => {
+    if (!member) return;
+    const hasAutoPull = member.questions.some(q => q.autoPull === 'demos_booked');
+    if (!hasAutoPull) { setPulledDemos([]); return; }
+
+    setPulledDemosLoading(true);
+    const weekEndDate = addDays(parseISO(weekStart), 6);
+    base44.entities.Lead.filter({ sdr: member.name }).then(leads => {
+      const weekDemos = leads.filter(l => {
+        if (!l.demoDate) return false;
+        try {
+          return isWithinInterval(parseISO(l.demoDate), { start: parseISO(weekStart), end: weekEndDate });
+        } catch { return false; }
+      });
+      setPulledDemos(weekDemos);
+      const autoQ = member.questions.find(q => q.autoPull === 'demos_booked');
+      if (autoQ) {
+        setAnswers(prev => ({ ...prev, [autoQ.id]: String(weekDemos.length) }));
+      }
+    }).catch(() => {}).finally(() => setPulledDemosLoading(false));
+  }, [selectedMemberId, weekStart]);
+
   const handleChange = (qid, value) => {
     setAnswers(prev => ({ ...prev, [qid]: value }));
     setDraftSaved(false);
@@ -143,7 +169,13 @@ export default function SprintSubmitModal({ onClose, onSaved }) {
             <span className="text-xs font-normal text-gray-400">target: {target}{q.suffix || ''}</span>
           )}
         </label>
-        {q.type === 'text' ? (
+        {q.autoPull === 'demos_booked' ? (
+          <DemosBookedField
+            count={Number(answers[q.id]) || 0}
+            demos={pulledDemos}
+            loading={pulledDemosLoading}
+          />
+        ) : q.type === 'text' ? (
           <textarea rows={2} placeholder={q.placeholder || 'Your answer…'}
             className="w-full border border-gray-300 dark:border-gray-600 dark:bg-[#2A2A3E] dark:text-gray-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-[#8403C5] resize-none transition-colors"
             value={answers[q.id] || ''} onChange={e => handleChange(q.id, e.target.value)} />
@@ -311,7 +343,8 @@ export default function SprintSubmitModal({ onClose, onSaved }) {
                 </div>
               )) : member.questions.map(q => renderQuestion(q))}
 
-              {/* ── Notes / Commentary — optional ── */}
+              {/* ── Notes / Commentary — optional (hidden for members with unified Blocker field) ── */}
+              {!member?.hideNotesField && (
               <div className="mb-5">
                 <label className="block text-sm font-semibold text-gray-800 dark:text-gray-200 mb-1.5">
                   Notes / Commentary <span className="text-xs font-normal text-gray-400">(optional)</span>
@@ -320,6 +353,7 @@ export default function SprintSubmitModal({ onClose, onSaved }) {
                   className="w-full border border-gray-300 dark:border-gray-600 dark:bg-[#2A2A3E] dark:text-gray-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-[#8403C5] resize-none transition-colors"
                   value={notes} onChange={e => { setNotes(e.target.value); setDraftSaved(false); }} />
               </div>
+              )}
             </>
           )}
 
