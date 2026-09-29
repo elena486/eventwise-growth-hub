@@ -43,8 +43,6 @@ export const MEMBERS = [
     questions: [
       { id: 'q1', label: 'New MQLs', type: 'number', targetLabel: '3 target' },
       { id: 'q4', label: 'Content or campaigns published', type: 'number', targetLabel: '4 target' },
-      { id: 'q_website', label: 'Website sessions this week', type: 'number', targetLabel: '150 target' },
-      { id: 'q2', label: 'Leads qualified / sales-ready (SQLs)', type: 'number' },
       { id: 'q_ops', label: 'Ops/process improvements shipped this week', type: 'text', placeholder: 'Hub features, workflow changes, automations built...' },
       { id: 'q5', label: 'Confidence (1–5)', type: 'confidence' },
       { id: 'q_blocker', label: 'Blocker / waiting on (optional)', type: 'text', placeholder: 'Anything blocking you, or waiting on someone else?' },
@@ -60,12 +58,12 @@ export const MEMBERS = [
     name: 'George',
     role: 'Outbound Lead Generation',
     questions: [
-      { id: 'q2', label: 'Responses received', type: 'number' },
+      { id: 'q2', label: 'Positive replies received', type: 'number', helperText: "Genuinely interested — includes 'not right now' or 'maybe later', not just an immediate yes. Excludes declines, unsubscribes, and no real engagement." },
       { id: 'q3', label: 'Meetings booked', type: 'number', autoPull: 'demos_booked' },
       { id: 'q_test', label: 'What did you test this week, and how did it go?', type: 'text', placeholder: 'Messaging, channel, angle — what you tried and the result' },
       { id: 'q_blocker', label: 'Blocker / waiting on (optional)', type: 'text', placeholder: 'Anything blocking you, or waiting on someone else?' },
     ],
-    kpi1: { questionId: 'q2', label: 'Responses received', target: 10, unit: '' },
+    kpi1: { questionId: 'q2', label: 'Positive replies received', target: 2, unit: '' },
     kpi2: { questionId: 'q3', label: 'Meetings booked', target: 1, unit: '' },
     qualitativeIds: ['q_test', 'q_blocker'],
     duplicateLastMonth: false,
@@ -145,6 +143,11 @@ export function ragColor(value, target) {
   if (target === 0) {
     if (value === 0) return 'green';
     if (value <= 2) return 'amber';
+    return 'red';
+  }
+  if (target <= 2) {
+    if (value >= target) return 'green';
+    if (value >= 1) return 'amber';
     return 'red';
   }
   const ratio = value / target;

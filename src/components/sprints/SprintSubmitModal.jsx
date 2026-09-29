@@ -148,8 +148,13 @@ export default function SprintSubmitModal({ onClose, onSaved }) {
   };
 
   const handleDuplicate = () => {
-    if (!lastSubmission) return;
-    try { setAnswers(JSON.parse(lastSubmission.answers || '{}')); } catch {}
+    if (!lastSubmission || !member) return;
+    try {
+      const parsed = JSON.parse(lastSubmission.answers || '{}');
+      const validIds = new Set(member.questions.map(q => q.id));
+      const filtered = Object.fromEntries(Object.entries(parsed).filter(([k]) => validIds.has(k)));
+      setAnswers(filtered);
+    } catch {}
   };
 
   const sections = member ? [...new Set(member.questions.map(q => q.section).filter(Boolean))] : [];
@@ -169,6 +174,9 @@ export default function SprintSubmitModal({ onClose, onSaved }) {
             <span className="text-xs font-normal text-gray-400">target: {target}{q.suffix || ''}</span>
           )}
         </label>
+        {q.helperText && (
+          <p className="text-xs text-gray-400 mb-1.5 leading-relaxed">{q.helperText}</p>
+        )}
         {q.autoPull === 'demos_booked' ? (
           <DemosBookedField
             count={Number(answers[q.id]) || 0}
