@@ -1,0 +1,41 @@
+{
+  "name": "CompanyHandbook",
+  "type": "object",
+  "properties": {
+    "file_uri": {
+      "type": "string",
+      "description": "Private file URI of the uploaded handbook PDF"
+    },
+    "file_name": {
+      "type": "string",
+      "description": "Original filename of the uploaded PDF"
+    },
+    "version_label": {
+      "type": "string",
+      "description": "Human-readable version label, e.g. 'October 2026'"
+    },
+    "uploaded_date": {
+      "type": "string",
+      "format": "date",
+      "description": "Date the handbook was uploaded \u2014 auto-set on creation"
+    },
+    "uploaded_by": {
+      "type": "string",
+      "description": "Name of the user who uploaded this version"
+    },
+    "is_active": {
+      "type": "boolean",
+      "default": true,
+      "description": "True if this is the current active handbook. Only one record should be active at a time \u2014 new uploads archive the previous."
+    },
+    "archived_date": {
+      "type": "string",
+      "format": "date",
+      "description": "Date this version was archived when a newer version replaced it"
+    }
+  },
+  "required": [
+    "version_label",
+    "file_uri"
+  ]
+}
