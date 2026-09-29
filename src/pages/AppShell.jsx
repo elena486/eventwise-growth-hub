@@ -13,7 +13,6 @@ import Deals from './Deals';
 import Sprints from './Sprints';
 import Marketing from './Marketing';
 import Handbook from './Handbook';
-import CompanyHandbook from './CompanyHandbook';
 import RequestBoard from '@/components/requests/RequestBoard';
 import SubmitRequestForm from '@/components/requests/SubmitRequestForm';
 import WeeklyReport from './WeeklyReport';
@@ -89,7 +88,6 @@ const GROUPS = [
     { id: 'mql', label: 'MQL Tracker' },
   ]},
   { id: 'handbook', label: 'Eventwise Wiki', tabs: [
-    { id: 'company-handbook', label: 'Company Handbook' },
     { id: 'handbook', label: 'Eventwise Wiki' },
   ]},
 ];
@@ -599,7 +597,6 @@ export default function AppShell() {
         {tab === 'time-activity' && <HubActivity />}
         {tab === 'marketing' && <Marketing focusContentId={searchFocus?.focusType === 'content' ? searchFocus.focusId : null} onFocusConsumed={() => setSearchFocus(null)} />}
         {tab === 'mql' && <MQLTracker />}
-        {tab === 'company-handbook' && <CompanyHandbook />}
         {tab === 'handbook' && <Handbook onNavigate={(t) => setTab(t)} focusWikiPage={searchFocus?.focusType === 'wiki' ? { pageId: searchFocus.focusId, sectionId: searchFocus.sectionId } : null} onFocusConsumed={() => setSearchFocus(null)} />}
         {tab === 'bugs' && <BugTracker focusBugId={searchFocus?.focusType === 'bug' ? searchFocus.focusId : null} onFocusConsumed={() => setSearchFocus(null)} />}
         {tab === 'assets' && <SalesAssets focusAssetId={searchFocus?.focusType === 'asset' ? searchFocus.focusId : null} onFocusConsumed={() => setSearchFocus(null)} />}

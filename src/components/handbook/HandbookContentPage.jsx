@@ -4,6 +4,7 @@ import { format } from 'date-fns';
 import { useAuth } from '@/lib/AuthContext';
 import WikiContentEditor from './WikiContentEditor';
 import FileEmbed from './FileEmbed';
+import HandbookPdfBlock from './HandbookPdfBlock';
 import { useWikiAutosave } from './useWikiAutosave';
 
 const ALLOWED_EDITORS = ['chris@eventwise.com', 'elena@eventwise.com', 'sreeja@eventwise.com', 'george@eventwise.com', 'ramesh@eventwise.com', 'martinique@eventwise.com', 'eleanor@eventwise.com'];
@@ -164,6 +165,9 @@ export default function HandbookContentPage({ section, page, onUpdate, onDelete,
           </div>
           <hr className="border-ew-border mt-4" />
         </div>
+
+        {/* PDF download/upload block — only on the Employee Handbook page */}
+        {page.id === 'employee-handbook' && <HandbookPdfBlock />}
 
         {/* Content area */}
         <div className="bg-white rounded-xl border border-ew-border shadow-sm overflow-hidden">
