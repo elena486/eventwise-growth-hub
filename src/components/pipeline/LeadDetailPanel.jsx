@@ -19,10 +19,10 @@ import { logActivity } from '@/lib/logActivity';
 const STAGES = ['New Lead', 'Contacted', 'Discovery Call', 'Demo Booked', 'Proposal Sent', 'Negotiation', 'Closed Won', 'Closed — Converted to Trial', 'Closed Lost', 'On Hold'];
 const PLANS = ['Starter', 'Growth', 'Scale', 'Professional', 'Custom'];
 const LEAD_OWNERS = ['Chris', 'Ramesh', 'Elena', 'George', 'Martinique', 'Sreeja', 'Eleanor'];
-const SDR_OPTIONS = ['George', 'Chris', 'Ramesh'];
+const BOOKED_BY_OPTIONS = ['George', 'Chris', 'Ramesh'];
 const CONTRACT_LENGTHS = ['Monthly rolling', '6 months', '12 months', '24 months'];
 const INDUSTRIES = ['Festival', 'Event Organiser', 'Event Agency', 'Corporate Events', 'Venue', 'Accountancy', 'Other'];
-const HEARD_ABOUT = ['LinkedIn', 'Referral', 'Inbound', 'Outbound', 'Event', 'EPS (Event Production Show)', 'EBL (Event Buyers Live)', 'AAA (Access All Areas)', 'Other'];
+const HEARD_ABOUT = ['LinkedIn', 'Referral', 'Inbound', 'Outbound', 'Outbound LinkedIn', 'Event', 'EPS (Event Production Show)', 'EBL (Event Buyers Live)', 'AAA (Access All Areas)', 'Other'];
 const ACCOUNTING_SERVICE_OPTIONS = ['Not included', 'Included in plan', 'Included in accounting service fee', 'Separate fee'];
 const ONBOARDING_PLANS = ['Basic', 'Standard', 'Enterprise', 'Option 1'];
 const LOG_TYPES = ['Call', 'Email', 'Demo', 'Meeting', 'LinkedIn', 'Note', 'Time logged', 'Trial Kickoff'];
@@ -841,20 +841,18 @@ export default function LeadDetailPanel({ lead, onClose, onUpdate, onDelete, onC
           )}
         </div>
 
-        {/* SDR — visible only when Source = Outbound */}
-        {data.heardAbout === 'Outbound' && (
-          <div className="flex items-center gap-2 mb-3">
-            <label className="text-[11px] font-medium text-ew-muted whitespace-nowrap">SDR (who sourced it)</label>
-            <select
-              className="flex-1 text-sm border border-ew-border rounded-lg px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-[#8403C5]/20 bg-white"
-              value={data.sdr || ''}
-              onChange={e => autoSave({ sdr: e.target.value })}
-            >
-              <option value="">Select…</option>
-              {SDR_OPTIONS.map(o => <option key={o} value={o}>{o}</option>)}
-            </select>
-          </div>
-        )}
+        {/* Booked By — always visible, no Source gating */}
+        <div className="flex items-center gap-2 mb-3">
+          <label className="text-[11px] font-medium text-ew-muted whitespace-nowrap">Booked By</label>
+          <select
+            className="flex-1 text-sm border border-ew-border rounded-lg px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-[#8403C5]/20 bg-white"
+            value={data.sdr || ''}
+            onChange={e => autoSave({ sdr: e.target.value })}
+          >
+            <option value="">Select…</option>
+            {BOOKED_BY_OPTIONS.map(o => <option key={o} value={o}>{o}</option>)}
+          </select>
+        </div>
 
         {/* Quick note bar */}
         {!isNew && (
@@ -952,28 +950,27 @@ export default function LeadDetailPanel({ lead, onClose, onUpdate, onDelete, onC
         {/* DEAL INFO TAB */}
         {activeTab === 'deal' && (
           <div>
-            {/* Sales Attribution — SDR + Demo Booked Date */}
+            {/* Sales Attribution — Booked By + Booked On + Demo Date (scheduled) */}
             <div className="mb-5">
               <SectionTitle>Sales Attribution</SectionTitle>
               <div className="grid grid-cols-2 gap-3">
-                {data.heardAbout === 'Outbound' ? (
-                  <FieldRow label="SDR (who sourced it)">
-                    <select
-                      className={ic}
-                      value={data.sdr || ''}
-                      onChange={e => autoSave({ sdr: e.target.value })}
-                    >
-                      <option value="">Select…</option>
-                      {SDR_OPTIONS.map(o => <option key={o} value={o}>{o}</option>)}
-                    </select>
-                  </FieldRow>
-                ) : (
-                  <div className="col-span-2 text-xs text-ew-muted bg-ew-bg rounded-lg px-3 py-2.5">
-                    Source is {data.heardAbout ? <strong>{data.heardAbout}</strong> : 'not set'}. Set Source to <strong>Outbound</strong> on the Contacts tab to assign an SDR.
-                  </div>
-                )}
-                <FieldRow label="Demo booked date">
+                <FieldRow label="Booked By">
+                  <select
+                    className={ic}
+                    value={data.sdr || ''}
+                    onChange={e => autoSave({ sdr: e.target.value })}
+                  >
+                    <option value="">Select…</option>
+                    {BOOKED_BY_OPTIONS.map(o => <option key={o} value={o}>{o}</option>)}
+                  </select>
+                </FieldRow>
+                <FieldRow label="Booked On">
                   <input type="date" className={ic} value={data.demoDate || ''} onChange={f('demoDate')} />
+                  <p className="text-[10px] text-ew-muted mt-1">Date the booking was made — sprint form counts this</p>
+                </FieldRow>
+                <FieldRow label="Demo Date (scheduled meeting)">
+                  <input type="date" className={ic} value={data.demoScheduledDate || ''} onChange={f('demoScheduledDate')} />
+                  <p className="text-[10px] text-ew-muted mt-1">When the actual demo meeting is scheduled for</p>
                 </FieldRow>
               </div>
             </div>
@@ -1071,8 +1068,13 @@ export default function LeadDetailPanel({ lead, onClose, onUpdate, onDelete, onC
                 <FieldRow label="Demo completed">
                   <Toggle value={!!data.demoCompleted} onChange={val => autoSave({ demoCompleted: val })} />
                 </FieldRow>
-                <FieldRow label="Demo booked date">
+                <FieldRow label="Booked On">
                   <input type="date" className={ic} value={data.demoDate || ''} onChange={f('demoDate')} />
+                  <p className="text-[10px] text-ew-muted mt-1">Date the booking was made</p>
+                </FieldRow>
+                <FieldRow label="Demo Date (scheduled meeting)">
+                  <input type="date" className={ic} value={data.demoScheduledDate || ''} onChange={f('demoScheduledDate')} />
+                  <p className="text-[10px] text-ew-muted mt-1">When the actual demo is scheduled for</p>
                 </FieldRow>
                 {data.demoCompleted && (
                   <div className="col-span-2">

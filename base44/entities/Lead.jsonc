@@ -73,6 +73,7 @@
         "Referral",
         "Inbound",
         "Outbound",
+        "Outbound LinkedIn",
         "Event",
         "EPS (Event Production Show)",
         "EBL (Event Buyers Live)",
@@ -98,7 +99,7 @@
         "Chris",
         "Ramesh"
       ],
-      "description": "Who sourced/booked this lead via outbound \u2014 separate from Owner. Required when Source = Outbound."
+      "description": "Who booked this demo \u2014 shown as 'Booked By' in the UI. Optional on any prospect, always available to fill in when known."
     },
     "plan": {
       "type": "string",
@@ -180,7 +181,13 @@
     },
     "demoDate": {
       "type": "string",
-      "format": "date"
+      "format": "date",
+      "description": "Date the demo booking was made (shown as 'Booked On' in the UI). This is what the sprint form auto-pull counts against \u2014 it reflects when the person did the work of getting it booked."
+    },
+    "demoScheduledDate": {
+      "type": "string",
+      "format": "date",
+      "description": "Date the actual demo meeting is scheduled for (the meeting time itself). Useful for the team to know when the meeting is, but NOT what the sprint form pulls from."
     },
     "demoNotes": {
       "type": "string"

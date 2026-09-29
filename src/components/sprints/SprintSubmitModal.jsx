@@ -90,7 +90,7 @@ export default function SprintSubmitModal({ onClose, onSaved }) {
     }
   }, [selectedMemberId, selectedWeek]);
 
-  // Auto-pull demos booked from prospects where SDR = this person
+  // Auto-pull demos booked from prospects where Booked By = this person
   useEffect(() => {
     if (!member) return;
     const hasAutoPull = member.questions.some(q => q.autoPull === 'demos_booked');
