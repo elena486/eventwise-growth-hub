@@ -3,6 +3,7 @@ import { format, parseISO } from 'date-fns';
 import { formatDuration } from '@/lib/weeklyReportData';
 import TimeByCategoryBar from './TimeByCategoryBar';
 import SummaryLines from './SummaryLines';
+import SprintSection from './SprintSection';
 
 export default function PersonReport({ report, prevStats, isElena, isPastWeek, aiSummary, aiLoading, aiError, onRegenerateSummary }) {
   const [expanded, setExpanded] = useState(false);
@@ -24,6 +25,9 @@ export default function PersonReport({ report, prevStats, isElena, isPastWeek, a
       {isPastWeek && (
         <p className="text-xs text-[#9CA3AF] italic mb-4">Task statuses reflect today, not that week.</p>
       )}
+
+      {/* Sprint / KPIs */}
+      <SprintSection sprint={report.sprint} />
 
       {/* AI summary */}
       <div className="bg-white border border-[#EBEBF5] rounded-xl p-5 mb-4">

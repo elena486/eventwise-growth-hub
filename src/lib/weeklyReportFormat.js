@@ -55,9 +55,12 @@ export function formatReportAsText(reportData, aiSummary) {
     text += '\n';
   }
 
+  const ratingLabels = { on_track: 'On track', at_risk: 'At risk', off_track: 'Off track' };
+
   for (const [person, report] of Object.entries(reportByPerson)) {
     if (isWholeTeam) {
-      text += `${person} — ${formatDuration(report.stats.hoursLogged)} logged | ${report.stats.completed} completed\n`;
+      const ratingStr = report.sprint?.selfRating ? ` [${ratingLabels[report.sprint.selfRating] || report.sprint.selfRating}]` : '';
+      text += `${person} — ${formatDuration(report.stats.hoursLogged)} logged | ${report.stats.completed} completed${ratingStr}\n`;
       const lines = [];
       report.done.slice(0, 3).forEach(t => lines.push(t.title));
       if (lines.length < 3) report.inProgress.slice(0, 3 - lines.length).forEach(t => lines.push(t.title));
@@ -65,6 +68,20 @@ export function formatReportAsText(reportData, aiSummary) {
       if (report.blocked.length > 0) text += `Blocked: ${report.blocked.map(t => t.title).join(', ')}\n`;
       text += '\n';
     } else {
+      if (report.sprint) {
+        text += 'Sprint / KPIs\n';
+        if (report.sprint.selfRating) text += `Rating: ${ratingLabels[report.sprint.selfRating] || report.sprint.selfRating}\n`;
+        report.sprint.kpis.forEach(k => {
+          const val = k.value != null ? k.value : '—';
+          const tgt = k.target != null ? ` / target ${k.target}` : '';
+          text += `• ${k.label}: ${val}${tgt}\n`;
+        });
+        if (report.sprint.blocker) text += `Waiting on: ${report.sprint.blocker}\n`;
+        text += '\n';
+      } else {
+        text += 'Sprint / KPIs\nNo sprint update submitted for this period.\n\n';
+      }
+
       text += 'Completed this week\n';
       if (report.done.length === 0) text += 'Nothing completed this week.\n';
       else report.done.forEach(t => {
@@ -194,6 +211,78 @@ export function generateReportPDF(reportData, aiSummary) {
   });
   y += tileH + 8;
 
+  // ── Sprint / KPIs section (individual report only) ──
+  if (!reportData.isWholeTeam) {
+    const report = Object.values(reportData.reportByPerson)[0];
+    const sprint = report.sprint;
+    const ratingLabels = { on_track: 'On track', at_risk: 'At risk', off_track: 'Off track' };
+    const ratingColors = { on_track: [29, 158, 117], at_risk: [232, 160, 32], off_track: [220, 38, 38] };
+
+    if (sprint) {
+      // Pre-compute height
+      let sprintH = 8; // heading
+      if (sprint.selfRating) sprintH += 7;
+      sprint.kpis.forEach(k => {
+        doc.setFont('helvetica', 'normal'); doc.setFontSize(10);
+        const tl = doc.splitTextToSize(k.label, titleW);
+        sprintH += tl.length * 4.5 + 2;
+      });
+      if (sprint.blocker) {
+        doc.setFont('helvetica', 'normal'); doc.setFontSize(9);
+        const bl = doc.splitTextToSize(`Waiting on: ${sprint.blocker}`, usableW - 4);
+        sprintH += bl.length * 4 + 2;
+      }
+      sprintH += 8; // gap after
+      ensureSpace(sprintH);
+
+      doc.setFont('helvetica', 'bold'); doc.setFontSize(11); doc.setTextColor(...C.purple);
+      doc.text('Sprint / KPIs', margin, y + 4);
+      y += 8;
+
+      if (sprint.selfRating) {
+        const rc = ratingColors[sprint.selfRating] || C.grey;
+        const badgeW = 26, badgeH = 6;
+        doc.setFillColor(...rc);
+        doc.roundedRect(margin, y - 1, badgeW, badgeH, 1.5, 1.5, 'F');
+        doc.setFont('helvetica', 'bold'); doc.setFontSize(8); doc.setTextColor(255, 255, 255);
+        doc.text(ratingLabels[sprint.selfRating] || sprint.selfRating, margin + badgeW / 2, y + 3, { align: 'center' });
+        y += 7;
+      }
+
+      sprint.kpis.forEach(k => {
+        doc.setFont('helvetica', 'normal'); doc.setFontSize(10); doc.setTextColor(...C.navy);
+        const tl = doc.splitTextToSize(k.label, titleW);
+        tl.forEach((line, i) => {
+          doc.text(line, margin, y + 3);
+          if (i === tl.length - 1) {
+            const val = k.value != null ? String(k.value) : '—';
+            const tgt = k.target != null ? ` / target ${k.target}` : '';
+            doc.setTextColor(...C.grey);
+            doc.text(`${val}${tgt}`, margin + usableW, y + 3, { align: 'right' });
+          }
+          y += 4.5;
+        });
+        y += 2;
+      });
+
+      if (sprint.blocker) {
+        doc.setFont('helvetica', 'normal'); doc.setFontSize(9); doc.setTextColor(...C.lightGrey);
+        const bl = doc.splitTextToSize(`Waiting on: ${sprint.blocker}`, usableW - 4);
+        bl.forEach((line, i) => { doc.text(line, margin + 2, y + 3 + i * 4); });
+        y += bl.length * 4 + 2;
+      }
+      y += 8;
+    } else {
+      ensureSpace(16);
+      doc.setFont('helvetica', 'bold'); doc.setFontSize(11); doc.setTextColor(...C.purple);
+      doc.text('Sprint / KPIs', margin, y + 4);
+      y += 8;
+      doc.setFont('helvetica', 'normal'); doc.setFontSize(10); doc.setTextColor(...C.lightGrey);
+      doc.text('No sprint update submitted for this period.', margin, y + 3);
+      y += 14;
+    }
+  }
+
   // ── Summary (shaded box, three labelled lines) ──
   if (aiSummary && (aiSummary.moved || aiSummary.blocking || aiSummary.next)) {
     const padding = 5, headingH = 6, lineH = 5, gapBetween = 2;
@@ -238,15 +327,34 @@ export function generateReportPDF(reportData, aiSummary) {
       const lines = [];
       report.done.slice(0, 3).forEach(t => lines.push(t.title));
       if (lines.length < 3) report.inProgress.slice(0, 3 - lines.length).forEach(t => lines.push(t.title));
-      let cardH = 5 + 5 + 5 + lines.length * 4 + (report.blocked.length > 0 ? 5 : 0) + 5;
+      const headlineKpi = report.sprint?.kpis?.[0];
+      let cardH = 5 + 5 + 5 + lines.length * 4 + (report.blocked.length > 0 ? 5 : 0) + (headlineKpi ? 4 : 0) + 5;
       ensureSpace(cardH + 4);
       doc.setDrawColor(...C.border); doc.setLineWidth(0.3);
       doc.roundedRect(margin, y, usableW, cardH, 2, 2, 'S');
       let iy = y + 5;
       doc.setFont('helvetica', 'bold'); doc.setFontSize(12); doc.setTextColor(...C.navy);
-      doc.text(person, margin + 4, iy + 3); iy += 5;
+      doc.text(person, margin + 4, iy + 3);
+      if (report.sprint?.selfRating) {
+        const ratingLabels = { on_track: 'On track', at_risk: 'At risk', off_track: 'Off track' };
+        const ratingColors = { on_track: [29, 158, 117], at_risk: [232, 160, 32], off_track: [220, 38, 38] };
+        const rc = ratingColors[report.sprint.selfRating] || C.grey;
+        const badgeW = 24, badgeH = 5;
+        const badgeX = margin + 4 + doc.getTextWidth(person) + 3;
+        doc.setFillColor(...rc);
+        doc.roundedRect(badgeX, iy - 1, badgeW, badgeH, 1, 1, 'F');
+        doc.setFont('helvetica', 'bold'); doc.setFontSize(7); doc.setTextColor(255, 255, 255);
+        doc.text(ratingLabels[report.sprint.selfRating] || report.sprint.selfRating, badgeX + badgeW / 2, iy + 2.5, { align: 'center' });
+      }
+      iy += 5;
       doc.setFont('helvetica', 'normal'); doc.setFontSize(10); doc.setTextColor(...C.purple);
       doc.text(`${formatDuration(report.stats.hoursLogged)} logged | ${report.stats.completed} completed`, margin + 4, iy + 3); iy += 5;
+      if (headlineKpi) {
+        doc.setFont('helvetica', 'normal'); doc.setFontSize(9); doc.setTextColor(...C.grey);
+        const val = headlineKpi.value != null ? String(headlineKpi.value) : '—';
+        const tgt = headlineKpi.target != null ? ` / target ${headlineKpi.target}` : '';
+        doc.text(`${headlineKpi.label}: ${val}${tgt}`, margin + 4, iy + 3); iy += 4;
+      }
       doc.setFontSize(9); doc.setTextColor(...C.grey);
       lines.forEach(l => { doc.text(l, margin + 4, iy + 3); iy += 4; });
       if (report.blocked.length > 0) {

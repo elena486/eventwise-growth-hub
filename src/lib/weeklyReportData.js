@@ -6,8 +6,50 @@
  */
 import { base44 } from '@/api/base44Client';
 import { startOfWeek, endOfWeek, isWithinInterval, parseISO, addDays, subWeeks, differenceInWeeks, format } from 'date-fns';
+import { MEMBERS } from '@/lib/sprintConfig';
 
 export const TEAM_MEMBERS = ['Chris', 'Elena', 'George', 'Martinique', 'Sreeja', 'Ramesh', 'Eleanor'];
+
+// Sprint submission cadence per person — determines how a submission maps to weekly reports
+const SPRINT_CADENCE = {
+  Chris: 'weekly', Elena: 'weekly', George: 'weekly',
+  Martinique: 'monthly', Sreeja: 'weekly', Ramesh: 'weekly',
+};
+
+function findSprintSubmission(person, allSprints, reportWeekStart) {
+  const cadence = SPRINT_CADENCE[person];
+  if (!cadence) return null;
+  const personSprints = allSprints.filter(s => s.memberName === person || (s.memberName && s.memberName.startsWith(person)));
+  const weekStr = format(reportWeekStart, 'yyyy-MM-dd');
+  if (cadence === 'weekly') {
+    return personSprints.find(s => s.weekStart === weekStr) || null;
+  }
+  // Monthly: most recent submission whose weekStart is on or before the report week
+  const candidates = personSprints.filter(s => s.weekStart <= weekStr).sort((a, b) => b.weekStart.localeCompare(a.weekStart));
+  return candidates[0] || null;
+}
+
+function extractSprintData(submission, memberConfig) {
+  if (!submission || !memberConfig) return null;
+  let answers = {};
+  try { answers = JSON.parse(submission.answers || '{}'); } catch {}
+  const kpiConfigs = [memberConfig.kpi1, memberConfig.kpi2, memberConfig.kpi3].filter(k => k && k.questionId);
+  const kpiValues = [submission.kpi1Value, submission.kpi2Value, submission.kpi3Value];
+  const kpis = kpiConfigs.map((k, i) => ({
+    label: k.label,
+    value: kpiValues[i],
+    target: k.target,
+    prefix: k.prefix || '',
+    suffix: k.suffix || '',
+  }));
+  return {
+    selfRating: submission.selfRating || null,
+    selfRatingReason: submission.selfRatingReason || null,
+    kpis,
+    blocker: answers.q_blocker || null,
+    weekStart: submission.weekStart,
+  };
+}
 
 export function getWeekStart(date) {
   return startOfWeek(date, { weekStartsOn: 1 });
@@ -30,9 +72,10 @@ export async function fetchReportData(person, weekStart) {
   const prevWeekEnd = endOfWeek(prevWeekStart, { weekStartsOn: 1 });
   const isWholeTeam = person === 'Whole team';
 
-  const [allTasks, allEntries] = await Promise.all([
+  const [allTasks, allEntries, allSprints] = await Promise.all([
     base44.entities.Request.list('-created_date', 500),
     base44.entities.TimeEntry.list('-created_date', 1000),
+    base44.entities.SprintSubmission.list('-created_date', 500),
   ]);
 
   const tasks = allTasks.filter(t => !t.archived);
@@ -55,6 +98,9 @@ export async function fetchReportData(person, weekStart) {
     const pPrevEntries = prevWeekEntries.filter(e => e.teamMember === p);
     reportByPerson[p] = buildPersonReport(pTasks, pEntries, weekStart, weekEnd);
     prevStatsByPerson[p] = computeStats(pTasks, pPrevEntries, prevWeekStart, prevWeekEnd);
+    const sprintMember = MEMBERS.find(m => m.name === p || m.name.startsWith(p));
+    const submission = findSprintSubmission(p, allSprints, weekStart);
+    reportByPerson[p].sprint = submission && sprintMember ? extractSprintData(submission, sprintMember) : null;
   }
 
   return { reportByPerson, prevStatsByPerson, isWholeTeam, weekStart, weekEnd, people };
@@ -241,6 +287,17 @@ export async function generateAISummary(reportData, companyPriorities) {
       comingUp: report.comingUp.map(t => ({ title: t.title, deadline: t.deadline })),
       hasBlocked: report.blocked.length > 0,
       hasComingUp: report.comingUp.length > 0,
+      sprint: report.sprint ? {
+        selfRating: report.sprint.selfRating,
+        kpis: report.sprint.kpis.map(k => ({
+          label: k.label,
+          value: k.value,
+          target: k.target,
+          hitTarget: k.target != null && k.value != null && k.value >= k.target,
+          missedTarget: k.target != null && k.value != null && k.value < k.target,
+        })),
+        blocker: report.sprint.blocker || null,
+      } : null,
     };
   }
 
@@ -253,8 +310,8 @@ CONTENT RULES:
 - Explain relevance: connect the work to the company priorities below when there is a genuine link. Skip the link if there isn't one. Never force it.
 - Use intent wording for work without a recorded outcome: "supports", "aims to", "lays groundwork for", "keeps X moving". Use result wording ("reduced", "improved", "saved", "increased") ONLY when a task's Outcome line states it, and stay as close to that wording as possible.
 - Never invent numbers, results, customers, or causes.
-- Moved: what progressed this week and why it matters to the team or company.
-- Blocking: use Blocked-status tasks and their Outcome or notes text only. Do not infer blockers from missing time or long-running tasks. If there are no Blocked tasks, write exactly "Nothing flagged."
+- Moved: what progressed this week and why it matters to the team or company. May reference KPI performance from the sprint submission when notable (e.g. hit or missed a target), but never invent numbers — only state what's in the data.
+- Blocking: use Blocked-status tasks AND the sprint blocker line (sprint.blocker). If both exist, mention both distinctly. If only one exists, use that one. If neither, write exactly "Nothing flagged." Do not infer blockers from missing time or long-running tasks.
 - Next: base on tasks due in the next 7 days and current in-progress focus. If nothing is scheduled, write exactly "No dated work scheduled yet."
 - No judgement of performance, effort or productivity. No comparisons between people. Neutral, plain, professional tone. Short sentences.
 - If there is very little data, keep it short and honest rather than padding it out.
