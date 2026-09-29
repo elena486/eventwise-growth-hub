@@ -91,6 +91,15 @@
       ],
       "description": "Who owns this lead"
     },
+    "sdr": {
+      "type": "string",
+      "enum": [
+        "George",
+        "Chris",
+        "Ramesh"
+      ],
+      "description": "Who sourced/booked this lead via outbound \u2014 separate from Owner. Required when Source = Outbound."
+    },
     "plan": {
       "type": "string",
       "enum": [

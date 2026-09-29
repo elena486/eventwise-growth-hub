@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
 import { MEMBERS, currentWeekStart } from '@/lib/sprintConfig';
 import { Check, Copy } from 'lucide-react';
+import { parseISO, isWithinInterval, addDays } from 'date-fns';
+import DemosBookedField from './DemosBookedField';
 
 export default function SprintForm({ currentUser }) {
   const [selectedMemberId, setSelectedMemberId] = useState('');
@@ -10,6 +12,8 @@ export default function SprintForm({ currentUser }) {
   const [saved, setSaved] = useState(false);
   const [existingId, setExistingId] = useState(null);
   const [lastSubmission, setLastSubmission] = useState(null);
+  const [pulledDemos, setPulledDemos] = useState([]);
+  const [pulledDemosLoading, setPulledDemosLoading] = useState(false);
 
   const weekStart = currentWeekStart();
   const member = MEMBERS.find(m => m.id === selectedMemberId);
@@ -42,6 +46,29 @@ export default function SprintForm({ currentUser }) {
       setLastSubmission(sorted[0] || null);
     });
   }, [selectedMemberId, weekStart]);
+
+  // Auto-pull demos booked from prospects where SDR = this person
+  useEffect(() => {
+    if (!member) return;
+    const hasAutoPull = member.questions.some(q => q.autoPull === 'demos_booked');
+    if (!hasAutoPull) { setPulledDemos([]); return; }
+
+    setPulledDemosLoading(true);
+    const weekEndDate = addDays(parseISO(weekStart), 6);
+    base44.entities.Lead.filter({ sdr: member.name }).then(leads => {
+      const weekDemos = leads.filter(l => {
+        if (!l.demoDate) return false;
+        try {
+          return isWithinInterval(parseISO(l.demoDate), { start: parseISO(weekStart), end: weekEndDate });
+        } catch { return false; }
+      });
+      setPulledDemos(weekDemos);
+      const autoQ = member.questions.find(q => q.autoPull === 'demos_booked');
+      if (autoQ) {
+        setAnswers(prev => ({ ...prev, [autoQ.id]: String(weekDemos.length) }));
+      }
+    }).catch(() => {}).finally(() => setPulledDemosLoading(false));
+  }, [member, weekStart]);
 
   const handleChange = (qid, value) => setAnswers(prev => ({ ...prev, [qid]: value }));
 
@@ -87,7 +114,13 @@ export default function SprintForm({ currentUser }) {
               {q.prefix && <span className="ml-1 text-ew-muted text-xs">({q.prefix})</span>}
               {q.suffix && <span className="ml-1 text-ew-muted text-xs">({q.suffix})</span>}
             </label>
-            {q.type === 'text' ? (
+            {q.autoPull === 'demos_booked' ? (
+              <DemosBookedField
+                count={Number(answers[q.id]) || 0}
+                demos={pulledDemos}
+                loading={pulledDemosLoading}
+              />
+            ) : q.type === 'text' ? (
               <textarea
                 className="w-full border border-ew-border rounded-lg px-3 py-2 text-sm text-navy focus:outline-none focus:border-navy resize-none"
                 rows={2}

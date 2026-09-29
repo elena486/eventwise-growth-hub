@@ -19,6 +19,7 @@ import { logActivity } from '@/lib/logActivity';
 const STAGES = ['New Lead', 'Contacted', 'Discovery Call', 'Demo Booked', 'Proposal Sent', 'Negotiation', 'Closed Won', 'Closed — Converted to Trial', 'Closed Lost', 'On Hold'];
 const PLANS = ['Starter', 'Growth', 'Scale', 'Professional', 'Custom'];
 const LEAD_OWNERS = ['Chris', 'Ramesh', 'Elena', 'George', 'Martinique', 'Sreeja', 'Eleanor'];
+const SDR_OPTIONS = ['George', 'Chris', 'Ramesh'];
 const CONTRACT_LENGTHS = ['Monthly rolling', '6 months', '12 months', '24 months'];
 const INDUSTRIES = ['Festival', 'Event Organiser', 'Event Agency', 'Corporate Events', 'Venue', 'Accountancy', 'Other'];
 const HEARD_ABOUT = ['LinkedIn', 'Referral', 'Inbound', 'Outbound', 'Event', 'EPS (Event Production Show)', 'EBL (Event Buyers Live)', 'AAA (Access All Areas)', 'Other'];
@@ -839,6 +840,21 @@ export default function LeadDetailPanel({ lead, onClose, onUpdate, onDelete, onC
             </button>
           )}
         </div>
+
+        {/* SDR — visible only when Source = Outbound */}
+        {data.heardAbout === 'Outbound' && (
+          <div className="flex items-center gap-2 mb-3">
+            <label className="text-[11px] font-medium text-ew-muted whitespace-nowrap">SDR (who sourced it)</label>
+            <select
+              className="flex-1 text-sm border border-ew-border rounded-lg px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-[#8403C5]/20 bg-white"
+              value={data.sdr || ''}
+              onChange={e => autoSave({ sdr: e.target.value })}
+            >
+              <option value="">Select…</option>
+              {SDR_OPTIONS.map(o => <option key={o} value={o}>{o}</option>)}
+            </select>
+          </div>
+        )}
 
         {/* Quick note bar */}
         {!isNew && (
