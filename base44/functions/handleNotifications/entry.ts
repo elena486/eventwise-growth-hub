@@ -72,6 +72,46 @@ Deno.serve(async (req) => {
       } catch {}
     }
 
+    // ── Email helper for task completion ─────────────────────────────────────
+    // Notifies the requester when their task is marked Done. Same email lookup
+    // and skip-if-missing behaviour as sendAssignmentEmail.
+    async function sendCompletionEmail(requesterName: string, completedBy: string, task: any) {
+      const email = await getTeamEmail(requesterName);
+      if (!email) return;
+
+      const hubUrl = 'https://eventwise-hq.base44.app/AppShell?tab=team-board';
+      const subject = `Completed: ${task.title || 'Untitled task'}`;
+
+      const completedDateStr = task.completedDate
+        ? new Date(task.completedDate + 'T00:00:00').toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })
+        : new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
+
+      const rows = [
+        `<tr><td style="padding:3px 14px 3px 0;font-weight:600;color:#5777AB;">Completed by</td><td style="padding:3px 0;color:#242450;">${completedBy || '—'}</td></tr>`,
+        `<tr><td style="padding:3px 14px 3px 0;font-weight:600;color:#5777AB;">Completed on</td><td style="padding:3px 0;color:#242450;">${completedDateStr}</td></tr>`,
+      ].join('');
+
+      const outcomeBlock = task.outcome
+        ? `<p style="font-size:13px;color:#1A1A3A;margin:14px 0 0;padding-top:14px;border-top:1px solid #EBEBF5;white-space:pre-wrap;"><strong style="color:#5777AB;">Outcome:</strong> ${task.outcome}</p>`
+        : '';
+
+      const html = `<div style="font-family:'DM Sans',Arial,sans-serif;max-width:480px;margin:0 auto;padding:24px;color:#242450;">
+  <p style="font-size:15px;margin:0 0 16px;">Hi ${requesterName},</p>
+  <p style="font-size:15px;margin:0 0 20px;">Your request has been completed in Eventwise HQ:</p>
+  <div style="background:#F6F6FB;border:1px solid #EBEBF5;border-radius:10px;padding:20px;margin:0 0 20px;">
+    <p style="font-size:16px;font-weight:700;margin:0 0 12px;color:#242450;">${task.title || 'Untitled task'}</p>
+    <table style="font-size:13px;border-collapse:collapse;">${rows}</table>
+    ${outcomeBlock}
+  </div>
+  <a href="${hubUrl}" style="display:inline-block;background:#8403C5;color:#FFFFFF;font-size:14px;font-weight:600;text-decoration:none;padding:10px 24px;border-radius:8px;">Open in the Hub</a>
+  <p style="font-size:12px;color:#9CA3AF;margin:24px 0 0;">Sent from Eventwise HQ</p>
+</div>`;
+
+      try {
+        await base44.asServiceRole.integrations.Core.SendEmail({ to: email, subject, html });
+      } catch {}
+    }
+
     // ── REQUEST / TASK (To-Do Board) ──────────────────────────────────────────
     if (entityName === 'Request') {
       const assignee = data?.assignedTo;
@@ -128,15 +168,20 @@ Deno.serve(async (req) => {
         // no point telling someone they completed their own task.
         if (statusChanged && requester && assignee && requester !== assignee) {
           const newStatus = data.status;
-          if (newStatus === 'Done') {
+          if (newStatus === 'Done' && requestedBy) {
+            // Only notify when requestedBy is explicitly set — a task with no
+            // requester (e.g. someone creating a task for themselves) should not
+            // trigger a completion notification. The creator fallback is NOT used
+            // here, only for assignment notifications above.
             await notify({
-              recipientName: requester,
+              recipientName: requestedBy,
               type: 'task_completed',
               message: `Your request has been completed: ${title}`,
               navigateTo: 'team-board',
               recordId,
               actorName: assignee,
             });
+            await sendCompletionEmail(requestedBy, assignee, data);
           } else if (newStatus === 'In Progress') {
             await notify({
               recipientName: requester,
