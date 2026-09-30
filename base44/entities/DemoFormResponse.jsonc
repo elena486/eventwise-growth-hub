@@ -19,6 +19,10 @@
       "type": "string",
       "description": "Selected accounting platform (Xero / QuickBooks / Sage / FreeAgent / Other or free-text)"
     },
+    "budgetSettlementMethod": {
+      "type": "string",
+      "description": "Selected budget/settlement method (Excel / Google Sheets / A dedicated event budgeting tool / Nothing formal \u2014 spreadsheets/emails/notes as needed / Other, with free-text captured when 'dedicated tool' or 'Other' is selected)"
+    },
     "usesPOs": {
       "type": "string",
       "description": "Yes or No"

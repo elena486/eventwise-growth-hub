@@ -12,12 +12,13 @@ const DEMO_COLUMNS = [
   { key: 'company', label: 'Company' },
   { key: 'dateSubmitted', label: 'Date Submitted' },
   { key: 'accountingPlatform', label: 'Accounting Platform' },
+  { key: 'budgetSettlementMethod', label: 'Budget/Settlement Method' },
   { key: 'ticketingPlatforms', label: 'Ticketing Platform(s)' },
   { key: 'techScore', label: 'Tech Score' },
   { key: 'status', label: 'Status' },
   { key: 'attachedTo', label: 'Attached To' },
 ];
-const DEMO_DEFAULT_VISIBLE = ['name', 'company', 'dateSubmitted', 'accountingPlatform', 'ticketingPlatforms', 'techScore', 'status', 'attachedTo'];
+const DEMO_DEFAULT_VISIBLE = ['name', 'company', 'dateSubmitted', 'accountingPlatform', 'budgetSettlementMethod', 'ticketingPlatforms', 'techScore', 'status', 'attachedTo'];
 
 function fmtDate(d) {
   if (!d) return '—';
@@ -170,6 +171,7 @@ export default function DemoFormResponses() {
                     {isVisible('company') && <td className="px-4 py-3 text-[#5777AB] whitespace-nowrap">{r.company || '—'}</td>}
                     {isVisible('dateSubmitted') && <td className="px-4 py-3 text-[#5777AB] whitespace-nowrap">{fmtDate(r.dateSubmitted)}</td>}
                     {isVisible('accountingPlatform') && <td className="px-4 py-3 text-[#242450] whitespace-nowrap">{r.accountingPlatform || '—'}</td>}
+                    {isVisible('budgetSettlementMethod') && <td className="px-4 py-3 text-[#242450] whitespace-nowrap">{r.budgetSettlementMethod || '—'}</td>}
                     {isVisible('ticketingPlatforms') && <td className="px-4 py-3 text-[#5777AB] whitespace-nowrap">{r.ticketingPlatforms || '—'}</td>}
                     {isVisible('techScore') && <td className="px-4 py-3"><TechScoreChip score={r.techForwardScore} /></td>}
                     {isVisible('status') && <td className="px-4 py-3"><StatusPill status={r.status} /></td>}

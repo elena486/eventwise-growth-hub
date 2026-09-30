@@ -227,6 +227,7 @@ export default function DemoResponseDetailPanel({ record, onClose, onAttach, onU
             <p className="text-[11px] font-bold text-[#9CA3AF] uppercase tracking-[0.08em] mb-3">Pre-Demo Questionnaire Responses</p>
             <div>
               <FieldRow label="Accounting Platform" value={record.accountingPlatform} />
+              <FieldRow label="Budget/Settlement Method" value={record.budgetSettlementMethod} />
               <FieldRow label="Uses POs (Purchase Orders)" value={record.usesPOs} />
               <FieldRow label="Ticketing Platform(s)" value={record.ticketingPlatforms} />
               <FieldRow label="Tickets Sold Annually" value={record.ticketsSoldAnnually} />
