@@ -1,0 +1,92 @@
+{
+  "name": "SuggestedTask",
+  "type": "object",
+  "properties": {
+    "senderName": {
+      "type": "string",
+      "description": "Name of the email sender"
+    },
+    "senderEmail": {
+      "type": "string",
+      "description": "Email address of the sender"
+    },
+    "subject": {
+      "type": "string",
+      "description": "Original email subject line"
+    },
+    "body": {
+      "type": "string",
+      "description": "Plain text body of the email"
+    },
+    "receivedDate": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO timestamp of when the email was received"
+    },
+    "sourceEmailLink": {
+      "type": "string",
+      "description": "URL to open the original email in the mail client"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "Pending review",
+        "Approved",
+        "Dismissed",
+        "Expired"
+      ],
+      "default": "Pending review",
+      "description": "Review state \u2014 Pending review items appear in Elena's queue; Approved/Dismissed/Expired are kept for the log"
+    },
+    "suggestedTitle": {
+      "type": "string",
+      "description": "AI-suggested clean task-style title"
+    },
+    "suggestedDescription": {
+      "type": "string",
+      "description": "AI-suggested one-line description from the email body"
+    },
+    "requestedBy": {
+      "type": "string",
+      "description": "Detected team member if sender email matches a TeamMember \u2014 carries over to the created task"
+    },
+    "aiIsTask": {
+      "type": "boolean",
+      "description": "AI judgement: true if this is a genuine task or request, false for newsletters/automated/FYI"
+    },
+    "aiConfidence": {
+      "type": "string",
+      "enum": [
+        "high",
+        "medium",
+        "low"
+      ],
+      "description": "AI confidence in the classification"
+    },
+    "aiReasoning": {
+      "type": "string",
+      "description": "Short AI reasoning for the classification decision"
+    },
+    "reviewedBy": {
+      "type": "string",
+      "description": "Name of the person who approved or dismissed the item"
+    },
+    "reviewedDate": {
+      "type": "string",
+      "format": "date",
+      "description": "Date the item was approved or dismissed"
+    },
+    "createdRequestId": {
+      "type": "string",
+      "description": "ID of the Request created on the To-Do Board when approved"
+    },
+    "dismissedReason": {
+      "type": "string",
+      "description": "Reason for dismissal or expiry \u2014 kept for the dismissed log"
+    }
+  },
+  "required": [
+    "senderEmail",
+    "subject"
+  ]
+}
