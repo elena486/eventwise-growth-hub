@@ -46,6 +46,7 @@ import NavTimer from '@/components/time/NavTimer';
 import LogTimeSidebar from '@/components/time/LogTimeSidebar';
 import PasswordModal from '@/components/activity/PasswordModal';
 import Leave from './Leave';
+import SuggestedTasks from './SuggestedTasks';
 import WhosOutBanner from '@/components/leave/WhosOutBanner';
 import UpdateBanner from '@/components/UpdateBanner';
 
@@ -67,6 +68,7 @@ const GROUPS = [
   ]},
   { id: 'ops', label: 'Operations', tabs: [
     { id: 'team-board', label: "Team To Do's" },
+    { id: 'suggested-tasks', label: 'Suggested Tasks' },
     { id: 'submit-request', label: 'Submit a Request' },
     { id: 'weekly-report', label: 'Weekly Report' },
     { id: 'sprints', label: 'Sprints' },
@@ -109,6 +111,7 @@ export default function AppShell() {
   const { showWarning, countdown, reload, dismiss } = useAutoRefresh();
   const [avatarOpen, setAvatarOpen] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [suggestedTasksCount, setSuggestedTasksCount] = useState(0);
 
   // Changelog / what's new state (separate from the notification bell)
   const [changelogEntries, setChangelogEntries] = useState([]);
@@ -241,6 +244,23 @@ export default function AppShell() {
   }, [searchFocus, tab]);
 
   const [teamBoardRefresh, setTeamBoardRefresh] = useState(0);
+
+  // Fetch pending suggested tasks count for Elena's nav badge
+  const isElenaUser = (user?.email || '').toLowerCase().includes('elena');
+  useEffect(() => {
+    if (!isElenaUser) return;
+    const fetchCount = async () => {
+      try {
+        const count = await base44.entities.SuggestedTask.count({ status: 'Pending review' });
+        setSuggestedTasksCount(typeof count === 'number' ? count : 0);
+      } catch {}
+    };
+    fetchCount();
+    const handler = () => fetchCount();
+    window.addEventListener('suggested-tasks-changed', handler);
+    const interval = setInterval(fetchCount, 60000);
+    return () => { window.removeEventListener('suggested-tasks-changed', handler); clearInterval(interval); };
+  }, [isElenaUser]);
 
   // Keyboard shortcuts
   const { shortcutsModalOpen, setShortcutsModalOpen } = useKeyboardShortcuts({
@@ -548,6 +568,7 @@ export default function AppShell() {
             const isAdmin = (user?.email || '').toLowerCase().includes('elena') || (user?.email || '').toLowerCase().includes('chris');
             if (t.id === 'time-templates' && !isAdmin) return false;
             if (t.id === 'time-overview' && !isAdmin) return false;
+            if (t.id === 'suggested-tasks' && !isElenaUser) return false;
             return true;
           }).map(t => (
             <button
@@ -558,6 +579,9 @@ export default function AppShell() {
               }`}
             >
               {t.label}
+              {t.id === 'suggested-tasks' && suggestedTasksCount > 0 && (
+                <span className="ml-1.5 inline-flex items-center justify-center min-w-[18px] h-[18px] text-[10px] font-bold bg-[#8403C5] text-white rounded-full px-1.5 leading-none">{suggestedTasksCount}</span>
+              )}
               {tab === t.id && <span className="absolute bottom-0 left-0 right-0 h-[2px] bg-[#7C3AED] rounded-t-full" />}
             </button>
           ))}
@@ -585,6 +609,7 @@ export default function AppShell() {
           </div>
         )}
         {tab === 'submit-request' && <SubmitRequestForm onSubmitted={() => { setTeamBoardRefresh(n => n + 1); setTab('team-board'); }} />}
+        {tab === 'suggested-tasks' && <SuggestedTasks />}
         {tab === 'weekly-report' && <WeeklyReport />}
         {tab === 'sprints' && <Sprints />}
         {tab === 'leave' && <Leave />}
@@ -692,6 +717,7 @@ export default function AppShell() {
                     const isAdmin = (user?.email || '').toLowerCase().includes('elena') || (user?.email || '').toLowerCase().includes('chris');
                     if (t.id === 'time-templates' && !isAdmin) return false;
                     if (t.id === 'time-overview' && !isAdmin) return false;
+                    if (t.id === 'suggested-tasks' && !(user?.email || '').toLowerCase().includes('elena')) return false;
                     return true;
                   }).map(t => (
                     <button
@@ -702,6 +728,9 @@ export default function AppShell() {
                       }`}
                     >
                       {t.label}
+                      {t.id === 'suggested-tasks' && suggestedTasksCount > 0 && (
+                        <span className="ml-1.5 inline-flex items-center justify-center min-w-[18px] h-[18px] text-[10px] font-bold bg-[#8403C5] text-white rounded-full px-1.5 leading-none">{suggestedTasksCount}</span>
+                      )}
                     </button>
                   ))}
                 </div>

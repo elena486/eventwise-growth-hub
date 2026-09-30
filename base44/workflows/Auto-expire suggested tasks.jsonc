@@ -1,0 +1,44 @@
+{
+  "name": "Auto-expire suggested tasks",
+  "definition": {
+    "document": {
+      "dsl": "1.0.0",
+      "name": "auto_expire_suggested_tasks",
+      "version": "1.0",
+      "namespace": "base44"
+    },
+    "do": [
+      {
+        "expire": {
+          "call": "invoke_backend_function",
+          "with": {
+            "function_name": "expireOldSuggestedTasks"
+          },
+          "then": "end",
+          "x-base44": {
+            "title": "Expire old suggested tasks",
+            "description": "Auto-dismiss items pending review for 14+ days"
+          }
+        }
+      }
+    ]
+  },
+  "trigger": {
+    "condition": null,
+    "config": {
+      "trigger_type": "scheduled",
+      "events": [],
+      "schedule_mode": "recurring",
+      "cron_expression": "0 9 * * *",
+      "one_time_date": null,
+      "timezone": "Africa/Johannesburg",
+      "interval_value": null,
+      "interval_unit": null,
+      "interval_anchor": null,
+      "ends_type": "never",
+      "ends_on_date": null,
+      "ends_after_count": null
+    }
+  },
+  "description": "Daily auto-dismissal of suggested task items sitting in the review queue for more than 14 days"
+}
