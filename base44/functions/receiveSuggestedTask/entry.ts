@@ -13,50 +13,84 @@ export default async function(req) {
 
     const base44 = createClientFromRequest(req);
     const payload = await req.json();
-    const { senderName, senderEmail, subject, body: emailBody, receivedDate, sourceEmailLink } = payload;
+    const source = url.searchParams.get('source') === 'slack' ? 'slack' : 'email';
 
-    if (!senderEmail || !subject) {
-      return Response.json({ error: 'Missing required fields: senderEmail, subject' }, { status: 400 });
+    // Fetch team members for Requested By detection
+    const teamMembers = await base44.asServiceRole.entities.TeamMember.list();
+
+    let senderName, senderEmail, subject, bodyText, receivedDate, sourceLink, matchedMember;
+
+    if (source === 'slack') {
+      senderName = payload.senderName || '';
+      senderEmail = '';
+      subject = '';
+      bodyText = payload.message || '';
+      receivedDate = payload.receivedDate || new Date().toISOString();
+      sourceLink = payload.sourceLink || '';
+      // Match by senderName against TeamMember names
+      matchedMember = teamMembers.find(m =>
+        m.name && m.name.toLowerCase() === String(senderName).toLowerCase()
+      );
+    } else {
+      // Email (default — existing behaviour)
+      senderName = payload.senderName || '';
+      senderEmail = payload.senderEmail || '';
+      subject = payload.subject || '';
+      bodyText = payload.body || '';
+      receivedDate = payload.receivedDate || new Date().toISOString();
+      sourceLink = payload.sourceLink || payload.sourceEmailLink || '';
+      // Match by email
+      matchedMember = teamMembers.find(m =>
+        m.email && m.email.toLowerCase() === String(senderEmail).toLowerCase()
+      );
     }
 
-    // Fetch team members to match sender email
-    const teamMembers = await base44.asServiceRole.entities.TeamMember.list();
-    const matchedMember = teamMembers.find(m =>
-      m.email && m.email.toLowerCase() === String(senderEmail).toLowerCase()
-    );
+    if (!senderName && !senderEmail) {
+      return Response.json({ error: 'Missing senderName or senderEmail' }, { status: 400 });
+    }
+    if (!bodyText && !subject) {
+      return Response.json({ error: 'Missing message or subject' }, { status: 400 });
+    }
 
-    // Save raw record first
+    // Save raw record
     const record = await base44.asServiceRole.entities.SuggestedTask.create({
+      source,
       senderName: senderName || '',
-      senderEmail,
-      subject,
-      body: emailBody || '',
-      receivedDate: receivedDate || new Date().toISOString(),
-      sourceEmailLink: sourceEmailLink || '',
+      senderEmail: senderEmail || '',
+      subject: subject || '',
+      body: bodyText || '',
+      receivedDate,
+      sourceLink: sourceLink || '',
+      sourceEmailLink: sourceLink || '', // backward compat for existing email records
       status: 'Pending review',
       requestedBy: matchedMember ? matchedMember.name : '',
     });
 
     // Run AI classification
-    const trimmedBody = String(emailBody || '').substring(0, 2000);
-    const aiPrompt = `You are classifying an incoming email to decide if it should become a task on a team's To-Do board for an events-finance company called Eventwise.
+    const trimmedBody = String(bodyText || '').substring(0, 2000);
+    const sourceLabel = source === 'slack' ? 'Slack message' : 'email';
+    const fromLine = source === 'slack'
+      ? `- From: ${senderName || '(unknown)'}`
+      : `- From: ${senderName || '(unknown)'} <${senderEmail}>`;
+    const subjectLine = subject ? `- Subject: ${subject}\n` : '';
 
-Email details:
-- From: ${senderName || '(unknown)'} <${senderEmail}>
-- Subject: ${subject}
-- Body: ${trimmedBody}
+    const aiPrompt = `You are classifying an incoming ${sourceLabel} to decide if it should become a task on a team's To-Do board for an events-finance company called Eventwise.
 
-Classify this email:
-1. Is this a genuine task or request that requires someone to DO something? Or is it a newsletter, automated notification, receipt, calendar invite, delivery confirmation, reply-only message, or pure FYI with no actionable ask?
+${source === 'slack' ? 'Slack message' : 'Email'} details:
+${fromLine}
+${subjectLine}- Message: ${trimmedBody}
+
+Classify this ${sourceLabel}:
+1. Is this a genuine task or request that requires someone to DO something? Or is it a newsletter, automated notification, receipt, calendar invite, delivery confirmation, reply-only message, casual chat ("hey", "got 5 min?", "thanks!"), or pure FYI with no actionable ask?
 2. If it IS a task, suggest a clean task-style title (not the raw subject line — a clear, concise task title, max 80 chars).
-3. If it IS a task, suggest a one-line description summarizing what needs to be done, derived from the body (max 200 chars).
+3. If it IS a task, suggest a one-line description summarizing what needs to be done, derived from the message (max 200 chars).
 4. Rate your confidence: high, medium, or low.
 
 Rules:
-- Newsletters, automated receipts, calendar notifications, delivery confirmations, and pure FYI emails with no ask are NOT tasks.
-- An email asking someone to review, approve, create, fix, send, schedule, or follow up on something IS a task.
+- Newsletters, automated receipts, calendar notifications, delivery confirmations, casual greetings/check-ins, and pure FYI messages with no ask are NOT tasks.
+- A message asking someone to review, approve, create, fix, send, schedule, or follow up on something IS a task.
 - A reply that just says "thanks" or "looks good" with no new ask is NOT a task.
-- If the email is clearly not a task, set isTask to false and leave title/description empty.
+- If the message is clearly not a task, set isTask to false and leave title/description empty.
 
 Return a JSON object with: isTask (boolean), confidence (high/medium/low), title (string), description (string), reasoning (string).`;
 
@@ -103,8 +137,9 @@ Return a JSON object with: isTask (boolean), confidence (high/medium/low), title
     }
 
     // Task-like with sufficient confidence — update with AI suggestions
+    const fallbackTitle = subject || bodyText.substring(0, 80);
     await base44.asServiceRole.entities.SuggestedTask.update(record.id, {
-      suggestedTitle: classification.title || subject,
+      suggestedTitle: classification.title || fallbackTitle,
       suggestedDescription: classification.description || '',
       aiIsTask: true,
       aiConfidence: classification.confidence,

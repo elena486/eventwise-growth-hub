@@ -103,7 +103,10 @@ export default function SuggestedTasks() {
                   </div>
                 </div>
                 <div className="flex items-center gap-4 text-xs text-[#9CA3AF] mt-3 flex-wrap">
-                  <span>From: {item.senderName ? `${item.senderName} ` : ''}&lt;{item.senderEmail}&gt;</span>
+                  <span className={`inline-flex items-center px-2 py-0.5 rounded-full font-semibold ${item.source === 'slack' ? 'bg-[#E8F7F2] text-[#1D9E75]' : 'bg-[#EEF2F8] text-[#5777AB]'}`}>
+                    {item.source === 'slack' ? 'Slack' : 'Email'}
+                  </span>
+                  <span>From: {item.senderName || '—'}{item.senderEmail ? ` <${item.senderEmail}>` : ''}</span>
                   {item.receivedDate && (
                     <span className="flex items-center gap-1">
                       <Clock className="w-3 h-3" />
@@ -115,10 +118,10 @@ export default function SuggestedTasks() {
                       Requested by: {item.requestedBy}
                     </span>
                   )}
-                  {item.sourceEmailLink && (
-                    <a href={item.sourceEmailLink} target="_blank" rel="noopener noreferrer"
+                  {(item.sourceLink || item.sourceEmailLink) && (
+                    <a href={item.sourceLink || item.sourceEmailLink} target="_blank" rel="noopener noreferrer"
                       className="flex items-center gap-1 text-[#5777AB] hover:text-[#8403C5]">
-                      <ExternalLink className="w-3 h-3" /> Open email
+                      <ExternalLink className="w-3 h-3" /> {item.source === 'slack' ? 'Open in Slack' : 'Open email'}
                     </a>
                   )}
                 </div>

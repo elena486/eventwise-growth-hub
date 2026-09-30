@@ -2,30 +2,43 @@
   "name": "SuggestedTask",
   "type": "object",
   "properties": {
+    "source": {
+      "type": "string",
+      "enum": [
+        "email",
+        "slack"
+      ],
+      "default": "email",
+      "description": "Where this suggestion came from \u2014 email or Slack"
+    },
     "senderName": {
       "type": "string",
-      "description": "Name of the email sender"
+      "description": "Name of the sender (email or Slack display name)"
     },
     "senderEmail": {
       "type": "string",
-      "description": "Email address of the sender"
+      "description": "Email address of the sender (email source only \u2014 empty for Slack)"
     },
     "subject": {
       "type": "string",
-      "description": "Original email subject line"
+      "description": "Original email subject line (empty for Slack)"
     },
     "body": {
       "type": "string",
-      "description": "Plain text body of the email"
+      "description": "Plain text body of the email or Slack message"
     },
     "receivedDate": {
       "type": "string",
       "format": "date-time",
-      "description": "ISO timestamp of when the email was received"
+      "description": "ISO timestamp of when the email or message was received"
+    },
+    "sourceLink": {
+      "type": "string",
+      "description": "URL to open the original message \u2014 Gmail link for email, permalink for Slack"
     },
     "sourceEmailLink": {
       "type": "string",
-      "description": "URL to open the original email in the mail client"
+      "description": "Legacy field \u2014 same as sourceLink for email-sourced records. Kept for backward compatibility with existing records."
     },
     "status": {
       "type": "string",
@@ -44,15 +57,15 @@
     },
     "suggestedDescription": {
       "type": "string",
-      "description": "AI-suggested one-line description from the email body"
+      "description": "AI-suggested one-line description from the message body"
     },
     "requestedBy": {
       "type": "string",
-      "description": "Detected team member if sender email matches a TeamMember \u2014 carries over to the created task"
+      "description": "Detected team member if sender matches a TeamMember (by email for email source, by name for Slack source) \u2014 carries over to the created task"
     },
     "aiIsTask": {
       "type": "boolean",
-      "description": "AI judgement: true if this is a genuine task or request, false for newsletters/automated/FYI"
+      "description": "AI judgement: true if this is a genuine task or request, false for newsletters/automated/FYI/casual chat"
     },
     "aiConfidence": {
       "type": "string",
@@ -86,7 +99,6 @@
     }
   },
   "required": [
-    "senderEmail",
-    "subject"
+    "senderName"
   ]
 }
