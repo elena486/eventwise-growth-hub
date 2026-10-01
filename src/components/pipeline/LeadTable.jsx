@@ -10,6 +10,7 @@ import { ChevronUp, ChevronDown, ChevronsUpDown, FileText, Trash2, Check, X, Pen
 const STAGE_ORDER = ['New Lead', 'Contacted', 'Discovery Call', 'Demo Booked', 'Proposal Sent', 'Negotiation', 'Closed Won', 'Closed Lost', 'On Hold'];
 const PLANS = ['Starter', 'Growth', 'Scale', 'Professional', 'Custom'];
 const OWNERS = ['Chris', 'Ramesh', 'George'];
+const SDRS = ['George', 'Chris', 'Ramesh'];
 
 const MONTHS_SHORT = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 
@@ -211,6 +212,7 @@ function MarkLostCell({ lead, onMarkLost }) {
 const ALL_COLUMNS = [
   { key: 'company', label: 'Company', locked: true },
   { key: 'owner', label: 'Owner' },
+  { key: 'sdr', label: 'SDR' },
   { key: 'plan', label: 'Plan' },
   { key: 'deal', label: 'Deal value' },
   { key: 'stage', label: 'Stage' },
@@ -223,7 +225,7 @@ const ALL_COLUMNS = [
   { key: 'accounting', label: 'Accounting service' },
 ];
 
-const DEFAULT_VISIBLE = ['company', 'owner', 'plan', 'deal', 'stage', 'trial', 'probability', 'nextAction', 'activity', 'notes'];
+const DEFAULT_VISIBLE = ['company', 'owner', 'sdr', 'plan', 'deal', 'stage', 'trial', 'probability', 'nextAction', 'activity', 'notes'];
 
 // Undo Toast
 function UndoToast({ message, onUndo, onDismiss }) {
@@ -340,6 +342,13 @@ export default function LeadTable({ leads, onDelete, onProposal, onUpdateField, 
             <InlineCell value={lead.leadOwner} onSave={save(lead.id, 'leadOwner')} type="select" options={OWNERS}
               displayEl={lead.leadOwner ? <span className={`text-[11px] font-semibold px-2 py-0.5 rounded-full ${OWNER_COLORS[lead.leadOwner] || 'bg-gray-100 text-gray-600'}`}>{lead.leadOwner}</span> : <span className="text-xs text-ew-muted italic">Unassigned</span>}
               placeholder="Assign" />
+          </td>
+        )}
+        {show('sdr') && (
+          <td className="px-4 py-3 min-w-[100px]">
+            <InlineCell value={lead.sdr} onSave={save(lead.id, 'sdr')} type="select" options={SDRS}
+              displayEl={lead.sdr ? <span className={`text-[11px] font-semibold px-2 py-0.5 rounded-full ${OWNER_COLORS[lead.sdr] || 'bg-gray-100 text-gray-600'}`}>{lead.sdr}</span> : <span className="text-xs text-ew-muted italic">—</span>}
+              placeholder="—" />
           </td>
         )}
         {show('plan') && (
@@ -474,6 +483,7 @@ export default function LeadTable({ leads, onDelete, onProposal, onUpdateField, 
             <tr>
               {show('company') && <Th label="Company" col="company" />}
               {show('owner') && <Th label="Owner" />}
+              {show('sdr') && <Th label="SDR" />}
               {show('plan') && <Th label="Plan" />}
               {show('deal') && <Th label="Deal value" col="deal" />}
               {show('stage') && <Th label="Stage" col="stage" />}
