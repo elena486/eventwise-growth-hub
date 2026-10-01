@@ -34,6 +34,7 @@ export default function EntryDetailModal({ entry, onClose, onUpdated, onDeleted,
   const [clientName, setClientName] = useState('');
   const [leadId, setLeadId] = useState('');
   const [leadName, setLeadName] = useState('');
+  const [editDate, setEditDate] = useState('');
   const [startTime, setStartTime] = useState('');
   const [endTime, setEndTime] = useState('');
   const [notes, setNotes] = useState('');
@@ -62,6 +63,7 @@ export default function EntryDetailModal({ entry, onClose, onUpdated, onDeleted,
         const endM = totalMin % 60;
         setEndTime(`${String(endH).padStart(2, '0')}:${String(endM).padStart(2, '0')}`);
       }
+      setEditDate(entry.date || format(new Date(), 'yyyy-MM-dd'));
       setNotes(entry.notes || '');
       setTranscriptLink(entry.transcriptLink || '');
     }
@@ -80,11 +82,11 @@ export default function EntryDetailModal({ entry, onClose, onUpdated, onDeleted,
     if (!category || !projectTask.trim()) return;
     setSaving(true);
     const durationMinutes = calcDuration();
-    const datePrefix = entry.date || format(new Date(), 'yyyy-MM-dd');
+    const datePrefix = editDate || format(new Date(), 'yyyy-MM-dd');
     const startISO = startTime ? `${datePrefix}T${startTime}:00` : entry.timerStartedAt;
     const endISO = endTime ? `${datePrefix}T${endTime}:00` : entry.timerStoppedAt;
     await base44.entities.TimeEntry.update(entry.id, {
-      category, projectTask: projectTask.trim(), clientId: clientId || '',
+      date: datePrefix, category, projectTask: projectTask.trim(), clientId: clientId || '',
       clientName: clientName || '',
       leadId: leadId || '',
       leadName: leadName || '',
@@ -95,7 +97,7 @@ export default function EntryDetailModal({ entry, onClose, onUpdated, onDeleted,
     }).catch(() => null);
     setSaving(false);
     setEditing(false);
-    onUpdated?.({ ...entry, category, projectTask: projectTask.trim(), clientId, clientName, leadId, leadName, durationMinutes, notes: notes.trim(), transcriptLink: transcriptLink.trim(), timerStartedAt: startISO, timerStoppedAt: endISO });
+    onUpdated?.({ ...entry, date: datePrefix, category, projectTask: projectTask.trim(), clientId, clientName, leadId, leadName, durationMinutes, notes: notes.trim(), transcriptLink: transcriptLink.trim(), timerStartedAt: startISO, timerStoppedAt: endISO });
   };
 
   const handleDelete = async () => {
@@ -181,6 +183,11 @@ export default function EntryDetailModal({ entry, onClose, onUpdated, onDeleted,
                   onChange={(id, name) => { setLeadId(id); setLeadName(name); if (id) { setClientId(''); setClientName(''); } }}
                   className="w-full px-3 py-2 text-sm border border-[#EBEBF5] rounded-lg bg-white"
                 />
+              </div>
+              <div>
+                <label className="block text-[10px] font-semibold text-[#5777AB] uppercase tracking-[0.06em] mb-1">Date</label>
+                <input type="date" value={editDate} max={format(new Date(), 'yyyy-MM-dd')} onChange={e => setEditDate(e.target.value)}
+                  className="w-full px-3 py-2 text-sm border border-[#EBEBF5] rounded-lg bg-white focus:outline-none focus:border-[#8403C5]" />
               </div>
               <div>
                 <label className="block text-[10px] font-semibold text-[#5777AB] uppercase tracking-[0.06em] mb-1">Time</label>

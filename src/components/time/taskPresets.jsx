@@ -11,6 +11,8 @@ export const TASK_PRESETS = {
     'Partnership discussion',
     'Prospect outreach',
     'Weekly sales meeting',
+    'Target account research',
+    'Target account outreach — personalised',
   ],
   'Customer Success & Onboarding': [
     'Client onboarding session',
@@ -25,6 +27,9 @@ export const TASK_PRESETS = {
     'Loading budgets',
     'Ticket counts',
     'Setting up accounts',
+    'New account setup',
+    'Budget entry — review/reconciliation',
+    'Client email/communication',
     'Emailing clients',
     'Drafts',
     'Setting up customer success procedures',
@@ -82,6 +87,17 @@ export const TASK_PRESETS = {
     'Competitive research',
     'Partnership strategy',
     'Fundraising preparation',
+  ],
+  'External Accounting': [
+    'Bookkeeping',
+    'Payments',
+    'Credit Control',
+    'VAT',
+    'End of Year',
+    'Client Meetings',
+  ],
+  'In The Loop': [
+    'Internal Meetings',
   ],
   'Other': [
     'Training / learning',

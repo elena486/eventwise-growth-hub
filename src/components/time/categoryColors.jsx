@@ -6,6 +6,8 @@ export const CATEGORY_COLORS = {
   'Product & Tech': '#0EA5E9',
   'Finance': '#E8C547',
   'Strategy & Planning': '#242450',
+  'External Accounting': '#0D9488',
+  'In The Loop': '#DB2777',
   'Other': '#9CA3AF',
 };
 

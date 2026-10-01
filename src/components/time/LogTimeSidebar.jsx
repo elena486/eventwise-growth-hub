@@ -77,6 +77,7 @@ export default function LogTimeSidebar({ triggerOpen, onTriggerConsumed }) {
   const [linkedTaskId, setLinkedTaskId] = useState('');
   const [linkedTaskTitle, setLinkedTaskTitle] = useState('');
   const [taskCompletePrompt, setTaskCompletePrompt] = useState(null);
+  const [quickDate, setQuickDate] = useState(format(new Date(), 'yyyy-MM-dd'));
   const [startTime, setStartTime] = useState('');
   const [endTime, setEndTime] = useState('');
   const [notes, setNotes] = useState('');
@@ -250,13 +251,13 @@ export default function LogTimeSidebar({ triggerOpen, onTriggerConsumed }) {
   const handleQuickLog = async () => {
     const totalMin = startEndDuration;
     if (!projectTask.trim() || totalMin <= 0) return;
-    const today = format(new Date(), 'yyyy-MM-dd');
-    const startISO = startTime ? `${today}T${startTime}:00` : undefined;
-    const endISO = endTime ? `${today}T${endTime}:00` : undefined;
+    const entryDate = quickDate || format(new Date(), 'yyyy-MM-dd');
+    const startISO = startTime ? `${entryDate}T${startTime}:00` : undefined;
+    const endISO = endTime ? `${entryDate}T${endTime}:00` : undefined;
     setLogging(true);
     try {
       await base44.entities.TimeEntry.create({
-        date: today, teamMember, category: category || 'Other',
+        date: entryDate, teamMember, category: category || 'Other',
         projectTask: projectTask.trim(), durationMinutes: totalMin, timerStatus: 'logged',
         notes: notes.trim() || undefined, transcriptLink: transcriptLink.trim() || undefined,
         transcriptFileUrl: transcriptFileUrl || undefined, transcriptFileName: transcriptFileName || undefined,
@@ -270,7 +271,7 @@ export default function LogTimeSidebar({ triggerOpen, onTriggerConsumed }) {
       await writeClientActivityLog({ clientId, clientName, teamMember, category: category || 'Other', projectTask: projectTask.trim(), durationMinutes: totalMin, notes: notes.trim(), transcriptLink: transcriptLink.trim() });
       if (leadId) { writeLeadActivityLog({ leadId, leadName, teamMember, category: category || 'Other', projectTask: projectTask.trim(), durationMinutes: totalMin, notes: notes.trim(), transcriptLink: transcriptLink.trim(), transcriptFileUrl, transcriptFileName }); }
       logActivity({ teamMember, actionType: 'Logged a time entry via sidebar', section: 'Time & Capacity', recordName: projectTask.trim(), details: `${category || 'Other'} — ${formatDuration(totalMin)}` });
-      setProjectTask(''); setStartTime(''); setEndTime(''); setNotes(''); setTranscriptLink(''); setTranscriptFileUrl(''); setTranscriptFileName(''); setCategory(''); setClientId(''); setClientName(''); setLeadId(''); setLeadName(''); setLinkedTaskId(''); setLinkedTaskTitle('');
+      setProjectTask(''); setQuickDate(format(new Date(), 'yyyy-MM-dd')); setStartTime(''); setEndTime(''); setNotes(''); setTranscriptLink(''); setTranscriptFileUrl(''); setTranscriptFileName(''); setCategory(''); setClientId(''); setClientName(''); setLeadId(''); setLeadName(''); setLinkedTaskId(''); setLinkedTaskTitle('');
       setLogged(true); setTimeout(() => setLogged(false), 2000);
     } catch {}
     setLogging(false);
@@ -365,6 +366,15 @@ export default function LogTimeSidebar({ triggerOpen, onTriggerConsumed }) {
               className="w-full px-3 py-2 text-sm border border-[#EBEBF5] rounded-lg bg-white focus:outline-none"
             />
           </div>
+
+          {/* Date — only for manual log (not timer) */}
+          {timer.status === 'idle' && !isStopped && (
+            <div>
+              <label className="block text-[10px] font-semibold text-[#5777AB] uppercase tracking-[0.06em] mb-1">Date</label>
+              <input type="date" value={quickDate} max={format(new Date(), 'yyyy-MM-dd')} onChange={e => setQuickDate(e.target.value)}
+                className="w-full px-3 py-2 text-sm border border-[#EBEBF5] rounded-lg bg-white focus:outline-none focus:border-[#8403C5]" />
+            </div>
+          )}
 
           {/* Time — only for manual log (not timer) */}
           {timer.status === 'idle' && !isStopped && (

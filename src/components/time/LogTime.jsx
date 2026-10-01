@@ -125,6 +125,7 @@ export default function LogTime({ onLogged }) {
   const [saveError, setSaveError] = useState('');
 
   // Quick log — unified start/end time
+  const [quickDate, setQuickDate] = useState(format(new Date(), 'yyyy-MM-dd'));
   const [quickStartTime, setQuickStartTime] = useState('');
   const [quickEndTime, setQuickEndTime] = useState('');
   const [quickTranscriptLink, setQuickTranscriptLink] = useState('');
@@ -317,12 +318,12 @@ export default function LogTime({ onLogged }) {
   // ── Quick Log ──
   const handleQuickLog = async () => {
     if (!quickDesc.trim() || quickDuration <= 0) return;
-    const today = format(new Date(), 'yyyy-MM-dd');
-    const startISO = quickStartTime ? `${today}T${quickStartTime}:00` : undefined;
-    const endISO = quickEndTime ? `${today}T${quickEndTime}:00` : undefined;
+    const entryDate = quickDate || format(new Date(), 'yyyy-MM-dd');
+    const startISO = quickStartTime ? `${entryDate}T${quickStartTime}:00` : undefined;
+    const endISO = quickEndTime ? `${entryDate}T${quickEndTime}:00` : undefined;
     try {
       await base44.entities.TimeEntry.create({
-        date: today, teamMember, category: quickCat || 'Other',
+        date: entryDate, teamMember, category: quickCat || 'Other',
         projectTask: quickDesc.trim(), durationMinutes: quickDuration,
         transcriptLink: quickTranscriptLink.trim() || undefined,
         transcriptFileUrl: quickTranscriptFileUrl || undefined,
@@ -337,7 +338,7 @@ export default function LogTime({ onLogged }) {
       if (quickLinkedTaskId) moveTaskToInProgress(quickLinkedTaskId, teamMember);
       await writeClientActivityLog({ clientId: quickClientId, clientName: quickClientName, teamMember, category: quickCat || 'Other', projectTask: quickDesc.trim(), durationMinutes: quickDuration, notes: '', transcriptLink: quickTranscriptLink.trim() });
       if (quickLeadId) { writeLeadActivityLog({ leadId: quickLeadId, leadName: quickLeadName, teamMember, category: quickCat || 'Other', projectTask: quickDesc.trim(), durationMinutes: quickDuration, notes: '', transcriptLink: quickTranscriptLink.trim(), transcriptFileUrl: quickTranscriptFileUrl, transcriptFileName: quickTranscriptFileName }); }
-      setQuickDesc(''); setQuickStartTime(''); setQuickEndTime(''); setQuickTranscriptLink(''); setQuickTranscriptFileUrl(''); setQuickTranscriptFileName(''); setQuickLeadIdRaw(''); setQuickLeadNameRaw(''); setQuickLinkedTaskIdRaw(''); setQuickLinkedTaskTitleRaw('');
+      setQuickDesc(''); setQuickDate(format(new Date(), 'yyyy-MM-dd')); setQuickStartTime(''); setQuickEndTime(''); setQuickTranscriptLink(''); setQuickTranscriptFileUrl(''); setQuickTranscriptFileName(''); setQuickLeadIdRaw(''); setQuickLeadNameRaw(''); setQuickLinkedTaskIdRaw(''); setQuickLinkedTaskTitleRaw('');
       loadEntries(); onLogged?.();
       logActivity({ teamMember, actionType: 'Logged a time entry', section: 'Time & Capacity', recordName: quickDesc.trim(), details: `${quickCat || 'Other'} — ${formatDuration(quickDuration)}` });
     } catch {}
@@ -505,6 +506,14 @@ export default function LogTime({ onLogged }) {
                 className="px-3 py-2 text-sm border border-[#E2E8F0] rounded-lg bg-[#F8FAFC] text-[#242450] w-[130px] focus:outline-none focus:border-[#8403C5]"
               />
             </div>
+            {/* Date field — manual log only (not timer, not stopped) */}
+            {timer.status === 'idle' && !isStopped && (
+              <div className="shrink-0">
+                <label className="block text-[10px] font-semibold text-[#242450] uppercase tracking-[0.06em] mb-1">Date</label>
+                <input type="date" value={quickDate} max={format(new Date(), 'yyyy-MM-dd')} onChange={e => setQuickDate(e.target.value)}
+                  className="px-2 py-2 text-sm border border-[#E2E8F0] rounded-lg bg-[#F8FAFC] text-[#242450] focus:outline-none focus:border-[#8403C5]" />
+              </div>
+            )}
             {/* Time fields — Start → End (only show when timer is idle and not stopped) */}
             {timer.status === 'idle' && !isStopped && (
               <div className="shrink-0">

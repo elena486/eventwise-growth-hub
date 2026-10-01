@@ -160,7 +160,7 @@ export default function QuickEntryModal({ open, onClose, onSaved, initial }) {
         <div className="space-y-3">
           <div>
             <label className="block text-[11px] font-semibold text-[#5777AB] uppercase mb-1">Date</label>
-            <input type="date" value={date} onChange={e => setDate(e.target.value)}
+            <input type="date" value={date} max={new Date().toISOString().slice(0, 10)} onChange={e => setDate(e.target.value)}
               className="w-full px-3 py-2 text-sm border border-[#EBEBF5] rounded-lg" />
           </div>
           <div>
