@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
-import { startOfWeek, endOfWeek, addWeeks, subWeeks, format } from 'date-fns';
+import { startOfWeek, endOfWeek, addWeeks, subWeeks, addDays, subDays, startOfDay, format, isSameDay } from 'date-fns';
 import { ChevronLeft, ChevronRight, AlertTriangle, Copy, Download } from 'lucide-react';
-import { fetchReportData, buildFlags, generateAISummary, formatDuration, TEAM_MEMBERS } from '@/lib/weeklyReportData';
+import { fetchReportData, fetchDailyReportData, buildFlags, generateAISummary, formatDuration, TEAM_MEMBERS } from '@/lib/weeklyReportData';
 import { formatReportAsText, generateReportPDF } from '@/lib/weeklyReportFormat';
 import PersonReport from '@/components/weekly-report/PersonReport';
 import TeamPersonCard from '@/components/weekly-report/TeamPersonCard';
@@ -13,7 +13,9 @@ import SummaryLines from '@/components/weekly-report/SummaryLines';
 export default function WeeklyReport() {
   const [user, setUser] = useState(null);
   const [person, setPerson] = useState('');
+  const [period, setPeriod] = useState('week');
   const [weekStart, setWeekStart] = useState(startOfWeek(new Date(), { weekStartsOn: 1 }));
+  const [dayDate, setDayDate] = useState(startOfDay(new Date()));
   const [reportData, setReportData] = useState(null);
   const [generating, setGenerating] = useState(false);
   const [aiSummary, setAiSummary] = useState(null);
@@ -43,12 +45,15 @@ export default function WeeklyReport() {
   const isElenaOrChris = isElena || viewingPersonName === 'Chris';
   const personOptions = isElenaOrChris ? [...TEAM_MEMBERS, 'Whole team'] : (person ? [person] : []);
 
+  const isDayMode = period === 'day';
   const weekEnd = endOfWeek(weekStart, { weekStartsOn: 1 });
   const weekLabel = `${format(weekStart, 'd MMM')} – ${format(weekEnd, 'd MMM yyyy')}`;
+  const dayLabel = format(dayDate, 'EEEE, d MMM yyyy');
   const currentWeekStart = startOfWeek(new Date(), { weekStartsOn: 1 });
   const isPastWeek = weekStart.getTime() < currentWeekStart.getTime();
+  const isPastDay = dayDate.getTime() < startOfDay(new Date()).getTime();
 
-  // Fetch report data when person or week changes
+  // Fetch report data when person or period or date changes
   useEffect(() => {
     if (!person) return;
 
@@ -60,7 +65,9 @@ export default function WeeklyReport() {
 
     (async () => {
       try {
-        const data = await fetchReportData(person, weekStart);
+        const data = isDayMode
+          ? await fetchDailyReportData(person, dayDate)
+          : await fetchReportData(person, weekStart);
         if (cancelled) return;
         setReportData(data);
         if (isElena) {
@@ -74,7 +81,7 @@ export default function WeeklyReport() {
 
     return () => { cancelled = true; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [person, weekStart]);
+  }, [person, weekStart, dayDate, isDayMode]);
 
   // Generate AI summary when data or priorities change
   useEffect(() => {
@@ -142,6 +149,15 @@ export default function WeeklyReport() {
     if (!isNaN(date)) setWeekStart(startOfWeek(date, { weekStartsOn: 1 }));
   };
 
+  const handlePrevDay = () => setDayDate(d => subDays(d, 1));
+  const handleNextDay = () => setDayDate(d => addDays(d, 1));
+  const handleToday = () => setDayDate(startOfDay(new Date()));
+  const handleDayPick = (e) => {
+    if (!e.target.value) return;
+    const date = new Date(e.target.value);
+    if (!isNaN(date)) setDayDate(startOfDay(date));
+  };
+
   // Team totals
   let totalDone = 0, totalInProgress = 0, totalBlocked = 0, totalTime = 0;
   let prevTotalDone = 0, prevTotalInProgress = 0, prevTotalBlocked = 0, prevTotalTime = 0;
@@ -166,30 +182,58 @@ export default function WeeklyReport() {
     <div className="h-full overflow-y-auto bg-[#F6F6FB] font-dm">
       {/* Controls */}
       <div className="px-8 pt-6 pb-4 shrink-0">
-        <h1 className="text-2xl font-bold text-[#242450] mb-4">Weekly Report</h1>
+        <h1 className="text-2xl font-bold text-[#242450] mb-4">{isDayMode ? 'Daily Report' : 'Weekly Report'}</h1>
         <div className="flex items-center gap-3 flex-wrap">
           <select value={person} onChange={e => setPerson(e.target.value)}
             className="px-3 py-2 text-sm border border-[#EBEBF5] rounded-lg bg-white focus:outline-none focus:border-[#8403C5] min-w-[160px]">
             {personOptions.map(p => <option key={p} value={p}>{p}</option>)}
           </select>
 
-          <div className="flex items-center gap-2 bg-white border border-[#EBEBF5] rounded-lg px-2 py-1.5">
-            <button onClick={handlePrevWeek} className="p-1 rounded hover:bg-[#F6F6FB] text-[#5777AB]"><ChevronLeft className="w-4 h-4" /></button>
-            <span className="text-sm font-medium text-[#242450] min-w-[140px] text-center">{weekLabel}</span>
-            <button onClick={handleNextWeek} className="p-1 rounded hover:bg-[#F6F6FB] text-[#5777AB]"><ChevronRight className="w-4 h-4" /></button>
-            <input type="date" onChange={handleDatePick} className="px-2 py-1 text-xs border border-[#EBEBF5] rounded text-[#242450]" />
+          {/* Period toggle */}
+          <div className="flex items-center bg-white border border-[#EBEBF5] rounded-lg p-0.5">
+            <button onClick={() => setPeriod('week')}
+              className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-colors ${period === 'week' ? 'bg-[#242450] text-white' : 'text-[#5777AB] hover:bg-[#F6F6FB]'}`}>
+              Week
+            </button>
+            <button onClick={() => setPeriod('day')}
+              className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-colors ${period === 'day' ? 'bg-[#242450] text-white' : 'text-[#5777AB] hover:bg-[#F6F6FB]'}`}>
+              Day
+            </button>
           </div>
 
-          <div className="flex items-center gap-1.5">
-            <button onClick={handleThisWeek}
-              className={`px-3 py-1.5 text-xs font-medium rounded-lg border transition-colors ${!isPastWeek ? 'bg-[#242450] text-white border-[#242450]' : 'bg-white text-[#5777AB] border-[#EBEBF5] hover:border-[#D8D8EE]'}`}>
-              This week
+          {isDayMode ? (
+            <div className="flex items-center gap-2 bg-white border border-[#EBEBF5] rounded-lg px-2 py-1.5">
+              <button onClick={handlePrevDay} className="p-1 rounded hover:bg-[#F6F6FB] text-[#5777AB]"><ChevronLeft className="w-4 h-4" /></button>
+              <span className="text-sm font-medium text-[#242450] min-w-[160px] text-center">{dayLabel}</span>
+              <button onClick={handleNextDay} className="p-1 rounded hover:bg-[#F6F6FB] text-[#5777AB]"><ChevronRight className="w-4 h-4" /></button>
+              <input type="date" value={format(dayDate, 'yyyy-MM-dd')} onChange={handleDayPick} className="px-2 py-1 text-xs border border-[#EBEBF5] rounded text-[#242450]" />
+            </div>
+          ) : (
+            <div className="flex items-center gap-2 bg-white border border-[#EBEBF5] rounded-lg px-2 py-1.5">
+              <button onClick={handlePrevWeek} className="p-1 rounded hover:bg-[#F6F6FB] text-[#5777AB]"><ChevronLeft className="w-4 h-4" /></button>
+              <span className="text-sm font-medium text-[#242450] min-w-[140px] text-center">{weekLabel}</span>
+              <button onClick={handleNextWeek} className="p-1 rounded hover:bg-[#F6F6FB] text-[#5777AB]"><ChevronRight className="w-4 h-4" /></button>
+              <input type="date" onChange={handleDatePick} className="px-2 py-1 text-xs border border-[#EBEBF5] rounded text-[#242450]" />
+            </div>
+          )}
+
+          {isDayMode ? (
+            <button onClick={handleToday}
+              className={`px-3 py-1.5 text-xs font-medium rounded-lg border transition-colors ${isSameDay(dayDate, new Date()) ? 'bg-[#242450] text-white border-[#242450]' : 'bg-white text-[#5777AB] border-[#EBEBF5] hover:border-[#D8D8EE]'}`}>
+              Today
             </button>
-            <button onClick={handleLastWeek}
-              className={`px-3 py-1.5 text-xs font-medium rounded-lg border transition-colors ${weekStart.getTime() === subWeeks(currentWeekStart, 1).getTime() ? 'bg-[#242450] text-white border-[#242450]' : 'bg-white text-[#5777AB] border-[#EBEBF5] hover:border-[#D8D8EE]'}`}>
-              Last week
-            </button>
-          </div>
+          ) : (
+            <div className="flex items-center gap-1.5">
+              <button onClick={handleThisWeek}
+                className={`px-3 py-1.5 text-xs font-medium rounded-lg border transition-colors ${!isPastWeek ? 'bg-[#242450] text-white border-[#242450]' : 'bg-white text-[#5777AB] border-[#EBEBF5] hover:border-[#D8D8EE]'}`}>
+                This week
+              </button>
+              <button onClick={handleLastWeek}
+                className={`px-3 py-1.5 text-xs font-medium rounded-lg border transition-colors ${weekStart.getTime() === subWeeks(currentWeekStart, 1).getTime() ? 'bg-[#242450] text-white border-[#242450]' : 'bg-white text-[#5777AB] border-[#EBEBF5] hover:border-[#D8D8EE]'}`}>
+                Last week
+              </button>
+            </div>
+          )}
         </div>
       </div>
 
@@ -217,15 +261,17 @@ export default function WeeklyReport() {
               <div>
                 {/* Team stat tiles */}
                 <div className="grid grid-cols-4 gap-3 mb-4">
-                  <TeamStatTile label="Completed" value={totalDone} delta={totalDone - prevTotalDone} prev={prevTotalDone} />
-                  <TeamStatTile label="In progress" value={totalInProgress} delta={totalInProgress - prevTotalInProgress} prev={prevTotalInProgress} />
-                  <TeamStatTile label="Blocked" value={totalBlocked} delta={totalBlocked - prevTotalBlocked} prev={prevTotalBlocked} />
-                  <TeamStatTile label="Hours logged" value={formatDuration(totalTime)} delta={totalTime - prevTotalTime} prev={prevTotalTime} isHours />
+                  <TeamStatTile label="Completed" value={totalDone} delta={totalDone - prevTotalDone} prev={prevTotalDone} isDayMode={isDayMode} />
+                  <TeamStatTile label="In progress" value={totalInProgress} delta={totalInProgress - prevTotalInProgress} prev={prevTotalInProgress} isDayMode={isDayMode} />
+                  <TeamStatTile label="Blocked" value={totalBlocked} delta={totalBlocked - prevTotalBlocked} prev={prevTotalBlocked} isDayMode={isDayMode} />
+                  <TeamStatTile label="Hours logged" value={formatDuration(totalTime)} delta={totalTime - prevTotalTime} prev={prevTotalTime} isHours isDayMode={isDayMode} />
                 </div>
 
-                {isPastWeek && (
+                {isDayMode ? (isPastDay && (
+                  <p className="text-xs text-[#9CA3AF] italic mb-4">Task statuses reflect today, not that day.</p>
+                )) : (isPastWeek && (
                   <p className="text-xs text-[#9CA3AF] italic mb-4">Task statuses reflect today, not that week.</p>
-                )}
+                ))}
 
                 {/* Team AI summary */}
                 <div className="bg-white border border-[#EBEBF5] rounded-xl p-5 mb-6">
@@ -255,7 +301,7 @@ export default function WeeklyReport() {
                 {/* Person cards */}
                 <div className="grid grid-cols-2 gap-4">
                   {reportData.people.map(p => (
-                    <TeamPersonCard key={p} person={p} report={reportData.reportByPerson[p]} isElena={isElena} onViewPerson={handleViewPerson} />
+                    <TeamPersonCard key={p} person={p} report={reportData.reportByPerson[p]} isElena={isElena} isDayMode={isDayMode} onViewPerson={handleViewPerson} />
                   ))}
                 </div>
               </div>
@@ -265,6 +311,7 @@ export default function WeeklyReport() {
                 prevStats={Object.values(reportData.prevStatsByPerson)[0]}
                 isElena={isElena}
                 isPastWeek={isPastWeek}
+                isDayMode={isDayMode}
                 aiSummary={aiSummary}
                 aiLoading={aiLoading}
                 aiError={aiError}
@@ -301,11 +348,12 @@ export default function WeeklyReport() {
   );
 }
 
-function TeamStatTile({ label, value, delta, prev, isHours }) {
+function TeamStatTile({ label, value, delta, prev, isHours, isDayMode }) {
   const showDelta = prev > 0 && delta !== 0;
+  const vsLabel = isDayMode ? 'vs yesterday' : 'vs last week';
   const deltaText = isHours
-    ? `${delta > 0 ? '+' : '-'}${formatDuration(Math.abs(delta))} vs last week`
-    : `${delta > 0 ? '+' : ''}${delta} vs last week`;
+    ? `${delta > 0 ? '+' : '-'}${formatDuration(Math.abs(delta))} ${vsLabel}`
+    : `${delta > 0 ? '+' : ''}${delta} ${vsLabel}`;
 
   return (
     <div className="bg-white border border-[#EBEBF5] rounded-xl p-4">

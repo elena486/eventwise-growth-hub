@@ -8,14 +8,14 @@ const RATING_STYLES = {
   off_track: { bg: 'bg-[#FEF2F2]', text: 'text-[#DC2626]', dot: 'bg-[#DC2626]' },
 };
 
-export default function TeamPersonCard({ person, report, isElena, onViewPerson }) {
+export default function TeamPersonCard({ person, report, isElena, isDayMode, onViewPerson }) {
   const lines = [];
   report.done.slice(0, 3).forEach(t => lines.push(t.title));
   if (lines.length < 3) report.inProgress.slice(0, 3 - lines.length).forEach(t => lines.push(t.title));
 
   const sprint = report.sprint;
-  const rating = sprint?.selfRating ? RATING_STYLES[sprint.selfRating] : null;
-  const headlineKpi = sprint?.kpis?.[0] || null;
+  const rating = !isDayMode && sprint?.selfRating ? RATING_STYLES[sprint.selfRating] : null;
+  const headlineKpi = !isDayMode && sprint?.kpis?.[0] || null;
 
   return (
     <div className="bg-white border border-[#EBEBF5] rounded-xl p-5">
@@ -47,7 +47,7 @@ export default function TeamPersonCard({ person, report, isElena, onViewPerson }
         {lines.length > 0 ? lines.map((line, i) => (
           <p key={i} className="text-xs text-[#5777AB] truncate" title={line}>{line}</p>
         )) : (
-          <p className="text-xs text-[#9CA3AF] italic">No activity this week</p>
+          <p className="text-xs text-[#9CA3AF] italic">No activity {isDayMode ? 'today' : 'this week'}</p>
         )}
       </div>
       {report.blocked.length > 0 && (

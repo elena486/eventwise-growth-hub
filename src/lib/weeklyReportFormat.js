@@ -40,12 +40,15 @@ function deltaText(curr, prev, isHours) {
 // ── COPY (plain text for Slack / email) ──
 
 export function formatReportAsText(reportData, aiSummary) {
-  const { reportByPerson, isWholeTeam, weekStart, weekEnd } = reportData;
-  const weekLabel = `${format(weekStart, 'd MMM')} – ${format(weekEnd, 'd MMM yyyy')}`;
+  const { reportByPerson, isWholeTeam, weekStart, weekEnd, isDayMode } = reportData;
+  const weekLabel = isDayMode
+    ? format(weekStart, 'EEEE, d MMM yyyy')
+    : `${format(weekStart, 'd MMM')} – ${format(weekEnd, 'd MMM yyyy')}`;
   const name = isWholeTeam ? 'Whole Team' : Object.keys(reportByPerson)[0];
   const stats = getStats(reportData);
+  const reportTitle = isDayMode ? 'Daily Report' : 'Weekly Report';
 
-  let text = `Weekly Report — ${name} — ${weekLabel}\n`;
+  let text = `${reportTitle} — ${name} — ${weekLabel}\n`;
   text += `Completed ${stats.completed} | In progress ${stats.inProgress} | Blocked ${stats.blocked} | Hours ${formatDuration(stats.hoursLogged)}\n\n`;
 
   if (aiSummary) {
@@ -68,22 +71,24 @@ export function formatReportAsText(reportData, aiSummary) {
       if (report.blocked.length > 0) text += `Blocked: ${report.blocked.map(t => t.title).join(', ')}\n`;
       text += '\n';
     } else {
-      if (report.sprint) {
-        text += 'Sprint / KPIs\n';
-        if (report.sprint.selfRating) text += `Rating: ${ratingLabels[report.sprint.selfRating] || report.sprint.selfRating}\n`;
-        report.sprint.kpis.forEach(k => {
-          const val = k.value != null ? k.value : '—';
-          const tgt = k.target != null ? ` / target ${k.target}` : '';
-          text += `• ${k.label}: ${val}${tgt}\n`;
-        });
-        if (report.sprint.blocker) text += `Waiting on: ${report.sprint.blocker}\n`;
-        text += '\n';
-      } else {
-        text += 'Sprint / KPIs\nNo sprint update submitted for this period.\n\n';
+      if (!isDayMode) {
+        if (report.sprint) {
+          text += 'Sprint / KPIs\n';
+          if (report.sprint.selfRating) text += `Rating: ${ratingLabels[report.sprint.selfRating] || report.sprint.selfRating}\n`;
+          report.sprint.kpis.forEach(k => {
+            const val = k.value != null ? k.value : '—';
+            const tgt = k.target != null ? ` / target ${k.target}` : '';
+            text += `• ${k.label}: ${val}${tgt}\n`;
+          });
+          if (report.sprint.blocker) text += `Waiting on: ${report.sprint.blocker}\n`;
+          text += '\n';
+        } else {
+          text += 'Sprint / KPIs\nNo sprint update submitted for this period.\n\n';
+        }
       }
 
-      text += 'Completed this week\n';
-      if (report.done.length === 0) text += 'Nothing completed this week.\n';
+      text += isDayMode ? 'Completed today\n' : 'Completed this week\n';
+      if (report.done.length === 0) text += isDayMode ? 'Nothing completed today.\n' : 'Nothing completed this week.\n';
       else report.done.forEach(t => {
         text += `• ${t.title} — ${formatDuration(t.timeMinutes)}\n`;
         if (t.outcome) text += `  ${t.outcome}\n`;
@@ -110,11 +115,24 @@ export function formatReportAsText(reportData, aiSummary) {
         text += '\n';
       }
 
-      text += 'Coming up\n';
-      if (report.comingUp.length === 0) text += 'Nothing due in the next 7 days.\n';
+      text += isDayMode ? 'Coming up (tomorrow)\n' : 'Coming up\n';
+      if (report.comingUp.length === 0) text += isDayMode ? 'Nothing due tomorrow.\n' : 'Nothing due in the next 7 days.\n';
       else report.comingUp.forEach(t => { text += `• ${t.title} (due ${format(parseISO(t.deadline), 'd MMM')})\n`; });
       if (report.unscheduledCount > 0) text += `${report.unscheduledCount} unscheduled ${report.unscheduledCount === 1 ? 'task' : 'tasks'} in backlog\n`;
       text += '\n';
+
+      if (isDayMode && report.allTimeEntries) {
+        text += 'All time entries\n';
+        if (report.allTimeEntries.length === 0) text += 'No time entries logged this day.\n';
+        else report.allTimeEntries.forEach(e => {
+          let range = '';
+          if (e.startAt && e.endAt) {
+            try { range = `${format(parseISO(e.startAt), 'HH:mm')}–${format(parseISO(e.endAt), 'HH:mm')} · `; } catch {}
+          }
+          text += `• ${e.title} — ${e.category} — ${range}${formatDuration(e.durationMinutes)}\n`;
+        });
+        text += '\n';
+      }
 
       text += 'Time by category\n';
       if (report.timeByCategory.length === 0) text += 'No time logged.\n';
@@ -152,7 +170,11 @@ export function generateReportPDF(reportData, aiSummary) {
   const titleW = usableW - hoursW;
   let y = margin;
   const name = reportData.isWholeTeam ? 'Whole Team' : Object.keys(reportData.reportByPerson)[0];
-  const weekLabel = `${format(reportData.weekStart, 'd MMM')} – ${format(reportData.weekEnd, 'd MMM yyyy')}`;
+  const isDayMode = reportData.isDayMode;
+  const weekLabel = isDayMode
+    ? format(reportData.weekStart, 'EEEE, d MMM yyyy')
+    : `${format(reportData.weekStart, 'd MMM')} – ${format(reportData.weekEnd, 'd MMM yyyy')}`;
+  const reportTitle = isDayMode ? 'Daily Report' : 'Weekly Report';
 
   // Running header for continuation pages
   const drawRunningHeader = () => {
@@ -176,7 +198,7 @@ export function generateReportPDF(reportData, aiSummary) {
   doc.setFont('helvetica', 'bold'); doc.setFontSize(18); doc.setTextColor(...C.purple);
   doc.text('Eventwise', margin, y + 6); y += 8;
   doc.setFont('helvetica', 'normal'); doc.setFontSize(13); doc.setTextColor(...C.navy);
-  doc.text('Weekly Report', margin, y + 5); y += 7;
+  doc.text(reportTitle, margin, y + 5); y += 7;
   doc.setFont('helvetica', 'bold'); doc.setFontSize(11); doc.setTextColor(...C.navy);
   doc.text(name, margin, y + 4); y += 6;
   doc.setFont('helvetica', 'normal'); doc.setFontSize(10); doc.setTextColor(...C.grey);
@@ -211,8 +233,8 @@ export function generateReportPDF(reportData, aiSummary) {
   });
   y += tileH + 8;
 
-  // ── Sprint / KPIs section (individual report only) ──
-  if (!reportData.isWholeTeam) {
+  // ── Sprint / KPIs section (individual report only, hidden in daily mode) ──
+  if (!reportData.isWholeTeam && !isDayMode) {
     const report = Object.values(reportData.reportByPerson)[0];
     const sprint = report.sprint;
     const ratingLabels = { on_track: 'On track', at_risk: 'At risk', off_track: 'Off track' };
@@ -419,8 +441,8 @@ export function generateReportPDF(reportData, aiSummary) {
       y += 8; // gap between sections
     };
 
-    drawSection('Completed this week',
-      report.done.length === 0 ? [{ title: 'Nothing completed this week.' }] :
+    drawSection(isDayMode ? 'Completed today' : 'Completed this week',
+      report.done.length === 0 ? [{ title: isDayMode ? 'Nothing completed today.' : 'Nothing completed this week.' }] :
       report.done.map(t => ({ title: t.title, right: formatDuration(t.timeMinutes), outcome: t.outcome || null }))
     );
 
@@ -441,10 +463,24 @@ export function generateReportPDF(reportData, aiSummary) {
     }
 
     const cuRows = report.comingUp.map(t => ({ title: t.title, right: `due ${format(parseISO(t.deadline), 'd MMM')}` }));
-    if (report.comingUp.length === 0) cuRows.push({ title: 'Nothing due in the next 7 days.' });
-    drawSection('Coming up', cuRows,
+    if (report.comingUp.length === 0) cuRows.push({ title: isDayMode ? 'Nothing due tomorrow.' : 'Nothing due in the next 7 days.' });
+    drawSection(isDayMode ? 'Coming up (tomorrow)' : 'Coming up', cuRows,
       report.unscheduledCount > 0 ? { footer: `${report.unscheduledCount} unscheduled ${report.unscheduledCount === 1 ? 'task' : 'tasks'} in backlog` } : {}
     );
+
+    // All time entries (daily individual report only)
+    if (isDayMode && report.allTimeEntries) {
+      const aeRows = report.allTimeEntries.length === 0
+        ? [{ title: 'No time entries logged this day.' }]
+        : report.allTimeEntries.map(e => {
+            let range = '';
+            if (e.startAt && e.endAt) {
+              try { range = `${format(parseISO(e.startAt), 'HH:mm')}–${format(parseISO(e.endAt), 'HH:mm')} · `; } catch {}
+            }
+            return { title: `${e.title} — ${e.category} — ${range}${formatDuration(e.durationMinutes)}` };
+          });
+      drawSection('All time entries', aeRows);
+    }
 
     // Time by category (stacked bar + legend)
     if (report.timeByCategory.length === 0) {
@@ -487,5 +523,6 @@ export function generateReportPDF(reportData, aiSummary) {
   }
 
   const namePart = reportData.isWholeTeam ? 'Team' : Object.keys(reportData.reportByPerson)[0];
-  doc.save(`Weekly-Report-${namePart}-${format(reportData.weekStart, 'yyyy-MM-dd')}.pdf`);
+  const filePrefix = isDayMode ? 'Daily-Report' : 'Weekly-Report';
+  doc.save(`${filePrefix}-${namePart}-${format(reportData.weekStart, 'yyyy-MM-dd')}.pdf`);
 }

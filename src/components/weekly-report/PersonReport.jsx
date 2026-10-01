@@ -5,29 +5,34 @@ import TimeByCategoryBar from './TimeByCategoryBar';
 import SummaryLines from './SummaryLines';
 import SprintSection from './SprintSection';
 
-export default function PersonReport({ report, prevStats, isElena, isPastWeek, aiSummary, aiLoading, aiError, onRegenerateSummary }) {
+export default function PersonReport({ report, prevStats, isElena, isPastWeek, isDayMode, aiSummary, aiLoading, aiError, onRegenerateSummary }) {
   const [expanded, setExpanded] = useState(false);
   const [longRunningOpen, setLongRunningOpen] = useState(false);
+
+  const vsLabel = isDayMode ? 'vs yesterday' : 'vs last week';
+  const completedLabel = isDayMode ? 'Completed today' : 'Completed this week';
+  const comingUpLabel = isDayMode ? 'Coming up (tomorrow)' : 'Coming up';
+  const comingUpEmpty = isDayMode ? 'Nothing due tomorrow.' : 'Nothing due in the next 7 days.';
 
   return (
     <div>
       {/* Stat tiles */}
       <div className="grid grid-cols-4 gap-3 mb-4">
-        <StatTile label="Completed" value={report.stats.completed} delta={report.stats.completed - (prevStats?.completed ?? 0)} prev={prevStats?.completed ?? 0} />
-        <StatTile label="In progress" value={report.stats.inProgress} delta={report.stats.inProgress - (prevStats?.inProgress ?? 0)} prev={prevStats?.inProgress ?? 0} />
-        <StatTile label="Blocked" value={report.stats.blocked} delta={report.stats.blocked - (prevStats?.blocked ?? 0)} prev={prevStats?.blocked ?? 0} />
-        <StatTile label="Hours logged" value={formatDuration(report.stats.hoursLogged)} delta={report.stats.hoursLogged - (prevStats?.hoursLogged ?? 0)} prev={prevStats?.hoursLogged ?? 0} isHours
+        <StatTile label="Completed" value={report.stats.completed} delta={report.stats.completed - (prevStats?.completed ?? 0)} prev={prevStats?.completed ?? 0} vsLabel={vsLabel} />
+        <StatTile label="In progress" value={report.stats.inProgress} delta={report.stats.inProgress - (prevStats?.inProgress ?? 0)} prev={prevStats?.inProgress ?? 0} vsLabel={vsLabel} />
+        <StatTile label="Blocked" value={report.stats.blocked} delta={report.stats.blocked - (prevStats?.blocked ?? 0)} prev={prevStats?.blocked ?? 0} vsLabel={vsLabel} />
+        <StatTile label={isDayMode ? 'Hours today' : 'Hours logged'} value={formatDuration(report.stats.hoursLogged)} delta={report.stats.hoursLogged - (prevStats?.hoursLogged ?? 0)} prev={prevStats?.hoursLogged ?? 0} isHours vsLabel={vsLabel}
           subline={isElena ? `${formatDuration(report.boardTaskHours)} of ${formatDuration(report.stats.hoursLogged)} against board tasks (${report.boardTaskAdoptionPct}%)` : null}
         />
       </div>
 
-      {/* Past week note */}
+      {/* Past period note */}
       {isPastWeek && (
-        <p className="text-xs text-[#9CA3AF] italic mb-4">Task statuses reflect today, not that week.</p>
+        <p className="text-xs text-[#9CA3AF] italic mb-4">Task statuses reflect today, not that {isDayMode ? 'day' : 'week'}.</p>
       )}
 
-      {/* Sprint / KPIs */}
-      <SprintSection sprint={report.sprint} />
+      {/* Sprint / KPIs — hidden in daily mode (sprint cadence is weekly or longer) */}
+      {!isDayMode && <SprintSection sprint={report.sprint} />}
 
       {/* AI summary */}
       <div className="bg-white border border-[#EBEBF5] rounded-xl p-5 mb-4">
@@ -55,9 +60,9 @@ export default function PersonReport({ report, prevStats, isElena, isPastWeek, a
       </div>
 
       {/* Completed */}
-      <Section title="Completed this week">
+      <Section title={completedLabel}>
         {report.done.length === 0 ? (
-          <p className="text-sm text-[#9CA3AF] italic">Nothing completed this week.</p>
+          <p className="text-sm text-[#9CA3AF] italic">Nothing completed {isDayMode ? 'today' : 'this week'}.</p>
         ) : (
           report.done.map((t, i) => (
             <div key={i} className="py-2.5 border-b border-[#F2F2F4] last:border-0">
@@ -114,9 +119,9 @@ export default function PersonReport({ report, prevStats, isElena, isPastWeek, a
       )}
 
       {/* Coming up */}
-      <Section title="Coming up">
+      <Section title={comingUpLabel}>
         {report.comingUp.length === 0 ? (
-          <p className="text-sm text-[#9CA3AF] italic">Nothing due in the next 7 days.</p>
+          <p className="text-sm text-[#9CA3AF] italic">{comingUpEmpty}</p>
         ) : (
           report.comingUp.map((t, i) => (
             <div key={i} className="flex items-center justify-between gap-3 py-2.5 border-b border-[#F2F2F4] last:border-0">
@@ -130,6 +135,44 @@ export default function PersonReport({ report, prevStats, isElena, isPastWeek, a
         )}
       </Section>
 
+      {/* All time entries — daily view only */}
+      {isDayMode && (
+        <Section title="All time entries">
+          {(!report.allTimeEntries || report.allTimeEntries.length === 0) ? (
+            <p className="text-sm text-[#9CA3AF] italic">No time entries logged this day.</p>
+          ) : (
+            report.allTimeEntries.map((e, i) => {
+              const hasTimes = e.startAt && e.endAt;
+              let timeRange = '';
+              if (hasTimes) {
+                try {
+                  timeRange = `${format(parseISO(e.startAt), 'HH:mm')}–${format(parseISO(e.endAt), 'HH:mm')}`;
+                } catch {}
+              }
+              return (
+                <div key={i} className="py-2.5 border-b border-[#F2F2F4] last:border-0">
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="flex items-center gap-2 min-w-0 flex-1">
+                      <p className="text-sm text-[#242450] truncate" title={e.title}>{e.title}</p>
+                      {isElena && e.isLongUntitled && (
+                        <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-[#A16207] bg-[#FFFBEB] border border-[#FDE68A] rounded-full px-2 py-0.5 shrink-0">
+                          Long, untitled session
+                        </span>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-3 shrink-0">
+                      {timeRange && <span className="text-xs text-[#9CA3AF]">{timeRange}</span>}
+                      <span className="text-xs text-[#5777AB] font-medium">{formatDuration(e.durationMinutes)}</span>
+                    </div>
+                  </div>
+                  <p className="text-[11px] text-[#9CA3AF] mt-0.5">{e.category}</p>
+                </div>
+              );
+            })
+          )}
+        </Section>
+      )}
+
       {/* Time by category */}
       <Section title="Time by category">
         <TimeByCategoryBar timeByCategory={report.timeByCategory} totalTime={report.totalTime} />
@@ -138,11 +181,11 @@ export default function PersonReport({ report, prevStats, isElena, isPastWeek, a
   );
 }
 
-function StatTile({ label, value, delta, prev, isHours, subline }) {
+function StatTile({ label, value, delta, prev, isHours, subline, vsLabel }) {
   const showDelta = prev > 0 && delta !== 0;
   const deltaText = isHours
-    ? `${delta > 0 ? '+' : '-'}${formatDuration(Math.abs(delta))} vs last week`
-    : `${delta > 0 ? '+' : ''}${delta} vs last week`;
+    ? `${delta > 0 ? '+' : '-'}${formatDuration(Math.abs(delta))} ${vsLabel || 'vs last week'}`
+    : `${delta > 0 ? '+' : ''}${delta} ${vsLabel || 'vs last week'}`;
 
   return (
     <div className="bg-white border border-[#EBEBF5] rounded-xl p-4">

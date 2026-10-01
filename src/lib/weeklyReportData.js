@@ -5,7 +5,7 @@
  * All time entries (linked or unlinked) are included in Hours and Time by Category.
  */
 import { base44 } from '@/api/base44Client';
-import { startOfWeek, endOfWeek, isWithinInterval, parseISO, addDays, subWeeks, differenceInWeeks, format } from 'date-fns';
+import { startOfWeek, endOfWeek, isWithinInterval, parseISO, addDays, subWeeks, differenceInWeeks, format, startOfDay, endOfDay, subDays, isSameDay } from 'date-fns';
 import { MEMBERS } from '@/lib/sprintConfig';
 
 export const TEAM_MEMBERS = ['Chris', 'Elena', 'George', 'Martinique', 'Sreeja', 'Ramesh', 'Eleanor'];
@@ -106,6 +106,66 @@ export async function fetchReportData(person, weekStart) {
   return { reportByPerson, prevStatsByPerson, isWholeTeam, weekStart, weekEnd, people };
 }
 
+export async function fetchDailyReportData(person, dayDate) {
+  const dayStart = startOfDay(dayDate);
+  const dayEnd = endOfDay(dayDate);
+  const prevDay = subDays(dayDate, 1);
+  const prevDayStart = startOfDay(prevDay);
+  const prevDayEnd = endOfDay(prevDay);
+  const isWholeTeam = person === 'Whole team';
+
+  const [allTasks, allEntries] = await Promise.all([
+    base44.entities.Request.list('-created_date', 500),
+    base44.entities.TimeEntry.list('-created_date', 1000),
+  ]);
+
+  const tasks = allTasks.filter(t => !t.archived);
+
+  const dayEntries = allEntries.filter(e => {
+    try { return isWithinInterval(parseISO(e.date), { start: dayStart, end: dayEnd }); } catch { return false; }
+  });
+  const prevDayEntries = allEntries.filter(e => {
+    try { return isWithinInterval(parseISO(e.date), { start: prevDayStart, end: prevDayEnd }); } catch { return false; }
+  });
+
+  const people = isWholeTeam ? TEAM_MEMBERS : [person];
+  const reportByPerson = {};
+  const prevStatsByPerson = {};
+
+  // Coming up = tasks due tomorrow only
+  const tomorrowStart = addDays(dayStart, 1);
+  const tomorrowEnd = addDays(dayEnd, 1);
+
+  for (const p of people) {
+    const pTasks = tasks.filter(t => t.assignedTo === p);
+    const pEntries = dayEntries.filter(e => e.teamMember === p);
+    const pPrevEntries = prevDayEntries.filter(e => e.teamMember === p);
+    reportByPerson[p] = buildPersonReport(pTasks, pEntries, dayStart, dayEnd, { comingUpStart: tomorrowStart, comingUpEnd: tomorrowEnd });
+    prevStatsByPerson[p] = computeStats(pTasks, pPrevEntries, prevDayStart, prevDayEnd);
+
+    // All time entries for the day (ordered by start time)
+    reportByPerson[p].allTimeEntries = pEntries
+      .slice()
+      .sort((a, b) => {
+        const aT = a.timerStartedAt || a.created_date || '';
+        const bT = b.timerStartedAt || b.created_date || '';
+        return String(aT).localeCompare(String(bT));
+      })
+      .map(e => ({
+        title: e.linkedTaskTitle || e.projectTask || 'Untitled entry',
+        category: e.category || 'Other',
+        startAt: e.timerStartedAt || null,
+        endAt: e.timerStoppedAt || null,
+        durationMinutes: e.durationMinutes || 0,
+        isLongUntitled: !e.linkedTaskId && (e.durationMinutes || 0) > 90,
+      }));
+    // No sprint in daily mode
+    reportByPerson[p].sprint = null;
+  }
+
+  return { reportByPerson, prevStatsByPerson, isWholeTeam, weekStart: dayStart, weekEnd: dayEnd, people, isDayMode: true, dayDate };
+}
+
 function computeStats(tasks, entries, weekStart, weekEnd) {
   const completed = tasks.filter(t => {
     if (!t.completedDate) return false;
@@ -124,7 +184,7 @@ function computeStats(tasks, entries, weekStart, weekEnd) {
   return { completed, inProgress, blocked, hoursLogged };
 }
 
-function buildPersonReport(tasks, entries, weekStart, weekEnd) {
+function buildPersonReport(tasks, entries, weekStart, weekEnd, opts = {}) {
   const taskTime = (taskId) => entries.filter(e => e.linkedTaskId === taskId).reduce((s, e) => s + (e.durationMinutes || 0), 0);
 
   // 1. DONE THIS WEEK
@@ -189,9 +249,9 @@ function buildPersonReport(tasks, entries, weekStart, weekEnd) {
       };
     });
 
-  // 4. COMING UP — next 7 days after week end
-  const comingUpStart = addDays(weekEnd, 1);
-  const comingUpEnd = addDays(weekEnd, 7);
+  // 4. COMING UP — next 7 days after week end (or custom range for daily mode)
+  const comingUpStart = opts.comingUpStart || addDays(weekEnd, 1);
+  const comingUpEnd = opts.comingUpEnd || addDays(weekEnd, 7);
   const comingUp = tasks
     .filter(t => {
       if (t.status !== 'To Do' && t.status !== 'In Progress') return false;
@@ -277,6 +337,7 @@ export function buildFlags(reportByPerson, isWholeTeam, viewingPerson) {
 
 export async function generateAISummary(reportData, companyPriorities) {
   const isWholeTeam = reportData.isWholeTeam;
+  const isDayMode = reportData.isDayMode;
 
   const dataForAI = {};
   for (const [p, report] of Object.entries(reportData.reportByPerson)) {
@@ -301,7 +362,11 @@ export async function generateAISummary(reportData, companyPriorities) {
     };
   }
 
-  const prompt = `You are writing a weekly report summary with three labelled lines: Moved, Blocking, and Next.
+  const periodWord = isDayMode ? 'day' : 'week';
+  const periodWordCap = isDayMode ? 'Day' : 'Week';
+  const nextWindow = isDayMode ? 'tomorrow' : 'the next 7 days';
+
+  const prompt = `You are writing a ${isDayMode ? 'daily' : 'weekly'} report summary with three labelled lines: Moved, Blocking, and Next.
 
 ${isWholeTeam ? 'This is a WHOLE TEAM report. Write one to two sentences per line, covering the team as a whole rather than person by person.' : 'This is an INDIVIDUAL report. Write one sentence per line.'}
 
@@ -310,9 +375,9 @@ CONTENT RULES:
 - Explain relevance: connect the work to the company priorities below when there is a genuine link. Skip the link if there isn't one. Never force it.
 - Use intent wording for work without a recorded outcome: "supports", "aims to", "lays groundwork for", "keeps X moving". Use result wording ("reduced", "improved", "saved", "increased") ONLY when a task's Outcome line states it, and stay as close to that wording as possible.
 - Never invent numbers, results, customers, or causes.
-- Moved: what progressed this week and why it matters to the team or company. May reference KPI performance from the sprint submission when notable (e.g. hit or missed a target), but never invent numbers — only state what's in the data.
-- Blocking: use Blocked-status tasks AND the sprint blocker line (sprint.blocker). If both exist, mention both distinctly. If only one exists, use that one. If neither, write exactly "Nothing flagged." Do not infer blockers from missing time or long-running tasks.
-- Next: base on tasks due in the next 7 days and current in-progress focus. If nothing is scheduled, write exactly "No dated work scheduled yet."
+- Moved: what progressed this ${periodWord} and why it matters to the team or company.${isDayMode ? '' : ' May reference KPI performance from the sprint submission when notable (e.g. hit or missed a target), but never invent numbers — only state what\'s in the data.'}
+- Blocking: use Blocked-status tasks${isDayMode ? '' : ' AND the sprint blocker line (sprint.blocker)'}. ${isDayMode ? 'If none, write exactly "Nothing flagged."' : 'If both exist, mention both distinctly. If only one exists, use that one. If neither, write exactly "Nothing flagged."'} Do not infer blockers from missing time or long-running tasks.
+- Next: base on tasks due ${nextWindow} and current in-progress focus. If nothing is scheduled, write exactly "No dated work scheduled yet."
 - No judgement of performance, effort or productivity. No comparisons between people. Neutral, plain, professional tone. Short sentences.
 - If there is very little data, keep it short and honest rather than padding it out.
 
