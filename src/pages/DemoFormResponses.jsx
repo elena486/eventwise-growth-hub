@@ -9,6 +9,7 @@ import { useColumnVisibility } from '@/hooks/useColumnVisibility';
 
 const DEMO_COLUMNS = [
   { key: 'name', label: 'Name', locked: true },
+  { key: 'email', label: 'Email' },
   { key: 'company', label: 'Company' },
   { key: 'dateSubmitted', label: 'Date Submitted' },
   { key: 'accountingPlatform', label: 'Accounting Platform' },
@@ -18,7 +19,7 @@ const DEMO_COLUMNS = [
   { key: 'status', label: 'Status' },
   { key: 'attachedTo', label: 'Attached To' },
 ];
-const DEMO_DEFAULT_VISIBLE = ['name', 'company', 'dateSubmitted', 'accountingPlatform', 'budgetSettlementMethod', 'ticketingPlatforms', 'techScore', 'status', 'attachedTo'];
+const DEMO_DEFAULT_VISIBLE = ['name', 'email', 'company', 'dateSubmitted', 'accountingPlatform', 'budgetSettlementMethod', 'ticketingPlatforms', 'techScore', 'status', 'attachedTo'];
 
 function fmtDate(d) {
   if (!d) return '—';
@@ -168,6 +169,7 @@ export default function DemoFormResponses() {
                     onClick={() => setSelected(r)}
                     className="border-b border-[#F2F2F4] last:border-0 hover:bg-[#F6F6FB] transition-colors cursor-pointer">
                     {isVisible('name') && <td className="px-4 py-3 font-semibold text-[#242450] whitespace-nowrap">{r.name || '—'}</td>}
+                    {isVisible('email') && <td className="px-4 py-3 text-[#5777AB] whitespace-nowrap">{r.email || '—'}</td>}
                     {isVisible('company') && <td className="px-4 py-3 text-[#5777AB] whitespace-nowrap">{r.company || '—'}</td>}
                     {isVisible('dateSubmitted') && <td className="px-4 py-3 text-[#5777AB] whitespace-nowrap">{fmtDate(r.dateSubmitted)}</td>}
                     {isVisible('accountingPlatform') && <td className="px-4 py-3 text-[#242450] whitespace-nowrap">{r.accountingPlatform || '—'}</td>}

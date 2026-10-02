@@ -6,6 +6,10 @@
       "type": "string",
       "description": "Respondent name"
     },
+    "email": {
+      "type": "string",
+      "description": "Respondent email address"
+    },
     "company": {
       "type": "string",
       "description": "Company name (optional)"

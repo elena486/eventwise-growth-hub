@@ -80,6 +80,7 @@ export default function DemoResponseDetailPanel({ record, onClose, onAttach, onU
     setMenuOpen(false);
     setEditData({
       name: record.name,
+      email: record.email,
       company: record.company,
       accountingPlatform: record.accountingPlatform,
       usesPOs: record.usesPOs,
@@ -169,6 +170,9 @@ export default function DemoResponseDetailPanel({ record, onClose, onAttach, onU
             {record.company && (
               <p className="text-sm font-medium text-[#242450] mt-0.5">{record.company}</p>
             )}
+            {record.email && (
+              <a href={`mailto:${record.email}`} className="text-sm text-[#8403C5] hover:underline mt-0.5 inline-block">{record.email}</a>
+            )}
             <div className="flex items-center gap-2 mt-3 flex-wrap">
               <StatusPill status={record.status} />
               <span className="text-xs text-[#9CA3AF]">Submitted {fmtDate(record.dateSubmitted)}</span>
@@ -253,6 +257,7 @@ export default function DemoResponseDetailPanel({ record, onClose, onAttach, onU
             </div>
             <div className="px-6 py-5">
               <EditField label="Respondent Name" value={editData.name} onChange={v => setEditData(p => ({ ...p, name: v }))} />
+              <EditField label="Email" value={editData.email} onChange={v => setEditData(p => ({ ...p, email: v }))} />
               <EditField label="Company" value={editData.company} onChange={v => setEditData(p => ({ ...p, company: v }))} />
               <EditField label="Accounting Platform" value={editData.accountingPlatform} onChange={v => setEditData(p => ({ ...p, accountingPlatform: v }))} />
               <EditField label="Uses POs" value={editData.usesPOs} onChange={v => setEditData(p => ({ ...p, usesPOs: v }))} />
