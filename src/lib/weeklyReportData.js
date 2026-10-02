@@ -78,7 +78,9 @@ export async function fetchReportData(person, weekStart) {
     base44.entities.SprintSubmission.list('-created_date', 500),
   ]);
 
-  const tasks = allTasks.filter(t => !t.archived);
+  // Include archived Done tasks so completed work still counts for the week it was finished.
+  // Archived non-Done tasks stay excluded (they don't belong in in-progress/blocked/coming-up).
+  const tasks = allTasks.filter(t => !t.archived || t.status === 'Done');
 
   const weekEntries = allEntries.filter(e => {
     try { return isWithinInterval(parseISO(e.date), { start: weekStart, end: weekEnd }); } catch { return false; }
@@ -119,7 +121,9 @@ export async function fetchDailyReportData(person, dayDate) {
     base44.entities.TimeEntry.list('-created_date', 1000),
   ]);
 
-  const tasks = allTasks.filter(t => !t.archived);
+  // Include archived Done tasks so completed work still counts for the week it was finished.
+  // Archived non-Done tasks stay excluded (they don't belong in in-progress/blocked/coming-up).
+  const tasks = allTasks.filter(t => !t.archived || t.status === 'Done');
 
   const dayEntries = allEntries.filter(e => {
     try { return isWithinInterval(parseISO(e.date), { start: dayStart, end: dayEnd }); } catch { return false; }
