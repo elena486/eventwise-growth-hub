@@ -375,9 +375,10 @@ export async function generateAISummary(reportData, companyPriorities) {
 ${isWholeTeam ? 'This is a WHOLE TEAM report. Write one to two sentences per line, covering the team as a whole rather than person by person.' : 'This is an INDIVIDUAL report. Write one sentence per line.'}
 
 CONTENT RULES:
-- Do NOT restate what is already visible in the report tiles and lists: no counts, no hours, no listing task titles one by one. Refer to themes of work, not individual tasks.
+- Do NOT restate counts, hours, or tile numbers already visible in the report. Do NOT list task titles one by one.
+- Outcome text is the key signal for the Moved line. When completed tasks have outcomes, reflect what those outcomes actually say — paraphrase closely, using similar wording to what was entered (e.g. if an outcome reads "Reduced manual reconciliation by ~3 hours/week", say that). Group related outcomes into one or two sentences, but keep the substance of each outcome — the result or change it describes — rather than flattening them into generic activity language.
+- For completed work with no recorded outcome, use intent wording: "supports", "aims to", "lays groundwork for", "keeps X moving". Never invent results that aren't in an outcome.
 - Explain relevance: connect the work to the company priorities below when there is a genuine link. Skip the link if there isn't one. Never force it.
-- Use intent wording for work without a recorded outcome: "supports", "aims to", "lays groundwork for", "keeps X moving". Use result wording ("reduced", "improved", "saved", "increased") ONLY when a task's Outcome line states it, and stay as close to that wording as possible.
 - Never invent numbers, results, customers, or causes.
 - Moved: what progressed this ${periodWord} and why it matters to the team or company.${isDayMode ? '' : ' May reference KPI performance from the sprint submission when notable (e.g. hit or missed a target), but never invent numbers — only state what\'s in the data.'}
 - Blocking: use Blocked-status tasks${isDayMode ? '' : ' AND the sprint blocker line (sprint.blocker)'}. ${isDayMode ? 'If none, write exactly "Nothing flagged."' : 'If both exist, mention both distinctly. If only one exists, use that one. If neither, write exactly "Nothing flagged."'} Do not infer blockers from missing time or long-running tasks.
