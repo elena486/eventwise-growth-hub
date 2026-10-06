@@ -6,7 +6,7 @@ import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
 import { Plus, Search, Filter, Columns, List, Users, ArrowUpDown, ChevronDown, ChevronRight, Archive, RotateCcw, MoreHorizontal, Pencil, Trash2, Clock } from 'lucide-react';
 import AddTaskModal from './AddTaskModal';
 import RequestDetail from './RequestDetail';
-import { PRIORITY_STYLES, STATUS_STYLES, CATEGORY_STYLES, PRIORITY_ORDER, BOARD_STATUSES, PRIORITIES, TEAM_MEMBERS, NEW_CATEGORIES, STATUS_MAP } from './requestStyles';
+import { PRIORITY_STYLES, STATUS_STYLES, CATEGORY_STYLES, PRIORITY_ORDER, BOARD_STATUSES, PRIORITIES, TEAM_MEMBERS, NEW_CATEGORIES, STATUS_MAP, getAllAssignees, isAssignee } from './requestStyles';
 import { logActivity } from '@/lib/logActivity';
 import { loadTaskTimeTotals, formatTaskDuration, updateTaskStatus } from '@/lib/taskTimerLink';
 import OutcomePrompt from './OutcomePrompt';
@@ -142,7 +142,7 @@ export default function RequestBoard({ refresh }) {
     let result = displayRequests.filter(r => r._displayStatus !== 'Cancelled');
 
     if (myTasks && currentUser) {
-      result = result.filter(r => r.assignedTo === currentUser);
+      result = result.filter(r => isAssignee(r, currentUser));
     }
 
     if (search) {
@@ -150,7 +150,7 @@ export default function RequestBoard({ refresh }) {
       result = result.filter(r => (r.title || '').toLowerCase().includes(q));
     }
 
-    if (filterAssignee.length > 0) result = result.filter(r => filterAssignee.includes(r.assignedTo));
+    if (filterAssignee.length > 0) result = result.filter(r => filterAssignee.some(a => isAssignee(r, a)));
     if (filterStatus.length > 0) result = result.filter(r => filterStatus.includes(r._displayStatus));
     if (filterPriority.length > 0) result = result.filter(r => filterPriority.includes(r.priority));
     if (filterCategory.length > 0) result = result.filter(r => filterCategory.includes(r.category));
@@ -504,14 +504,16 @@ function KanbanView({ columns, onDragEnd, onSelect, isValidCategory, onArchive, 
                               <p className="text-sm font-semibold text-[#242450] leading-snug flex-1">{req.title || <span className="text-[#9CA3AF] italic">Untitled</span>}</p>
                               <CardMenu req={req} onArchive={onArchive} />
                             </div>
-                            {req.assignedTo && (
-                              <div className="flex items-center gap-1.5 mb-2">
-                                <div className="w-5 h-5 rounded-full bg-[#F3E8FF] text-[#8403C5] text-[10px] font-bold flex items-center justify-center shrink-0">
-                                  {req.assignedTo.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase()}
-                                </div>
-                                <span className="text-[11px] font-medium text-[#5777AB]">{req.assignedTo}</span>
+                            {(() => { const a = getAllAssignees(req); return a.length > 0 && (
+                              <div className="flex items-center gap-1 mb-2 flex-wrap">
+                                {a.map((name, idx) => (
+                                  <span key={name} className="inline-flex items-center gap-1 bg-[#F3E8FF] text-[#8403C5] text-[10px] font-semibold px-1.5 py-0.5 rounded-full">
+                                    {idx === 0 && <span className="text-[7px] font-bold uppercase tracking-wide opacity-60">L</span>}
+                                    {name}
+                                  </span>
+                                ))}
                               </div>
-                            )}
+                            ); })()}
                             <div className="flex items-center gap-1.5 flex-wrap">
                               {req.priority && <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${PRIORITY_STYLES[req.priority] || ''}`}>{req.priority}</span>}
                               {req.category && isValidCategory(req.category) && <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${CATEGORY_STYLES[req.category] || 'bg-[#EBEBF5] text-[#242450]'}`}>{req.category}</span>}
@@ -589,15 +591,17 @@ function ListView({ sorted, sortField, sortDir, onSort, onSelect, isValidCategor
               </td>
               )}
               {isVisible('assignedTo') && (
-              <td className="px-3 py-3 whitespace-nowrap">
-                {req.assignedTo ? (
-                  <div className="flex items-center gap-1.5">
-                    <div className="w-5 h-5 rounded-full bg-[#F3E8FF] text-[#8403C5] text-[10px] font-bold flex items-center justify-center shrink-0">
-                      {req.assignedTo.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase()}
-                    </div>
-                    <span className="text-xs font-medium text-[#5777AB]">{req.assignedTo}</span>
+              <td className="px-3 py-3">
+                {(() => { const a = getAllAssignees(req); return a.length > 0 ? (
+                  <div className="flex items-center gap-1 flex-wrap">
+                    {a.map((name, idx) => (
+                      <span key={name} className="inline-flex items-center gap-1 bg-[#F3E8FF] text-[#8403C5] text-[10px] font-semibold px-1.5 py-0.5 rounded-full whitespace-nowrap">
+                        {idx === 0 && <span className="text-[7px] font-bold uppercase tracking-wide opacity-60">L</span>}
+                        {name}
+                      </span>
+                    ))}
                   </div>
-                ) : <span className="text-xs text-[#9CA3AF]">—</span>}
+                ) : <span className="text-xs text-[#9CA3AF]">—</span>; })()}
               </td>
               )}
               {isVisible('requestedBy') && <td className="px-3 py-3 text-xs text-[#5777AB] whitespace-nowrap">{req.requestedBy || '—'}</td>}
@@ -700,7 +704,7 @@ function ArchivedView({ requests, onRestore, onDelete, onSelect, isValidCategory
               <td className="px-3 py-3 min-w-[180px] max-w-[240px]">
                 <p className="font-medium text-[#9CA3AF] text-sm truncate">{req.title || <span className="italic">Untitled</span>}</p>
               </td>
-              <td className="px-3 py-3 text-xs text-[#9CA3AF] whitespace-nowrap">{req.assignedTo || '—'}</td>
+              <td className="px-3 py-3 text-xs text-[#9CA3AF] whitespace-nowrap">{getAllAssignees(req).join(', ') || '—'}</td>
               <td className="px-3 py-3">
                 {req.category && isValidCategory(req.category) ? <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full opacity-60 bg-[#EBEBF5] text-[#5777AB]">{req.category}</span> : <span className="text-xs text-[#9CA3AF]">—</span>}
               </td>
@@ -729,13 +733,21 @@ function ArchivedView({ requests, onRestore, onDelete, onSelect, isValidCategory
 
 // ── Grouped View ──
 function GroupedView({ sorted, currentUser, collapsedGroups, setCollapsedGroups, sortField, sortDir, onSort, onSelect, isValidCategory, fmtDate, onStatusChange, isVisible }) {
-  // Group by assignedTo
+  // Group by assignee — a task with multiple assignees appears under each
   const groups = useMemo(() => {
     const map = {};
     sorted.forEach(r => {
-      const key = r.assignedTo || 'Unassigned';
-      if (!map[key]) map[key] = [];
-      map[key].push(r);
+      const names = getAllAssignees(r);
+      if (names.length === 0) {
+        const key = 'Unassigned';
+        if (!map[key]) map[key] = [];
+        map[key].push(r);
+      } else {
+        names.forEach(name => {
+          if (!map[name]) map[name] = [];
+          map[name].push(r);
+        });
+      }
     });
     // Order: current user first, then alphabetical
     const keys = Object.keys(map).sort((a, b) => {

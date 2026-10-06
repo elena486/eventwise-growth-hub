@@ -1,8 +1,9 @@
 import React, { useState, useRef, useCallback } from 'react';
 import { format } from 'date-fns';
 import { ArrowLeft, Upload, FileText, Image, Film, FileSpreadsheet, File, X, Download, AlertCircle, Trash2, MoreHorizontal } from 'lucide-react';
-import { PRIORITY_STYLES, STATUS_STYLES, CATEGORY_STYLES, BOARD_STATUSES, NEW_CATEGORIES, PRIORITIES, TEAM_MEMBERS } from './requestStyles';
+import { PRIORITY_STYLES, STATUS_STYLES, CATEGORY_STYLES, BOARD_STATUSES, NEW_CATEGORIES, PRIORITIES, TEAM_MEMBERS, getAllAssignees, packAssignees } from './requestStyles';
 import InlineCell from '@/components/shared/InlineCell';
+import AssigneePicker from './AssigneePicker';
 import { base44 } from '@/api/base44Client';
 import { logActivity } from '@/lib/logActivity';
 import { loadTaskTimeTotals, formatTaskDuration, updateTaskStatus } from '@/lib/taskTimerLink';
@@ -205,6 +206,14 @@ export default function RequestDetail({ request, onBack, onUpdate, onDelete }) {
     }
   };
 
+  const saveAssignees = async (names) => {
+    const { assignedTo, additionalAssignees } = packAssignees(names);
+    const updates = { assignedTo, additionalAssignees };
+    await base44.entities.Request.update(request.id, updates);
+    onUpdate({ ...request, ...updates });
+    logActivity({ teamMember: '', actionType: 'Assigned a task', section: 'To-Do Board', recordName: request.title || '', details: `→ ${names.join(', ') || 'Unassigned'}` });
+  };
+
   const handleDelete = async () => {
     await base44.entities.Request.delete(request.id);
     logActivity({ teamMember: '', actionType: 'Deleted a task', section: 'To-Do Board', recordName: request.title || '' });
@@ -244,8 +253,7 @@ export default function RequestDetail({ request, onBack, onUpdate, onDelete }) {
 
       <div className="bg-white border border-ew-border rounded-xl divide-y divide-ew-border mb-6">
         <Row label="Assigned to">
-          <InlineCell value={request.assignedTo || ''} onSave={save('assignedTo')} type="select" options={TEAM_MEMBERS}
-            displayEl={<span className="text-sm text-ew-body">{request.assignedTo || <span className="text-ew-muted italic">Unassigned</span>}</span>} />
+          <AssigneeCell request={request} onSave={saveAssignees} />
         </Row>
         <Row label="Requested by">
           <InlineCell value={request.requestedBy || ''} onSave={save('requestedBy')} type="select" options={TEAM_MEMBERS}
@@ -347,5 +355,39 @@ function Row({ label, children }) {
       <p className="text-xs font-semibold text-ew-muted uppercase tracking-wide w-32 shrink-0 pt-0.5">{label}</p>
       <div className="flex-1 min-w-0 text-sm text-ew-body">{children}</div>
     </div>
+  );
+}
+
+function AssigneeCell({ request, onSave }) {
+  const [editing, setEditing] = useState(false);
+  const all = getAllAssignees(request);
+
+  if (editing) {
+    return (
+      <div className="flex flex-col gap-2">
+        <AssigneePicker
+          value={all}
+          onChange={(names) => onSave(names)}
+          options={TEAM_MEMBERS}
+          placeholder="Select people…"
+        />
+        <button onClick={() => setEditing(false)} className="self-start text-xs text-ew-muted hover:text-navy">Done</button>
+      </div>
+    );
+  }
+
+  if (all.length === 0) {
+    return <button onClick={() => setEditing(true)} className="text-sm text-ew-muted italic hover:text-navy">Unassigned — click to assign</button>;
+  }
+
+  return (
+    <button onClick={() => setEditing(true)} className="flex items-center gap-1.5 flex-wrap text-left">
+      {all.map((name, idx) => (
+        <span key={name} className="inline-flex items-center gap-1 bg-[#F3E8FF] text-[#8403C5] text-xs font-semibold px-2 py-0.5 rounded-full">
+          {idx === 0 && <span className="text-[8px] font-bold uppercase tracking-wide opacity-60">Lead</span>}
+          {name}
+        </span>
+      ))}
+    </button>
   );
 }

@@ -10,6 +10,18 @@ import { MEMBERS } from '@/lib/sprintConfig';
 
 export const TEAM_MEMBERS = ['Chris', 'Elena', 'George', 'Martinique', 'Sreeja', 'Ramesh', 'Eleanor'];
 
+// A task is attributed to a person if they are the primary assignee OR a co-assignee
+function isTaskAssignee(task, person) {
+  if (task.assignedTo === person) return true;
+  if (task.additionalAssignees) {
+    try {
+      const parsed = JSON.parse(task.additionalAssignees);
+      if (Array.isArray(parsed) && parsed.includes(person)) return true;
+    } catch {}
+  }
+  return false;
+}
+
 // Sprint submission cadence per person — determines how a submission maps to weekly reports
 const SPRINT_CADENCE = {
   Chris: 'weekly', Elena: 'weekly', George: 'weekly',
@@ -95,7 +107,7 @@ export async function fetchReportData(person, weekStart) {
   const prevStatsByPerson = {};
 
   for (const p of people) {
-    const pTasks = tasks.filter(t => t.assignedTo === p);
+    const pTasks = tasks.filter(t => isTaskAssignee(t, p));
     const pEntries = weekEntries.filter(e => e.teamMember === p);
     const pPrevEntries = prevWeekEntries.filter(e => e.teamMember === p);
     reportByPerson[p] = buildPersonReport(pTasks, pEntries, weekStart, weekEnd);
@@ -141,7 +153,7 @@ export async function fetchDailyReportData(person, dayDate) {
   const tomorrowEnd = addDays(dayEnd, 1);
 
   for (const p of people) {
-    const pTasks = tasks.filter(t => t.assignedTo === p);
+    const pTasks = tasks.filter(t => isTaskAssignee(t, p));
     const pEntries = dayEntries.filter(e => e.teamMember === p);
     const pPrevEntries = prevDayEntries.filter(e => e.teamMember === p);
     reportByPerson[p] = buildPersonReport(pTasks, pEntries, dayStart, dayEnd, { comingUpStart: tomorrowStart, comingUpEnd: tomorrowEnd });

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { X } from 'lucide-react';
-import { TEAM_MEMBERS, NEW_CATEGORIES, PRIORITIES } from './requestStyles';
+import { TEAM_MEMBERS, NEW_CATEGORIES, PRIORITIES, packAssignees } from './requestStyles';
+import AssigneePicker from './AssigneePicker';
 import { base44 } from '@/api/base44Client';
 
 const PRIORITY_PILL_STYLES = {
@@ -11,7 +12,7 @@ const PRIORITY_PILL_STYLES = {
 };
 
 export default function AddTaskModal({ onClose, onSubmit }) {
-  const [recipient, setRecipient] = useState('');
+  const [assignees, setAssignees] = useState([]);
   const [requestedBy, setRequestedBy] = useState('');
   const [title, setTitle] = useState('');
   const [category, setCategory] = useState('');
@@ -29,14 +30,16 @@ export default function AddTaskModal({ onClose, onSubmit }) {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!title || !recipient || !requestedBy || !category) return;
+    if (!title || !assignees.length || !requestedBy || !category) return;
     setSubmitting(true);
+    const { assignedTo, additionalAssignees } = packAssignees(assignees);
     try {
       await onSubmit({
         title,
-        recipient,
+        recipient: assignees[0],
         requestedBy,
-        assignedTo: recipient,
+        assignedTo,
+        additionalAssignees,
         category,
         priority,
         deadline,
@@ -70,11 +73,9 @@ export default function AddTaskModal({ onClose, onSubmit }) {
           <div className="px-6 py-5 space-y-5">
             {/* Who is this for */}
             <div className="flex flex-col gap-1.5">
-              <label className="text-sm font-semibold text-[#242450]">Who is this request for? <span className="text-[#DC2626]">*</span></label>
-              <select value={recipient} onChange={e => setRecipient(e.target.value)} required className={inputCls}>
-                <option value="">Select a person…</option>
-                {TEAM_MEMBERS.map(r => <option key={r} value={r}>{r}</option>)}
-              </select>
+              <label className="text-sm font-semibold text-[#242450]">Who is this assigned to? <span className="text-[#DC2626]">*</span></label>
+              <AssigneePicker value={assignees} onChange={setAssignees} options={TEAM_MEMBERS} placeholder="Select people…" inputCls={inputCls} />
+              <p className="text-xs text-[#9CA3AF]">Pick one or more people. The first selected is the lead assignee.</p>
             </div>
 
             {/* Your name */}

@@ -30,7 +30,12 @@
         "Sreeja",
         "Ramesh",
         "Eleanor"
-      ]
+      ],
+      "description": "Primary assignee \u2014 the first person responsible for this task"
+    },
+    "additionalAssignees": {
+      "type": "string",
+      "description": "JSON array of extra assignee names beyond the primary assignedTo (co-assignees)"
     },
     "category": {
       "type": "string",

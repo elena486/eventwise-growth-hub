@@ -39,6 +39,48 @@ export const NEW_CATEGORIES = ['Marketing', 'Sales', 'Operations', 'Customer Suc
 export const PRIORITIES = ['Low', 'Medium', 'High', 'Urgent'];
 export const TEAM_MEMBERS = ['Chris', 'Elena', 'George', 'Martinique', 'Sreeja', 'Ramesh', 'Eleanor'];
 
+// ── Multi-assignee helpers ──
+// assignedTo is the primary assignee; additionalAssignees is a JSON array string of co-assignees.
+
+/** Returns an ordered array of all assignee names (primary first, then co-assignees). */
+export function getAllAssignees(req) {
+  if (!req) return [];
+  const primary = req.assignedTo || '';
+  let extra = [];
+  if (req.additionalAssignees) {
+    try {
+      const parsed = JSON.parse(req.additionalAssignees);
+      if (Array.isArray(parsed)) extra = parsed.filter(Boolean);
+    } catch {}
+  }
+  const all = primary ? [primary, ...extra.filter(e => e !== primary)] : extra;
+  return all;
+}
+
+/** True if `name` is one of this task's assignees (primary or additional). */
+export function isAssignee(req, name) {
+  if (!name) return false;
+  if (req.assignedTo === name) return true;
+  if (req.additionalAssignees) {
+    try {
+      const parsed = JSON.parse(req.additionalAssignees);
+      if (Array.isArray(parsed) && parsed.includes(name)) return true;
+    } catch {}
+  }
+  return false;
+}
+
+/** Serialises an array of assignee names into the [assignedTo, additionalAssignees] pair. */
+export function packAssignees(names) {
+  const clean = (names || []).filter(Boolean);
+  const primary = clean[0] || '';
+  const extra = clean.slice(1).filter(n => n !== primary);
+  return {
+    assignedTo: primary,
+    additionalAssignees: extra.length > 0 ? JSON.stringify(extra) : '',
+  };
+}
+
 // Map old statuses to new ones for display
 export const STATUS_MAP = {
   'New': 'To Do',
