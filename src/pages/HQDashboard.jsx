@@ -3,7 +3,7 @@ import { base44 } from '@/api/base44Client';
 import { format, isToday, isPast, differenceInDays, addDays, startOfWeek, parseISO } from 'date-fns';
 import { RefreshCw, UserPlus, Plus, FileText, ClipboardList, ArrowRight, Clock, AlertTriangle } from 'lucide-react';
 import WhosOutWidget from '@/components/leave/WhosOutWidget';
-import { PRIORITY_STYLES } from '@/components/requests/requestStyles';
+import { PRIORITY_STYLES, getAllAssignees } from '@/components/requests/requestStyles';
 import { MEMBERS, currentWeekStart } from '@/lib/sprintConfig';
 
 // ── Helpers ────────────────────────────────────────────
@@ -255,11 +255,16 @@ export default function HQDashboard({ user, onNavigate, onRefresh }) {
                       <span className="flex-1 text-sm font-medium text-[#111827] dark:text-[#E8E8F0] truncate">
                         {task.title || <span className="italic text-[#9CA3AF]">Untitled</span>}
                       </span>
-                      {task.assignedTo && (
-                        <span className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold text-white shrink-0 ${getAvatarColor(task.assignedTo)}`}>
-                          {getInitials(task.assignedTo)}
-                        </span>
-                      )}
+                      {(() => { const a = getAllAssignees(task); return a.length > 0 && (
+                        <div className="flex items-center -space-x-1.5 shrink-0">
+                          {a.slice(0, 3).map((name, idx) => (
+                            <span key={name} className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold text-white border-2 border-white ${getAvatarColor(name)} ${idx === 0 ? '' : 'opacity-90'}`}>
+                              {getInitials(name)}
+                            </span>
+                          ))}
+                          {a.length > 3 && <span className="text-[10px] text-[#9CA3AF] ml-1.5">+{a.length - 3}</span>}
+                        </div>
+                      ); })()}
                       {task.deadline && (
                         <span className="text-[11px] text-[#9CA3AF] shrink-0">{format(new Date(task.deadline), 'd MMM')}</span>
                       )}

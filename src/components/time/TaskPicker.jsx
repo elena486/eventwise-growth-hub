@@ -13,7 +13,7 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { base44 } from '@/api/base44Client';
 import { Search, Check, ListTodo, X } from 'lucide-react';
-import { PRIORITY_STYLES, CATEGORY_STYLES } from '@/components/requests/requestStyles';
+import { PRIORITY_STYLES, CATEGORY_STYLES, isAssignee, getAllAssignees } from '@/components/requests/requestStyles';
 
 export default function TaskPicker({ value, onChange, currentUser, className = '', compact = false }) {
   const [open, setOpen] = useState(false);
@@ -29,7 +29,7 @@ export default function TaskPicker({ value, onChange, currentUser, className = '
   const filtered = useMemo(() => {
     let result = tasks.filter(t => !t.archived && t.status !== 'Done');
     if (!showAll && currentUser) {
-      result = result.filter(t => t.assignedTo === currentUser);
+      result = result.filter(t => isAssignee(t, currentUser));
     }
     if (search) {
       const q = search.toLowerCase();
@@ -124,7 +124,7 @@ export default function TaskPicker({ value, onChange, currentUser, className = '
                       <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
                         {task.priority && <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full ${PRIORITY_STYLES[task.priority] || ''}`}>{task.priority}</span>}
                         {task.category && <span className={`text-[9px] font-semibold px-1.5 py-0.5 rounded-full ${CATEGORY_STYLES[task.category] || 'bg-[#EBEBF5] text-[#242450]'}`}>{task.category}</span>}
-                        {task.assignedTo && <span className="text-[9px] text-[#9CA3AF]">· {task.assignedTo}</span>}
+                        {(() => { const a = getAllAssignees(task); return a.length > 0 && <span className="text-[9px] text-[#9CA3AF]">· {a.join(', ')}</span>; })()}
                       </div>
                     </div>
                   </div>
