@@ -320,8 +320,10 @@ export default function Pipeline({ onProposalHandoff, onViewDeals, focusLeadId, 
     : (stageFilter ? baseLeads.filter(l => l.stage === stageFilter) : baseLeads)
   ).filter(l => !missingOnly || isMissingBreakdown(l));
 
-  // Overall missing-breakdown count: all non-converted, non-lost leads across both pipelines.
-  const overallMissingCount = leads.filter(l => !l.converted && l.stage !== 'Closed Lost' && isMissingBreakdown(l)).length;
+  // Overall missing-breakdown count: all non-converted, non-lost leads, split by pipeline.
+  const overallMissingWarm = leads.filter(l => (l.pipeline || 'warm') === 'warm' && !l.converted && l.stage !== 'Closed Lost' && isMissingBreakdown(l)).length;
+  const overallMissingCold = leads.filter(l => (l.pipeline || 'warm') === 'cold' && !l.converted && l.stage !== 'Closed Lost' && isMissingBreakdown(l)).length;
+  const overallMissingCount = overallMissingWarm + overallMissingCold;
 
   // Stats leads (apply prob + month but not stage filter)
   const filteredStatsLeads = statsLeads
@@ -403,6 +405,9 @@ export default function Pipeline({ onProposalHandoff, onViewDeals, focusLeadId, 
           getEffectiveArrFn={getEffectiveLeadArr}
           recordLabel="Pipeline leads"
           overallMissingCount={overallMissingCount}
+          overallMissingWarm={overallMissingWarm}
+          overallMissingCold={overallMissingCold}
+          activePipelineLabel={isLostView ? null : (activePipeline === 'warm' ? 'Warm' : 'Cold')}
           onFilterMissing={() => setMissingOnly(true)}
           missingFilterActive={missingOnly}
           onClearMissingFilter={() => setMissingOnly(false)}

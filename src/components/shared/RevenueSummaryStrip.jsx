@@ -20,7 +20,7 @@ function fmt(n) {
  *  - missingFilterActive: true when the missing-breakdown filter is currently applied
  *  - onClearMissingFilter: callback to clear the missing-breakdown filter (optional)
  */
-export default function RevenueSummaryStrip({ records, getEffectiveArrFn, recordLabel = 'records', overallMissingCount, onFilterMissing, missingFilterActive, onClearMissingFilter }) {
+export default function RevenueSummaryStrip({ records, getEffectiveArrFn, recordLabel = 'records', overallMissingCount, overallMissingWarm, overallMissingCold, activePipelineLabel, onFilterMissing, missingFilterActive, onClearMissingFilter }) {
   const m = computeRevenueMetrics(records, getEffectiveArrFn);
 
   const cards = [
@@ -29,7 +29,7 @@ export default function RevenueSummaryStrip({ records, getEffectiveArrFn, record
     { label: 'Unsplit (legacy value)', value: fmt(m.totalUnsplit), sub: 'Fallback, not broken down' },
     { label: 'Total ARR', value: fmt(m.totalArr), highlight: true, sub: 'Software + Services + Unsplit' },
     { label: 'Total Onboarding (one-off)', value: fmt(m.totalOnboarding), sub: 'Not in ARR' },
-    { label: recordLabel, value: m.numRecords, sub: `Avg ARR: ${fmt(m.avgArr)}` },
+    { label: recordLabel, value: m.numRecords, sub: `Avg ARR (leads with a value): ${fmt(m.avgArrWithValue)}` },
     { label: 'Services share of ARR', value: m.servicesShare != null ? Math.round(m.servicesShare) + '%' : '—', sub: 'Of split ARR only' },
   ];
 
@@ -50,7 +50,16 @@ export default function RevenueSummaryStrip({ records, getEffectiveArrFn, record
         <div className="mb-4 flex items-center gap-2 text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 flex-wrap">
           <span>⚠</span>
           <span>
-            <strong>{m.missingBreakdown}</strong> in this view{overallMissingCount != null && <>, <strong>{overallMissingCount}</strong> overall</>} are missing the revenue breakdown — Total ARR uses the legacy deal value fallback for these.
+            <strong>{m.missingBreakdown}</strong> leads in this view have no revenue entered.
+            {overallMissingCount != null && (
+              <> Overall: <strong>{overallMissingCount}</strong>
+                {overallMissingWarm != null && overallMissingCold != null && (
+                  <> (Warm: <strong>{overallMissingWarm}</strong>, Cold: <strong>{overallMissingCold}</strong>)</>
+                )}
+                {activePipelineLabel && <> — {activePipelineLabel} counts towards this page's totals.</>}
+              </>
+            )}
+            {m.totalUnsplit > 0 && <> Total ARR uses the legacy deal value fallback (<strong>{fmt(m.totalUnsplit)}</strong>) for these.</>}
           </span>
           {onFilterMissing && !missingFilterActive && (
             <button onClick={onFilterMissing} className="font-semibold text-amber-800 underline hover:text-amber-900 whitespace-nowrap">

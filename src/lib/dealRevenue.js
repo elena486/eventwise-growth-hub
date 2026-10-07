@@ -66,18 +66,21 @@ export function arrFieldUpdates(field, value, deal) {
  */
 export function computeRevenueMetrics(records, getEffectiveArrFn) {
   const numRecords = records.length;
-  let totalSoftware = 0, totalServices = 0, totalArr = 0, totalOnboarding = 0, missingBreakdown = 0;
+  let totalSoftware = 0, totalServices = 0, totalArr = 0, totalOnboarding = 0, missingBreakdown = 0, numWithValue = 0;
   for (const r of records) {
     totalSoftware += (r.software_arr || 0);
     totalServices += (r.services_arr || 0);
-    totalArr += getEffectiveArrFn(r);
+    const effArr = getEffectiveArrFn(r);
+    totalArr += effArr;
+    if (effArr > 0) numWithValue++;
     totalOnboarding += (r.onboarding_fee || r.onboardingFee || 0);
     if (!hasNewRevenueFields(r)) missingBreakdown++;
   }
   const avgArr = numRecords > 0 ? totalArr / numRecords : 0;
+  const avgArrWithValue = numWithValue > 0 ? totalArr / numWithValue : 0;
   const servicesShare = totalArr > 0 ? (totalServices / totalArr) * 100 : null;
   // Unsplit = Total ARR that comes from the legacy fallback (not broken down into Software/Services).
   // Software + Services + Unsplit = Total ARR exactly.
   const totalUnsplit = totalArr - totalSoftware - totalServices;
-  return { numRecords, totalSoftware, totalServices, totalUnsplit, totalArr, totalOnboarding, missingBreakdown, avgArr, servicesShare };
+  return { numRecords, numWithValue, totalSoftware, totalServices, totalUnsplit, totalArr, totalOnboarding, missingBreakdown, avgArr, avgArrWithValue, servicesShare };
 }
