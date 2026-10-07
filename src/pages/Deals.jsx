@@ -9,8 +9,7 @@ import DealEditModal from '@/components/deals/DealEditModal';
 import RenewModal from '@/components/deals/RenewModal';
 import DealDetailPanel from '@/components/deals/DealDetailPanel';
 import AddHistoricalDealModal from '@/components/deals/AddHistoricalDealModal';
-import { calcTotalArr, getEffectiveArr, getEffectiveMrr, hasNewRevenueFields, getEffectiveOnboardingFee } from '@/lib/dealRevenue';
-import RevenueSummaryStrip from '@/components/shared/RevenueSummaryStrip';
+import { calcTotalArr, getEffectiveArr, getEffectiveMrr, hasNewRevenueFields, getEffectiveOnboardingFee, computeRevenueMetrics } from '@/lib/dealRevenue';
 import ColumnSelector from '@/components/shared/ColumnSelector';
 import { useColumnVisibility } from '@/hooks/useColumnVisibility';
 
@@ -391,6 +390,8 @@ export default function Deals({ onRenewalProposal, onViewClient, onNavigate, foc
 
   const mrr = activeDeals.reduce((s, d) => s + getEffectiveMrr(d), 0);
   const arr = activeDeals.reduce((s, d) => s + getEffectiveArr(d), 0);
+  const revMetrics = computeRevenueMetrics(displayDeals, getEffectiveArr);
+  const displayMrr = displayDeals.reduce((s, d) => s + getEffectiveMrr(d), 0);
 
   // MRR THIS MONTH — non-backdated (new) deals added in current calendar month
   const thisMonthStart = startOfMonth(new Date());
@@ -421,35 +422,37 @@ export default function Deals({ onRenewalProposal, onViewClient, onNavigate, foc
         <p className="text-ew-muted text-sm mt-0.5">All client subscription deals</p>
       </div>
 
-      {/* Revenue summary strip — updates with the Active/Churned filter */}
-      <RevenueSummaryStrip
-        records={displayDeals}
-        getEffectiveArrFn={getEffectiveArr}
-        recordLabel="Deals"
-        overallMissingCount={overallMissingCount}
-        onFilterMissing={() => setMissingOnly(true)}
-        missingFilterActive={missingOnly}
-        onClearMissingFilter={() => setMissingOnly(false)}
-      />
-
-      {/* Stats */}
-      <div className="grid grid-cols-7 gap-4 mb-6">
+      {/* Merged revenue + operational metrics — one row, updates with the Active/Churned filter */}
+      <div className="grid grid-cols-2 md:grid-cols-4 xl:grid-cols-8 gap-3 mb-4">
         {[
-          { label: 'Total active deals', value: activeDeals.length },
-          { label: 'Total MRR', value: fmt(mrr) },
-          { label: 'Total ARR', value: fmt(arr) },
-          { label: 'MRR this month', value: fmt(mrrThisMonth), sub: 'New deals only' },
-          { label: 'Total clients', value: totalClients, sub: 'Active in CS' },
+          { label: 'Software ARR', value: fmt(revMetrics.totalSoftware) },
+          { label: 'Services ARR', value: fmt(revMetrics.totalServices) },
+          { label: 'Unsplit (legacy)', value: fmt(revMetrics.totalUnsplit), sub: 'Fallback, not broken down' },
+          { label: 'Total ARR', value: fmt(revMetrics.totalArr), highlight: true, sub: `${displayDeals.length} deals` },
+          { label: 'Onboarding (one-off)', value: fmt(revMetrics.totalOnboarding), sub: 'Not in ARR' },
+          { label: 'Total MRR', value: fmt(displayMrr) },
           { label: 'Renewals in 60 days', value: renewingSoon },
-          { label: 'Accounting margin /mo', value: totalAcctRevenue > 0 ? fmt(acctMargin) : '—', sub: totalAcctRevenue > 0 ? `Rev: ${fmt(totalAcctRevenue)} · Cost: ${fmt(totalAcctCost)}` : 'No accounting deals' },
+          { label: 'Total Clients', value: totalClients, sub: 'Active in CS' },
         ].map(c => (
-          <div key={c.label} className="bg-white border border-ew-border rounded-xl p-5">
-            <p className="text-xs font-medium text-ew-muted uppercase tracking-[0.12em] mb-1">{c.label}</p>
-            <p className="text-2xl font-bold text-navy">{c.value}</p>
-            {c.sub && <p className="text-[11px] text-ew-muted mt-0.5">{c.sub}</p>}
+          <div key={c.label} className="bg-white border border-ew-border rounded-xl p-4">
+            <p className="text-[10px] font-medium text-ew-muted uppercase tracking-[0.1em] mb-1">{c.label}</p>
+            <p className={`font-bold ${c.highlight ? 'text-[#8403C5] text-2xl' : 'text-navy text-xl'}`}>{c.value}</p>
+            {c.sub && <p className="text-[10px] text-ew-muted mt-0.5">{c.sub}</p>}
           </div>
         ))}
       </div>
+
+      {/* Missing breakdown banner + filter */}
+      {revMetrics.missingBreakdown > 0 || overallMissingCount > 0 ? (
+        <div className="mb-4 flex items-center gap-2 text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 flex-wrap">
+          <span>⚠</span>
+          <span>
+            <strong>{revMetrics.missingBreakdown}</strong> in this view{overallMissingCount != null && <>, <strong>{overallMissingCount}</strong> overall</>} are missing the revenue breakdown — Total ARR uses the legacy deal value fallback for these.
+          </span>
+          {!missingOnly && <button onClick={() => setMissingOnly(true)} className="font-semibold text-amber-800 underline hover:text-amber-900 whitespace-nowrap">Show only these →</button>}
+          {missingOnly && <button onClick={() => setMissingOnly(false)} className="font-semibold text-amber-800 underline hover:text-amber-900 whitespace-nowrap">Clear filter</button>}
+        </div>
+      ) : null}
 
       {/* Filter tabs */}
       <div className="flex items-center gap-1.5 mb-4 justify-between flex-wrap">
