@@ -8,7 +8,7 @@ import { base44 } from '@/api/base44Client';
 import { startOfWeek, endOfWeek, isWithinInterval, parseISO, addDays, subWeeks, differenceInWeeks, format, startOfDay, endOfDay, subDays, isSameDay } from 'date-fns';
 import { MEMBERS } from '@/lib/sprintConfig';
 
-export const TEAM_MEMBERS = ['Chris', 'Elena', 'George', 'Martinique', 'Sreeja', 'Ramesh', 'Eleanor'];
+export const TEAM_MEMBERS = ['Chris', 'Elena', 'George', 'Martinique', 'Sreeja', 'Ramesh', 'Eleanor', 'Dickie'];
 
 // A task is attributed to a person if they are the primary assignee OR a co-assignee
 function isTaskAssignee(task, person) {
@@ -25,7 +25,7 @@ function isTaskAssignee(task, person) {
 // Sprint submission cadence per person — determines how a submission maps to weekly reports
 const SPRINT_CADENCE = {
   Chris: 'weekly', Elena: 'weekly', George: 'weekly',
-  Martinique: 'monthly', Sreeja: 'weekly', Ramesh: 'weekly',
+  Martinique: 'monthly', Sreeja: 'weekly', Ramesh: 'weekly', Dickie: 'weekly',
 };
 
 function findSprintSubmission(person, allSprints, reportWeekStart) {

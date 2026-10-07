@@ -46,7 +46,7 @@ async function writeClientActivityLog({ clientId, clientName, teamMember, catego
   } catch {}
 }
 
-const TEAM_MEMBERS = ['Chris', 'Elena', 'George', 'Martinique', 'Sreeja', 'Ramesh', 'Eleanor'];
+const TEAM_MEMBERS = ['Chris', 'Elena', 'George', 'Martinique', 'Sreeja', 'Ramesh', 'Eleanor', 'Dickie'];
 const CATEGORIES = CATEGORY_LABELS;
 
 function formatTimer(ms) {

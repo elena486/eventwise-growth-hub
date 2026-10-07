@@ -5,7 +5,7 @@ import { CATEGORY_COLORS } from './categoryColors';
 
 const MEMBER_COLORS = {
   'Chris': '#8403C5', 'Elena': '#1D9E75', 'George': '#E8A020',
-  'Martinique': '#0EA5E9', 'Sreeja': '#DC2626', 'Ramesh': '#5777AB', 'Eleanor': '#EC4899',
+  'Martinique': '#0EA5E9', 'Sreeja': '#DC2626', 'Ramesh': '#5777AB', 'Eleanor': '#EC4899', 'Dickie': '#14B8A6',
 };
 
 function computeElapsed(entry) {

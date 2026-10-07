@@ -37,7 +37,7 @@ export const PRIORITY_ORDER = { Urgent: 0, High: 1, Medium: 2, Low: 3 };
 export const BOARD_STATUSES = ['To Do', 'In Progress', 'Done', 'Blocked'];
 export const NEW_CATEGORIES = ['Marketing', 'Sales', 'Operations', 'Customer Success', 'Tech/Product', 'Admin'];
 export const PRIORITIES = ['Low', 'Medium', 'High', 'Urgent'];
-export const TEAM_MEMBERS = ['Chris', 'Elena', 'George', 'Martinique', 'Sreeja', 'Ramesh', 'Eleanor'];
+export const TEAM_MEMBERS = ['Chris', 'Elena', 'George', 'Martinique', 'Sreeja', 'Ramesh', 'Eleanor', 'Dickie'];
 
 // ── Multi-assignee helpers ──
 // assignedTo is the primary assignee; additionalAssignees is a JSON array string of co-assignees.

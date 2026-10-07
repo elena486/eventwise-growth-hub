@@ -37,7 +37,7 @@ async function writeLeadActivityLog({ leadId, teamMember, category, projectTask,
   } catch {}
 }
 
-const TEAM_MEMBERS = ['Chris', 'Elena', 'George', 'Martinique', 'Sreeja', 'Ramesh', 'Eleanor'];
+const TEAM_MEMBERS = ['Chris', 'Elena', 'George', 'Martinique', 'Sreeja', 'Ramesh', 'Eleanor', 'Dickie'];
 const CATEGORIES = [
   'Sales & Outbound', 'Customer Success & Onboarding', 'Marketing & Content',
   'Operations & Admin', 'Product & Tech', 'Finance', 'Strategy & Planning', 'Other',

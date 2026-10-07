@@ -8,7 +8,7 @@ import { moveTaskToInProgress } from '@/lib/taskTimerLink';
 import { Link } from 'lucide-react';
 import LeadSelect from './LeadSelect';
 
-const TEAM_MEMBERS = ['Chris', 'Elena', 'George', 'Martinique', 'Sreeja', 'Ramesh', 'Eleanor'];
+const TEAM_MEMBERS = ['Chris', 'Elena', 'George', 'Martinique', 'Sreeja', 'Ramesh', 'Eleanor', 'Dickie'];
 
 export default function QuickEntryModal({ open, onClose, onSaved, initial }) {
   const [date, setDate] = useState('');

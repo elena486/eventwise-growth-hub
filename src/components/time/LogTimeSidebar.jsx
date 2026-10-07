@@ -17,7 +17,7 @@ import TaskCompletePrompt from './TaskCompletePrompt';
 import { mapTaskCategoryToTimeCategory } from '@/lib/taskCategoryMap';
 import { moveTaskToInProgress, completeTask, getTaskStatus, showTaskToast } from '@/lib/taskTimerLink';
 
-const TEAM_MEMBERS = ['Chris', 'Elena', 'George', 'Martinique', 'Sreeja', 'Ramesh', 'Eleanor'];
+const TEAM_MEMBERS = ['Chris', 'Elena', 'George', 'Martinique', 'Sreeja', 'Ramesh', 'Eleanor', 'Dickie'];
 
 function formatTimer(ms) {
   const sec = Math.floor(ms / 1000);
