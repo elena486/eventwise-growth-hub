@@ -3,6 +3,7 @@ import { base44 } from '@/api/base44Client';
 import { format, differenceInDays } from 'date-fns';
 import { X, Trash2, ExternalLink, Info } from 'lucide-react';
 import { calcTotalArr, arrFieldUpdates } from '@/lib/dealRevenue';
+import RevenueBlock from '@/components/shared/RevenueBlock';
 
 const PLAN_COLORS = {
   Starter: 'bg-blue-100 text-blue-700',
@@ -149,6 +150,15 @@ export default function DealDetailPanel({ deal: initialDeal, onClose, onUpdated,
         {/* Body */}
         <div className="flex-1 overflow-y-auto px-6 py-5">
 
+          {/* Revenue Breakdown — top of side view */}
+          <div className="mb-4">
+            <RevenueBlock
+              record={deal}
+              onSaveArr={(field, value) => autoSaveArr(field, value)}
+              onSaveOnboarding={(value) => autoSave('onboarding_fee', parseFloat(value) || 0)}
+            />
+          </div>
+
           <SectionTitle>Deal Financials</SectionTitle>
           <div className="grid grid-cols-2 gap-3 mb-4">
             <div>
@@ -187,41 +197,6 @@ export default function DealDetailPanel({ deal: initialDeal, onClose, onUpdated,
                 <option value="">— Select —</option>
                 {ONBOARDING_PKGS.map(p => <option key={p}>{p}</option>)}
               </select>
-            </div>
-          </div>
-
-          {/* Revenue Breakdown (ARR) */}
-          <hr className="border-[#F3F4F6] mb-4" />
-          <SectionTitle>Revenue Breakdown (ARR)</SectionTitle>
-          <div className="grid grid-cols-2 gap-3 mb-4">
-            <div>
-              <label className={labelCls}>Software ARR (Subscription) £/yr</label>
-              <div className="relative">
-                <span className="absolute left-3 top-2 text-sm text-[#9CA3AF]">£</span>
-                <input type="number" className={ic + ' pl-7'} value={deal.software_arr || ''} onChange={e => autoSaveArr('software_arr', e.target.value)} placeholder="0" />
-              </div>
-              <p className="text-[10px] text-[#9CA3AF] mt-0.5">Annual Eventwise software subscription fee</p>
-            </div>
-            <div>
-              <label className={labelCls}>Services ARR (Accounting) £/yr</label>
-              <div className="relative">
-                <span className="absolute left-3 top-2 text-sm text-[#9CA3AF]">£</span>
-                <input type="number" className={ic + ' pl-7'} value={deal.services_arr || ''} onChange={e => autoSaveArr('services_arr', e.target.value)} placeholder="0" />
-              </div>
-              <p className="text-[10px] text-[#9CA3AF] mt-0.5">Annual In The Loop accounting services fee (Co Pilot)</p>
-            </div>
-            <div>
-              <label className={labelCls}>Total ARR <span className="font-normal text-[#9CA3AF]">auto</span></label>
-              <p className="text-base font-bold text-[#8403C5] pt-1.5">{fmt(calcTotalArr(deal))}<span className="text-xs font-normal text-[#9CA3AF] ml-1">/yr</span></p>
-              <p className="text-[10px] text-[#9CA3AF] mt-0.5">Software ARR + Services ARR</p>
-            </div>
-            <div>
-              <label className={labelCls}>Onboarding fee (one-off) £</label>
-              <div className="relative">
-                <span className="absolute left-3 top-2 text-sm text-[#9CA3AF]">£</span>
-                <input type="number" className={ic + ' pl-7'} value={deal.onboarding_fee || ''} onChange={e => autoSave('onboarding_fee', parseFloat(e.target.value) || 0)} placeholder="0" />
-              </div>
-              <p className="text-[10px] text-[#9CA3AF] mt-0.5">One-off fee — NOT included in ARR</p>
             </div>
           </div>
 

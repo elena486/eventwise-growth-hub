@@ -12,6 +12,8 @@ import LeadTable from '@/components/pipeline/LeadTable';
 import LeadDetailPanel from '@/components/pipeline/LeadDetailPanel';
 import ClosedWonModal from '@/components/pipeline/ClosedWonModal';
 import MovePipelineModal from '@/components/pipeline/MovePipelineModal';
+import RevenueSummaryStrip from '@/components/shared/RevenueSummaryStrip';
+import { getEffectiveLeadArr } from '@/lib/dealRevenue';
 
 const OWNER_FILTERS = ['All Leads', "Chris's Leads", "Ramesh's Leads", "George's Leads", 'Lost Leads'];
 const OWNER_MAP = {
@@ -306,7 +308,7 @@ export default function Pipeline({ onProposalHandoff, onViewDeals, focusLeadId, 
 
   // Stage filter — bypassed when searching (search shows across all stages)
   const displayLeads = searchQuery.trim()
-    ? pipelineLeads.filter(l => searchMatches(l, searchQuery))
+    ? pipelineLeads.filter(l => !l.converted && searchMatches(l, searchQuery))
     : (stageFilter ? baseLeads.filter(l => l.stage === stageFilter) : baseLeads);
 
   // Stats leads (apply prob + month but not stage filter)
@@ -382,6 +384,13 @@ export default function Pipeline({ onProposalHandoff, onViewDeals, focusLeadId, 
             )}
           </div>
         </div>
+
+        {/* Revenue summary strip — updates with filters/search/stage */}
+        <RevenueSummaryStrip
+          records={displayLeads.filter(l => !l.converted)}
+          getEffectiveArrFn={getEffectiveLeadArr}
+          recordLabel="Pipeline leads"
+        />
 
         {/* Collapsible filters + stats — toggle button is the first item */}
         {!isLostView && (

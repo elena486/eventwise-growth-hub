@@ -10,11 +10,13 @@ import RenewModal from '@/components/deals/RenewModal';
 import DealDetailPanel from '@/components/deals/DealDetailPanel';
 import AddHistoricalDealModal from '@/components/deals/AddHistoricalDealModal';
 import { calcTotalArr, getEffectiveArr, getEffectiveMrr, hasNewRevenueFields, getEffectiveOnboardingFee } from '@/lib/dealRevenue';
+import RevenueSummaryStrip from '@/components/shared/RevenueSummaryStrip';
 
 function fmt(n) {
   if (!n && n !== 0) return '—';
   return '£' + Math.round(n).toLocaleString('en-GB');
 }
+function fmtOrDash(n) { return n ? '£' + Math.round(n).toLocaleString('en-GB') : '—'; }
 
 function fmtDate(d) {
   if (!d) return '—';
@@ -318,6 +320,29 @@ export default function Deals({ onRenewalProposal, onViewClient, onNavigate, foc
   const churnedDeals = deals.filter(d => d.status === 'Churned');
 
   // Sort: new (non-backdated) first by start date desc, then historical below by start date desc
+  const [sortCol, setSortCol] = useState(null);
+  const [sortDir, setSortDir] = useState('desc');
+
+  const handleSort = (col) => {
+    if (sortCol === col) setSortDir(d => d === 'asc' ? 'desc' : 'asc');
+    else { setSortCol(col); setSortDir('desc'); }
+  };
+
+  const applySort = (arr) => {
+    if (!sortCol) return arr;
+    const dir = sortDir === 'asc' ? 1 : -1;
+    return [...arr].sort((a, b) => {
+      let av, bv;
+      if (sortCol === 'softwareArr') { av = a.software_arr || 0; bv = b.software_arr || 0; }
+      else if (sortCol === 'servicesArr') { av = a.services_arr || 0; bv = b.services_arr || 0; }
+      else if (sortCol === 'totalArr') { av = getEffectiveArr(a); bv = getEffectiveArr(b); }
+      else if (sortCol === 'onboardingFee') { av = a.onboarding_fee || a.onboardingFee || 0; bv = b.onboarding_fee || b.onboardingFee || 0; }
+      else if (sortCol === 'annual') { av = a.annualValue || (a.monthlyValue || 0) * 12; bv = b.annualValue || (b.monthlyValue || 0) * 12; }
+      else return 0;
+      return (av - bv) * dir;
+    });
+  };
+
   const sortedActive = [...activeDeals].sort((a, b) => {
     if (!!a.backdated !== !!b.backdated) return a.backdated ? 1 : -1;
     return (b.subscriptionStartDate || '').localeCompare(a.subscriptionStartDate || '');
@@ -325,7 +350,7 @@ export default function Deals({ onRenewalProposal, onViewClient, onNavigate, foc
   const sortedChurned = [...churnedDeals].sort((a, b) =>
     (b.subscriptionStartDate || '').localeCompare(a.subscriptionStartDate || '')
   );
-  const displayDeals = filter === 'Churned' ? sortedChurned : sortedActive;
+  const displayDeals = applySort(filter === 'Churned' ? sortedChurned : sortedActive);
 
   const mrr = activeDeals.reduce((s, d) => s + getEffectiveMrr(d), 0);
   const arr = activeDeals.reduce((s, d) => s + getEffectiveArr(d), 0);
@@ -358,6 +383,13 @@ export default function Deals({ onRenewalProposal, onViewClient, onNavigate, foc
         <h1 className="text-2xl font-bold text-navy">Deals</h1>
         <p className="text-ew-muted text-sm mt-0.5">All client subscription deals</p>
       </div>
+
+      {/* Revenue summary strip — updates with the Active/Churned filter */}
+      <RevenueSummaryStrip
+        records={displayDeals}
+        getEffectiveArrFn={getEffectiveArr}
+        recordLabel="Deals"
+      />
 
       {/* Stats */}
       <div className="grid grid-cols-7 gap-4 mb-6">
@@ -419,9 +451,19 @@ export default function Deals({ onRenewalProposal, onViewClient, onNavigate, foc
           <table className="w-full text-sm">
             <thead className="bg-ew-footer border-b border-ew-border">
               <tr>
-                {['Client', 'Plan', 'Monthly', 'Annual ▾', 'Total ARR', 'Software ARR', 'Services ARR', 'Year 1 total', 'Accounting service', 'Start date', 'End date', 'Status'].map(h => (
-                  <th key={h} className="px-4 py-3 text-left text-[11px] font-semibold text-ew-muted uppercase tracking-[0.12em]">{h}</th>
-                ))}
+                <th className="px-4 py-3 text-left text-[11px] font-semibold text-ew-muted uppercase tracking-[0.12em]">Client</th>
+                <th className="px-4 py-3 text-left text-[11px] font-semibold text-ew-muted uppercase tracking-[0.12em]">Plan</th>
+                <th className="px-4 py-3 text-left text-[11px] font-semibold text-ew-muted uppercase tracking-[0.12em]">Monthly</th>
+                <th className="px-4 py-3 text-right text-[11px] font-semibold text-ew-muted uppercase tracking-[0.12em] cursor-pointer hover:text-navy" onClick={() => handleSort('annual')}>Annual {sortCol === 'annual' ? (sortDir === 'asc' ? '▴' : '▾') : '▾'}</th>
+                <th className="px-4 py-3 text-right text-[11px] font-semibold text-ew-muted uppercase tracking-[0.12em] cursor-pointer hover:text-navy" onClick={() => handleSort('softwareArr')}>Software ARR {sortCol === 'softwareArr' ? (sortDir === 'asc' ? '▴' : '▾') : ''}</th>
+                <th className="px-4 py-3 text-right text-[11px] font-semibold text-ew-muted uppercase tracking-[0.12em] cursor-pointer hover:text-navy" onClick={() => handleSort('servicesArr')}>Services ARR {sortCol === 'servicesArr' ? (sortDir === 'asc' ? '▴' : '▾') : ''}</th>
+                <th className="px-4 py-3 text-right text-[11px] font-semibold text-ew-muted uppercase tracking-[0.12em] cursor-pointer hover:text-navy" onClick={() => handleSort('totalArr')}>Total ARR {sortCol === 'totalArr' ? (sortDir === 'asc' ? '▴' : '▾') : ''}</th>
+                <th className="px-4 py-3 text-right text-[11px] font-semibold text-ew-muted uppercase tracking-[0.12em] cursor-pointer hover:text-navy" onClick={() => handleSort('onboardingFee')}>Onboarding fee {sortCol === 'onboardingFee' ? (sortDir === 'asc' ? '▴' : '▾') : ''}</th>
+                <th className="px-4 py-3 text-left text-[11px] font-semibold text-ew-muted uppercase tracking-[0.12em]">Year 1 total</th>
+                <th className="px-4 py-3 text-left text-[11px] font-semibold text-ew-muted uppercase tracking-[0.12em]">Accounting service</th>
+                <th className="px-4 py-3 text-left text-[11px] font-semibold text-ew-muted uppercase tracking-[0.12em]">Start date</th>
+                <th className="px-4 py-3 text-left text-[11px] font-semibold text-ew-muted uppercase tracking-[0.12em]">End date</th>
+                <th className="px-4 py-3 text-left text-[11px] font-semibold text-ew-muted uppercase tracking-[0.12em]">Status</th>
                 {filter === 'Churned' && ['Churn date', 'Churn reason', 'Churn notes'].map(h => (
                   <th key={h} className="px-4 py-3 text-left text-[11px] font-semibold text-ew-muted uppercase tracking-[0.12em]">{h}</th>
                 ))}
@@ -445,20 +487,23 @@ export default function Deals({ onRenewalProposal, onViewClient, onNavigate, foc
                     <td className="px-4 py-3 min-w-[100px]">
                       <InlineCell value={deal.monthlyValue} onSave={save(deal.id, 'monthlyValue')} type="number" displayEl={<span className="font-semibold text-navy">{fmt(deal.monthlyValue)}</span>} placeholder="Set value" />
                     </td>
-                    <td className="px-4 py-3 min-w-[110px]" onClick={e => e.stopPropagation()}>
-                      <button onClick={() => setExpanded(prev => prev === deal.id ? null : deal.id)} className="flex items-center gap-1 font-semibold text-navy hover:text-navy/70 transition-colors">
+                    <td className="px-4 py-3 min-w-[110px] text-right" onClick={e => e.stopPropagation()}>
+                      <button onClick={() => setExpanded(prev => prev === deal.id ? null : deal.id)} className="inline-flex items-center gap-1 font-semibold text-navy hover:text-navy/70 transition-colors">
                         {fmt(deal.annualValue || (deal.monthlyValue || 0) * 12)}
                         {expanded === deal.id ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5" />}
                       </button>
                     </td>
-                    <td className="px-4 py-3 min-w-[110px]">
-                      <span className="font-bold text-[#8403C5]">{fmt(getEffectiveArr(deal))}</span>
+                    <td className="px-4 py-3 min-w-[110px] text-right">
+                      <InlineCell value={deal.software_arr} onSave={save(deal.id, 'software_arr')} type="number" displayEl={<span className="font-semibold text-navy">{fmtOrDash(deal.software_arr)}</span>} placeholder="0" />
                     </td>
-                    <td className="px-4 py-3 min-w-[110px]">
-                      <InlineCell value={deal.software_arr} onSave={save(deal.id, 'software_arr')} type="number" displayEl={<span className="font-semibold text-navy">{fmt(deal.software_arr || 0)}</span>} placeholder="0" />
+                    <td className="px-4 py-3 min-w-[110px] text-right">
+                      <InlineCell value={deal.services_arr} onSave={save(deal.id, 'services_arr')} type="number" displayEl={<span className="font-semibold text-navy">{fmtOrDash(deal.services_arr)}</span>} placeholder="0" />
                     </td>
-                    <td className="px-4 py-3 min-w-[110px]">
-                      <InlineCell value={deal.services_arr} onSave={save(deal.id, 'services_arr')} type="number" displayEl={<span className="font-semibold text-navy">{fmt(deal.services_arr || 0)}</span>} placeholder="0" />
+                    <td className="px-4 py-3 min-w-[110px] text-right">
+                      <span className="font-bold text-[#8403C5]">{fmtOrDash(getEffectiveArr(deal))}</span>
+                    </td>
+                    <td className="px-4 py-3 min-w-[110px] text-right">
+                      <InlineCell value={deal.onboarding_fee} onSave={save(deal.id, 'onboarding_fee')} type="number" displayEl={<span className="font-medium text-ew-body">{fmtOrDash(deal.onboarding_fee || deal.onboardingFee)}</span>} placeholder="0" />
                     </td>
                     <td className="px-4 py-3">
                       <InlineCell value={deal.totalFirstYearValue} readOnly displayEl={<span className="font-semibold text-navy">{fmt(deal.totalFirstYearValue)}</span>} />
@@ -506,20 +551,43 @@ export default function Deals({ onRenewalProposal, onViewClient, onNavigate, foc
                   </tr>
                   {expanded === deal.id && (
                     <tr className="border-b border-ew-border bg-navy/[0.01]" onClick={e => e.stopPropagation()}>
-                      <td colSpan={filter === 'Churned' ? 16 : 13} className="px-4 pb-3"><ValueBreakdown deal={deal} /></td>
+                      <td colSpan={filter === 'Churned' ? 17 : 14} className="px-4 pb-3"><ValueBreakdown deal={deal} /></td>
                     </tr>
                   )}
                 </React.Fragment>
               ))}
               {displayDeals.length === 0 && (
                 <tr>
-                  <td colSpan={filter === 'Churned' ? 16 : 13} className="px-4 py-16 text-center">
+                  <td colSpan={filter === 'Churned' ? 17 : 14} className="px-4 py-16 text-center">
                     <div className="text-4xl mb-3">🤝</div>
                     <p className="text-sm text-[#6B7280]">{filter === 'Churned' ? 'No churned deals.' : 'No deals yet. Close your first lead to get started.'}</p>
                   </td>
                 </tr>
               )}
             </tbody>
+            <tfoot className="bg-ew-footer border-t-2 border-ew-border">
+              {(() => {
+                const t = displayDeals.reduce((acc, d) => {
+                  acc.software += (d.software_arr || 0);
+                  acc.services += (d.services_arr || 0);
+                  acc.totalArr += getEffectiveArr(d);
+                  acc.onboarding += (d.onboarding_fee || d.onboardingFee || 0);
+                  return acc;
+                }, { software: 0, services: 0, totalArr: 0, onboarding: 0 });
+                return (
+                  <tr className="font-bold">
+                    <td className="px-4 py-2.5 text-xs text-navy uppercase tracking-wide">Totals</td>
+                    <td></td><td></td><td></td>
+                    <td className="px-4 py-2.5 text-right text-xs text-navy">{fmtOrDash(t.software)}</td>
+                    <td className="px-4 py-2.5 text-right text-xs text-navy">{fmtOrDash(t.services)}</td>
+                    <td className="px-4 py-2.5 text-right text-xs text-[#8403C5]">{fmtOrDash(t.totalArr)}</td>
+                    <td className="px-4 py-2.5 text-right text-xs text-ew-body">{fmtOrDash(t.onboarding)}</td>
+                    <td></td><td></td><td></td><td></td><td></td><td></td>
+                    {filter === 'Churned' && <><td></td><td></td><td></td></>}
+                  </tr>
+                );
+              })()}
+            </tfoot>
           </table>
         </div>
       )}

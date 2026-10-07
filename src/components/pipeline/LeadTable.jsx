@@ -24,6 +24,7 @@ function fmtMonth(val) {
 }
 
 function fmt(n) { return '£' + Math.round(n || 0).toLocaleString('en-GB'); }
+function fmtOrDash(n) { return n ? '£' + Math.round(n).toLocaleString('en-GB') : '—'; }
 
 function getTrialKickoff(lead) {
   try {
@@ -216,7 +217,10 @@ const ALL_COLUMNS = [
   { key: 'sdr', label: 'SDR' },
   { key: 'plan', label: 'Plan' },
   { key: 'deal', label: 'Deal value' },
+  { key: 'softwareArr', label: 'Software ARR' },
+  { key: 'servicesArr', label: 'Services ARR' },
   { key: 'totalArr', label: 'Total ARR' },
+  { key: 'onboardingFee', label: 'Onboarding fee' },
   { key: 'stage', label: 'Stage' },
   { key: 'trial', label: 'Trial' },
   { key: 'probability', label: 'Probability %' },
@@ -227,7 +231,7 @@ const ALL_COLUMNS = [
   { key: 'accounting', label: 'Accounting service' },
 ];
 
-const DEFAULT_VISIBLE = ['company', 'owner', 'sdr', 'plan', 'deal', 'totalArr', 'stage', 'trial', 'probability', 'nextAction', 'activity', 'notes'];
+const DEFAULT_VISIBLE = ['company', 'owner', 'sdr', 'plan', 'deal', 'softwareArr', 'servicesArr', 'totalArr', 'onboardingFee', 'stage', 'trial', 'probability', 'nextAction', 'activity', 'notes'];
 
 // Undo Toast
 function UndoToast({ message, onUndo, onDismiss }) {
@@ -289,7 +293,10 @@ export default function LeadTable({ leads, onDelete, onProposal, onUpdateField, 
     if (sortCol === 'stage') { av = STAGE_ORDER.indexOf(a.stage); bv = STAGE_ORDER.indexOf(b.stage); }
     else if (sortCol === 'company') { av = a.companyName?.toLowerCase() || ''; bv = b.companyName?.toLowerCase() || ''; }
     else if (sortCol === 'deal') { av = a.dealValueMonthly || 0; bv = b.dealValueMonthly || 0; }
+    else if (sortCol === 'softwareArr') { av = a.software_arr || 0; bv = b.software_arr || 0; }
+    else if (sortCol === 'servicesArr') { av = a.services_arr || 0; bv = b.services_arr || 0; }
     else if (sortCol === 'totalArr') { av = getEffectiveLeadArr(a); bv = getEffectiveLeadArr(b); }
+    else if (sortCol === 'onboardingFee') { av = a.onboarding_fee || 0; bv = b.onboarding_fee || 0; }
     else if (sortCol === 'activity') { av = a.lastActivity || ''; bv = b.lastActivity || ''; }
     else if (sortCol === 'probability') { av = a.probability || 0; bv = b.probability || 0; }
     else { av = ''; bv = ''; }
@@ -298,8 +305,8 @@ export default function LeadTable({ leads, onDelete, onProposal, onUpdateField, 
     return 0;
   });
 
-  const Th = ({ label, col }) => (
-    <th className="px-4 py-3 text-left text-[11px] font-semibold text-ew-muted uppercase tracking-[0.12em] cursor-pointer select-none hover:text-navy transition-colors whitespace-nowrap"
+  const Th = ({ label, col, align = 'left' }) => (
+    <th className={`px-4 py-3 ${align === 'right' ? 'text-right' : 'text-left'} text-[11px] font-semibold text-ew-muted uppercase tracking-[0.12em] cursor-pointer select-none hover:text-navy transition-colors whitespace-nowrap`}
       onClick={() => col && handleSort(col)}>
       {label}{col && <SortIcon col={col} sortCol={sortCol} sortDir={sortDir} />}
     </th>
@@ -367,9 +374,24 @@ export default function LeadTable({ leads, onDelete, onProposal, onUpdateField, 
               placeholder="Set value" />
           </td>
         )}
+        {show('softwareArr') && (
+          <td className="px-4 py-3 min-w-[100px] text-right">
+            <span className="text-sm font-medium text-navy">{fmtOrDash(lead.software_arr)}</span>
+          </td>
+        )}
+        {show('servicesArr') && (
+          <td className="px-4 py-3 min-w-[100px] text-right">
+            <span className="text-sm font-medium text-navy">{fmtOrDash(lead.services_arr)}</span>
+          </td>
+        )}
         {show('totalArr') && (
-          <td className="px-4 py-3 min-w-[110px]">
-            <span className="font-bold text-[#8403C5]">{fmt(getEffectiveLeadArr(lead))}</span>
+          <td className="px-4 py-3 min-w-[110px] text-right">
+            <span className="font-bold text-[#8403C5]">{fmtOrDash(getEffectiveLeadArr(lead))}</span>
+          </td>
+        )}
+        {show('onboardingFee') && (
+          <td className="px-4 py-3 min-w-[100px] text-right">
+            <span className="text-sm font-medium text-ew-body">{fmtOrDash(lead.onboarding_fee)}</span>
           </td>
         )}
         {show('stage') && (
@@ -494,7 +516,10 @@ export default function LeadTable({ leads, onDelete, onProposal, onUpdateField, 
               {show('sdr') && <Th label="SDR" />}
               {show('plan') && <Th label="Plan" />}
               {show('deal') && <Th label="Deal value" col="deal" />}
-              {show('totalArr') && <Th label="Total ARR" col="totalArr" />}
+              {show('softwareArr') && <Th label="Software ARR" col="softwareArr" align="right" />}
+              {show('servicesArr') && <Th label="Services ARR" col="servicesArr" align="right" />}
+              {show('totalArr') && <Th label="Total ARR" col="totalArr" align="right" />}
+              {show('onboardingFee') && <Th label="Onboarding fee" col="onboardingFee" align="right" />}
               {show('stage') && <Th label="Stage" col="stage" />}
               {show('trial') && <Th label="Trial" />}
               {show('probability') && <Th label="Prob %" col="probability" />}
@@ -508,6 +533,40 @@ export default function LeadTable({ leads, onDelete, onProposal, onUpdateField, 
             </tr>
           </thead>
           <tbody>{buildRows()}</tbody>
+          <tfoot className="bg-ew-footer border-t-2 border-ew-border">
+            {(() => {
+              const t = leads.reduce((acc, l) => {
+                acc.software += (l.software_arr || 0);
+                acc.services += (l.services_arr || 0);
+                acc.totalArr += getEffectiveLeadArr(l);
+                acc.onboarding += (l.onboarding_fee || 0);
+                return acc;
+              }, { software: 0, services: 0, totalArr: 0, onboarding: 0 });
+              return (
+                <tr className="font-bold">
+                  {show('company') && <td className="px-4 py-2.5 text-xs text-navy uppercase tracking-wide">Totals</td>}
+                  {show('owner') && <td></td>}
+                  {show('sdr') && <td></td>}
+                  {show('plan') && <td></td>}
+                  {show('deal') && <td></td>}
+                  {show('softwareArr') && <td className="px-4 py-2.5 text-right text-xs text-navy">{fmtOrDash(t.software)}</td>}
+                  {show('servicesArr') && <td className="px-4 py-2.5 text-right text-xs text-navy">{fmtOrDash(t.services)}</td>}
+                  {show('totalArr') && <td className="px-4 py-2.5 text-right text-xs text-[#8403C5]">{fmtOrDash(t.totalArr)}</td>}
+                  {show('onboardingFee') && <td className="px-4 py-2.5 text-right text-xs text-ew-body">{fmtOrDash(t.onboarding)}</td>}
+                  {show('stage') && <td></td>}
+                  {show('trial') && <td></td>}
+                  {show('probability') && <td></td>}
+                  {show('expectedClose') && <td></td>}
+                  {show('nextAction') && <td></td>}
+                  {show('activity') && <td></td>}
+                  {show('notes') && <td></td>}
+                  {show('accounting') && <td></td>}
+                  {isLostView && <td></td>}
+                  <td></td>
+                </tr>
+              );
+            })()}
+          </tfoot>
         </table>
       </div>
       {undoToast && (

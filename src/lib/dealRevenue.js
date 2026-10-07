@@ -57,3 +57,24 @@ export function arrFieldUpdates(field, value, deal) {
   const next = { ...deal, [field]: numVal };
   return { [field]: numVal, total_arr: calcTotalArr(next) };
 }
+
+/**
+ * Compute aggregate revenue metrics for a list of records (leads or deals).
+ * getEffectiveArrFn is getEffectiveArr for deals, getEffectiveLeadArr for leads.
+ * Returns totals, averages, services share, and a count of records missing
+ * the new ARR breakdown (so callers can flag legacy fallback usage).
+ */
+export function computeRevenueMetrics(records, getEffectiveArrFn) {
+  const numRecords = records.length;
+  let totalSoftware = 0, totalServices = 0, totalArr = 0, totalOnboarding = 0, missingBreakdown = 0;
+  for (const r of records) {
+    totalSoftware += (r.software_arr || 0);
+    totalServices += (r.services_arr || 0);
+    totalArr += getEffectiveArrFn(r);
+    totalOnboarding += (r.onboarding_fee || r.onboardingFee || 0);
+    if (!hasNewRevenueFields(r)) missingBreakdown++;
+  }
+  const avgArr = numRecords > 0 ? totalArr / numRecords : 0;
+  const servicesShare = totalArr > 0 ? (totalServices / totalArr) * 100 : null;
+  return { numRecords, totalSoftware, totalServices, totalArr, totalOnboarding, missingBreakdown, avgArr, servicesShare };
+}
