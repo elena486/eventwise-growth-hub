@@ -43,6 +43,14 @@ export function getEffectiveOnboardingFee(deal) {
   return deal.onboarding_fee || deal.onboardingFee || 0;
 }
 
+/** Effective ARR for a Lead: total_arr if new fields populated, otherwise legacy dealValueMonthly * 12. */
+export function getEffectiveLeadArr(lead) {
+  if (!lead) return 0;
+  const arr = (lead.software_arr || 0) + (lead.services_arr || 0);
+  if (arr > 0) return arr;
+  return (lead.dealValueMonthly || 0) * 12;
+}
+
 /** Returns the updates object to persist when an ARR field changes (includes recalculated total_arr). */
 export function arrFieldUpdates(field, value, deal) {
   const numVal = parseFloat(value) || 0;

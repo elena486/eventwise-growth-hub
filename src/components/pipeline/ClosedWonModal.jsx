@@ -40,6 +40,9 @@ export default function ClosedWonModal({ lead, onClose, onConverted }) {
     accountingServiceFee: lead.accountingServiceFee || '',
     onboardingPackage: 'Success Essential',
     onboardingFee: '0',
+    software_arr: lead.software_arr || '',
+    services_arr: lead.services_arr || '',
+    onboarding_fee: lead.onboarding_fee || '',
     notes: '',
   });
 
@@ -124,6 +127,11 @@ export default function ClosedWonModal({ lead, onClose, onConverted }) {
       expected_go_live_date: handoverForm.expected_go_live_date,
     });
 
+    // Carry revenue breakdown across from the lead
+    const softwareArr = parseFloat(dealForm.software_arr) || 0;
+    const servicesArr = parseFloat(dealForm.services_arr) || 0;
+    const onboardingFeeNew = parseFloat(dealForm.onboarding_fee) || 0;
+
     // Create deal
     const deal = await base44.entities.Deal.create({
       clientId: client.id,
@@ -141,6 +149,10 @@ export default function ClosedWonModal({ lead, onClose, onConverted }) {
       onboardingPackage: dealForm.onboardingPackage,
       onboardingFee: calc.fee,
       totalFirstYearValue: calc.total,
+      software_arr: softwareArr,
+      services_arr: servicesArr,
+      onboarding_fee: onboardingFeeNew,
+      total_arr: softwareArr + servicesArr,
       status: 'Active',
       notes: dealForm.notes,
     });
@@ -273,6 +285,29 @@ export default function ClosedWonModal({ lead, onClose, onConverted }) {
                       <input type="number" className={inputCls} value={dealForm.accountingServiceFee} onChange={e => up('accountingServiceFee', e.target.value)} placeholder="e.g. 592" />
                     </div>
                   )}
+                </div>
+              </div>
+
+              {/* Revenue Breakdown (ARR) — carried from the lead */}
+              <div className="col-span-2 border-t border-ew-border pt-4">
+                <p className="text-[10px] font-semibold text-ew-muted uppercase tracking-[0.18em] mb-3">Revenue breakdown (ARR) <span className="font-normal normal-case">— carried from the lead</span></p>
+                <div className="grid grid-cols-4 gap-3">
+                  <div>
+                    <label className={labelCls}>Software ARR £/yr</label>
+                    <input type="number" className={inputCls} value={dealForm.software_arr} onChange={e => up('software_arr', e.target.value)} placeholder="0" />
+                  </div>
+                  <div>
+                    <label className={labelCls}>Services ARR £/yr</label>
+                    <input type="number" className={inputCls} value={dealForm.services_arr} onChange={e => up('services_arr', e.target.value)} placeholder="0" />
+                  </div>
+                  <div>
+                    <label className={labelCls}>Onboarding fee (one-off) £</label>
+                    <input type="number" className={inputCls} value={dealForm.onboarding_fee} onChange={e => up('onboarding_fee', e.target.value)} placeholder="0" />
+                  </div>
+                  <div>
+                    <label className={labelCls}>Total ARR (auto)</label>
+                    <p className="text-sm font-bold text-[#8403C5] pt-2">{fmt((parseFloat(dealForm.software_arr) || 0) + (parseFloat(dealForm.services_arr) || 0))}<span className="text-xs font-normal text-ew-muted ml-1">/yr</span></p>
+                  </div>
                 </div>
               </div>
 

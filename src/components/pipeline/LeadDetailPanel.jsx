@@ -14,6 +14,7 @@ import SlackActivityLog from './SlackActivityLog';
 import TrialHandoffModal from './TrialHandoffModal';
 import DraftEmailModal from './DraftEmailModal';
 import { logActivity } from '@/lib/logActivity';
+import { calcTotalArr, arrFieldUpdates } from '@/lib/dealRevenue';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -656,6 +657,12 @@ export default function LeadDetailPanel({ lead, onClose, onUpdate, onDelete, onC
 
   const f = (field) => (e) => autoSave({ [field]: e.target.value });
 
+  // Save an ARR field (software_arr / services_arr) and auto-update total_arr
+  const autoSaveArr = useCallback((field, value) => {
+    const updates = arrFieldUpdates(field, value, data);
+    autoSave(updates);
+  }, [data]);
+
   const handleStageChange = (newStage) => {
     if (newStage === 'Closed Won' && !data.converted) { onClosedWon({ ...data, stage: 'Closed Won' }); return; }
     autoSave({ stage: newStage });
@@ -1056,6 +1063,38 @@ export default function LeadDetailPanel({ lead, onClose, onUpdate, onDelete, onC
               <FieldRow label="Competitors evaluating">
                 <input className={ic} value={data.competitorsEvaluating || ''} onChange={f('competitorsEvaluating')} placeholder="e.g. Cvent, spreadsheets" />
               </FieldRow>
+            </div>
+
+            {/* Revenue Breakdown (ARR) */}
+            <div className="border-t border-ew-border pt-4 mt-4">
+              <SectionTitle>Revenue Breakdown (ARR)</SectionTitle>
+              <div className="grid grid-cols-2 gap-3">
+                <FieldRow label="Software ARR (Subscription) £/yr">
+                  <div className="relative">
+                    <span className="absolute left-3 top-2 text-sm text-ew-muted">£</span>
+                    <input type="number" className={ic + ' pl-7'} value={data.software_arr || ''} onChange={e => autoSaveArr('software_arr', e.target.value)} placeholder="0" />
+                  </div>
+                  <p className="text-[10px] text-ew-muted mt-0.5">Annual Eventwise software subscription fee</p>
+                </FieldRow>
+                <FieldRow label="Services ARR (Accounting) £/yr">
+                  <div className="relative">
+                    <span className="absolute left-3 top-2 text-sm text-ew-muted">£</span>
+                    <input type="number" className={ic + ' pl-7'} value={data.services_arr || ''} onChange={e => autoSaveArr('services_arr', e.target.value)} placeholder="0" />
+                  </div>
+                  <p className="text-[10px] text-ew-muted mt-0.5">Annual In The Loop accounting services fee (Co Pilot)</p>
+                </FieldRow>
+                <FieldRow label="Total ARR (auto)">
+                  <p className="text-base font-bold text-[#8403C5] pt-1.5">{fmt(calcTotalArr(data))}<span className="text-xs font-normal text-ew-muted ml-1">/yr</span></p>
+                  <p className="text-[10px] text-ew-muted mt-0.5">Software ARR + Services ARR</p>
+                </FieldRow>
+                <FieldRow label="Onboarding fee (one-off) £">
+                  <div className="relative">
+                    <span className="absolute left-3 top-2 text-sm text-ew-muted">£</span>
+                    <input type="number" className={ic + ' pl-7'} value={data.onboarding_fee || ''} onChange={e => autoSave({ onboarding_fee: parseFloat(e.target.value) || 0 })} placeholder="0" />
+                  </div>
+                  <p className="text-[10px] text-ew-muted mt-0.5">One-off fee — NOT included in ARR</p>
+                </FieldRow>
+              </div>
             </div>
 
             {/* Linked Deal records with revenue breakdown */}

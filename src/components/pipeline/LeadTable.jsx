@@ -6,6 +6,7 @@ import InlineCell from '@/components/shared/InlineCell';
 import ColumnSelector from '@/components/shared/ColumnSelector';
 import { useColumnVisibility } from '@/hooks/useColumnVisibility';
 import { ChevronUp, ChevronDown, ChevronsUpDown, FileText, Trash2, Check, X, Pencil, Settings2, RotateCcw, AlertTriangle, Undo2, Clock, ArrowRightLeft } from 'lucide-react';
+import { getEffectiveLeadArr } from '@/lib/dealRevenue';
 
 const STAGE_ORDER = ['New Lead', 'Contacted', 'Discovery Call', 'Demo Booked', 'Proposal Sent', 'Negotiation', 'Closed Won', 'Closed Lost', 'On Hold'];
 const PLANS = ['Starter', 'Growth', 'Scale', 'Professional', 'Custom'];
@@ -215,6 +216,7 @@ const ALL_COLUMNS = [
   { key: 'sdr', label: 'SDR' },
   { key: 'plan', label: 'Plan' },
   { key: 'deal', label: 'Deal value' },
+  { key: 'totalArr', label: 'Total ARR' },
   { key: 'stage', label: 'Stage' },
   { key: 'trial', label: 'Trial' },
   { key: 'probability', label: 'Probability %' },
@@ -225,7 +227,7 @@ const ALL_COLUMNS = [
   { key: 'accounting', label: 'Accounting service' },
 ];
 
-const DEFAULT_VISIBLE = ['company', 'owner', 'sdr', 'plan', 'deal', 'stage', 'trial', 'probability', 'nextAction', 'activity', 'notes'];
+const DEFAULT_VISIBLE = ['company', 'owner', 'sdr', 'plan', 'deal', 'totalArr', 'stage', 'trial', 'probability', 'nextAction', 'activity', 'notes'];
 
 // Undo Toast
 function UndoToast({ message, onUndo, onDismiss }) {
@@ -287,6 +289,7 @@ export default function LeadTable({ leads, onDelete, onProposal, onUpdateField, 
     if (sortCol === 'stage') { av = STAGE_ORDER.indexOf(a.stage); bv = STAGE_ORDER.indexOf(b.stage); }
     else if (sortCol === 'company') { av = a.companyName?.toLowerCase() || ''; bv = b.companyName?.toLowerCase() || ''; }
     else if (sortCol === 'deal') { av = a.dealValueMonthly || 0; bv = b.dealValueMonthly || 0; }
+    else if (sortCol === 'totalArr') { av = getEffectiveLeadArr(a); bv = getEffectiveLeadArr(b); }
     else if (sortCol === 'activity') { av = a.lastActivity || ''; bv = b.lastActivity || ''; }
     else if (sortCol === 'probability') { av = a.probability || 0; bv = b.probability || 0; }
     else { av = ''; bv = ''; }
@@ -362,6 +365,11 @@ export default function LeadTable({ leads, onDelete, onProposal, onUpdateField, 
             <InlineCell value={lead.dealValueMonthly} onSave={save(lead.id, 'dealValueMonthly')} type="number"
               displayEl={<div><p className="font-semibold text-navy">{fmt(lead.dealValueMonthly)}/mo</p><p className="text-xs text-ew-muted">{fmt((lead.dealValueMonthly || 0) * 12)}/yr</p></div>}
               placeholder="Set value" />
+          </td>
+        )}
+        {show('totalArr') && (
+          <td className="px-4 py-3 min-w-[110px]">
+            <span className="font-bold text-[#8403C5]">{fmt(getEffectiveLeadArr(lead))}</span>
           </td>
         )}
         {show('stage') && (
@@ -486,6 +494,7 @@ export default function LeadTable({ leads, onDelete, onProposal, onUpdateField, 
               {show('sdr') && <Th label="SDR" />}
               {show('plan') && <Th label="Plan" />}
               {show('deal') && <Th label="Deal value" col="deal" />}
+              {show('totalArr') && <Th label="Total ARR" col="totalArr" />}
               {show('stage') && <Th label="Stage" col="stage" />}
               {show('trial') && <Th label="Trial" />}
               {show('probability') && <Th label="Prob %" col="probability" />}
