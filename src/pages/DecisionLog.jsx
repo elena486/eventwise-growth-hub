@@ -11,7 +11,7 @@ const AREAS = ['Sprints', 'To-Do Board', 'Time Off', 'Pipeline', 'Tech Stack', '
 const STATUSES = ['Active', 'Superseded', 'Under Review'];
 const VISIBILITY = ['Team-visible', 'Elena & Chris only'];
 
-const TEAM = ['Chris', 'Elena', 'George', 'Ramesh', 'Eleanor', 'Martinique', 'Sreeja'];
+const TEAM = ['Chris', 'Elena', 'George', 'Ramesh', 'Eleanor', 'Martinique', 'Sreeja', 'Dickie'];
 
 const AREA_STYLES = {
   Sprints: 'bg-[#F3E8FF] text-[#8403C5]',

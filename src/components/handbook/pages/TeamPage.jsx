@@ -14,6 +14,7 @@ const DEFAULT_TEAM = [
   { id: 5, name: 'Ramesh',            role: 'Fractional CRO',          email: '',                     responsibilities: ['Sales strategy and pipeline oversight', 'CRO function (~2 days/week)'] },
   { id: 6, name: 'Sreeja',            role: 'QA',                      email: '',                     responsibilities: ['Product testing and bug tracking', 'Release validation', 'QA process ownership'] },
   { id: 7, name: 'David',             role: 'CFO',                     email: '',                     responsibilities: ['Financial oversight and investor reporting', 'Board management', 'Funding round management'] },
+  { id: 8, name: 'Dickie',            role: 'Team',                    email: '',                     responsibilities: [] },
 ];
 
 const ic = 'w-full text-xs border border-ew-border rounded-lg px-2 py-1.5 outline-none focus:border-[#8403C5] bg-white';

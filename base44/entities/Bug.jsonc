@@ -2,38 +2,21 @@
   "name": "Bug",
   "type": "object",
   "properties": {
-    "bugNumber": {
-      "type": "number"
-    },
     "title": {
-      "type": "string"
+      "type": "string",
+      "description": "Short title of the bug"
+    },
+    "description": {
+      "type": "string",
+      "description": "What happened, steps to reproduce, expected vs actual"
     },
     "clientId": {
-      "type": "string"
+      "type": "string",
+      "description": "Linked client ID (optional)"
     },
     "clientName": {
-      "type": "string"
-    },
-    "reportedBy": {
       "type": "string",
-      "enum": [
-        "Chris",
-        "Martinique",
-        "George",
-        "Sreeja",
-        "Elena"
-      ]
-    },
-    "category": {
-      "type": "string",
-      "enum": [
-        "Platform Bug",
-        "Integration Issue",
-        "Onboarding Issue",
-        "Data Issue",
-        "UI Issue",
-        "Other"
-      ]
+      "description": "Denormalised client name for display"
     },
     "priority": {
       "type": "string",
@@ -42,46 +25,72 @@
         "Medium",
         "High",
         "Critical"
-      ]
+      ],
+      "default": "Medium"
     },
     "status": {
       "type": "string",
       "enum": [
         "Open",
         "In Progress",
-        "Waiting on Client",
+        "Awaiting Client",
         "Resolved",
         "Closed"
-      ]
+      ],
+      "default": "Open"
     },
-    "description": {
-      "type": "string"
-    },
-    "attachmentUrl": {
-      "type": "string"
-    },
-    "attachmentName": {
-      "type": "string"
-    },
-    "dateLogged": {
+    "reportedBy": {
       "type": "string",
-      "format": "date"
-    },
-    "dateResolved": {
-      "type": "string",
-      "format": "date"
-    },
-    "resolutionNotes": {
-      "type": "string"
+      "enum": [
+        "Chris",
+        "Elena",
+        "George",
+        "Martinique",
+        "Sreeja",
+        "Ramesh",
+        "Eleanor",
+        "Dickie"
+      ],
+      "description": "Who reported the bug"
     },
     "assignedTo": {
       "type": "string",
       "enum": [
         "Chris",
+        "Elena",
+        "George",
         "Martinique",
         "Sreeja",
-        "Elena"
-      ]
+        "Ramesh",
+        "Eleanor",
+        "Dickie"
+      ],
+      "description": "Who is assigned to fix the bug"
+    },
+    "dateReported": {
+      "type": "string",
+      "format": "date",
+      "description": "Date the bug was reported"
+    },
+    "dateResolved": {
+      "type": "string",
+      "format": "date",
+      "description": "Date the bug was resolved"
+    },
+    "resolution": {
+      "type": "string",
+      "description": "How the bug was resolved"
+    },
+    "attachmentUrl": {
+      "type": "string",
+      "description": "URL of uploaded screenshot or file"
+    },
+    "attachmentName": {
+      "type": "string",
+      "description": "Original file name of attachment"
+    },
+    "notes": {
+      "type": "string"
     }
   },
   "required": [

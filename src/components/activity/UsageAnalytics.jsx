@@ -10,6 +10,7 @@ const TEAM = [
   { name: 'Sreeja', role: 'Product', expected: ['Sprints', 'To-Do Board'] },
   { name: 'Ramesh', role: 'Sales', expected: ['Sales', 'Competitors'] },
   { name: 'Eleanor', role: 'CTO', expected: ['Sprints', 'To-Do Board', 'Time & Capacity'] },
+  { name: 'Dickie', role: 'Team', expected: [] },
 ];
 
 const SECTIONS = ['Sprints', 'Time & Capacity', 'To-Do Board', 'Customer Success', 'Sales', 'Competitors', 'Time Off', 'Authentication'];
