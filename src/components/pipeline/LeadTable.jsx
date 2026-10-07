@@ -216,7 +216,7 @@ const ALL_COLUMNS = [
   { key: 'owner', label: 'Owner' },
   { key: 'sdr', label: 'SDR' },
   { key: 'plan', label: 'Plan' },
-  { key: 'deal', label: 'Deal value' },
+  { key: 'deal', label: 'Deal value (legacy)' },
   { key: 'softwareArr', label: 'Software ARR' },
   { key: 'servicesArr', label: 'Services ARR' },
   { key: 'totalArr', label: 'Total ARR' },
@@ -231,7 +231,7 @@ const ALL_COLUMNS = [
   { key: 'accounting', label: 'Accounting service' },
 ];
 
-const DEFAULT_VISIBLE = ['company', 'owner', 'sdr', 'plan', 'deal', 'softwareArr', 'servicesArr', 'totalArr', 'onboardingFee', 'stage', 'trial', 'probability', 'nextAction', 'activity', 'notes'];
+const DEFAULT_VISIBLE = ['company', 'owner', 'sdr', 'plan', 'softwareArr', 'servicesArr', 'totalArr', 'onboardingFee', 'stage', 'trial', 'probability', 'nextAction', 'activity', 'notes'];
 
 // Undo Toast
 function UndoToast({ message, onUndo, onDismiss }) {

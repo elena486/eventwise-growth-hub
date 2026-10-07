@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import TotalLeadsCard from './TotalLeadsCard';
+import { getEffectiveLeadArr } from '@/lib/dealRevenue';
 
 // Format value: full or abbreviated depending on compact mode
 function fmt(n, compact = false) {
@@ -49,9 +50,10 @@ export default function StatsRow({ leads, stageFilter, onStageFilter, panelOpen 
   const compact = panelOpen;
 
   const activeLeads = leads.filter(l => !l.converted);
-  const pipeline = activeLeads.reduce((s, l) => s + (l.dealValueMonthly || 0), 0);
-  const avg = activeLeads.length > 0 ? pipeline / activeLeads.length : 0;
-  const weighted = activeLeads.reduce((s, l) => s + ((l.dealValueMonthly || 0) * ((l.probability || 0) / 100)), 0);
+  // All figures use Total ARR (effective), never the legacy monthly value directly.
+  const totalArr = activeLeads.reduce((s, l) => s + getEffectiveLeadArr(l), 0);
+  const avg = activeLeads.length > 0 ? totalArr / activeLeads.length : 0;
+  const weighted = activeLeads.reduce((s, l) => s + (getEffectiveLeadArr(l) * ((l.probability || 0) / 100)), 0);
 
   const proposalsSent = activeLeads.filter(l => l.proposalStatus === 'Sent').length;
   const proposalsAccepted = activeLeads.filter(l => l.proposalStatus === 'Accepted').length;
@@ -63,7 +65,7 @@ export default function StatsRow({ leads, stageFilter, onStageFilter, panelOpen 
   const PLANS = ['Starter', 'Growth', 'Scale', 'Professional', 'Custom'];
   const byPlan = PLANS.map(p => ({
     plan: p,
-    value: activeLeads.filter(l => l.plan === p).reduce((s, l) => s + (l.dealValueMonthly || 0), 0),
+    value: activeLeads.filter(l => l.plan === p).reduce((s, l) => s + getEffectiveLeadArr(l), 0),
     count: activeLeads.filter(l => l.plan === p).length,
   })).filter(p => p.count > 0);
 
@@ -76,23 +78,9 @@ export default function StatsRow({ leads, stageFilter, onStageFilter, panelOpen 
     label: band.label,
     weighted: activeLeads
       .filter(l => (l.probability || 0) >= band.min && (l.probability || 0) < band.max)
-      .reduce((s, l) => s + ((l.dealValueMonthly || 0) * ((l.probability || 0) / 100)), 0),
+      .reduce((s, l) => s + (getEffectiveLeadArr(l) * ((l.probability || 0) / 100)), 0),
     count: activeLeads.filter(l => (l.probability || 0) >= band.min && (l.probability || 0) < band.max).length,
   })).filter(b => b.count > 0);
-
-  const OWNERS = ['Chris', 'Ramesh', 'George'];
-  const byOwner = OWNERS.map(o => {
-    const ownerLeads = activeLeads.filter(l => l.leadOwner === o && l.dealValueMonthly);
-    return {
-      owner: o,
-      avg: ownerLeads.length > 0 ? ownerLeads.reduce((s, l) => s + (l.dealValueMonthly || 0), 0) / ownerLeads.length : 0,
-      count: ownerLeads.length,
-    };
-  }).filter(o => o.count > 0);
-
-  const leadsWithValue = activeLeads.filter(l => l.dealValueMonthly);
-  const highest = leadsWithValue.length > 0 ? leadsWithValue.reduce((a, b) => (a.dealValueMonthly > b.dealValueMonthly ? a : b)) : null;
-  const lowest = leadsWithValue.length > 0 ? leadsWithValue.reduce((a, b) => (a.dealValueMonthly < b.dealValueMonthly ? a : b)) : null;
 
   if (collapsed) return null;
 
@@ -104,28 +92,11 @@ export default function StatsRow({ leads, stageFilter, onStageFilter, panelOpen 
             <TotalLeadsCard leads={activeLeads} stageFilter={stageFilter} onStageFilter={onStageFilter} compact={compact} />
           </div>
 
-          {/* Pipeline Value */}
-          <ExpandableCard
-            title="Pipeline value"
-            value={<>{fmt(pipeline, compact)}<span className={`font-medium text-ew-muted ${compact ? 'text-xs' : 'text-sm'}`}>/mo</span></>}
-            sub={`${fmt(pipeline * 12, compact)}/yr`}
-            compact={compact}
-          >
-            <p className="text-[10px] font-bold text-ew-muted uppercase tracking-[0.12em] mb-2">By plan</p>
-            {byPlan.length === 0 && <p className="text-xs text-ew-muted">No data</p>}
-            {byPlan.map(p => (
-              <div key={p.plan} className="flex items-center justify-between py-1">
-                <span className="text-xs text-ew-body">{p.plan} <span className="text-ew-muted">({p.count})</span></span>
-                <span className="text-xs font-semibold text-navy">{fmt(p.value)}/mo</span>
-              </div>
-            ))}
-          </ExpandableCard>
-
-          {/* Weighted Pipeline */}
+          {/* Weighted Pipeline — Total ARR × probability */}
           <ExpandableCard
             title="Weighted pipeline"
-            value={<><span className="text-[#8403C5]">{fmt(weighted, compact)}</span><span className={`font-medium text-ew-muted ${compact ? 'text-xs' : 'text-sm'}`}>/mo</span></>}
-            sub="Prob-adjusted value"
+            value={<span className="text-[#8403C5]">{fmt(weighted, compact)}</span>}
+            sub="Total ARR × probability"
             accentColor="text-[#8403C5]"
             compact={compact}
           >
@@ -134,7 +105,7 @@ export default function StatsRow({ leads, stageFilter, onStageFilter, panelOpen 
             {probBands.map(b => (
               <div key={b.label} className="flex items-center justify-between py-1">
                 <span className="text-xs text-ew-body">{b.label} <span className="text-ew-muted">({b.count})</span></span>
-                <span className="text-xs font-semibold text-[#8403C5]">{fmt(b.weighted)}/mo</span>
+                <span className="text-xs font-semibold text-[#8403C5]">{fmt(b.weighted)}</span>
               </div>
             ))}
           </ExpandableCard>
@@ -161,27 +132,6 @@ export default function StatsRow({ leads, stageFilter, onStageFilter, panelOpen 
             </div>
           </ExpandableCard>
 
-          {/* Avg Deal Value */}
-          <ExpandableCard
-            title="Avg deal value"
-            value={<>{fmt(avg, compact)}<span className={`font-medium text-ew-muted ${compact ? 'text-xs' : 'text-sm'}`}>/mo</span></>}
-            sub={`${fmt(avg * 12, compact)}/yr`}
-            compact={compact}
-          >
-            <p className="text-[10px] font-bold text-ew-muted uppercase tracking-[0.12em] mb-2">By owner</p>
-            {byOwner.map(o => (
-              <div key={o.owner} className="flex items-center justify-between py-1">
-                <span className="text-xs text-ew-body">{o.owner} <span className="text-ew-muted">({o.count})</span></span>
-                <span className="text-xs font-semibold text-navy">{fmt(o.avg)}/mo</span>
-              </div>
-            ))}
-            {(highest || lowest) && (
-              <div className="border-t border-ew-border pt-2 mt-1 space-y-1">
-                {highest && <div className="flex justify-between text-xs"><span className="text-green-600 font-medium">↑ Highest</span><span className="text-navy font-semibold truncate max-w-[130px]">{highest.companyName} — {fmt(highest.dealValueMonthly)}/mo</span></div>}
-                {lowest && <div className="flex justify-between text-xs"><span className="text-red-500 font-medium">↓ Lowest</span><span className="text-navy font-semibold truncate max-w-[130px]">{lowest.companyName} — {fmt(lowest.dealValueMonthly)}/mo</span></div>}
-              </div>
-            )}
-          </ExpandableCard>
         </div>
     </div>
   );

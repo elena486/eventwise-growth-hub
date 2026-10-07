@@ -10,22 +10,34 @@ function fmt(n) {
  * Shared summary strip for the top of the Pipeline and Deals pages.
  * Computes live metrics from the given records (already filtered/searched).
  * getEffectiveArrFn: getEffectiveLeadArr for leads, getEffectiveArr for deals.
+ *
+ * Props:
+ *  - records: the records currently in view (filtered/searched)
+ *  - getEffectiveArrFn
+ *  - recordLabel
+ *  - overallMissingCount: count of records missing the breakdown across ALL records (not just this view)
+ *  - onFilterMissing: callback to filter the list to only records missing the breakdown (optional)
+ *  - missingFilterActive: true when the missing-breakdown filter is currently applied
+ *  - onClearMissingFilter: callback to clear the missing-breakdown filter (optional)
  */
-export default function RevenueSummaryStrip({ records, getEffectiveArrFn, recordLabel = 'records' }) {
+export default function RevenueSummaryStrip({ records, getEffectiveArrFn, recordLabel = 'records', overallMissingCount, onFilterMissing, missingFilterActive, onClearMissingFilter }) {
   const m = computeRevenueMetrics(records, getEffectiveArrFn);
 
   const cards = [
     { label: 'Total Software ARR', value: fmt(m.totalSoftware) },
     { label: 'Total Services ARR', value: fmt(m.totalServices) },
-    { label: 'Total ARR', value: fmt(m.totalArr), highlight: true },
+    { label: 'Unsplit (legacy value)', value: fmt(m.totalUnsplit), sub: 'Fallback, not broken down' },
+    { label: 'Total ARR', value: fmt(m.totalArr), highlight: true, sub: 'Software + Services + Unsplit' },
     { label: 'Total Onboarding (one-off)', value: fmt(m.totalOnboarding), sub: 'Not in ARR' },
     { label: recordLabel, value: m.numRecords, sub: `Avg ARR: ${fmt(m.avgArr)}` },
-    { label: 'Services share of ARR', value: m.servicesShare != null ? Math.round(m.servicesShare) + '%' : '—', sub: 'Software vs accounting split' },
+    { label: 'Services share of ARR', value: m.servicesShare != null ? Math.round(m.servicesShare) + '%' : '—', sub: 'Of split ARR only' },
   ];
+
+  const showBanner = m.missingBreakdown > 0 || (overallMissingCount != null && overallMissingCount > 0);
 
   return (
     <div>
-      <div className="grid grid-cols-6 gap-3 mb-4">
+      <div className="grid grid-cols-2 md:grid-cols-4 xl:grid-cols-7 gap-3 mb-4">
         {cards.map(c => (
           <div key={c.label} className="bg-white border border-ew-border rounded-xl p-4">
             <p className="text-[10px] font-medium text-ew-muted uppercase tracking-[0.1em] mb-1">{c.label}</p>
@@ -34,10 +46,22 @@ export default function RevenueSummaryStrip({ records, getEffectiveArrFn, record
           </div>
         ))}
       </div>
-      {m.missingBreakdown > 0 && (
-        <div className="mb-4 flex items-center gap-2 text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+      {showBanner && (
+        <div className="mb-4 flex items-center gap-2 text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 flex-wrap">
           <span>⚠</span>
-          <span><strong>{m.missingBreakdown}</strong> {recordLabel.toLowerCase()} missing revenue breakdown — Total ARR uses the legacy deal value fallback for these.</span>
+          <span>
+            <strong>{m.missingBreakdown}</strong> in this view{overallMissingCount != null && <>, <strong>{overallMissingCount}</strong> overall</>} are missing the revenue breakdown — Total ARR uses the legacy deal value fallback for these.
+          </span>
+          {onFilterMissing && !missingFilterActive && (
+            <button onClick={onFilterMissing} className="font-semibold text-amber-800 underline hover:text-amber-900 whitespace-nowrap">
+              Show only these →
+            </button>
+          )}
+          {missingFilterActive && onClearMissingFilter && (
+            <button onClick={onClearMissingFilter} className="font-semibold text-amber-800 underline hover:text-amber-900 whitespace-nowrap">
+              Clear filter
+            </button>
+          )}
         </div>
       )}
     </div>

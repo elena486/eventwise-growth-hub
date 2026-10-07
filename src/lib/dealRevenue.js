@@ -76,5 +76,8 @@ export function computeRevenueMetrics(records, getEffectiveArrFn) {
   }
   const avgArr = numRecords > 0 ? totalArr / numRecords : 0;
   const servicesShare = totalArr > 0 ? (totalServices / totalArr) * 100 : null;
-  return { numRecords, totalSoftware, totalServices, totalArr, totalOnboarding, missingBreakdown, avgArr, servicesShare };
+  // Unsplit = Total ARR that comes from the legacy fallback (not broken down into Software/Services).
+  // Software + Services + Unsplit = Total ARR exactly.
+  const totalUnsplit = totalArr - totalSoftware - totalServices;
+  return { numRecords, totalSoftware, totalServices, totalUnsplit, totalArr, totalOnboarding, missingBreakdown, avgArr, servicesShare };
 }

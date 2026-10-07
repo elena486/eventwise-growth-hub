@@ -11,6 +11,30 @@ import DealDetailPanel from '@/components/deals/DealDetailPanel';
 import AddHistoricalDealModal from '@/components/deals/AddHistoricalDealModal';
 import { calcTotalArr, getEffectiveArr, getEffectiveMrr, hasNewRevenueFields, getEffectiveOnboardingFee } from '@/lib/dealRevenue';
 import RevenueSummaryStrip from '@/components/shared/RevenueSummaryStrip';
+import ColumnSelector from '@/components/shared/ColumnSelector';
+import { useColumnVisibility } from '@/hooks/useColumnVisibility';
+
+const ALL_DEAL_COLUMNS = [
+  { key: 'client', label: 'Client', locked: true },
+  { key: 'plan', label: 'Plan' },
+  { key: 'monthly', label: 'Monthly (legacy)' },
+  { key: 'annual', label: 'Annual (legacy)' },
+  { key: 'softwareArr', label: 'Software ARR' },
+  { key: 'servicesArr', label: 'Services ARR' },
+  { key: 'totalArr', label: 'Total ARR' },
+  { key: 'onboardingFee', label: 'Onboarding fee' },
+  { key: 'year1', label: 'Year 1 total' },
+  { key: 'accounting', label: 'Accounting service' },
+  { key: 'startDate', label: 'Start date' },
+  { key: 'endDate', label: 'End date' },
+  { key: 'status', label: 'Status' },
+];
+const DEFAULT_DEAL_VISIBLE = ['client', 'plan', 'softwareArr', 'servicesArr', 'totalArr', 'onboardingFee', 'year1', 'accounting', 'startDate', 'endDate', 'status'];
+
+// A deal is missing the breakdown when neither Software ARR nor Services ARR is populated.
+function isMissingDealBreakdown(deal) {
+  return !((deal.software_arr || 0) > 0 || (deal.services_arr || 0) > 0);
+}
 
 function fmt(n) {
   if (!n && n !== 0) return '—';
@@ -162,7 +186,13 @@ export default function Deals({ onRenewalProposal, onViewClient, onNavigate, foc
   const [addDealSuccess, setAddDealSuccess] = useState(null);
   const [expanded, setExpanded] = useState(null);
   const [filter, setFilter] = useState('Active');
+  const [missingOnly, setMissingOnly] = useState(false);
   const [selectedDeal, setSelectedDeal] = useState(null);
+  const { visible: visibleDealCols, isVisible: showDeal, toggle: toggleDealCol, reset: resetDealCols } = useColumnVisibility({
+    viewKey: 'deals-list',
+    columns: ALL_DEAL_COLUMNS,
+    defaultVisible: DEFAULT_DEAL_VISIBLE,
+  });
 
   const [editDeal, setEditDeal] = useState(null);
   const [renewDeal, setRenewDeal] = useState(null);
@@ -350,7 +380,14 @@ export default function Deals({ onRenewalProposal, onViewClient, onNavigate, foc
   const sortedChurned = [...churnedDeals].sort((a, b) =>
     (b.subscriptionStartDate || '').localeCompare(a.subscriptionStartDate || '')
   );
-  const displayDeals = applySort(filter === 'Churned' ? sortedChurned : sortedActive);
+  const displayDeals = applySort(filter === 'Churned' ? sortedChurned : sortedActive)
+    .filter(d => !missingOnly || isMissingDealBreakdown(d));
+
+  // Overall missing-breakdown count across all active (non-churned) deals.
+  const overallMissingCount = activeDeals.filter(isMissingDealBreakdown).length;
+
+  // Visible column count (for colSpans) = visible data cols + churned cols (3) + actions (1)
+  const visibleDealCount = ALL_DEAL_COLUMNS.filter(c => showDeal(c.key)).length + (filter === 'Churned' ? 3 : 0) + 1;
 
   const mrr = activeDeals.reduce((s, d) => s + getEffectiveMrr(d), 0);
   const arr = activeDeals.reduce((s, d) => s + getEffectiveArr(d), 0);
@@ -389,6 +426,10 @@ export default function Deals({ onRenewalProposal, onViewClient, onNavigate, foc
         records={displayDeals}
         getEffectiveArrFn={getEffectiveArr}
         recordLabel="Deals"
+        overallMissingCount={overallMissingCount}
+        onFilterMissing={() => setMissingOnly(true)}
+        missingFilterActive={missingOnly}
+        onClearMissingFilter={() => setMissingOnly(false)}
       />
 
       {/* Stats */}
@@ -411,16 +452,25 @@ export default function Deals({ onRenewalProposal, onViewClient, onNavigate, foc
       </div>
 
       {/* Filter tabs */}
-      <div className="flex items-center gap-1.5 mb-4 justify-between">
-        <div className="flex items-center gap-1.5">
+      <div className="flex items-center gap-1.5 mb-4 justify-between flex-wrap">
+        <div className="flex items-center gap-1.5 flex-wrap">
         {['Active', 'Churned'].map(f => (
           <button key={f} onClick={() => setFilter(f)}
             className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors border ${filter === f ? 'bg-navy text-white border-navy' : 'bg-white border-ew-border text-ew-body hover:bg-ew-bg'}`}>
             {f} {f === 'Churned' && churnedDeals.length > 0 && <span className="ml-1 text-xs opacity-70">({churnedDeals.length})</span>}
           </button>
         ))}
+        <span className="w-px h-5 bg-ew-border mx-1" />
+        <button
+          onClick={() => setMissingOnly(v => !v)}
+          className={`px-3 py-2 text-sm font-medium rounded-lg transition-colors border ${missingOnly ? 'bg-amber-500 text-white border-amber-500' : 'bg-white border-ew-border text-ew-body hover:bg-ew-bg'}`}
+        >
+          Missing breakdown {missingOnly && `(${overallMissingCount})`}
+        </button>
+        {missingOnly && <button onClick={() => setMissingOnly(false)} className="text-xs text-ew-muted hover:text-navy underline">Clear</button>}
         </div>
         <div className="flex items-center gap-2">
+          <ColumnSelector columns={ALL_DEAL_COLUMNS} visible={visibleDealCols} onToggle={toggleDealCol} onReset={resetDealCols} />
           <button onClick={handleExportCSV}
             className="h-9 px-3 flex items-center gap-1.5 text-sm font-medium border border-ew-border bg-white text-ew-body hover:bg-ew-bg rounded-lg transition-colors">
             <Download className="w-3.5 h-3.5" /> Export CSV
@@ -451,19 +501,19 @@ export default function Deals({ onRenewalProposal, onViewClient, onNavigate, foc
           <table className="w-full text-sm">
             <thead className="bg-ew-footer border-b border-ew-border">
               <tr>
-                <th className="px-4 py-3 text-left text-[11px] font-semibold text-ew-muted uppercase tracking-[0.12em]">Client</th>
-                <th className="px-4 py-3 text-left text-[11px] font-semibold text-ew-muted uppercase tracking-[0.12em]">Plan</th>
-                <th className="px-4 py-3 text-left text-[11px] font-semibold text-ew-muted uppercase tracking-[0.12em]">Monthly</th>
-                <th className="px-4 py-3 text-right text-[11px] font-semibold text-ew-muted uppercase tracking-[0.12em] cursor-pointer hover:text-navy" onClick={() => handleSort('annual')}>Annual {sortCol === 'annual' ? (sortDir === 'asc' ? '▴' : '▾') : '▾'}</th>
-                <th className="px-4 py-3 text-right text-[11px] font-semibold text-ew-muted uppercase tracking-[0.12em] cursor-pointer hover:text-navy" onClick={() => handleSort('softwareArr')}>Software ARR {sortCol === 'softwareArr' ? (sortDir === 'asc' ? '▴' : '▾') : ''}</th>
-                <th className="px-4 py-3 text-right text-[11px] font-semibold text-ew-muted uppercase tracking-[0.12em] cursor-pointer hover:text-navy" onClick={() => handleSort('servicesArr')}>Services ARR {sortCol === 'servicesArr' ? (sortDir === 'asc' ? '▴' : '▾') : ''}</th>
-                <th className="px-4 py-3 text-right text-[11px] font-semibold text-ew-muted uppercase tracking-[0.12em] cursor-pointer hover:text-navy" onClick={() => handleSort('totalArr')}>Total ARR {sortCol === 'totalArr' ? (sortDir === 'asc' ? '▴' : '▾') : ''}</th>
-                <th className="px-4 py-3 text-right text-[11px] font-semibold text-ew-muted uppercase tracking-[0.12em] cursor-pointer hover:text-navy" onClick={() => handleSort('onboardingFee')}>Onboarding fee {sortCol === 'onboardingFee' ? (sortDir === 'asc' ? '▴' : '▾') : ''}</th>
-                <th className="px-4 py-3 text-left text-[11px] font-semibold text-ew-muted uppercase tracking-[0.12em]">Year 1 total</th>
-                <th className="px-4 py-3 text-left text-[11px] font-semibold text-ew-muted uppercase tracking-[0.12em]">Accounting service</th>
-                <th className="px-4 py-3 text-left text-[11px] font-semibold text-ew-muted uppercase tracking-[0.12em]">Start date</th>
-                <th className="px-4 py-3 text-left text-[11px] font-semibold text-ew-muted uppercase tracking-[0.12em]">End date</th>
-                <th className="px-4 py-3 text-left text-[11px] font-semibold text-ew-muted uppercase tracking-[0.12em]">Status</th>
+                {showDeal('client') && <th className="px-4 py-3 text-left text-[11px] font-semibold text-ew-muted uppercase tracking-[0.12em]">Client</th>}
+                {showDeal('plan') && <th className="px-4 py-3 text-left text-[11px] font-semibold text-ew-muted uppercase tracking-[0.12em]">Plan</th>}
+                {showDeal('monthly') && <th className="px-4 py-3 text-left text-[11px] font-semibold text-ew-muted uppercase tracking-[0.12em]">Monthly</th>}
+                {showDeal('annual') && <th className="px-4 py-3 text-right text-[11px] font-semibold text-ew-muted uppercase tracking-[0.12em] cursor-pointer hover:text-navy" onClick={() => handleSort('annual')}>Annual {sortCol === 'annual' ? (sortDir === 'asc' ? '▴' : '▾') : '▾'}</th>}
+                {showDeal('softwareArr') && <th className="px-4 py-3 text-right text-[11px] font-semibold text-ew-muted uppercase tracking-[0.12em] cursor-pointer hover:text-navy" onClick={() => handleSort('softwareArr')}>Software ARR {sortCol === 'softwareArr' ? (sortDir === 'asc' ? '▴' : '▾') : ''}</th>}
+                {showDeal('servicesArr') && <th className="px-4 py-3 text-right text-[11px] font-semibold text-ew-muted uppercase tracking-[0.12em] cursor-pointer hover:text-navy" onClick={() => handleSort('servicesArr')}>Services ARR {sortCol === 'servicesArr' ? (sortDir === 'asc' ? '▴' : '▾') : ''}</th>}
+                {showDeal('totalArr') && <th className="px-4 py-3 text-right text-[11px] font-semibold text-ew-muted uppercase tracking-[0.12em] cursor-pointer hover:text-navy" onClick={() => handleSort('totalArr')}>Total ARR {sortCol === 'totalArr' ? (sortDir === 'asc' ? '▴' : '▾') : ''}</th>}
+                {showDeal('onboardingFee') && <th className="px-4 py-3 text-right text-[11px] font-semibold text-ew-muted uppercase tracking-[0.12em] cursor-pointer hover:text-navy" onClick={() => handleSort('onboardingFee')}>Onboarding fee {sortCol === 'onboardingFee' ? (sortDir === 'asc' ? '▴' : '▾') : ''}</th>}
+                {showDeal('year1') && <th className="px-4 py-3 text-left text-[11px] font-semibold text-ew-muted uppercase tracking-[0.12em]">Year 1 total</th>}
+                {showDeal('accounting') && <th className="px-4 py-3 text-left text-[11px] font-semibold text-ew-muted uppercase tracking-[0.12em]">Accounting service</th>}
+                {showDeal('startDate') && <th className="px-4 py-3 text-left text-[11px] font-semibold text-ew-muted uppercase tracking-[0.12em]">Start date</th>}
+                {showDeal('endDate') && <th className="px-4 py-3 text-left text-[11px] font-semibold text-ew-muted uppercase tracking-[0.12em]">End date</th>}
+                {showDeal('status') && <th className="px-4 py-3 text-left text-[11px] font-semibold text-ew-muted uppercase tracking-[0.12em]">Status</th>}
                 {filter === 'Churned' && ['Churn date', 'Churn reason', 'Churn notes'].map(h => (
                   <th key={h} className="px-4 py-3 text-left text-[11px] font-semibold text-ew-muted uppercase tracking-[0.12em]">{h}</th>
                 ))}
@@ -475,57 +525,83 @@ export default function Deals({ onRenewalProposal, onViewClient, onNavigate, foc
                 <React.Fragment key={deal.id}>
                   <tr className={`group border-b border-ew-border hover:bg-navy/[0.02] transition-colors cursor-pointer ${selectedDeal?.id === deal.id ? 'bg-[#F3E8FF] border-l-2 border-l-[#8403C5]' : expanded === deal.id ? 'bg-navy/[0.02]' : i % 2 === 1 ? 'bg-[#FAFBFE]' : 'bg-white'}`}
                     onClick={() => setSelectedDeal(deal)}>
+                    {showDeal('client') && (
                     <td className="px-4 py-3 min-w-[140px]">
                       <div className="flex flex-col gap-0.5">
                         <InlineCell value={deal.clientName} onSave={save(deal.id, 'clientName')} className="font-semibold text-navy" />
                         {deal.backdated && <HistoricalChip />}
                       </div>
                     </td>
+                    )}
+                    {showDeal('plan') && (
                     <td className="px-4 py-3">
                       <InlineCell value={deal.plan} onSave={save(deal.id, 'plan')} type="select" options={['Starter', 'Professional', 'Business']} className="text-ew-body" />
                     </td>
+                    )}
+                    {showDeal('monthly') && (
                     <td className="px-4 py-3 min-w-[100px]">
                       <InlineCell value={deal.monthlyValue} onSave={save(deal.id, 'monthlyValue')} type="number" displayEl={<span className="font-semibold text-navy">{fmt(deal.monthlyValue)}</span>} placeholder="Set value" />
                     </td>
+                    )}
+                    {showDeal('annual') && (
                     <td className="px-4 py-3 min-w-[110px] text-right" onClick={e => e.stopPropagation()}>
                       <button onClick={() => setExpanded(prev => prev === deal.id ? null : deal.id)} className="inline-flex items-center gap-1 font-semibold text-navy hover:text-navy/70 transition-colors">
                         {fmt(deal.annualValue || (deal.monthlyValue || 0) * 12)}
                         {expanded === deal.id ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5" />}
                       </button>
                     </td>
+                    )}
+                    {showDeal('softwareArr') && (
                     <td className="px-4 py-3 min-w-[110px] text-right">
                       <InlineCell value={deal.software_arr} onSave={save(deal.id, 'software_arr')} type="number" displayEl={<span className="font-semibold text-navy">{fmtOrDash(deal.software_arr)}</span>} placeholder="0" />
                     </td>
+                    )}
+                    {showDeal('servicesArr') && (
                     <td className="px-4 py-3 min-w-[110px] text-right">
                       <InlineCell value={deal.services_arr} onSave={save(deal.id, 'services_arr')} type="number" displayEl={<span className="font-semibold text-navy">{fmtOrDash(deal.services_arr)}</span>} placeholder="0" />
                     </td>
+                    )}
+                    {showDeal('totalArr') && (
                     <td className="px-4 py-3 min-w-[110px] text-right">
                       <span className="font-bold text-[#8403C5]">{fmtOrDash(getEffectiveArr(deal))}</span>
                     </td>
+                    )}
+                    {showDeal('onboardingFee') && (
                     <td className="px-4 py-3 min-w-[110px] text-right">
                       <InlineCell value={deal.onboarding_fee} onSave={save(deal.id, 'onboarding_fee')} type="number" displayEl={<span className="font-medium text-ew-body">{fmtOrDash(deal.onboarding_fee || deal.onboardingFee)}</span>} placeholder="0" />
                     </td>
+                    )}
+                    {showDeal('year1') && (
                     <td className="px-4 py-3">
                       <InlineCell value={deal.totalFirstYearValue} readOnly displayEl={<span className="font-semibold text-navy">{fmt(deal.totalFirstYearValue)}</span>} />
                     </td>
+                    )}
+                    {showDeal('accounting') && (
                     <td className="px-4 py-3 min-w-[160px]">
                       <span className="text-xs text-ew-body">{deal.accountingService || (deal.accountingServiceIncluded ? 'Included' : 'Not included')}</span>
                       {deal.accountingService === 'Separate fee' && deal.accountingServiceFee > 0 && (
                         <p className="text-xs text-ew-muted">{fmt(deal.accountingServiceFee)}/mo</p>
                       )}
                     </td>
+                    )}
+                    {showDeal('startDate') && (
                     <td className="px-4 py-3 min-w-[110px]">
                       <InlineCell value={deal.subscriptionStartDate || ''} onSave={save(deal.id, 'subscriptionStartDate')} type="date" displayEl={<span className="text-ew-body">{fmtDate(deal.subscriptionStartDate)}</span>} placeholder="Set date" />
                     </td>
+                    )}
+                    {showDeal('endDate') && (
                     <td className="px-4 py-3 min-w-[130px]">
                       <InlineCell value={deal.subscriptionEndDate || ''} onSave={save(deal.id, 'subscriptionEndDate')} type="date"
                         displayEl={<span><span className="text-ew-body">{fmtDate(deal.subscriptionEndDate)}</span><RenewalBadge date={deal.subscriptionEndDate} /></span>}
                         placeholder="Set date" />
                     </td>
+                    )}
+                    {showDeal('status') && (
                     <td className="px-4 py-3">
                       <InlineCell value={deal.status} onSave={save(deal.id, 'status')} type="select" options={['Active', 'Up for Renewal', 'Churned']}
                         displayEl={<span className={`text-[11px] font-semibold px-2.5 py-1 rounded-full ${STATUS_STYLES[deal.status] || 'bg-gray-100 text-gray-600'}`}>{deal.status}</span>} />
                     </td>
+                    )}
                     {filter === 'Churned' && (
                       <>
                         <td className="px-4 py-3 text-sm text-ew-body whitespace-nowrap">{fmtDate(deal.churnDate)}</td>
@@ -551,14 +627,14 @@ export default function Deals({ onRenewalProposal, onViewClient, onNavigate, foc
                   </tr>
                   {expanded === deal.id && (
                     <tr className="border-b border-ew-border bg-navy/[0.01]" onClick={e => e.stopPropagation()}>
-                      <td colSpan={filter === 'Churned' ? 17 : 14} className="px-4 pb-3"><ValueBreakdown deal={deal} /></td>
+                      <td colSpan={visibleDealCount} className="px-4 pb-3"><ValueBreakdown deal={deal} /></td>
                     </tr>
                   )}
                 </React.Fragment>
               ))}
               {displayDeals.length === 0 && (
                 <tr>
-                  <td colSpan={filter === 'Churned' ? 17 : 14} className="px-4 py-16 text-center">
+                  <td colSpan={visibleDealCount} className="px-4 py-16 text-center">
                     <div className="text-4xl mb-3">🤝</div>
                     <p className="text-sm text-[#6B7280]">{filter === 'Churned' ? 'No churned deals.' : 'No deals yet. Close your first lead to get started.'}</p>
                   </td>
@@ -576,14 +652,21 @@ export default function Deals({ onRenewalProposal, onViewClient, onNavigate, foc
                 }, { software: 0, services: 0, totalArr: 0, onboarding: 0 });
                 return (
                   <tr className="font-bold">
-                    <td className="px-4 py-2.5 text-xs text-navy uppercase tracking-wide">Totals</td>
-                    <td></td><td></td><td></td>
-                    <td className="px-4 py-2.5 text-right text-xs text-navy">{fmtOrDash(t.software)}</td>
-                    <td className="px-4 py-2.5 text-right text-xs text-navy">{fmtOrDash(t.services)}</td>
-                    <td className="px-4 py-2.5 text-right text-xs text-[#8403C5]">{fmtOrDash(t.totalArr)}</td>
-                    <td className="px-4 py-2.5 text-right text-xs text-ew-body">{fmtOrDash(t.onboarding)}</td>
-                    <td></td><td></td><td></td><td></td><td></td><td></td>
+                    {showDeal('client') && <td className="px-4 py-2.5 text-xs text-navy uppercase tracking-wide">Totals</td>}
+                    {showDeal('plan') && <td></td>}
+                    {showDeal('monthly') && <td></td>}
+                    {showDeal('annual') && <td></td>}
+                    {showDeal('softwareArr') && <td className="px-4 py-2.5 text-right text-xs text-navy">{fmtOrDash(t.software)}</td>}
+                    {showDeal('servicesArr') && <td className="px-4 py-2.5 text-right text-xs text-navy">{fmtOrDash(t.services)}</td>}
+                    {showDeal('totalArr') && <td className="px-4 py-2.5 text-right text-xs text-[#8403C5]">{fmtOrDash(t.totalArr)}</td>}
+                    {showDeal('onboardingFee') && <td className="px-4 py-2.5 text-right text-xs text-ew-body">{fmtOrDash(t.onboarding)}</td>}
+                    {showDeal('year1') && <td></td>}
+                    {showDeal('accounting') && <td></td>}
+                    {showDeal('startDate') && <td></td>}
+                    {showDeal('endDate') && <td></td>}
+                    {showDeal('status') && <td></td>}
                     {filter === 'Churned' && <><td></td><td></td><td></td></>}
+                    <td></td>
                   </tr>
                 );
               })()}

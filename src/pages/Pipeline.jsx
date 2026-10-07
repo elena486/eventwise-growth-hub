@@ -43,6 +43,12 @@ function getMonthOptions() {
   return opts;
 }
 
+// A lead is "missing the breakdown" when neither Software ARR nor Services ARR is populated.
+// Total ARR then falls back to the legacy monthly value × 12.
+function isMissingBreakdown(lead) {
+  return !((lead.software_arr || 0) > 0 || (lead.services_arr || 0) > 0);
+}
+
 export default function Pipeline({ onProposalHandoff, onViewDeals, focusLeadId, onFocusConsumed }) {
   const [leads, setLeads] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -60,6 +66,7 @@ export default function Pipeline({ onProposalHandoff, onViewDeals, focusLeadId, 
   const [activePipeline, setActivePipeline] = useState('warm');
   const [moveTarget, setMoveTarget] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
+  const [missingOnly, setMissingOnly] = useState(false);
   const [statsCollapsed, setStatsCollapsed] = useState(() => {
     try { return localStorage.getItem(STATS_COLLAPSED_KEY) === 'true'; } catch { return false; }
   });
@@ -306,10 +313,15 @@ export default function Pipeline({ onProposalHandoff, onViewDeals, focusLeadId, 
   // Month filter
   if (monthFilter) baseLeads = baseLeads.filter(l => l.expectedCloseMonth === monthFilter);
 
-  // Stage filter — bypassed when searching (search shows across all stages)
-  const displayLeads = searchQuery.trim()
-    ? pipelineLeads.filter(l => !l.converted && searchMatches(l, searchQuery))
-    : (stageFilter ? baseLeads.filter(l => l.stage === stageFilter) : baseLeads);
+  // Stage filter — bypassed when searching (search shows across all stages).
+  // Closed Lost is never included in the active pipeline view (even when searching).
+  const displayLeads = (searchQuery.trim()
+    ? pipelineLeads.filter(l => !l.converted && l.stage !== 'Closed Lost' && searchMatches(l, searchQuery))
+    : (stageFilter ? baseLeads.filter(l => l.stage === stageFilter) : baseLeads)
+  ).filter(l => !missingOnly || isMissingBreakdown(l));
+
+  // Overall missing-breakdown count: all non-converted, non-lost leads across both pipelines.
+  const overallMissingCount = leads.filter(l => !l.converted && l.stage !== 'Closed Lost' && isMissingBreakdown(l)).length;
 
   // Stats leads (apply prob + month but not stage filter)
   const filteredStatsLeads = statsLeads
@@ -390,6 +402,10 @@ export default function Pipeline({ onProposalHandoff, onViewDeals, focusLeadId, 
           records={displayLeads.filter(l => !l.converted)}
           getEffectiveArrFn={getEffectiveLeadArr}
           recordLabel="Pipeline leads"
+          overallMissingCount={overallMissingCount}
+          onFilterMissing={() => setMissingOnly(true)}
+          missingFilterActive={missingOnly}
+          onClearMissingFilter={() => setMissingOnly(false)}
         />
 
         {/* Collapsible filters + stats — toggle button is the first item */}
@@ -471,6 +487,18 @@ export default function Pipeline({ onProposalHandoff, onViewDeals, focusLeadId, 
                   </div>
                   {(probFilter > 0 || monthFilter) && (
                     <button onClick={() => { setProbFilter(0); setMonthFilter(''); }} className="text-xs text-ew-muted hover:text-navy underline">Clear filters</button>
+                  )}
+                  <span className="w-px h-4 bg-ew-border mx-1" />
+                  <button
+                    onClick={() => setMissingOnly(v => !v)}
+                    className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-colors border ${
+                      missingOnly ? 'bg-amber-500 text-white border-amber-500' : 'bg-white border-ew-border text-ew-body hover:bg-ew-bg'
+                    }`}
+                  >
+                    Missing breakdown {missingOnly && `(${overallMissingCount})`}
+                  </button>
+                  {missingOnly && (
+                    <button onClick={() => setMissingOnly(false)} className="text-xs text-ew-muted hover:text-navy underline">Clear</button>
                   )}
                 </div>
 
