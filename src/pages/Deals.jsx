@@ -189,7 +189,7 @@ export default function Deals({ onRenewalProposal, onViewClient, onNavigate, foc
   const [missingOnly, setMissingOnly] = useState(false);
   const [selectedDeal, setSelectedDeal] = useState(null);
   const { visible: visibleDealCols, isVisible: showDeal, toggle: toggleDealCol, reset: resetDealCols } = useColumnVisibility({
-    viewKey: 'deals-list',
+    viewKey: 'deals-list-v2',
     columns: ALL_DEAL_COLUMNS,
     defaultVisible: DEFAULT_DEAL_VISIBLE,
   });

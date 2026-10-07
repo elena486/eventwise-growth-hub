@@ -251,7 +251,7 @@ export default function LeadTable({ leads, onDelete, onProposal, onUpdateField, 
   const [sortDir, setSortDir] = useState('asc');
   const [deletingId, setDeletingId] = useState(null);
   const { visible: visibleCols, isVisible: show, toggle: toggleCol, reset: resetCols } = useColumnVisibility({
-    viewKey: 'pipeline-leads',
+    viewKey: 'pipeline-leads-v2',
     columns: ALL_COLUMNS,
     defaultVisible: DEFAULT_VISIBLE,
   });
