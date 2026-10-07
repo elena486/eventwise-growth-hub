@@ -7,6 +7,7 @@ import {
   Check, ChevronDown, ChevronUp, AlertTriangle, Star, Link
 } from 'lucide-react';
 import MultiFileUpload from '@/components/shared/MultiFileUpload';
+import ProspectDealsSection from './ProspectDealsSection';
 import StageBadge from './Stagebadge';
 import PreDemoFormTab from './PreDemoFormTab';
 import SlackActivityLog from './SlackActivityLog';
@@ -1056,6 +1057,16 @@ export default function LeadDetailPanel({ lead, onClose, onUpdate, onDelete, onC
                 <input className={ic} value={data.competitorsEvaluating || ''} onChange={f('competitorsEvaluating')} placeholder="e.g. Cvent, spreadsheets" />
               </FieldRow>
             </div>
+
+            {/* Linked Deal records with revenue breakdown */}
+            {!isNew && (
+              <ProspectDealsSection
+                leadId={data.id}
+                onNavigateToDeals={() => {
+                  window.dispatchEvent(new CustomEvent('ew-focus-navigate', { detail: { tab: 'deals' } }));
+                }}
+              />
+            )}
           </div>
         )}
 

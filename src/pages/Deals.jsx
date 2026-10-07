@@ -9,6 +9,7 @@ import DealEditModal from '@/components/deals/DealEditModal';
 import RenewModal from '@/components/deals/RenewModal';
 import DealDetailPanel from '@/components/deals/DealDetailPanel';
 import AddHistoricalDealModal from '@/components/deals/AddHistoricalDealModal';
+import { calcTotalArr, getEffectiveArr, getEffectiveMrr, hasNewRevenueFields, getEffectiveOnboardingFee } from '@/lib/dealRevenue';
 
 function fmt(n) {
   if (!n && n !== 0) return '—';
@@ -56,16 +57,29 @@ function HistoricalChip() {
 function ValueBreakdown({ deal }) {
   const annual = deal.annualValue || (deal.monthlyValue || 0) * 12;
   const acctg = deal.accountingServiceIncluded ? (deal.accountingServiceValue || 0) : 0;
-  const fee = deal.onboardingFee || 0;
+  const fee = getEffectiveOnboardingFee(deal);
   const total = deal.totalFirstYearValue || (annual + acctg + fee);
   const year2 = annual + acctg;
+  const totalArr = calcTotalArr(deal);
+  const isNew = hasNewRevenueFields(deal);
   return (
     <div className="mt-2 ml-2 p-3 bg-ew-bg rounded-lg border border-ew-border text-xs space-y-1.5">
-      <div className="flex justify-between"><span className="text-ew-muted">Software</span><span className="font-medium text-navy">{fmt(deal.monthlyValue)}/mo · {fmt(annual)}/yr</span></div>
-      <div className="flex justify-between"><span className="text-ew-muted">Accounting service</span><span className="font-medium text-navy">{deal.accountingServiceIncluded ? `${fmt(acctg)}/yr` : 'Not included'}</span></div>
-      <div className="flex justify-between"><span className="text-ew-muted">Onboarding fee</span><span className="font-medium text-navy">{fee > 0 ? `${fmt(fee)} (one-off)` : '£0 (included)'}</span></div>
-      <div className="flex justify-between border-t border-ew-border pt-1.5 mt-1.5"><span className="font-semibold text-navy">Total year one</span><span className="font-bold text-navy">{fmt(total)}</span></div>
-      <div className="flex justify-between text-ew-muted"><span>Ongoing from year two</span><span className="font-medium">{fmt(year2)}/yr</span></div>
+      {isNew ? (
+        <>
+          <div className="flex justify-between"><span className="text-ew-muted">Software ARR</span><span className="font-medium text-navy">{fmt(deal.software_arr || 0)}/yr</span></div>
+          <div className="flex justify-between"><span className="text-ew-muted">Services ARR</span><span className="font-medium text-navy">{fmt(deal.services_arr || 0)}/yr</span></div>
+          <div className="flex justify-between border-t border-ew-border pt-1.5 mt-1.5"><span className="font-semibold text-[#8403C5]">Total ARR</span><span className="font-bold text-[#8403C5]">{fmt(totalArr)}/yr</span></div>
+          <div className="flex justify-between"><span className="text-ew-muted">Onboarding fee <span className="text-ew-muted-light">(one-off)</span></span><span className="font-medium text-navy">{fee > 0 ? fmt(fee) : '£0'}</span></div>
+        </>
+      ) : (
+        <>
+          <div className="flex justify-between"><span className="text-ew-muted">Software</span><span className="font-medium text-navy">{fmt(deal.monthlyValue)}/mo · {fmt(annual)}/yr</span></div>
+          <div className="flex justify-between"><span className="text-ew-muted">Accounting service</span><span className="font-medium text-navy">{deal.accountingServiceIncluded ? `${fmt(acctg)}/yr` : 'Not included'}</span></div>
+          <div className="flex justify-between"><span className="text-ew-muted">Onboarding fee</span><span className="font-medium text-navy">{fee > 0 ? `${fmt(fee)} (one-off)` : '£0 (included)'}</span></div>
+          <div className="flex justify-between border-t border-ew-border pt-1.5 mt-1.5"><span className="font-semibold text-navy">Total year one</span><span className="font-bold text-navy">{fmt(total)}</span></div>
+          <div className="flex justify-between text-ew-muted"><span>Ongoing from year two</span><span className="font-medium">{fmt(year2)}/yr</span></div>
+        </>
+      )}
     </div>
   );
 }
@@ -224,6 +238,11 @@ export default function Deals({ onRenewalProposal, onViewClient, onNavigate, foc
       updates.annualValue = monthly * 12;
       updates.totalFirstYearValue = (monthly * 12) + (included ? acctgVal : 0) + fee;
     }
+    // ARR fields — recalculate total_arr
+    if (['software_arr', 'services_arr'].includes(field)) {
+      const next = { ...deal, [field]: parseFloat(value) || 0 };
+      updates.total_arr = calcTotalArr(next);
+    }
     setDeals(prev => prev.map(d => d.id === id ? { ...d, ...updates } : d));
     await base44.entities.Deal.update(id, updates);
   };
@@ -262,6 +281,10 @@ export default function Deals({ onRenewalProposal, onViewClient, onNavigate, foc
       { label: 'Plan',                         getValue: d => safe(d.plan) },
       { label: 'Monthly value (£)',            getValue: d => fmtCsvMoney(d.monthlyValue) },
       { label: 'Annual value (£)',             getValue: d => fmtCsvMoney(d.annualValue || (d.monthlyValue || 0) * 12) },
+      { label: 'Software ARR (£)',             getValue: d => fmtCsvMoney(d.software_arr) },
+      { label: 'Services ARR (£)',             getValue: d => fmtCsvMoney(d.services_arr) },
+      { label: 'Total ARR (£)',                getValue: d => fmtCsvMoney(getEffectiveArr(d)) },
+      { label: 'Onboarding fee — new (£)',     getValue: d => fmtCsvMoney(d.onboarding_fee) },
       { label: 'Setup fee (£)',                getValue: d => fmtCsvMoney(d.onboardingFee) },
       { label: 'Accounting service',           getValue: d => safe(d.accountingService || (d.accountingServiceIncluded ? 'Included in plan' : 'Not included')) },
       { label: 'Accounting fee charged (£/mo)', getValue: d => fmtCsvMoney(d.accountingServiceFee) },
@@ -304,15 +327,15 @@ export default function Deals({ onRenewalProposal, onViewClient, onNavigate, foc
   );
   const displayDeals = filter === 'Churned' ? sortedChurned : sortedActive;
 
-  const mrr = activeDeals.reduce((s, d) => s + (d.monthlyValue || 0), 0);
-  const arr = mrr * 12;
+  const mrr = activeDeals.reduce((s, d) => s + getEffectiveMrr(d), 0);
+  const arr = activeDeals.reduce((s, d) => s + getEffectiveArr(d), 0);
 
   // MRR THIS MONTH — non-backdated (new) deals added in current calendar month
   const thisMonthStart = startOfMonth(new Date());
   const thisMonthEnd = endOfMonth(new Date());
   const mrrThisMonth = activeDeals
     .filter(d => !d.backdated && d.created_date && new Date(d.created_date) >= thisMonthStart && new Date(d.created_date) <= thisMonthEnd)
-    .reduce((s, d) => s + (d.monthlyValue || 0), 0);
+    .reduce((s, d) => s + getEffectiveMrr(d), 0);
 
   // TOTAL CLIENTS — all active (non-churned) client records
   const totalClients = clients.filter(c => c.status !== 'Churn').length;
@@ -396,7 +419,7 @@ export default function Deals({ onRenewalProposal, onViewClient, onNavigate, foc
           <table className="w-full text-sm">
             <thead className="bg-ew-footer border-b border-ew-border">
               <tr>
-                {['Client', 'Plan', 'Monthly', 'Annual ▾', 'Year 1 total', 'Accounting service', 'Start date', 'End date', 'Status'].map(h => (
+                {['Client', 'Plan', 'Monthly', 'Annual ▾', 'Total ARR', 'Software ARR', 'Services ARR', 'Year 1 total', 'Accounting service', 'Start date', 'End date', 'Status'].map(h => (
                   <th key={h} className="px-4 py-3 text-left text-[11px] font-semibold text-ew-muted uppercase tracking-[0.12em]">{h}</th>
                 ))}
                 {filter === 'Churned' && ['Churn date', 'Churn reason', 'Churn notes'].map(h => (
@@ -427,6 +450,15 @@ export default function Deals({ onRenewalProposal, onViewClient, onNavigate, foc
                         {fmt(deal.annualValue || (deal.monthlyValue || 0) * 12)}
                         {expanded === deal.id ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5" />}
                       </button>
+                    </td>
+                    <td className="px-4 py-3 min-w-[110px]">
+                      <span className="font-bold text-[#8403C5]">{fmt(getEffectiveArr(deal))}</span>
+                    </td>
+                    <td className="px-4 py-3 min-w-[110px]">
+                      <InlineCell value={deal.software_arr} onSave={save(deal.id, 'software_arr')} type="number" displayEl={<span className="font-semibold text-navy">{fmt(deal.software_arr || 0)}</span>} placeholder="0" />
+                    </td>
+                    <td className="px-4 py-3 min-w-[110px]">
+                      <InlineCell value={deal.services_arr} onSave={save(deal.id, 'services_arr')} type="number" displayEl={<span className="font-semibold text-navy">{fmt(deal.services_arr || 0)}</span>} placeholder="0" />
                     </td>
                     <td className="px-4 py-3">
                       <InlineCell value={deal.totalFirstYearValue} readOnly displayEl={<span className="font-semibold text-navy">{fmt(deal.totalFirstYearValue)}</span>} />
@@ -474,14 +506,14 @@ export default function Deals({ onRenewalProposal, onViewClient, onNavigate, foc
                   </tr>
                   {expanded === deal.id && (
                     <tr className="border-b border-ew-border bg-navy/[0.01]" onClick={e => e.stopPropagation()}>
-                      <td colSpan={filter === 'Churned' ? 13 : 10} className="px-4 pb-3"><ValueBreakdown deal={deal} /></td>
+                      <td colSpan={filter === 'Churned' ? 16 : 13} className="px-4 pb-3"><ValueBreakdown deal={deal} /></td>
                     </tr>
                   )}
                 </React.Fragment>
               ))}
               {displayDeals.length === 0 && (
                 <tr>
-                  <td colSpan={filter === 'Churned' ? 13 : 10} className="px-4 py-16 text-center">
+                  <td colSpan={filter === 'Churned' ? 16 : 13} className="px-4 py-16 text-center">
                     <div className="text-4xl mb-3">🤝</div>
                     <p className="text-sm text-[#6B7280]">{filter === 'Churned' ? 'No churned deals.' : 'No deals yet. Close your first lead to get started.'}</p>
                   </td>

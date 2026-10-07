@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { X } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
+import { calcTotalArr } from '@/lib/dealRevenue';
 
 function fmt(n) {
   if (!n && n !== 0) return '—';
@@ -21,6 +22,9 @@ export default function DealEditModal({ deal, onClose, onSaved }) {
     accountingServiceValue: deal.accountingServiceValue || '',
     onboardingPackage: deal.onboardingPackage || 'Success Essential',
     onboardingFee: deal.onboardingFee || 0,
+    software_arr: deal.software_arr || '',
+    services_arr: deal.services_arr || '',
+    onboarding_fee: deal.onboarding_fee || '',
     status: deal.status || 'Active',
     notes: deal.notes || '',
     backdated: deal.backdated || false,
@@ -35,6 +39,9 @@ export default function DealEditModal({ deal, onClose, onSaved }) {
   const acctg = form.accountingServiceIncluded ? (parseFloat(form.accountingServiceValue) || 0) : 0;
   const fee = parseFloat(form.onboardingFee) || 0;
   const total = annual + acctg + fee;
+  const softwareArr = parseFloat(form.software_arr) || 0;
+  const servicesArr = parseFloat(form.services_arr) || 0;
+  const totalArr = softwareArr + servicesArr;
 
   const handleSave = async () => {
     setSaving(true);
@@ -45,6 +52,10 @@ export default function DealEditModal({ deal, onClose, onSaved }) {
       accountingServiceValue: acctg,
       onboardingFee: fee,
       totalFirstYearValue: total,
+      software_arr: softwareArr,
+      services_arr: servicesArr,
+      onboarding_fee: parseFloat(form.onboarding_fee) || 0,
+      total_arr: totalArr,
       subscriptionStartDate: form.backdated ? form.backdatedStartDate : form.subscriptionStartDate,
     };
     await base44.entities.Deal.update(deal.id, updates);
@@ -133,6 +144,29 @@ export default function DealEditModal({ deal, onClose, onSaved }) {
                 <input type="number" className={inputCls} value={form.accountingServiceValue} onChange={e => up('accountingServiceValue', e.target.value)} />
               </div>
             )}
+          </div>
+
+          {/* Revenue Breakdown (ARR) */}
+          <div className="border-t border-ew-border pt-4">
+            <p className="text-[10px] font-semibold text-ew-muted uppercase tracking-[0.18em] mb-3">Revenue Breakdown (ARR)</p>
+            <div className="grid grid-cols-2 gap-3 mb-3">
+              <div>
+                <label className={labelCls}>Software ARR (Subscription) £/yr</label>
+                <input type="number" className={inputCls} value={form.software_arr} onChange={e => up('software_arr', e.target.value)} placeholder="0" />
+              </div>
+              <div>
+                <label className={labelCls}>Services ARR (Accounting) £/yr</label>
+                <input type="number" className={inputCls} value={form.services_arr} onChange={e => up('services_arr', e.target.value)} placeholder="0" />
+              </div>
+              <div>
+                <label className={labelCls}>Onboarding fee (one-off) £</label>
+                <input type="number" className={inputCls} value={form.onboarding_fee} onChange={e => up('onboarding_fee', e.target.value)} placeholder="0" />
+              </div>
+              <div>
+                <label className={labelCls}>Total ARR (auto)</label>
+                <p className="text-sm font-bold text-[#8403C5] pt-2">{fmt(totalArr)}<span className="text-xs font-normal text-ew-muted ml-1">/yr</span></p>
+              </div>
+            </div>
           </div>
 
           <div className="border-t border-ew-border pt-4">

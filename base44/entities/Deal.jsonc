@@ -72,6 +72,22 @@
     "totalFirstYearValue": {
       "type": "number"
     },
+    "software_arr": {
+      "type": "number",
+      "description": "Annual Eventwise software subscription fee (GBP)"
+    },
+    "services_arr": {
+      "type": "number",
+      "description": "Annual In The Loop accounting services fee / Co Pilot (GBP)"
+    },
+    "onboarding_fee": {
+      "type": "number",
+      "description": "One-off onboarding fee (GBP) \u2014 NOT included in ARR"
+    },
+    "total_arr": {
+      "type": "number",
+      "description": "Calculated: software_arr + services_arr. Read-only, auto-updated when either ARR field changes. Onboarding fee is never included."
+    },
     "status": {
       "type": "string",
       "enum": [
