@@ -7,7 +7,7 @@ async function resolveTeamMember() {
     const me = await base44.auth.me();
     if (me?.full_name) {
       const first = me.full_name.split(' ')[0];
-      const members = ['Chris', 'Elena', 'George', 'Martinique', 'Sreeja', 'Ramesh', 'Eleanor'];
+      const members = ['Chris', 'Elena', 'George', 'Martinique', 'Sreeja', 'Ramesh', 'Eleanor', 'Dickie'];
       if (members.includes(first)) {
         _cachedName = first;
         return first;
@@ -47,4 +47,5 @@ export const MEMBER_COLORS = {
   'Sreeja': '#DC2626',
   'Ramesh': '#5777AB',
   'Eleanor': '#EC4899',
+  'Dickie': '#14B8A6',
 };

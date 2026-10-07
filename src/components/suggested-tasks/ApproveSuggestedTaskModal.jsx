@@ -3,7 +3,7 @@ import { X } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
 
 const CATEGORIES = ['Marketing', 'Sales', 'Operations', 'Customer Success', 'Tech/Product', 'Admin', 'Design', 'Content', 'Ops', 'Tech', 'Other', 'Self'];
-const ASSIGNEES = ['Elena', 'George', 'Chris', 'Martinique', 'Sreeja', 'Ramesh', 'Eleanor'];
+const ASSIGNEES = ['Elena', 'George', 'Chris', 'Martinique', 'Sreeja', 'Ramesh', 'Eleanor', 'Dickie'];
 const PRIORITIES = ['Low', 'Medium', 'High', 'Urgent'];
 
 const inputCls = 'w-full text-sm border border-[#EBEBF5] rounded-lg px-3 py-2 focus:outline-none focus:border-[#8403C5] bg-white';

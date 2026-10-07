@@ -18,7 +18,7 @@ import { logActivity } from '@/lib/logActivity';
 
 const STAGES = ['New Lead', 'Contacted', 'Discovery Call', 'Demo Booked', 'Proposal Sent', 'Negotiation', 'Closed Won', 'Closed — Converted to Trial', 'Closed Lost', 'On Hold'];
 const PLANS = ['Starter', 'Growth', 'Scale', 'Professional', 'Custom'];
-const LEAD_OWNERS = ['Chris', 'Ramesh', 'Elena', 'George', 'Martinique', 'Sreeja', 'Eleanor'];
+const LEAD_OWNERS = ['Chris', 'Ramesh', 'Elena', 'George', 'Martinique', 'Sreeja', 'Eleanor', 'Dickie'];
 const BOOKED_BY_OPTIONS = ['George', 'Chris', 'Ramesh'];
 const CONTRACT_LENGTHS = ['Monthly rolling', '6 months', '12 months', '24 months'];
 const INDUSTRIES = ['Festival', 'Event Organiser', 'Event Agency', 'Corporate Events', 'Venue', 'Accountancy', 'Other'];
@@ -26,7 +26,7 @@ const HEARD_ABOUT = ['LinkedIn', 'Referral', 'Inbound', 'Outbound', 'Outbound Li
 const ACCOUNTING_SERVICE_OPTIONS = ['Not included', 'Included in plan', 'Included in accounting service fee', 'Separate fee'];
 const ONBOARDING_PLANS = ['Basic', 'Standard', 'Enterprise', 'Option 1'];
 const LOG_TYPES = ['Call', 'Email', 'Demo', 'Meeting', 'LinkedIn', 'Note', 'Time logged', 'Trial Kickoff'];
-const LOG_MEMBERS = ['Chris', 'Ramesh', 'George', 'Elena', 'Martinique', 'Sreeja', 'Eleanor'];
+const LOG_MEMBERS = ['Chris', 'Ramesh', 'George', 'Elena', 'Martinique', 'Sreeja', 'Eleanor', 'Dickie'];
 const TRANSCRIPT_TYPES = ['Call', 'Meeting', 'Demo'];
 const TRIAL_LENGTHS = ['7 days', '14 days', '30 days', 'Custom'];
 

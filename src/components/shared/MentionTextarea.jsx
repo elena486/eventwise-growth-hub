@@ -23,6 +23,7 @@ const TEAM = [
   { name: 'Ramesh',     lastName: '',            role: 'Sales',           email: 'ramesh@eventwise.com',      color: '#DC2626' },
   { name: 'Sreeja',     lastName: '',            role: 'QA',              email: 'sreeja@eventwise.com',      color: '#9333EA' },
   { name: 'David',      lastName: '',            role: 'Operations',      email: 'david@eventwise.com',       color: '#2563EB' },
+  { name: 'Dickie',     lastName: '',            role: '',                email: '',                         color: '#14B8A6' },
 ];
 const TEAM_NAMES = TEAM.map(t => t.name);
 

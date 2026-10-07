@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { base44 } from '@/api/base44Client';
 import { Check, X, Loader2 } from 'lucide-react';
 
-const ASSIGNEES = ['Chris', 'Elena', 'George', 'Martinique', 'Sreeja', 'Ramesh', 'Eleanor'];
+const ASSIGNEES = ['Chris', 'Elena', 'George', 'Martinique', 'Sreeja', 'Ramesh', 'Eleanor', 'Dickie'];
 const CATEGORIES = ['Marketing', 'Sales', 'Operations', 'Customer Success', 'Tech/Product', 'Admin', 'Design', 'Content', 'Finance', 'Strategy & Planning', 'Other'];
 const PRIORITIES = [
   { value: 'Low', cls: 'bg-gray-100 text-gray-600 dark:bg-[#2A2A3E] dark:text-gray-300' },

@@ -4,7 +4,7 @@ import { format } from 'date-fns';
 import { X, Loader2, Sparkles } from 'lucide-react';
 import { processNoteWithAI } from '@/lib/oneOnOneAI';
 
-const DEFAULT_TEAM = ['Chris', 'Elena', 'George', 'Martinique', 'Sreeja', 'Ramesh', 'Eleanor'];
+const DEFAULT_TEAM = ['Chris', 'Elena', 'George', 'Martinique', 'Sreeja', 'Ramesh', 'Eleanor', 'Dickie'];
 
 export default function OneOnOneNoteModal({ onClose, onSaved, editNote }) {
   const [teamMembers, setTeamMembers] = useState(DEFAULT_TEAM);
