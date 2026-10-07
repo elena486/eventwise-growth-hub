@@ -3,6 +3,7 @@ import { base44 } from '@/api/base44Client';
 import { format, differenceInDays } from 'date-fns';
 import { Plus, X } from 'lucide-react';
 import SkeletonTable from '@/components/shared/SkeletonTable';
+import { getEffectiveArr, getEffectiveMrr } from '@/lib/dealRevenue';
 
 function fmtDate(d) {
   if (!d) return '—';
@@ -70,7 +71,7 @@ export default function Renewals({ onOpenClientPanel }) {
     .filter(c => c.renewalDate && differenceInDays(new Date(c.renewalDate), now) <= 60)
     .reduce((sum, c) => {
       const deal = getDeal(c.id);
-      return sum + ((deal?.monthlyValue || 0) * 12);
+      return sum + getEffectiveArr(deal);
     }, 0);
 
   const saveNote = async (clientId) => {
@@ -172,10 +173,10 @@ export default function Renewals({ onOpenClientPanel }) {
                       </td>
                       <td className="px-4 py-3 text-sm text-[#374151]">{c.plan || deal?.plan || '—'}</td>
                       <td className="px-4 py-3 text-sm text-[#374151]">
-                        {deal?.monthlyValue ? `£${deal.monthlyValue.toLocaleString('en-GB')}` : '—'}
+                        {deal ? `£${Math.round(getEffectiveMrr(deal)).toLocaleString('en-GB')}` : '—'}
                       </td>
                       <td className="px-4 py-3 text-sm text-[#374151]">
-                        {deal?.monthlyValue ? `£${(deal.monthlyValue * 12).toLocaleString('en-GB')}` : '—'}
+                        {deal ? `£${Math.round(getEffectiveArr(deal)).toLocaleString('en-GB')}` : '—'}
                       </td>
                       <td className="px-4 py-3">
                         <span className={`text-sm ${rc.cls}`}>{fmtDate(c.renewalDate)}</span>

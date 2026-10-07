@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { X } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
-import { calcTotalArr } from '@/lib/dealRevenue';
 
 function fmt(n) {
   if (!n && n !== 0) return '—';
@@ -176,9 +175,10 @@ export default function DealEditModal({ deal, onClose, onSaved }) {
 
           <div className="border-t border-ew-border pt-4">
             <p className="text-[10px] font-semibold text-ew-muted uppercase tracking-[0.18em] mb-3">Deal summary</p>
-            <div className="bg-ew-bg rounded-xl p-4 grid grid-cols-4 gap-4 text-center">
+            <div className="bg-ew-bg rounded-xl p-4 grid grid-cols-5 gap-4 text-center">
               <div><p className="text-xs text-ew-muted mb-1">Monthly</p><p className="text-lg font-bold text-navy">{fmt(monthly)}</p></div>
               <div><p className="text-xs text-ew-muted mb-1">Annual</p><p className="text-lg font-bold text-navy">{fmt(annual)}</p></div>
+              <div><p className="text-xs text-ew-muted mb-1">Total ARR</p><p className="text-lg font-bold text-[#8403C5]">{fmt(totalArr)}</p></div>
               <div><p className="text-xs text-ew-muted mb-1">Year 1 total</p><p className="text-lg font-bold text-navy">{fmt(total)}</p></div>
               <div><p className="text-xs text-ew-muted mb-1">Year 2+</p><p className="text-lg font-bold text-navy">{fmt(annual + acctg)}</p></div>
             </div>

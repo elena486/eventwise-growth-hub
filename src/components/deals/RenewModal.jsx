@@ -13,6 +13,8 @@ export default function RenewModal({ deal, onClose, onRenewed }) {
 
   const [newEndDate, setNewEndDate] = useState(defaultEnd);
   const [newMonthly, setNewMonthly] = useState(deal.monthlyValue || '');
+  const [newSoftwareArr, setNewSoftwareArr] = useState(deal.software_arr || '');
+  const [newServicesArr, setNewServicesArr] = useState(deal.services_arr || '');
   const [saving, setSaving] = useState(false);
 
   const handleRenew = async () => {
@@ -21,11 +23,16 @@ export default function RenewModal({ deal, onClose, onRenewed }) {
     const annual = monthly * 12;
     const acctg = deal.accountingServiceIncluded ? (deal.accountingServiceValue || 0) : 0;
     const fee = deal.onboardingFee || 0;
+    const softwareArr = parseFloat(newSoftwareArr) || deal.software_arr || 0;
+    const servicesArr = parseFloat(newServicesArr) || deal.services_arr || 0;
     const updates = {
       subscriptionEndDate: newEndDate,
       monthlyValue: monthly,
       annualValue: annual,
       totalFirstYearValue: annual + acctg + fee,
+      software_arr: softwareArr,
+      services_arr: servicesArr,
+      total_arr: softwareArr + servicesArr,
       status: 'Active',
     };
     await base44.entities.Deal.update(deal.id, updates);
@@ -49,6 +56,17 @@ export default function RenewModal({ deal, onClose, onRenewed }) {
           <div>
             <label className={labelCls}>New monthly value (£) <span className="text-ew-muted font-normal">— optional, leave to keep current</span></label>
             <input type="number" className={inputCls} value={newMonthly} onChange={e => setNewMonthly(e.target.value)} placeholder={`Current: £${deal.monthlyValue || 0}`} />
+          </div>
+          <div className="border-t border-ew-border pt-3 space-y-3">
+            <p className="text-[10px] font-semibold text-ew-muted uppercase tracking-[0.18em]">Revenue Breakdown (ARR) <span className="font-normal normal-case">— optional, leave to keep current</span></p>
+            <div>
+              <label className={labelCls}>Software ARR £/yr</label>
+              <input type="number" className={inputCls} value={newSoftwareArr} onChange={e => setNewSoftwareArr(e.target.value)} placeholder={`Current: £${deal.software_arr || 0}`} />
+            </div>
+            <div>
+              <label className={labelCls}>Services ARR £/yr</label>
+              <input type="number" className={inputCls} value={newServicesArr} onChange={e => setNewServicesArr(e.target.value)} placeholder={`Current: £${deal.services_arr || 0}`} />
+            </div>
           </div>
         </div>
         <div className="px-5 py-4 border-t border-ew-border flex justify-end gap-3">
