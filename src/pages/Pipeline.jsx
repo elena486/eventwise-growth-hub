@@ -249,9 +249,14 @@ export default function Pipeline({ onProposalHandoff, onViewDeals, focusLeadId, 
       { label: 'Job title',                 getValue: r => safe(getPrimaryContact(r).jobTitle) },
       { label: 'Owner',                     getValue: r => safe(r.leadOwner) },
       { label: 'Plan',                      getValue: r => safe(r.plan) },
-      { label: 'Monthly value (£)',         getValue: r => fmtCsvMoney(r.dealValueMonthly) },
-      { label: 'Annual value (£)',          getValue: r => fmtCsvMoney((r.dealValueMonthly || 0) * 12) },
-      { label: 'Setup fee (£)',             getValue: r => fmtCsvMoney(r.setupFee) },
+      // New revenue breakdown
+      { label: 'Software ARR',              getValue: r => fmtCsvMoney(r.software_arr) },
+      { label: 'Services ARR',              getValue: r => fmtCsvMoney(r.services_arr) },
+      { label: 'Total ARR',                 getValue: r => { const ea = getEffectiveLeadArr(r); return ea > 0 ? fmtCsvMoney(ea) : ''; } },
+      { label: 'Onboarding fee (one-off)',  getValue: r => fmtCsvMoney(r.onboarding_fee) },
+      { label: 'Unsplit (legacy value)',    getValue: r => isMissingBreakdown(r) && getEffectiveLeadArr(r) > 0 ? fmtCsvMoney(getEffectiveLeadArr(r)) : '' },
+      { label: 'Missing breakdown',         getValue: r => isMissingBreakdown(r) ? 'Yes' : 'No' },
+      // Other fields
       { label: 'Accounting service',        getValue: r => safe(r.accountingService) },
       { label: 'Onboarding plan',           getValue: r => safe(r.onboardingPlan) },
       { label: 'Stage',                     getValue: r => safe(r.stage) },
@@ -266,6 +271,10 @@ export default function Pipeline({ onProposalHandoff, onViewDeals, focusLeadId, 
       { label: 'Timeline to decision',      getValue: r => safe(r.timelineToDecision) },
       { label: 'Date added',               getValue: r => fmtCsvDate(r.created_date) },
       { label: 'Notes',                     getValue: r => safe(r.notes) },
+      // Legacy value columns — moved to end
+      { label: 'Monthly value (legacy)',    getValue: r => fmtCsvMoney(r.dealValueMonthly) },
+      { label: 'Annual value (legacy)',     getValue: r => fmtCsvMoney((r.dealValueMonthly || 0) * 12) },
+      { label: 'Setup fee (legacy)',         getValue: r => fmtCsvMoney(r.setupFee) },
     ];
     downloadCSV(displayLeads, cols, `Eventwise_Pipeline_${todayStr()}.csv`);
   };

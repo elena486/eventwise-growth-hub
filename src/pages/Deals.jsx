@@ -310,13 +310,14 @@ export default function Deals({ onRenewalProposal, onViewClient, onNavigate, foc
     const cols = [
       { label: 'Client name',                  getValue: d => safe(d.clientName) },
       { label: 'Plan',                         getValue: d => safe(d.plan) },
-      { label: 'Monthly value (£)',            getValue: d => fmtCsvMoney(d.monthlyValue) },
-      { label: 'Annual value (£)',             getValue: d => fmtCsvMoney(d.annualValue || (d.monthlyValue || 0) * 12) },
-      { label: 'Software ARR (£)',             getValue: d => fmtCsvMoney(d.software_arr) },
-      { label: 'Services ARR (£)',             getValue: d => fmtCsvMoney(d.services_arr) },
-      { label: 'Total ARR (£)',                getValue: d => fmtCsvMoney(getEffectiveArr(d)) },
-      { label: 'Onboarding fee — new (£)',     getValue: d => fmtCsvMoney(d.onboarding_fee) },
-      { label: 'Setup fee (£)',                getValue: d => fmtCsvMoney(d.onboardingFee) },
+      // New revenue breakdown
+      { label: 'Software ARR',                 getValue: d => fmtCsvMoney(d.software_arr) },
+      { label: 'Services ARR',                 getValue: d => fmtCsvMoney(d.services_arr) },
+      { label: 'Total ARR',                    getValue: d => { const ea = getEffectiveArr(d); return ea > 0 ? fmtCsvMoney(ea) : ''; } },
+      { label: 'Onboarding fee (one-off)',     getValue: d => fmtCsvMoney(d.onboarding_fee) },
+      { label: 'Unsplit (legacy value)',       getValue: d => isMissingDealBreakdown(d) && getEffectiveArr(d) > 0 ? fmtCsvMoney(getEffectiveArr(d)) : '' },
+      { label: 'Missing breakdown',            getValue: d => isMissingDealBreakdown(d) ? 'Yes' : 'No' },
+      // Accounting detail
       { label: 'Accounting service',           getValue: d => safe(d.accountingService || (d.accountingServiceIncluded ? 'Included in plan' : 'Not included')) },
       { label: 'Accounting fee charged (£/mo)', getValue: d => fmtCsvMoney(d.accountingServiceFee) },
       { label: 'Accounting cost (£/mo)',       getValue: d => fmtCsvMoney(d.accountingCost) },
@@ -341,6 +342,10 @@ export default function Deals({ onRenewalProposal, onViewClient, onNavigate, foc
       { label: 'Churn notes',                  getValue: d => safe(d.churnNotes) },
       { label: 'Backdated',                    getValue: d => d.backdated ? 'Yes' : 'No' },
       { label: 'Date added',                  getValue: d => fmtCsvDate(d.created_date) },
+      // Legacy value columns — moved to end
+      { label: 'Monthly value (legacy)',       getValue: d => fmtCsvMoney(d.monthlyValue) },
+      { label: 'Annual value (legacy)',        getValue: d => fmtCsvMoney(d.annualValue || (d.monthlyValue || 0) * 12) },
+      { label: 'Setup fee (legacy)',           getValue: d => fmtCsvMoney(d.onboardingFee) },
     ];
     downloadCSV(displayDeals, cols, `Eventwise_Deals_${todayStr()}.csv`);
   };
