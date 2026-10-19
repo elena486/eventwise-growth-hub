@@ -4,7 +4,7 @@ import { ChevronLeft, ChevronRight, Plus, LayoutGrid, Upload } from 'lucide-reac
 const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
 const YEARS = Array.from({ length: 10 }, (_, i) => 2020 + i);
 
-export default function ContentCalendar({ items, onSelectItem, onToggle, onAdd }) {
+export default function ContentCalendar({ items, onSelectItem, onToggle, onAdd, onImportAnalytics }) {
   const now = new Date();
   const [month, setMonth] = useState(now.getMonth());
   const [year, setYear] = useState(now.getFullYear());
