@@ -9,8 +9,12 @@ function num(val) {
   const n = parseFloat(s);
   return isNaN(n) ? 0 : n;
 }
+// Keep the original casing for saving/linking (LinkedIn URLs are case-sensitive); lowercase only for matching.
+function cleanUrl(u) {
+  return String(u || '').trim().replace(/[?#].*$/, '').replace(/\/+$/, '');
+}
 function normUrl(u) {
-  return String(u || '').trim().toLowerCase().replace(/[?#].*$/, '').replace(/\/+$/, '');
+  return cleanUrl(u).toLowerCase();
 }
 function toISO(d) {
   const y = d.getFullYear();
@@ -106,15 +110,15 @@ export function parseLinkedinFile(arrayBuffer, fileName) {
       if (!r) continue;
       const urlA = normUrl(r[0]);
       const urlE = normUrl(r[4]);
-      if (urlA) engagementsBy[urlA] = { date: parseDate(r[1]), engagements: num(r[2]) };
-      if (urlE) impressionsBy[urlE] = { date: parseDate(r[5]), impressions: num(r[6]) };
+      if (urlA) engagementsBy[urlA] = { raw: cleanUrl(r[0]), date: parseDate(r[1]), engagements: num(r[2]) };
+      if (urlE) impressionsBy[urlE] = { raw: cleanUrl(r[4]), date: parseDate(r[5]), impressions: num(r[6]) };
     }
     const urls = new Set([...Object.keys(engagementsBy), ...Object.keys(impressionsBy)]);
     urls.forEach(url => {
       const e = engagementsBy[url] || {};
       const im = impressionsBy[url] || {};
       posts.push({
-        url, date: e.date || im.date,
+        url: e.raw || im.raw || url, date: e.date || im.date,
         impressions: im.impressions || 0,
         engagements: e.engagements || 0,
         reactions: null, comments: null, reposts: null,
@@ -148,7 +152,7 @@ export function parseLinkedinFile(arrayBuffer, fileName) {
       const url = normUrl(r[iUrl]);
       if (!url) continue;
       const entry = {
-        url,
+        url: cleanUrl(r[iUrl]),
         date: parseDate(r[iDate]),
         postType: r[iType] != null ? String(r[iType]) : null,
         impressions: num(r[iImp]),
