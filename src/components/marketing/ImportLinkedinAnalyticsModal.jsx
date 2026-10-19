@@ -11,6 +11,7 @@ const STATUS_BADGE = {
   matched: 'bg-emerald-50 text-emerald-700',
   create_new: 'bg-blue-50 text-blue-700',
   needs_choice: 'bg-amber-50 text-amber-700',
+  out_of_period: 'bg-gray-100 text-gray-500',
 };
 
 export default function ImportLinkedinAnalyticsModal({ onClose, onSaved }) {
@@ -39,7 +40,13 @@ export default function ImportLinkedinAnalyticsModal({ onClose, onSaved }) {
       const buf = await file.arrayBuffer();
       const { posts, periodTotals: pt, periodMonth: pm, periodYear: py } = parseLinkedinFile(buf, file.name);
       if (!posts.length) { setError('No posts found in the file. Check the sheet names (TOP POSTS, MOST RECENT POSTS).'); setParsing(false); return; }
-      const matched = matchPosts(posts, contentItems, page);
+      // Posts published before the export period only carry that period's numbers, not lifetime totals.
+      // Skip them by default so older posts are never overwritten with smaller figures.
+      const matched = matchPosts(posts, contentItems, page).map(r =>
+        (pt.periodStart && r.date && r.date < pt.periodStart)
+          ? { ...r, status: 'out_of_period', choice: 'skip' }
+          : r
+      );
       setRows(matched);
       setPeriodTotals(pt);
       setPeriodMonth(pm);
@@ -53,7 +60,7 @@ export default function ImportLinkedinAnalyticsModal({ onClose, onSaved }) {
   };
 
   const setChoice = (idx, value) => {
-    setRows(prev => prev.map((r, i) => i === idx ? { ...r, choice: value, status: value === 'new' ? 'create_new' : 'matched' } : r));
+    setRows(prev => prev.map((r, i) => i === idx ? { ...r, choice: value, status: value === 'new' ? 'create_new' : value === 'skip' ? 'out_of_period' : 'matched' } : r));
   };
 
   const unresolved = rows.some(r => !r.choice);
@@ -64,9 +71,18 @@ export default function ImportLinkedinAnalyticsModal({ onClose, onSaved }) {
     let savedCount = 0, createdCount = 0;
     const updatedItems = [];
     const numFields = ['impressions', 'engagements', 'reactions', 'comments', 'reposts', 'reach', 'saves', 'followersGained'];
+    let skippedCount = 0;
     for (const r of rows) {
-      const nums = { publishedUrl: r.url };
-      numFields.forEach(f => { if (r[f] != null) nums[f] = r[f]; });
+      if (r.choice === 'skip') { skippedCount++; continue; }
+      const existingItem = contentItems.find(c => c.id === r.choice);
+      const nums = {};
+      if (!existingItem || !existingItem.publishedUrl) nums.publishedUrl = r.url;
+      // Never lower a number that is already logged (protects lifetime totals).
+      numFields.forEach(f => {
+        if (r[f] == null) return;
+        if (existingItem && existingItem[f] != null && Number(r[f]) < Number(existingItem[f])) return;
+        nums[f] = r[f];
+      });
       if (r.choice === 'new') {
         await base44.entities.ContentItem.create({
           title: titleFromUrl(r.url),
@@ -119,7 +135,7 @@ export default function ImportLinkedinAnalyticsModal({ onClose, onSaved }) {
     const timeMap = {};
     updatedItems.forEach(it => { const b = timeBucket(it.timePublished); if (b && it.impressions) { (timeMap[b] ||= []).push(it.impressions); } });
     const bestTimeWindow = Object.entries(timeMap).map(([b, arr]) => ({ b, avg: Math.round(arr.reduce((a, b) => a + b, 0) / arr.length) })).sort((a, b) => b.avg - a.avg)[0]?.b;
-    setSummary({ totalImpressions, avg, postCount: rows.length, top5, bestFormat, bestTimeWindow, savedCount, createdCount });
+    setSummary({ totalImpressions, avg, postCount: rows.length, top5, bestFormat, bestTimeWindow, savedCount, createdCount, skippedCount });
     setStep('summary');
     setSaving(false);
     onSaved?.();
@@ -206,7 +222,7 @@ export default function ImportLinkedinAnalyticsModal({ onClose, onSaved }) {
                         <td className="px-3 py-2.5 text-right text-xs text-gray-600">{fmt(r.reposts)}</td>
                         <td className="px-3 py-2.5">
                           <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${STATUS_BADGE[r.status] || 'bg-gray-100 text-gray-600'}`}>
-                            {r.status === 'matched' ? 'Matched' : r.status === 'create_new' ? 'New' : 'Needs choice'}
+                            {r.status === 'matched' ? 'Matched' : r.status === 'create_new' ? 'New' : r.status === 'out_of_period' ? 'Older post, skipped' : 'Needs choice'}
                           </span>
                         </td>
                         <td className="px-3 py-2.5">
@@ -214,6 +230,7 @@ export default function ImportLinkedinAnalyticsModal({ onClose, onSaved }) {
                             className="text-xs border border-gray-200 rounded-lg px-2 py-1 max-w-[200px] bg-white">
                             <option value="">— pick —</option>
                             <option value="new">➕ Create new</option>
+                            <option value="skip">Skip</option>
                             {contentItems.map(it => (
                               <option key={it.id} value={it.id}>{(it.title || 'Untitled').slice(0, 40)}{it.publishDate ? ` (${it.publishDate})` : ''}</option>
                             ))}
@@ -238,7 +255,7 @@ export default function ImportLinkedinAnalyticsModal({ onClose, onSaved }) {
                 <div className="w-9 h-9 rounded-full bg-emerald-100 flex items-center justify-center"><Check className="w-5 h-5 text-emerald-600" /></div>
                 <div>
                   <h3 className="text-base font-bold text-[#242450]">Import complete</h3>
-                  <p className="text-xs text-gray-500">{summary.savedCount} updated · {summary.createdCount} created · {periodMonth} {periodYear}</p>
+                  <p className="text-xs text-gray-500">{summary.savedCount} updated · {summary.createdCount} created · {summary.skippedCount || 0} skipped · {periodMonth} {periodYear}</p>
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-3 mb-5">
