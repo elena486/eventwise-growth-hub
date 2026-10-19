@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ChevronLeft, ChevronRight, Plus, LayoutGrid } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Plus, LayoutGrid, Upload } from 'lucide-react';
 
 const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
 const YEARS = Array.from({ length: 10 }, (_, i) => 2020 + i);
@@ -47,9 +47,16 @@ export default function ContentCalendar({ items, onSelectItem, onToggle, onAdd }
           </select>
           <button onClick={nextMonth} className="p-1 text-gray-400 hover:text-gray-700"><ChevronRight className="w-4 h-4" /></button>
         </div>
-        <button onClick={onAdd} className="ml-auto flex items-center gap-1.5 px-3 py-1.5 bg-[#8403C5] text-white rounded-lg text-xs font-semibold">
-          <Plus className="w-3.5 h-3.5" /> New Content
-        </button>
+        <div className="ml-auto flex items-center gap-2">
+          {onImportAnalytics && (
+            <button onClick={onImportAnalytics} className="flex items-center gap-1.5 px-3 py-1.5 border border-[#8403C5] text-[#8403C5] rounded-lg text-xs font-semibold hover:bg-purple-50 transition-colors">
+              <Upload className="w-3.5 h-3.5" /> Import LinkedIn analytics
+            </button>
+          )}
+          <button onClick={onAdd} className="flex items-center gap-1.5 px-3 py-1.5 bg-[#8403C5] text-white rounded-lg text-xs font-semibold">
+            <Plus className="w-3.5 h-3.5" /> New Content
+          </button>
+        </div>
       </div>
 
       <div className="flex-1 overflow-y-auto p-4">

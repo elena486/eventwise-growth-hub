@@ -4,6 +4,7 @@ import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
 import { Plus, X, CalendarDays, LayoutGrid, GripVertical } from 'lucide-react';
 import ContentItemDetail from './ContentItemDetail';
 import ContentCalendar from './ContentCalendar';
+import ImportLinkedinAnalyticsModal from './ImportLinkedinAnalyticsModal';
 import ConfirmDialog from '@/components/shared/ConfirmDialog';
 import { useToast } from '@/components/shared/Toast';
 
@@ -53,6 +54,7 @@ export default function ContentKanban({ calendarView = false, onSetCalendarView,
   const [filter, setFilter] = useState('All');
   const [selected, setSelected] = useState(initialSelected); // null | 'new' | item
   const [confirmId, setConfirmId] = useState(null);
+  const [showImport, setShowImport] = useState(false);
   const setCalendarView = onSetCalendarView || (() => {});
 
   React.useEffect(() => {
@@ -127,7 +129,10 @@ export default function ContentKanban({ calendarView = false, onSetCalendarView,
   );
 
   if (calendarView) return (
-    <ContentCalendar items={items} onSelectItem={setSelected} onToggle={() => setCalendarView(false)} onAdd={() => setSelected('new')} onBack={() => setCalendarView(false)} />
+    <>
+      <ContentCalendar items={items} onSelectItem={setSelected} onToggle={() => setCalendarView(false)} onAdd={() => setSelected('new')} onImportAnalytics={() => setShowImport(true)} onBack={() => setCalendarView(false)} />
+      {showImport && <ImportLinkedinAnalyticsModal onClose={() => setShowImport(false)} onSaved={load} />}
+    </>
   );
 
   return (

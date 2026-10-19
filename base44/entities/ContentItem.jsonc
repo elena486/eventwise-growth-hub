@@ -91,6 +91,18 @@
     "reposts": {
       "type": "number"
     },
+    "engagements": {
+      "type": "number",
+      "description": "Total engagements (reactions + comments + reposts, or LinkedIn's aggregate Engagements figure)"
+    },
+    "saves": {
+      "type": "number",
+      "description": "Post saves"
+    },
+    "followersGained": {
+      "type": "number",
+      "description": "Followers gained from this post"
+    },
     "linkClicks": {
       "type": "number",
       "description": "Link clicks (if post included a link)"
@@ -101,7 +113,7 @@
     },
     "reach": {
       "type": "number",
-      "description": "Unique accounts reached"
+      "description": "Unique accounts reached (Members reached)"
     },
     "topicAngle": {
       "type": "string",
