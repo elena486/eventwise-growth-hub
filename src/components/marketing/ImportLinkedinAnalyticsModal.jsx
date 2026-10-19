@@ -110,7 +110,8 @@ export default function ImportLinkedinAnalyticsModal({ onClose, onSaved }) {
     }
     // Summary
     const totalImpressions = periodTotals.totalImpressions || rows.reduce((s, r) => s + (r.impressions || 0), 0);
-    const avg = rows.length ? Math.round(totalImpressions / rows.length) : 0;
+    const postImpressions = rows.reduce((s, r) => s + (r.impressions || 0), 0);
+    const avg = rows.length ? Math.round(postImpressions / rows.length) : 0;
     const top5 = [...rows].filter(r => r.impressions).sort((a, b) => b.impressions - a.impressions).slice(0, 5);
     const fmtMap = {};
     updatedItems.forEach(it => { if (it.format && it.impressions) { (fmtMap[it.format] ||= []).push(it.impressions); } });
