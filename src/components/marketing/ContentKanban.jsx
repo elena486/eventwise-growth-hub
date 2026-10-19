@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
 import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
-import { Plus, X, CalendarDays, LayoutGrid, GripVertical } from 'lucide-react';
+import { Plus, X, CalendarDays, LayoutGrid, GripVertical, Upload } from 'lucide-react';
 import ContentItemDetail from './ContentItemDetail';
 import ContentCalendar from './ContentCalendar';
 import ImportLinkedinAnalyticsModal from './ImportLinkedinAnalyticsModal';
@@ -149,6 +149,11 @@ export default function ContentKanban({ calendarView = false, onSetCalendarView,
         </div>
         <div className="ml-auto flex items-center gap-2">
           {/* Calendar button removed — toggle is now in the tab bar above */}
+          <button onClick={() => setShowImport(true)}
+            className="flex items-center gap-1.5 px-3 py-1.5 border border-[#8403C5] text-[#8403C5] rounded-lg text-xs font-semibold hover:bg-purple-50 transition-colors">
+            <Upload className="w-3.5 h-3.5" /> Import LinkedIn analytics
+          </button>
+          {showImport && <ImportLinkedinAnalyticsModal onClose={() => setShowImport(false)} onSaved={load} />}
           <button onClick={() => setSelected('new')}
             className="flex items-center gap-1.5 px-3 py-1.5 bg-[#8403C5] text-white rounded-lg text-xs font-semibold hover:bg-[#6d02a3]">
             <Plus className="w-3.5 h-3.5" /> New Content
